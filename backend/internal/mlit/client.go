@@ -15,8 +15,6 @@ import (
 
 const (
 	baseURL        = "https://www.land.mlit.go.jp/webland/api/TradeListSearch"
-	landTypeFilter = "宅地(土地)"
-	sqmPerTsubo    = 3.30578
 	requestTimeout = 30 * time.Second
 )
 
@@ -104,7 +102,7 @@ func parseTransactions(raw []Transaction) []domain.LandTransaction {
 			pricePerSqm = tradePrice / areaSqm
 		}
 
-		pricePerTsubo := pricePerSqm * sqmPerTsubo
+		pricePerTsubo := pricePerSqm * domain.SqmPerTsubo // 円/m² → 円/坪
 
 		result = append(result, domain.LandTransaction{
 			Period:           t.Period,

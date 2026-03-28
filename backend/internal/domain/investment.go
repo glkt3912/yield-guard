@@ -1,13 +1,15 @@
 package domain
 
 import (
+	"fmt"
 	"math"
 	"sort"
 )
 
 const (
-	sqmPerTsubo    = 3.30578  // 1坪 = 3.30578 m²
-	targetYield8pct = 0.08    // 8%境界線
+	// SqmPerTsubo は 1坪あたりの平方メートル数（mlit パッケージからも参照）
+	SqmPerTsubo     = 3.30578
+	targetYield8pct = 0.08 // 8%境界線
 )
 
 // Analyze は投資入力値から収支シミュレーション結果を算出する
@@ -310,19 +312,27 @@ func CalcLandPriceStats(transactions []LandTransaction) LandPriceStats {
 		median = prices[n/2]
 	}
 
+	const lowDataThreshold = 10
+	warning := ""
+	if len(prices) < lowDataThreshold {
+		warning = fmt.Sprintf("取引件数が%d件と少ないため統計の信頼性が低い可能性があります", len(prices))
+	}
+
 	return LandPriceStats{
-		Count:        len(prices),
-		AverageTsubo: avg,
-		MedianTsubo:  median,
-		MinTsubo:     prices[0],
-		MaxTsubo:     prices[len(prices)-1],
-		Transactions: transactions,
+		Count:          len(prices),
+		AverageTsubo:   avg,
+		MedianTsubo:    median,
+		MinTsubo:       prices[0],
+		MaxTsubo:       prices[len(prices)-1],
+		Transactions:   transactions,
+		LowDataWarning: len(prices) < lowDataThreshold,
+		WarningMessage: warning,
 	}
 }
 
 // CompareLandPrice は検討中の土地価格と相場を比較する
 func CompareLandPrice(stats LandPriceStats, landPrice, areaSqm float64) LandPriceComparison {
-	tsubo := areaSqm / sqmPerTsubo
+	tsubo := areaSqm / SqmPerTsubo
 	pricePerTsubo := 0.0
 	if tsubo > 0 {
 		pricePerTsubo = landPrice / tsubo
@@ -351,10 +361,10 @@ func CompareLandPrice(stats LandPriceStats, landPrice, areaSqm float64) LandPric
 
 // SqmToTsubo は平方メートルを坪に変換する
 func SqmToTsubo(sqm float64) float64 {
-	return sqm / sqmPerTsubo
+	return sqm / SqmPerTsubo
 }
 
 // TsuboToSqm は坪を平方メートルに変換する
 func TsuboToSqm(tsubo float64) float64 {
-	return tsubo * sqmPerTsubo
+	return tsubo * SqmPerTsubo
 }
