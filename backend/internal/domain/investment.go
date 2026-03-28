@@ -46,7 +46,11 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	usefulLife := CalcResidualUsefulLife(input.BuildingType, input.BuildingAge)
 	annualDepreciation := input.BuildingCost / float64(usefulLife)
 
-	// 年次シミュレーション
+	// 年次シミュレーション期間の決定
+	// max(LoanYears, HoldingYears, 35) を採用する理由:
+	//   - LoanYears: ローン完済まで元金返済額が正確に追える
+	//   - HoldingYears: 売却試算年が範囲内に収まる
+	//   - 35: フロントのグラフ表示が35年固定のため最低35年分を保証
 	years := input.LoanYears
 	if input.HoldingYears > years {
 		years = input.HoldingYears
