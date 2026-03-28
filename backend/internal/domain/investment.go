@@ -40,11 +40,9 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	monthlyPayment := calcMonthlyPayment(input.LoanAmount, effectiveRate, input.LoanYears)
 
 	// 減価償却 (定額法)
-	usefulLife := input.BuildingType.UsefulLife()
-	annualDepreciation := 0.0
-	if usefulLife > 0 {
-		annualDepreciation = input.BuildingCost / float64(usefulLife)
-	}
+	// 中古物件は簡便法耐用年数を使用（新築は法定耐用年数）
+	usefulLife := CalcResidualUsefulLife(input.BuildingType, input.BuildingAge)
+	annualDepreciation := input.BuildingCost / float64(usefulLife)
 
 	// 年次シミュレーション
 	years := input.LoanYears
@@ -99,12 +97,14 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		afterTaxCF := cashFlow - incomeTax
 		cumulativeCF += afterTaxCF
 
-		// デッドクロス判定: 元金返済額 > 減価償却費 となる最初の年
+		// デッドクロス判定: 元金返済額 > 減価償却費 となるゾーン
 		// 耐用年数経過後は減価償却=0のため、元金返済が残っていれば即デッドクロス
-		isDead := false
-		if deadCrossYear == -1 && annualPrincipal > 0 && annualPrincipal > yearDepreciation {
+		// ローン完済後（annualPrincipal==0）はデッドクロスゾーンから脱出
+		inDeadCrossZone := annualPrincipal > 0 && annualPrincipal > yearDepreciation
+		isDeadCrossYear := false
+		if deadCrossYear == -1 && inDeadCrossZone {
 			deadCrossYear = year
-			isDead = true
+			isDeadCrossYear = true
 		}
 
 		yearlyResults[y] = YearlyResult{
@@ -121,7 +121,8 @@ func Analyze(input InvestmentInput) InvestmentResult {
 			AfterTaxCashFlow:     afterTaxCF,
 			RemainingLoanBalance: remainingBalance,
 			CumulativeCashFlow:   cumulativeCF,
-			IsDeadCrossYear:      isDead,
+			IsDeadCrossYear:      isDeadCrossYear,
+			IsInDeadCrossZone:    inDeadCrossZone,
 		}
 	}
 
@@ -163,22 +164,29 @@ func calcMonthlyPayment(principal, annualRate float64, years int) float64 {
 }
 
 // calcYearlyLoanComponents は1年分の利息・元金返済額を計算する
+// 最終月で月次返済額が残高を超える場合は残高のみを元金返済として扱い、誤差を防ぐ
 func calcYearlyLoanComponents(balance, annualRate, monthlyPayment float64) (interest, principal float64) {
 	if annualRate == 0 {
-		principal = monthlyPayment * 12
-		return 0, principal
+		if monthlyPayment*12 > balance {
+			return 0, balance
+		}
+		return 0, monthlyPayment * 12
 	}
 	r := annualRate / 12
 	remaining := balance
-	for m := 0; m < 12; m++ {
+	for range 12 {
+		if remaining <= 0 {
+			break
+		}
 		monthInterest := remaining * r
 		monthPrincipal := monthlyPayment - monthInterest
+		// 最終月: 残高が月次元金返済より少ない場合は残高のみ返済
+		if monthPrincipal > remaining {
+			monthPrincipal = remaining
+		}
 		interest += monthInterest
 		principal += monthPrincipal
 		remaining -= monthPrincipal
-		if remaining < 0 {
-			remaining = 0
-		}
 	}
 	return interest, principal
 }
