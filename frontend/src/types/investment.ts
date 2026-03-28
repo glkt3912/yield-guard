@@ -1,8 +1,16 @@
-export type BuildingType = "木造" | "軽量鉄骨" | "重量鉄骨" | "RC造";
+export type BuildingType =
+  | "木造"
+  | "軽量鉄骨(4mm以下)"
+  | "軽量鉄骨(3mm以下)"
+  | "重量鉄骨"
+  | "RC造"
+  | "SRC造";
 
 export interface InvestmentInput {
   landPrice: number;
+  landArea: number;       // 土地面積 (m²)
   buildingCost: number;
+  buildingAge: number;    // 築年数 (0=新築)
   miscExpenseRate: number;
   monthlyRent: number;
   vacancyRate: number;
@@ -20,7 +28,7 @@ export interface InvestmentInput {
 
 export interface YearlyResult {
   year: number;
-  annualRent: number;
+  annualRent: number;           // 実効賃料収入（空室控除後）
   annualLoanPayment: number;
   annualInterest: number;
   annualPrincipal: number;
@@ -33,6 +41,7 @@ export interface YearlyResult {
   remainingLoanBalance: number;
   cumulativeCashFlow: number;
   isDeadCrossYear: boolean;
+  isInDeadCrossZone: boolean;   // デッドクロス継続ゾーン
 }
 
 export interface InvestmentResult {
@@ -41,8 +50,7 @@ export interface InvestmentResult {
   grossYield: number;
   netYield: number;
   isAbove8Percent: boolean;
-  requiredLandPriceDrop: number;
-  requiredBuildingCostDrop: number;
+  requiredCostReduction: number;  // 土地または建築費いずれか一方の削減必要額
   requiredMonthlyRent: number;
   deadCrossYear: number;
   yearlyResults: YearlyResult[];
@@ -72,6 +80,8 @@ export interface LandPriceStats {
   minTsubo: number;
   maxTsubo: number;
   transactions: LandTransaction[];
+  lowDataWarning: boolean;
+  warningMessage?: string;
 }
 
 export interface LandPriceComparison {
@@ -86,7 +96,9 @@ export interface LandPriceComparison {
 
 export const DEFAULT_INPUT: InvestmentInput = {
   landPrice: 5_000_000,
+  landArea: 100,
   buildingCost: 10_000_000,
+  buildingAge: 0,
   miscExpenseRate: 0.07,
   monthlyRent: 120_000,
   vacancyRate: 0.05,
@@ -104,7 +116,9 @@ export const DEFAULT_INPUT: InvestmentInput = {
 
 export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
   "木造": 22,
-  "軽量鉄骨": 27,
+  "軽量鉄骨(3mm以下)": 19,
+  "軽量鉄骨(4mm以下)": 27,
   "重量鉄骨": 34,
   "RC造": 47,
+  "SRC造": 47,
 };

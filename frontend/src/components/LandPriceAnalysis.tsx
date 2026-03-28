@@ -14,7 +14,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { LandPriceComparison } from "@/types/investment";
 import { formatTsubo, formatMan } from "@/lib/utils";
-import { MapPin } from "lucide-react";
+import { MapPin, AlertTriangle } from "lucide-react";
 
 interface Props {
   comparison: LandPriceComparison;
@@ -51,6 +51,13 @@ export function LandPriceAnalysis({ comparison }: Props) {
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* データ件数不足警告（ISSUE-23） */}
+        {stats.lowDataWarning && (
+          <div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-800">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <p>{stats.warningMessage ?? "取引データが少ないため、統計の信頼性が低い可能性があります。"}</p>
+          </div>
+        )}
         {/* 統計サマリー */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[

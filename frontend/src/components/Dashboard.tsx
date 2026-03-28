@@ -9,14 +9,10 @@ import type { InvestmentInput, InvestmentResult, LandPriceComparison } from "@/t
 import { analyze, compareLandPrice } from "@/lib/api";
 import { ShieldAlert } from "lucide-react";
 
-// 現在の四半期を取得（国交省API形式: YYYYQ）
+/** 直近2年分の期間（国交省API形式: YYYYQ） */
 function getCurrentPeriods(): { from: string; to: string } {
-  const now = new Date();
-  const year = now.getFullYear();
-  return {
-    from: `${year - 2}1`,
-    to: `${year}4`,
-  };
+  const year = new Date().getFullYear();
+  return { from: `${year - 2}1`, to: `${year}4` };
 }
 
 export function Dashboard() {
@@ -41,9 +37,6 @@ export function Dashboard() {
   };
 
   const handleFetchLandPrices = async (area: string, city: string) => {
-    if (!lastInput && !result) {
-      // 土地価格未入力のまま取得した場合は統計のみ表示
-    }
     setLoading(true);
     setError(null);
     const { from, to } = getCurrentPeriods();
@@ -54,7 +47,7 @@ export function Dashboard() {
         from,
         to,
         price: lastInput?.landPrice ?? 5_000_000,
-        areaSqm: 100,
+        areaSqm: lastInput?.landArea ?? 0, // ユーザー入力の面積を使用（ISSUE-15）
       });
       setComparison(comp);
     } catch (e) {
@@ -66,7 +59,6 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* ヘッダー */}
       <header className="border-b bg-white px-6 py-4 shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
           <ShieldAlert className="h-7 w-7 text-primary" />
@@ -81,7 +73,6 @@ export function Dashboard() {
         </div>
       </header>
 
-      {/* メインレイアウト */}
       <main className="mx-auto max-w-7xl px-4 py-6">
         {error && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -89,8 +80,7 @@ export function Dashboard() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
-          {/* 左: 入力フォーム */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[400px_1fr]">
           <aside>
             <InvestmentForm
               onAnalyze={handleAnalyze}
@@ -99,7 +89,6 @@ export function Dashboard() {
             />
           </aside>
 
-          {/* 右: 分析結果 */}
           <section className="space-y-6">
             {!result && !comparison && (
               <div className="flex h-80 items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/20">
@@ -111,18 +100,13 @@ export function Dashboard() {
               </div>
             )}
 
-            {/* 土地相場 */}
             {comparison && <LandPriceAnalysis comparison={comparison} />}
 
-            {result && (
+            {result && lastInput && (
               <>
-                {/* 利回り分析 */}
                 <YieldAnalysis result={result} />
-
-                {/* CF推移 */}
-                <CashFlowChart result={result} />
-
-                {/* デッドクロス */}
+                {/* 自己資金 = 総投資額 - ローン金額（ISSUE-22: 投資回収年の正確な計算に使用） */}
+                <CashFlowChart result={result} equityInvested={result.totalInvestment - lastInput.loanAmount} />
                 <DeadCrossChart result={result} />
               </>
             )}
