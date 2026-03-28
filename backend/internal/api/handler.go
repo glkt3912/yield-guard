@@ -1,7 +1,9 @@
 package api
 
 import (
+	"errors"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -31,10 +33,7 @@ func (h *Handler) GetLandPrices(c *gin.Context) {
 	}
 
 	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), mlit.LandPriceQuery{
-		Area: area,
-		City: city,
-		From: from,
-		To:   to,
+		Area: area, City: city, From: from, To: to,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "国交省APIからのデータ取得に失敗しました: " + err.Error()})
@@ -61,8 +60,8 @@ func (h *Handler) CompareLandPrice(c *gin.Context) {
 	}
 
 	landPrice, err := strconv.ParseFloat(priceStr, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "price の値が不正です"})
+	if err != nil || landPrice <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "price は正の数値で指定してください"})
 		return
 	}
 
@@ -72,10 +71,7 @@ func (h *Handler) CompareLandPrice(c *gin.Context) {
 	}
 
 	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), mlit.LandPriceQuery{
-		Area: area,
-		City: city,
-		From: from,
-		To:   to,
+		Area: area, City: city, From: from, To: to,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "国交省APIからのデータ取得に失敗しました: " + err.Error()})
@@ -96,8 +92,8 @@ func (h *Handler) Analyze(c *gin.Context) {
 		return
 	}
 
-	if input.LandPrice <= 0 || input.BuildingCost <= 0 || input.MonthlyRent <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "landPrice, buildingCost, monthlyRent は0より大きい値を指定してください"})
+	if err := validateInvestmentInput(input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -105,7 +101,48 @@ func (h *Handler) Analyze(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// GetPrefectures は都道府県一覧を返す
+// validateInvestmentInput は投資入力値の範囲チェックを行う
+func validateInvestmentInput(in domain.InvestmentInput) error {
+	if in.LandPrice <= 0 || in.LandPrice > 10_000_000_000 {
+		return errors.New("landPrice は 1〜100億円の範囲で指定してください")
+	}
+	if in.BuildingCost <= 0 || in.BuildingCost > 10_000_000_000 {
+		return errors.New("buildingCost は 1〜100億円の範囲で指定してください")
+	}
+	if in.MonthlyRent <= 0 {
+		return errors.New("monthlyRent は正の値を指定してください")
+	}
+	if in.VacancyRate < 0 || in.VacancyRate >= 1.0 {
+		return errors.New("vacancyRate は 0.0〜0.99 の範囲で指定してください")
+	}
+	if in.LoanAmount < 0 {
+		return errors.New("loanAmount は 0 以上を指定してください")
+	}
+	if in.AnnualLoanRate < 0 || in.AnnualLoanRate > 0.3 {
+		return errors.New("annualLoanRate は 0〜30% の範囲で指定してください")
+	}
+	if in.LoanYears < 0 || in.LoanYears > 50 {
+		return errors.New("loanYears は 0〜50 年の範囲で指定してください")
+	}
+	if in.MiscExpenseRate < 0 || in.MiscExpenseRate > 0.5 {
+		return errors.New("miscExpenseRate は 0〜50% の範囲で指定してください")
+	}
+	if in.ExpenseRate < 0 || in.ExpenseRate > 0.9 {
+		return errors.New("expenseRate は 0〜90% の範囲で指定してください")
+	}
+	if in.IncomeTaxRate < 0 || in.IncomeTaxRate > 0.6 {
+		return errors.New("incomeTaxRate は 0〜60% の範囲で指定してください")
+	}
+	if in.ExitYieldTarget <= 0 || in.ExitYieldTarget > 0.5 {
+		return errors.New("exitYieldTarget は 0%超〜50% の範囲で指定してください（ゼロ除算防止）")
+	}
+	if in.HoldingYears < 0 || in.HoldingYears > 50 {
+		return errors.New("holdingYears は 0〜50 年の範囲で指定してください")
+	}
+	return nil
+}
+
+// GetPrefectures は都道府県一覧をコード順で返す
 // GET /api/prefectures
 func (h *Handler) GetPrefectures(c *gin.Context) {
 	type Prefecture struct {
@@ -117,6 +154,12 @@ func (h *Handler) GetPrefectures(c *gin.Context) {
 	for code, name := range mlit.Prefectures {
 		prefectures = append(prefectures, Prefecture{Code: code, Name: name})
 	}
+	// マップのイテレーション順は非決定的なので数値コード順にソート
+	sort.Slice(prefectures, func(i, j int) bool {
+		ci, _ := strconv.Atoi(prefectures[i].Code)
+		cj, _ := strconv.Atoi(prefectures[j].Code)
+		return ci < cj
+	})
 	c.JSON(http.StatusOK, prefectures)
 }
 
