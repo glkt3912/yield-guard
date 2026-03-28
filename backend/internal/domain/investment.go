@@ -34,7 +34,7 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	}
 
 	// 8%逆算
-	requiredRent, landDrop, buildingDrop := calcRequired8pct(input, totalInvestment)
+	requiredRent, landDrop := calcRequired8pct(input, totalInvestment)
 
 	// ローン月次計算
 	monthlyPayment := calcMonthlyPayment(input.LoanAmount, effectiveRate, input.LoanYears)
@@ -131,14 +131,13 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	)
 
 	return InvestmentResult{
-		TotalInvestment:          totalInvestment,
-		MiscExpenses:             miscExpenses,
-		GrossYield:               grossYield,
-		NetYield:                 netYield,
-		IsAbove8Percent:          grossYield >= targetYield8pct,
-		RequiredLandPriceDrop:    landDrop,
-		RequiredBuildingCostDrop: buildingDrop,
-		RequiredMonthlyRent:      requiredRent,
+		TotalInvestment:       totalInvestment,
+		MiscExpenses:          miscExpenses,
+		GrossYield:            grossYield,
+		NetYield:              netYield,
+		IsAbove8Percent:       grossYield >= targetYield8pct,
+		RequiredCostReduction: landDrop,
+		RequiredMonthlyRent:   requiredRent,
 		DeadCrossYear:            deadCrossYear,
 		YearlyResults:            yearlyResults,
 		ExitSalePrice:            exitSalePrice,
@@ -185,7 +184,8 @@ func calcYearlyLoanComponents(balance, annualRate, monthlyPayment float64) (inte
 }
 
 // calcRequired8pct は表面利回り8%達成に必要な値を逆算する
-func calcRequired8pct(input InvestmentInput, totalInvestment float64) (requiredRent, landDrop, buildingDrop float64) {
+// costReduction は「土地価格または建築費のいずれか一方」を削減すべき金額を表す
+func calcRequired8pct(input InvestmentInput, totalInvestment float64) (requiredRent, costReduction float64) {
 	// 目標利回り8%達成に必要な月額賃料
 	requiredAnnualRent := totalInvestment * targetYield8pct
 	requiredRent = requiredAnnualRent / 12
@@ -194,13 +194,12 @@ func calcRequired8pct(input InvestmentInput, totalInvestment float64) (requiredR
 	currentAnnualRent := input.MonthlyRent * 12
 	requiredTotalInvestment := currentAnnualRent / targetYield8pct
 
-	// 土地値または建築費をどれだけ下げるべきか
+	// 過剰投資額 = 土地 or 建築費いずれかを削減すべき額
 	excess := totalInvestment - requiredTotalInvestment
 	if excess > 0 {
-		landDrop = excess
-		buildingDrop = excess
+		costReduction = excess
 	}
-	return requiredRent, landDrop, buildingDrop
+	return requiredRent, costReduction
 }
 
 // calcExit は出口戦略（売却）の試算を行う
