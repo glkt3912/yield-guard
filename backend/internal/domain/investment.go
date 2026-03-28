@@ -128,7 +128,7 @@ func Analyze(input InvestmentInput) InvestmentResult {
 
 	// 出口戦略 (holdingYears 年後に売却)
 	exitSalePrice, exitCapGain, exitTax, exitNet, exitEquity := calcExit(
-		input, yearlyResults, accumulatedDepreciation,
+		input, yearlyResults, accumulatedDepreciation, miscExpenses,
 	)
 
 	return InvestmentResult{
@@ -210,11 +210,24 @@ func calcRequired8pct(input InvestmentInput, totalInvestment float64) (requiredR
 	return requiredRent, costReduction
 }
 
+// 譲渡所得税率（所得税＋復興特別所得税＋住民税）
+// 根拠: 租税特別措置法31条・32条、復興財源確保法33条（2037年まで）
+const (
+	shortTermTransferTaxRate  = 0.3963  // 短期（5年以下）: 30.63% + 9%
+	longTermTransferTaxRate   = 0.20315 // 長期（5年超）: 15.315% + 5%
+	longTerm10YrTransferTaxRate = 0.14210 // 長期（10年超、6000万円以下部分）: 10.21% + 4%
+)
+
 // calcExit は出口戦略（売却）の試算を行う
-func calcExit(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciation float64) (
+//
+// 売却価格: NOI（純収益）/ 目標利回り（実質ベース）で収益還元法により算出
+// 取得費: 土地 + 建物簿価 + 取得時諸経費（税法上の取得費）
+// 売却費用: 仲介手数料の上限額を概算控除（消費税込み）
+// 税率: 保有5年超で長期、10年超で軽減税率を適用
+func calcExit(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciation float64, miscExpenses float64) (
 	salePrice, capitalGain, transferTax, netProceeds, totalEquity float64,
 ) {
-	if len(yearly) == 0 || input.HoldingYears <= 0 {
+	if len(yearly) == 0 || input.HoldingYears <= 0 || input.ExitYieldTarget <= 0 {
 		return
 	}
 
@@ -224,27 +237,43 @@ func calcExit(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciat
 	}
 
 	exitYear := yearly[holdIdx]
-	annualRent := exitYear.AnnualRent
 
-	salePrice = annualRent / input.ExitYieldTarget
+	// 収益還元法: 売却価格 = NOI / 目標利回り（実質ベース）
+	// NOI = 実効賃料収入 - 運営経費（ローン利息は含まない）
+	noi := exitYear.AnnualRent - exitYear.AnnualExpenses
+	salePrice = noi / input.ExitYieldTarget
 
-	// 建物の簿価 = 建築費 - 累積減価償却 (土地は含まない)
+	// 売却費用（仲介手数料上限額の概算・消費税込み）
+	// 根拠: 宅建業法46条 上限 = 売却価格×3%+6万円（+消費税10%）
+	sellExpenses := (salePrice*0.03+60_000) * 1.10
+
+	// 建物の税務上の簿価（定額法累計控除後）
 	bookValueBuilding := input.BuildingCost - accumulatedDepreciation
 	if bookValueBuilding < 0 {
 		bookValueBuilding = 0
 	}
-	// 譲渡所得 = 売却価格 - (土地取得費 + 建物簿価)
-	capitalGain = salePrice - (input.LandPrice + bookValueBuilding)
+
+	// 取得費 = 土地取得費 + 建物簿価 + 取得時諸経費
+	// 根拠: 所得税法38条（取得費に含まれる付随費用）
+	acquisitionCost := input.LandPrice + bookValueBuilding + miscExpenses
+
+	// 譲渡所得 = 売却価格 - 売却費用 - 取得費
+	capitalGain = salePrice - sellExpenses - acquisitionCost
 
 	if capitalGain > 0 {
-		taxRate := 0.39363 // 短期 (5年以下)
-		if input.HoldingYears > 5 {
-			taxRate = 0.20315 // 長期
+		var taxRate float64
+		switch {
+		case input.HoldingYears > 10:
+			taxRate = longTerm10YrTransferTaxRate // 軽減税率（6000万円超部分は通常長期税率だが簡略化）
+		case input.HoldingYears > 5:
+			taxRate = longTermTransferTaxRate
+		default:
+			taxRate = shortTermTransferTaxRate
 		}
 		transferTax = capitalGain * taxRate
 	}
 
-	netProceeds = salePrice - transferTax - exitYear.RemainingLoanBalance
+	netProceeds = salePrice - sellExpenses - transferTax - exitYear.RemainingLoanBalance
 	totalEquity = netProceeds + exitYear.CumulativeCashFlow
 	return
 }

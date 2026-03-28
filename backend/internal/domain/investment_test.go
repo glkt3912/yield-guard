@@ -159,24 +159,25 @@ func TestAnalyze_ExitStrategy(t *testing.T) {
 		BuildingType:    BuildingTypeRC, // 耐用年数47年 → 10年後も減価償却中
 		ExpenseRate:     0.20,
 		IncomeTaxRate:   0.33,
-		HoldingYears:    10,
+		HoldingYears:    11, // 10年「超」= > 10年 で軽減税率適用
 		ExitYieldTarget: 0.06,
 	}
 
 	result := Analyze(input)
 
-	// 売却価格 = 年間賃料 / 6% を確認
+	// 売却価格 = NOI / 6%（NOI = 実効賃料 - 運営経費）
 	annualRent := 120_000.0 * 12 * (1 - 0.05)
-	wantSalePrice := annualRent / 0.06
+	noi := annualRent * (1 - 0.20)
+	wantSalePrice := noi / 0.06
 	if !approxEqual(result.ExitSalePrice, wantSalePrice, 1000) {
-		t.Errorf("ExitSalePrice = %.0f, want ≈ %.0f", result.ExitSalePrice, wantSalePrice)
+		t.Errorf("ExitSalePrice = %.0f, want ≈ %.0f (NOI-based)", result.ExitSalePrice, wantSalePrice)
 	}
 
-	// 長期譲渡所得税率の適用確認 (10年 > 5年)
+	// 保有11年 > 10年 → 10年超軽減税率 (14.21%) が適用されること
 	if result.ExitCapitalGain > 0 {
 		impliedTaxRate := result.ExitTransferTax / result.ExitCapitalGain
-		if !approxEqual(impliedTaxRate, 0.20315, 0.001) {
-			t.Errorf("長期譲渡税率 = %.5f, want 0.20315", impliedTaxRate)
+		if !approxEqual(impliedTaxRate, longTerm10YrTransferTaxRate, 0.001) {
+			t.Errorf("10年超軽減税率 = %.5f, want %.5f", impliedTaxRate, longTerm10YrTransferTaxRate)
 		}
 	}
 	t.Logf("ExitSalePrice=%.0f, CapGain=%.0f, Tax=%.0f, NetProceeds=%.0f, TotalEquity=%.0f",
