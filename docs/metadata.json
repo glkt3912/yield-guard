@@ -1,0 +1,76 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-03-28",
+  "documents": [
+    {
+      "id": "overview",
+      "path": "docs/overview.md",
+      "title": "プロジェクト概要とアーキテクチャ",
+      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック・ディレクトリ構成・起動手順・計算の制約と免責事項",
+      "tags": ["概要", "アーキテクチャ", "セットアップ", "不動産投資"],
+      "industry": ["不動産", "フィンテック"],
+      "topics": ["Go", "Gin", "Next.js", "Tailwind CSS", "Recharts", "Clean Architecture", "国交省API", "起動手順", "テスト"],
+      "updatedAt": "2026-03-28"
+    },
+    {
+      "id": "domain-investment-calculation",
+      "path": "docs/domain-investment-calculation.md",
+      "title": "投資計算ロジック詳細仕様",
+      "description": "表面利回り・実質利回り・元利均等返済・課税所得・税引後キャッシュフロー・8%逆算の計算式と実装根拠。InvestmentInput/InvestmentResult/YearlyResult の全フィールド解説。",
+      "tags": ["利回り", "キャッシュフロー", "ローン", "元利均等", "投資計算", "表面利回り", "実質利回り", "8%境界線"],
+      "industry": ["不動産", "フィンテック"],
+      "topics": ["grossYield", "netYield", "calcMonthlyPayment", "calcYearlyLoanComponents", "TaxableIncome", "AfterTaxCashFlow", "calcRequired8pct", "ストレステスト", "InvestmentInput", "YearlyResult"],
+      "updatedAt": "2026-03-28"
+    },
+    {
+      "id": "domain-depreciation-dead-cross",
+      "path": "docs/domain-depreciation-dead-cross.md",
+      "title": "減価償却・デッドクロス詳細仕様",
+      "description": "定額法減価償却・中古物件の簡便法耐用年数（税法根拠付き）・デッドクロスの定義と判定ロジック・黒字倒産リスクの仕組み",
+      "tags": ["減価償却", "デッドクロス", "耐用年数", "簡便法", "黒字倒産", "税務"],
+      "industry": ["不動産", "フィンテック", "税務"],
+      "topics": ["CalcResidualUsefulLife", "BuildingType", "UsefulLife", "annualDepreciation", "IsDeadCrossYear", "IsInDeadCrossZone", "定額法", "法定耐用年数", "木造", "RC造", "SRC造", "軽量鉄骨", "重量鉄骨"],
+      "updatedAt": "2026-03-28"
+    },
+    {
+      "id": "domain-exit-strategy",
+      "path": "docs/domain-exit-strategy.md",
+      "title": "出口戦略・譲渡所得税計算仕様",
+      "description": "収益還元法による売却価格算出・仲介手数料計算（宅建業法46条）・建物簿価・取得費（所得税法38条）・3段階譲渡所得税率（短期39.63%/長期20.315%/10年超14.21%）・最終手残り",
+      "tags": ["出口戦略", "譲渡所得税", "売却", "収益還元法", "取得費", "簿価", "手残り"],
+      "industry": ["不動産", "フィンテック", "税務"],
+      "topics": ["calcExit", "ExitSalePrice", "ExitCapitalGain", "ExitTransferTax", "ExitNetProceeds", "ExitTotalEquity", "NOI", "shortTermTransferTaxRate", "longTermTransferTaxRate", "longTerm10YrTransferTaxRate", "仲介手数料", "宅建業法"],
+      "updatedAt": "2026-03-28"
+    },
+    {
+      "id": "api-reference",
+      "path": "docs/api-reference.md",
+      "title": "APIリファレンス",
+      "description": "全エンドポイント（/api/land-prices、/api/land-prices/compare、/api/analyze、/api/prefectures、/health）の入出力・バリデーション範囲・エラー仕様。CORS設定とALLOW_ORIGINS環境変数。",
+      "tags": ["API", "エンドポイント", "REST", "バリデーション", "CORS"],
+      "industry": ["不動産", "フィンテック"],
+      "topics": ["GET /api/land-prices", "GET /api/land-prices/compare", "POST /api/analyze", "GET /api/prefectures", "GET /health", "InvestmentInput", "InvestmentResult", "LandPriceStats", "LandPriceComparison", "エラーレスポンス", "Gin"],
+      "updatedAt": "2026-03-28"
+    },
+    {
+      "id": "mlit-api-integration",
+      "path": "docs/mlit-api-integration.md",
+      "title": "国交省不動産取引価格APIクライアント仕様",
+      "description": "国土交通省不動産取引価格情報取得APIのクエリパラメータ・宅地フィルタリング・坪単価算出・parseFloat正規化・指数バックオフリトライ・相場判定ロジック（中央値±10%）",
+      "tags": ["国交省API", "土地価格", "相場", "外部API", "リトライ", "坪単価"],
+      "industry": ["不動産"],
+      "topics": ["FetchLandPrices", "TradeListSearch", "isLandType", "parseFloat", "CalcLandPriceStats", "CompareLandPrice", "LandPriceQuery", "exponential backoff", "都道府県コード", "市区町村コード", "YYYYQ", "lowDataWarning"],
+      "updatedAt": "2026-03-28"
+    },
+    {
+      "id": "frontend-components",
+      "path": "docs/frontend-components.md",
+      "title": "フロントエンドコンポーネント仕様",
+      "description": "Dashboard・InvestmentForm・YieldAnalysis・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック・ストレステストスライダー・breakEvenYear計算・二軸グラフ設計",
+      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ"],
+      "industry": ["不動産", "フィンテック"],
+      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "breakEvenYear", "equityInvested", "DEFAULT_INPUT", "BUILDING_USEFUL_LIFE"],
+      "updatedAt": "2026-03-28"
+    }
+  ]
+}

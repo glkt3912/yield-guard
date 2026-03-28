@@ -1,2 +1,5 @@
 frontend/node_modules
 frontend/.next
+
+# docs-mcp-server 設定（絶対パスがマシン依存のため）
+.mcp.json
