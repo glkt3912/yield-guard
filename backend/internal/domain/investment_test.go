@@ -245,6 +245,100 @@ func TestCalcLandPriceStats(t *testing.T) {
 	}
 }
 
+// TestAnalyze_ZeroLoan はローンなし（全額自己資金）のケースを検証する
+func TestAnalyze_ZeroLoan(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      0, // ローンなし
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	if len(result.YearlyResults) == 0 {
+		t.Fatal("YearlyResults is empty")
+	}
+	// ローン返済はゼロのはず
+	if result.YearlyResults[0].AnnualLoanPayment != 0 {
+		t.Errorf("AnnualLoanPayment = %.0f, want 0", result.YearlyResults[0].AnnualLoanPayment)
+	}
+	// CFは賃料収入から経費を引いた正値になるはず
+	if result.YearlyResults[0].CashFlow <= 0 {
+		t.Errorf("CashFlow = %.0f, expected positive with zero loan", result.YearlyResults[0].CashFlow)
+	}
+}
+
+// TestAnalyze_ZeroExitYield は売却目標利回りがゼロの場合のゼロ除算を検証する
+// Analyze 内で Defaults() が呼ばれるため ExitYieldTarget=0 はデフォルト値 0.06 に補完される。
+// そのためパニックせず有効な売却価格が返ることを確認する。
+func TestAnalyze_ZeroExitYield(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeRC,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0, // Defaults() により 0.06 に補完される
+	}
+
+	// パニックしないことを確認。Defaults() により ExitYieldTarget=0.06 となり正の売却価格が返る。
+	result := Analyze(input)
+	if result.ExitSalePrice <= 0 {
+		t.Errorf("ExitSalePrice = %.0f, want > 0 (Defaults补完後は0.06で計算)", result.ExitSalePrice)
+	}
+	t.Logf("ExitYieldTarget補完確認: ExitSalePrice=%.0f", result.ExitSalePrice)
+}
+
+// TestAnalyze_FullVacancy は空室率100%（VacancyRate=1）の場合を検証する
+func TestAnalyze_FullVacancy(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     1.0, // 完全空室
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	if len(result.YearlyResults) == 0 {
+		t.Fatal("YearlyResults is empty")
+	}
+	// 賃料収入はゼロ
+	if result.YearlyResults[0].AnnualRent != 0 {
+		t.Errorf("AnnualRent = %.0f, want 0 for full vacancy", result.YearlyResults[0].AnnualRent)
+	}
+	// 表面利回りは正 (空室率はNetYieldに影響するがGrossYieldには影響しない)
+	if result.GrossYield <= 0 {
+		t.Errorf("GrossYield = %.4f, expected positive", result.GrossYield)
+	}
+}
+
 // TestCompareLandPrice は土地価格の相場比較を検証する
 func TestCompareLandPrice(t *testing.T) {
 	stats := LandPriceStats{
