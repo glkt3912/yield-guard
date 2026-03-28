@@ -16,6 +16,10 @@ import (
 const (
 	baseURL        = "https://www.land.mlit.go.jp/webland/api/TradeListSearch"
 	requestTimeout = 30 * time.Second
+
+	// リトライ設定: 国交省APIは一時的な障害が多いため指数バックオフで再試行する
+	maxRetries      = 3
+	retryBaseDelay  = 1 * time.Second
 )
 
 // Client は国交省 不動産取引価格情報取得APIのクライアント
@@ -30,13 +34,42 @@ func NewClient() *Client {
 	}
 }
 
-// FetchLandPrices は指定条件で土地取引価格を取得し、統計を返す
+// FetchLandPrices は指定条件で土地取引価格を取得し、統計を返す。
+// 一時的なネットワーク障害や 5xx レスポンスに対して指数バックオフでリトライする（ISSUE-13）。
 func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domain.LandTransaction, error) {
 	apiURL, err := buildURL(q)
 	if err != nil {
 		return nil, err
 	}
 
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			// 指数バックオフ: 1s, 2s, 4s ...
+			delay := retryBaseDelay * time.Duration(1<<uint(attempt-1))
+			select {
+			case <-ctx.Done():
+				return nil, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
+			case <-time.After(delay):
+			}
+		}
+
+		result, err := c.doRequest(ctx, apiURL)
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+
+		// クライアントエラー (4xx) はリトライしない
+		if isClientError(err) {
+			return nil, err
+		}
+	}
+	return nil, fmt.Errorf("API request failed after %d attempts: %w", maxRetries, lastErr)
+}
+
+// doRequest は単一のHTTPリクエストを実行し、レスポンスをパースして返す
+func (c *Client) doRequest(ctx context.Context, apiURL string) ([]domain.LandTransaction, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("request build error: %w", err)
@@ -48,20 +81,33 @@ func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domai
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+	if resp.StatusCode == http.StatusOK {
+		var apiResp APIResponse
+		if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+			return nil, fmt.Errorf("JSON decode error: %w", err)
+		}
+		if apiResp.Status != "OK" {
+			return nil, fmt.Errorf("API status: %s", apiResp.Status)
+		}
+		return parseTransactions(apiResp.Data), nil
 	}
 
-	var apiResp APIResponse
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("JSON decode error: %w", err)
+	// 4xx はクライアントエラーとしてマーク（リトライ不要）
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		return nil, &clientError{code: resp.StatusCode}
 	}
+	return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+}
 
-	if apiResp.Status != "OK" {
-		return nil, fmt.Errorf("API status: %s", apiResp.Status)
-	}
+// clientError は 4xx クライアントエラーを表す（リトライ不要を示す）
+type clientError struct{ code int }
 
-	return parseTransactions(apiResp.Data), nil
+func (e *clientError) Error() string { return fmt.Sprintf("client error: HTTP %d", e.code) }
+
+// isClientError は err が clientError かどうかを判定する
+func isClientError(err error) bool {
+	_, ok := err.(*clientError)
+	return ok
 }
 
 // buildURL はAPIのクエリURLを生成する
