@@ -218,10 +218,11 @@ func calcRequired8pct(input InvestmentInput, totalInvestment float64) (requiredR
 
 // 譲渡所得税率（所得税＋復興特別所得税＋住民税）
 // 根拠: 租税特別措置法31条・32条、復興財源確保法33条（2037年まで）
+// 注意: 租税特別措置法31条の3の10年超軽減（14.21%）は「居住用財産」の特例であり
+//       投資用物件には適用されない。投資用は保有年数に関わらず長期=20.315%。
 const (
-	shortTermTransferTaxRate  = 0.3963  // 短期（5年以下）: 30.63% + 9%
-	longTermTransferTaxRate   = 0.20315 // 長期（5年超）: 15.315% + 5%
-	longTerm10YrTransferTaxRate = 0.14210 // 長期（10年超、6000万円以下部分）: 10.21% + 4%
+	shortTermTransferTaxRate = 0.3963  // 短期（5年以下）: 所得税30%+復興0.63%+住民税9%
+	longTermTransferTaxRate  = 0.20315 // 長期（5年超）: 所得税15%+復興0.315%+住民税5%
 )
 
 // calcExit は出口戦略（売却）の試算を行う
@@ -267,13 +268,12 @@ func calcExit(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciat
 	capitalGain = salePrice - sellExpenses - acquisitionCost
 
 	if capitalGain > 0 {
+		// 投資用物件の譲渡所得税: 保有5年超=長期(20.315%)、5年以下=短期(39.63%)の2段階
+		// 租税特別措置法31条の3の10年超軽減(14.21%)は居住用財産の特例のため対象外
 		var taxRate float64
-		switch {
-		case input.HoldingYears > 10:
-			taxRate = longTerm10YrTransferTaxRate // 軽減税率（6000万円超部分は通常長期税率だが簡略化）
-		case input.HoldingYears > 5:
+		if input.HoldingYears > 5 {
 			taxRate = longTermTransferTaxRate
-		default:
+		} else {
 			taxRate = shortTermTransferTaxRate
 		}
 		transferTax = capitalGain * taxRate
