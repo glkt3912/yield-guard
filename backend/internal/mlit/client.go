@@ -13,8 +13,10 @@ import (
 	"github.com/yield-guard/backend/internal/domain"
 )
 
+// baseURL はテストで上書き可能にするため var として定義
+var baseURL = "https://www.land.mlit.go.jp/webland/api/TradeListSearch"
+
 const (
-	baseURL        = "https://www.land.mlit.go.jp/webland/api/TradeListSearch"
 	requestTimeout = 30 * time.Second
 
 	// リトライ設定: 国交省APIは一時的な障害が多いため指数バックオフで再試行する
