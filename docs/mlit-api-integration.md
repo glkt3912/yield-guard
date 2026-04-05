@@ -15,6 +15,27 @@
 
 ---
 
+## Client 構造体
+
+```go
+type Client struct {
+    httpClient *http.Client
+    baseURL    string  // デフォルト: mlitBaseURL（テスト時にモックサーバURLを注入可能）
+}
+
+func NewClient() *Client {
+    return &Client{
+        httpClient: &http.Client{Timeout: requestTimeout},
+        baseURL:    mlitBaseURL,
+    }
+}
+```
+
+`baseURL` をフィールドとして持つことで、`httptest.NewServer` で立てたモックサーバを差し込んでテストできる。
+`buildURL` は `Client` のメソッドとして実装されており、`c.baseURL` を参照してURLを生成する。
+
+---
+
 ## クエリパラメータ仕様
 
 `LandPriceQuery` 構造体にマップされる。
@@ -97,7 +118,10 @@ pricePerTsubo := pricePerSqm * domain.SqmPerTsubo  // × 3.30578
 
 ```go
 func parseFloat(s string) float64 {
-    // 1. 空文字・ダッシュ → 0
+    // 1. 空文字 ("") → 0
+    //    全角ダッシュ ("－") → 0（MLIT APIが「データなし」を示す文字）
+    //    半角ダッシュ単体 ("-") → 0
+    //    ※ "-100" のような負数はそのまま解析される（早期returnの対象外）
     // 2. カンマ除去 ("8,500,000" → "8500000")
     // 3. 全角数字→半角（"１２３" → "123"）
     // 4. 接尾辞除去（"以上", "未満", "m²", "㎡", "坪", "円"）
@@ -106,27 +130,6 @@ func parseFloat(s string) float64 {
 ```
 
 変換失敗（パースエラー）は `0` を返す。
-
----
-
-## Client 構造体
-
-```go
-type Client struct {
-    httpClient *http.Client
-    baseURL    string  // デフォルト: mlitBaseURL（テスト時にモックサーバURLを注入可能）
-}
-
-func NewClient() *Client {
-    return &Client{
-        httpClient: &http.Client{Timeout: requestTimeout},
-        baseURL:    mlitBaseURL,
-    }
-}
-```
-
-`baseURL` をフィールドとして持つことで、`httptest.NewServer` で立てたモックサーバを差し込んでテストできる。
-`buildURL` は `Client` のメソッドとして実装されており、`c.baseURL` を参照してURLを生成する。
 
 ---
 
@@ -153,6 +156,7 @@ for attempt := 0; attempt < maxRetries; attempt++ {
 | 3回目 | 2秒 |
 
 - **4xx クライアントエラーはリトライしない**（`clientError` 型でマーク）
+- **`status != "OK"`（HTTP 200 だがAPIレベルのエラー）はリトライされる**（`clientError` に該当しないため）
 - `context.Done()` チェック付き（タイムアウト・キャンセル対応）
 - 3回失敗後: `"API request failed after 3 attempts: <error>"` を返す
 
