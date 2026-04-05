@@ -144,14 +144,17 @@ npm test
 
 #### フロントエンドテストの方針
 
-- **ツール**: [Vitest](https://vitest.dev/) + [React Testing Library](https://testing-library.com/react)
+- **ツール**: [Vitest](https://vitest.dev/) v2.x + [React Testing Library](https://testing-library.com/react)
 - **環境**: jsdom（ブラウザAPI をエミュレート）
+- **JSX 変換**: `@vitejs/plugin-react` は使用せず vitest 内蔵の esbuild（`jsxImportSource: "react"`）で処理
 - **モック**: `ResizeObserver`（Recharts が要求）、APIコールは `vi.fn()` で差し替え
 - **テスト対象コンポーネント**:
   - `YieldAnalysis`: 8%しきい値による分岐（バッジ・カード・色）
   - `DeadCrossChart`: デッドクロスゾーンのバッジ・警告テキスト
   - `CashFlowChart`: 自己資金回収年の表示、exitTotalEquity の色分け
   - `InvestmentForm`: コールバック呼び出し、ローディング中のボタン無効化、詳細設定トグル
+
+> **`optionalDependencies` について**: `package.json` に `@emnapi/core` と `@emnapi/runtime` を `optionalDependencies` として明示しているが、これは直接依存ではない。`eslint-config-next` → `eslint-import-resolver-typescript` → `unrs-resolver` の依存チェーンが Linux 環境でこれらを必要とするが、macOS で生成したロックファイルにはプラットフォーム条件で含まれず `npm ci` が失敗するため、明示することでロックファイルへの収録を強制するワークアラウンド。
 
 ---
 
