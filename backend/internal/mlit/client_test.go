@@ -3,10 +3,14 @@ package mlit
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/yield-guard/backend/internal/domain"
 )
 
 // ---- parseFloat ----
@@ -32,6 +36,11 @@ func TestParseFloat(t *testing.T) {
 		{"  1000  ", 1_000},
 		{"abc", 0},
 		{"1,234,567", 1_234_567},
+		// 浮動小数点
+		{"1.5", 1.5},
+		{"3.30578", 3.30578},
+		// 負数: "-" 単体のみゼロ扱い。"-100" のような数値は正しく解析される
+		{"-100", -100},
 	}
 
 	for _, tt := range tests {
@@ -52,8 +61,8 @@ func TestIsLandType(t *testing.T) {
 		want  bool
 	}{
 		{"宅地(土地)", true},
-		{"宅地のみ", false},   // "土地" を含まない
-		{"土地のみ", false},   // "宅地" を含まない
+		{"宅地のみ", false},  // "土地" を含まない
+		{"土地のみ", false},  // "宅地" を含まない
 		{"中古マンション等", false},
 		{"農地", false},
 		{"", false},
@@ -71,37 +80,39 @@ func TestIsLandType(t *testing.T) {
 
 // ---- buildURL ----
 
+func newTestClient(serverURL string) *Client {
+	return &Client{httpClient: &http.Client{}, baseURL: serverURL}
+}
+
 func TestBuildURL(t *testing.T) {
+	c := &Client{baseURL: "http://example.com"}
+
 	t.Run("area が空のときエラー", func(t *testing.T) {
-		_, err := buildURL(LandPriceQuery{From: "20231", To: "20234"})
+		_, err := c.buildURL(LandPriceQuery{From: "20231", To: "20234"})
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
 	})
 
 	t.Run("from が空のときエラー", func(t *testing.T) {
-		_, err := buildURL(LandPriceQuery{Area: "13", To: "20234"})
+		_, err := c.buildURL(LandPriceQuery{Area: "13", To: "20234"})
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
 	})
 
 	t.Run("to が空のときエラー", func(t *testing.T) {
-		_, err := buildURL(LandPriceQuery{Area: "13", From: "20231"})
+		_, err := c.buildURL(LandPriceQuery{Area: "13", From: "20231"})
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
 	})
 
 	t.Run("必須パラメータが揃っているとき URL を生成する", func(t *testing.T) {
-		got, err := buildURL(LandPriceQuery{Area: "13", From: "20231", To: "20234"})
+		got, err := c.buildURL(LandPriceQuery{Area: "13", From: "20231", To: "20234"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if got == "" {
-			t.Error("expected non-empty URL")
-		}
-		// area / from / to がクエリに含まれること
 		for _, param := range []string{"area=13", "from=20231", "to=20234"} {
 			if !strings.Contains(got, param) {
 				t.Errorf("URL %q does not contain %q", got, param)
@@ -110,7 +121,7 @@ func TestBuildURL(t *testing.T) {
 	})
 
 	t.Run("city が指定されているときクエリに含まれる", func(t *testing.T) {
-		got, err := buildURL(LandPriceQuery{Area: "13", From: "20231", To: "20234", City: "13101"})
+		got, err := c.buildURL(LandPriceQuery{Area: "13", From: "20231", To: "20234", City: "13101"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -149,6 +160,21 @@ func TestParseTransactions(t *testing.T) {
 		}
 	})
 
+	t.Run("PricePerTsubo が正しく算出される", func(t *testing.T) {
+		raw := []Transaction{
+			{Type: "宅地(土地)", TradePrice: "10000000", Area: "100", PricePerUnit: "100000"},
+		}
+		got := parseTransactions(raw)
+		if len(got) != 1 {
+			t.Fatalf("len = %d, want 1", len(got))
+		}
+		// 100,000 円/m² × 3.30578 m²/坪 ≈ 330,578 円/坪
+		wantTsubo := 100_000.0 * domain.SqmPerTsubo
+		if math.Abs(got[0].PricePerTsubo-wantTsubo) > 1 {
+			t.Errorf("PricePerTsubo = %v, want ≈ %v", got[0].PricePerTsubo, wantTsubo)
+		}
+	})
+
 	t.Run("空スライスのとき空スライスを返す", func(t *testing.T) {
 		got := parseTransactions([]Transaction{})
 		if len(got) != 0 {
@@ -169,24 +195,28 @@ func okResponse(w http.ResponseWriter) {
 	}
 }
 
+func TestFetchLandPrices_InvalidQuery(t *testing.T) {
+	c := newTestClient("http://example.com")
+	// Area が空 → buildURL がエラーを返し HTTP リクエストは発生しない
+	_, err := c.FetchLandPrices(context.Background(), LandPriceQuery{From: "20231", To: "20234"})
+	if err == nil {
+		t.Fatal("expected error for missing area, got nil")
+	}
+}
+
 func TestFetchLandPrices_RetryOn5xx(t *testing.T) {
 	attempt := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempt++
 		if attempt < 3 {
-			w.WriteHeader(http.StatusServiceUnavailable) // 5xx
+			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 		okResponse(w)
 	}))
 	defer ts.Close()
 
-	origBaseURL := baseURL
-	baseURL = ts.URL
-	defer func() { baseURL = origBaseURL }()
-
-	c := &Client{httpClient: &http.Client{}}
-	// retryBaseDelay=1s のため遅延が発生するが許容範囲内
+	c := newTestClient(ts.URL)
 	result, err := c.FetchLandPrices(context.Background(), LandPriceQuery{
 		Area: "13", From: "20231", To: "20234",
 	})
@@ -207,11 +237,7 @@ func TestFetchLandPrices_AllAttemptsFailWith5xx(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	origBaseURL := baseURL
-	baseURL = ts.URL
-	defer func() { baseURL = origBaseURL }()
-
-	c := &Client{httpClient: &http.Client{}}
+	c := newTestClient(ts.URL)
 	_, err := c.FetchLandPrices(context.Background(), LandPriceQuery{
 		Area: "13", From: "20231", To: "20234",
 	})
@@ -224,15 +250,11 @@ func TestFetchLandPrices_NoRetryOn4xx(t *testing.T) {
 	attempt := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempt++
-		w.WriteHeader(http.StatusBadRequest) // 4xx
+		w.WriteHeader(http.StatusBadRequest)
 	}))
 	defer ts.Close()
 
-	origBaseURL := baseURL
-	baseURL = ts.URL
-	defer func() { baseURL = origBaseURL }()
-
-	c := &Client{httpClient: &http.Client{}}
+	c := newTestClient(ts.URL)
 	_, err := c.FetchLandPrices(context.Background(), LandPriceQuery{
 		Area: "13", From: "20231", To: "20234",
 	})
@@ -244,26 +266,22 @@ func TestFetchLandPrices_NoRetryOn4xx(t *testing.T) {
 	}
 }
 
-func TestFetchLandPrices_ContextCancel(t *testing.T) {
+func TestFetchLandPrices_ContextTimeout(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
 	defer ts.Close()
 
-	origBaseURL := baseURL
-	baseURL = ts.URL
-	defer func() { baseURL = origBaseURL }()
+	// リトライ待機中にタイムアウトさせる（retryBaseDelay=1s より短い）
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	// 1回目が終わったらすぐキャンセル
-	go func() { cancel() }()
-
-	c := &Client{httpClient: &http.Client{}}
+	c := newTestClient(ts.URL)
 	_, err := c.FetchLandPrices(ctx, LandPriceQuery{
 		Area: "13", From: "20231", To: "20234",
 	})
 	if err == nil {
-		t.Fatal("expected error after context cancel, got nil")
+		t.Fatal("expected error after context timeout, got nil")
 	}
 }
 
@@ -277,16 +295,16 @@ func TestFetchLandPrices_APIStatusNotOK(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	origBaseURL := baseURL
-	baseURL = ts.URL
-	defer func() { baseURL = origBaseURL }()
+	// status!=OK は HTTP 200 として返るため clientError にならずリトライされる。
+	// 3回失敗後にエラーを返すことを確認する。
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	c := &Client{httpClient: &http.Client{}}
-	_, err := c.FetchLandPrices(context.Background(), LandPriceQuery{
+	c := newTestClient(ts.URL)
+	_, err := c.FetchLandPrices(ctx, LandPriceQuery{
 		Area: "13", From: "20231", To: "20234",
 	})
 	if err == nil {
 		t.Fatal("expected error for status=ERROR, got nil")
 	}
 }
-

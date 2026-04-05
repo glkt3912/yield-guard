@@ -13,33 +13,33 @@ import (
 	"github.com/yield-guard/backend/internal/domain"
 )
 
-// baseURL はテストで上書き可能にするため var として定義
-var baseURL = "https://www.land.mlit.go.jp/webland/api/TradeListSearch"
-
 const (
+	mlitBaseURL    = "https://www.land.mlit.go.jp/webland/api/TradeListSearch"
 	requestTimeout = 30 * time.Second
 
 	// リトライ設定: 国交省APIは一時的な障害が多いため指数バックオフで再試行する
-	maxRetries      = 3
-	retryBaseDelay  = 1 * time.Second
+	maxRetries     = 3
+	retryBaseDelay = 1 * time.Second
 )
 
 // Client は国交省 不動産取引価格情報取得APIのクライアント
 type Client struct {
 	httpClient *http.Client
+	baseURL    string
 }
 
 // NewClient は新しい Client を返す
 func NewClient() *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: requestTimeout},
+		baseURL:    mlitBaseURL,
 	}
 }
 
 // FetchLandPrices は指定条件で土地取引価格を取得し、統計を返す。
 // 一時的なネットワーク障害や 5xx レスポンスに対して指数バックオフでリトライする（ISSUE-13）。
 func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domain.LandTransaction, error) {
-	apiURL, err := buildURL(q)
+	apiURL, err := c.buildURL(q)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func isClientError(err error) bool {
 }
 
 // buildURL はAPIのクエリURLを生成する
-func buildURL(q LandPriceQuery) (string, error) {
+func (c *Client) buildURL(q LandPriceQuery) (string, error) {
 	if q.Area == "" {
 		return "", fmt.Errorf("area is required")
 	}
@@ -129,7 +129,7 @@ func buildURL(q LandPriceQuery) (string, error) {
 		params.Set("city", q.City)
 	}
 
-	return baseURL + "?" + params.Encode(), nil
+	return c.baseURL + "?" + params.Encode(), nil
 }
 
 // parseTransactions はAPIレスポンスを domain.LandTransaction スライスに変換する
