@@ -66,6 +66,7 @@ yield-guard/
 │       │   └── investment_test.go # ユニットテスト
 │       ├── mlit/
 │       │   ├── client.go          # 国交省APIクライアント・リトライ
+│       │   ├── client_test.go     # ユニットテスト（httptest モック）
 │       │   └── types.go           # APIレスポンス型・都道府県マップ
 │       └── api/
 │           ├── handler.go         # HTTPハンドラー・バリデーション
@@ -124,11 +125,36 @@ npm run dev   # http://localhost:3000
 ## テスト実行
 
 ```bash
+# バックエンド（レースチェック付き・全パッケージ）
 cd backend
-go test ./internal/domain/...
+go test -race ./... -v
+
+# フロントエンド（Vitest）
+cd frontend
+npm test
 ```
 
-`backend/internal/domain/investment_test.go` にユニットテストあり。
+### テスト構成
+
+| レイヤー | ファイル | ツール | テスト数 |
+|---|---|---|---|
+| ドメイン計算 | `backend/internal/domain/investment_test.go` | go test | 複数 |
+| MLIT クライアント | `backend/internal/mlit/client_test.go` | go test / httptest | 11 |
+| フロントエンド UI | `frontend/src/components/__tests__/*.test.tsx` | Vitest + RTL | 17 |
+
+#### フロントエンドテストの方針
+
+- **ツール**: [Vitest](https://vitest.dev/) v2.x + [React Testing Library](https://testing-library.com/react)
+- **環境**: jsdom（ブラウザAPI をエミュレート）
+- **JSX 変換**: `@vitejs/plugin-react` は使用せず vitest 内蔵の esbuild（`jsxImportSource: "react"`）で処理
+- **モック**: `ResizeObserver`（Recharts が要求）、APIコールは `vi.fn()` で差し替え
+- **テスト対象コンポーネント**:
+  - `YieldAnalysis`: 8%しきい値による分岐（バッジ・カード・色）
+  - `DeadCrossChart`: デッドクロスゾーンのバッジ・警告テキスト
+  - `CashFlowChart`: 自己資金回収年の表示、exitTotalEquity の色分け
+  - `InvestmentForm`: コールバック呼び出し、ローディング中のボタン無効化、詳細設定トグル
+
+> **`optionalDependencies` について**: `package.json` に `@emnapi/core` と `@emnapi/runtime` を `optionalDependencies` として明示しているが、これは直接依存ではない。`eslint-config-next` → `eslint-import-resolver-typescript` → `unrs-resolver` の依存チェーンが Linux 環境でこれらを必要とするが、macOS で生成したロックファイルにはプラットフォーム条件で含まれず `npm ci` が失敗するため、明示することでロックファイルへの収録を強制するワークアラウンド。
 
 ---
 
