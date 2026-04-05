@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"net/http"
-	"sort"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -140,27 +139,6 @@ func validateInvestmentInput(in domain.InvestmentInput) error {
 		return errors.New("holdingYears は 0〜50 年の範囲で指定してください")
 	}
 	return nil
-}
-
-// GetPrefectures は都道府県一覧をコード順で返す
-// GET /api/prefectures
-func (h *Handler) GetPrefectures(c *gin.Context) {
-	type Prefecture struct {
-		Code string `json:"code"`
-		Name string `json:"name"`
-	}
-
-	prefectures := make([]Prefecture, 0, len(mlit.Prefectures))
-	for code, name := range mlit.Prefectures {
-		prefectures = append(prefectures, Prefecture{Code: code, Name: name})
-	}
-	// マップのイテレーション順は非決定的なので数値コード順にソート
-	sort.Slice(prefectures, func(i, j int) bool {
-		ci, _ := strconv.Atoi(prefectures[i].Code)
-		cj, _ := strconv.Atoi(prefectures[j].Code)
-		return ci < cj
-	})
-	c.JSON(http.StatusOK, prefectures)
 }
 
 // HealthCheck はサーバーの生存確認

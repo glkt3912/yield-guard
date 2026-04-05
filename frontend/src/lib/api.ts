@@ -59,8 +59,3 @@ export async function analyze(input: InvestmentInput): Promise<InvestmentResult>
   return handleResponse<InvestmentResult>(res);
 }
 
-/** 都道府県一覧を取得 */
-export async function fetchPrefectures(): Promise<{ code: string; name: string }[]> {
-  const res = await fetch(`${BASE}/prefectures`);
-  return handleResponse<{ code: string; name: string }[]>(res);
-}
