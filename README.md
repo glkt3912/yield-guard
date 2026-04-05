@@ -31,7 +31,7 @@
 
 **技術スタック**
 
-- Backend: Go 1.21 / Gin / Clean Architecture
+- Backend: Go 1.25 / Gin / Clean Architecture
 - Frontend: Next.js 14 (App Router) / TypeScript / Tailwind CSS / Shadcn/UI / Recharts
 - Data: 国土交通省 不動産取引価格情報取得API（認証不要・公式）
 
@@ -111,6 +111,10 @@ npm run dev
 
 ```
 yield-guard/
+├── .github/
+│   └── workflows/
+│       ├── backend-ci.yml          # Go vet / test -race / build
+│       └── frontend-ci.yml         # lint / tsc / build
 ├── backend/
 │   ├── cmd/server/main.go          # エントリポイント
 │   └── internal/
@@ -119,11 +123,17 @@ yield-guard/
 │       │   ├── investment.go       # 収支計算ロジック（元利均等・減価償却・税金）
 │       │   └── investment_test.go  # ユニットテスト
 │       ├── mlit/
-│       │   ├── client.go           # 国交省APIクライアント
+│       │   ├── client.go           # 国交省APIクライアント（リトライ付き）
+│       │   ├── client_test.go      # ユニットテスト（httptest モック）
 │       │   └── types.go            # APIレスポンス型
 │       └── api/
 │           ├── handler.go          # HTTPハンドラー
 │           └── router.go           # Ginルーター
+├── docs/
+│   ├── overview.md                 # 全体設計概要
+│   ├── mlit-api-integration.md     # 国交省APIクライアント仕様
+│   ├── domain-investment-calculation.md
+│   └── ...
 ├── frontend/
 │   └── src/
 │       ├── app/                    # Next.js App Router
@@ -138,9 +148,24 @@ yield-guard/
 ### テスト実行
 
 ```bash
+# バックエンド
 cd backend
-go test ./internal/domain/... -v
+go test -race ./... -v
+
+# フロントエンド（ローカル確認）
+cd frontend
+npm run lint
+npx tsc --noEmit
 ```
+
+### CI
+
+PR・mainへのpush時に GitHub Actions が自動実行される（ワークフロー自身の変更でも再トリガーされる）。
+
+| ワークフロー | トリガーパス | チェック内容 |
+|---|---|---|
+| Backend CI | `backend/**`, `backend-ci.yml` | `go vet` / `go test -race` / `go build` |
+| Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `build` |
 
 ### ビルド
 
