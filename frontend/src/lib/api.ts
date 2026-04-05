@@ -19,10 +19,18 @@ async function handleResponse<T>(res: Response): Promise<T> {
 export async function fetchLandPrices(params: {
   area: string;
   city?: string;
-  from: string;
-  to: string;
+  year: number;
+  quarter: number;
+  toYear: number;
+  toQuarter: number;
 }): Promise<LandPriceStats> {
-  const q = new URLSearchParams({ area: params.area, from: params.from, to: params.to });
+  const q = new URLSearchParams({
+    area: params.area,
+    year: String(params.year),
+    quarter: String(params.quarter),
+    to_year: String(params.toYear),
+    to_quarter: String(params.toQuarter),
+  });
   if (params.city) q.set("city", params.city);
   const res = await fetch(`${BASE}/land-prices?${q}`);
   return handleResponse<LandPriceStats>(res);
@@ -32,15 +40,19 @@ export async function fetchLandPrices(params: {
 export async function compareLandPrice(params: {
   area: string;
   city?: string;
-  from: string;
-  to: string;
+  year: number;
+  quarter: number;
+  toYear: number;
+  toQuarter: number;
   price: number;
   areaSqm?: number;
 }): Promise<LandPriceComparison> {
   const q = new URLSearchParams({
     area: params.area,
-    from: params.from,
-    to: params.to,
+    year: String(params.year),
+    quarter: String(params.quarter),
+    to_year: String(params.toYear),
+    to_quarter: String(params.toQuarter),
     price: String(params.price),
   });
   if (params.city) q.set("city", params.city);
@@ -58,4 +70,3 @@ export async function analyze(input: InvestmentInput): Promise<InvestmentResult>
   });
   return handleResponse<InvestmentResult>(res);
 }
-
