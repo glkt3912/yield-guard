@@ -129,6 +129,11 @@ yield-guard/
 │       └── api/
 │           ├── handler.go          # HTTPハンドラー
 │           └── router.go           # Ginルーター
+├── docs/
+│   ├── overview.md                 # 全体設計概要
+│   ├── mlit-api-integration.md     # 国交省APIクライアント仕様
+│   ├── domain-investment-calculation.md
+│   └── ...
 ├── frontend/
 │   └── src/
 │       ├── app/                    # Next.js App Router
@@ -143,18 +148,24 @@ yield-guard/
 ### テスト実行
 
 ```bash
+# バックエンド
 cd backend
 go test -race ./... -v
+
+# フロントエンド（ローカル確認）
+cd frontend
+npm run lint
+npx tsc --noEmit
 ```
 
 ### CI
 
-PR・mainへのpush時に GitHub Actions が自動実行される。
+PR・mainへのpush時に GitHub Actions が自動実行される（ワークフロー自身の変更でも再トリガーされる）。
 
-| ワークフロー | トリガー | チェック内容 |
+| ワークフロー | トリガーパス | チェック内容 |
 |---|---|---|
-| Backend CI | `backend/**` 変更時 | `go vet` / `go test -race` / `go build` |
-| Frontend CI | `frontend/**` 変更時 | `lint` / `tsc --noEmit` / `build` |
+| Backend CI | `backend/**`, `backend-ci.yml` | `go vet` / `go test -race` / `go build` |
+| Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `build` |
 
 ### ビルド
 
