@@ -12,6 +12,13 @@ on:
       - "frontend/**"
       - ".github/workflows/frontend-ci.yml"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     name: Lint, Type Check & Build
