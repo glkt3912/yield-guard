@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - "backend/**"
+      - ".github/workflows/backend-ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "backend/**"
+      - ".github/workflows/backend-ci.yml"
 
 jobs:
   test:
@@ -31,7 +33,7 @@ jobs:
         run: go vet ./...
 
       - name: go test
-        run: go test ./... -timeout 120s
+        run: go test -race ./... -timeout 120s
 
       - name: go build
         run: go build ./cmd/server
