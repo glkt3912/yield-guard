@@ -8,10 +8,19 @@
 
 | 項目 | 値 |
 |------|-----|
-| 正式名称 | 国土交通省 不動産取引価格情報取得API |
-| エンドポイント | `https://www.land.mlit.go.jp/webland/api/TradeListSearch` |
-| 認証 | 不要（公式オープンAPI） |
+| 正式名称 | 国土交通省 不動産情報ライブラリ API |
+| エンドポイント | `https://www.reinfolib.mlit.go.jp/ex-api/external/XIT001` |
+| 認証 | **APIキー必須**（`Ocp-Apim-Subscription-Key` ヘッダー） |
+| 申請先 | https://www.reinfolib.mlit.go.jp/api/request/（審査5営業日） |
 | タイムアウト | 30秒（`requestTimeout = 30 * time.Second`） |
+
+> **移行経緯**: 旧 WebLand API（`www.land.mlit.go.jp/webland/api/`）は2024年4月に不動産情報ライブラリへ統合・廃止された。旧ドメインは現在 NXDOMAIN。
+
+### 環境変数
+
+```bash
+MLIT_API_KEY=your_api_key_here   # .env.example 参照
+```
 
 ---
 
@@ -21,18 +30,20 @@
 type Client struct {
     httpClient *http.Client
     baseURL    string  // デフォルト: mlitBaseURL（テスト時にモックサーバURLを注入可能）
+    apiKey     string  // 環境変数 MLIT_API_KEY から読み込む
 }
 
 func NewClient() *Client {
     return &Client{
         httpClient: &http.Client{Timeout: requestTimeout},
         baseURL:    mlitBaseURL,
+        apiKey:     os.Getenv("MLIT_API_KEY"),
     }
 }
 ```
 
 `baseURL` をフィールドとして持つことで、`httptest.NewServer` で立てたモックサーバを差し込んでテストできる。
-`buildURL` は `Client` のメソッドとして実装されており、`c.baseURL` を参照してURLを生成する。
+`apiKey` が空の場合はヘッダーを付与しない（ローカル開発・テスト用）。
 
 ---
 
@@ -43,14 +54,32 @@ func NewClient() *Client {
 | パラメータ | 型 | 必須 | 説明 |
 |-----------|-----|------|------|
 | `area` | string | 必須 | 都道府県コード（`"01"`〜`"47"`）|
-| `from` | string | 必須 | 開始時期（YYYYQ形式、Q=1〜4）|
-| `to` | string | 必須 | 終了時期（YYYYQ形式）|
-| `city` | string | 任意 | 市区町村コード（省略時は都道府県全体）|
+| `Year` | int | 必須 | 取得開始年（例: `2024`）|
+| `Quarter` | int | 必須 | 取得開始四半期（`1`〜`4`）|
+| `ToYear` | int | 必須 | 取得終了年（例: `2024`）|
+| `ToQuarter` | int | 必須 | 取得終了四半期（`1`〜`4`）|
+| `City` | string | 任意 | 市区町村コード（省略時は都道府県全体）|
 
-**YYYYQ形式の例**:
-- `"20231"` → 2023年第1四半期（1〜3月）
-- `"20234"` → 2023年第4四半期（10〜12月）
-- 2年分を取得する場合: `from="20221"`, `to="20234"`
+APIリクエストに変換されるクエリ文字列:
+
+```
+year=2024&quarter=1&toYear=2024&toQuarter=4&area=10&priceClassification=01
+```
+
+- `priceClassification=01`: 取引価格情報（成約価格は `02`。本ツールは取引価格のみ使用）
+
+> **旧 API との変更点**: 旧 API は `from=20241&to=20244`（YYYYQ文字列）だったが、新 API は `year`/`quarter`/`toYear`/`toQuarter` の4パラメータに分割された。
+
+---
+
+## HTTPリクエスト仕様
+
+```go
+req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
+```
+
+APIキーが未設定（空文字）の場合はヘッダーを付与しない。
+ユニットテストはモックサーバを使うためAPIキー不要。
 
 ---
 
@@ -77,6 +106,7 @@ func NewClient() *Client {
 
 - `status` が `"OK"` 以外の場合はエラーとして扱う
 - 数値は文字列形式（カンマ区切りや全角含む）で返ってくる
+- トップレベル構造は旧 API と互換
 
 ---
 
@@ -206,8 +236,6 @@ if diffFromMedian > stats.MedianTsubo * 0.10 {
 "01" = 北海道, "13" = 東京都, "27" = 大阪府, "47" = 沖縄県
 ```
 
-`GET /api/prefectures` はこのマップをコード昇順にソートして返す。
-
 ---
 
 ## テスト (`client_test.go`)
@@ -218,7 +246,7 @@ if diffFromMedian > stats.MedianTsubo * 0.10 {
 |--------|------|
 | `TestParseFloat` | 全角数字・カンマ・接尾辞・空文字・浮動小数点・負数 |
 | `TestIsLandType` | 宅地(土地) / 非土地 / 空文字 |
-| `TestBuildURL` | 必須パラメータ欠落エラー・正常生成・cityオプション |
+| `TestBuildURL` | 必須パラメータ欠落エラー・quarter範囲外エラー・正常URL生成・cityオプション |
 | `TestParseTransactions` | フィルタリング・単価算出・PricePerTsubo換算・空スライス |
 | `TestFetchLandPrices_InvalidQuery` | buildURL エラーで HTTP リクエストが発生しないこと |
 | `TestFetchLandPrices_RetryOn5xx` | 5xx → リトライ → 成功（3回目） |
@@ -228,6 +256,10 @@ if diffFromMedian > stats.MedianTsubo * 0.10 {
 | `TestFetchLandPrices_APIStatusNotOK` | status!=OK → 3回リトライ後エラー |
 
 ```bash
+# ユニットテスト（モックサーバ使用・APIキー不要）
 cd backend
 go test -race ./internal/mlit/... -v
+
+# 統合テスト（実API疎通・APIキー必要）
+MLIT_API_KEY=your_key go test -tags=integration ./internal/mlit/... -v -timeout 60s
 ```
