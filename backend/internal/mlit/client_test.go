@@ -85,7 +85,7 @@ func newTestClient(serverURL string) *Client {
 }
 
 func TestBuildURL(t *testing.T) {
-	c := &Client{baseURL: "http://example.com"}
+	c := newTestClient("http://example.com")
 
 	t.Run("area が空のときエラー", func(t *testing.T) {
 		_, err := c.buildURL(LandPriceQuery{From: "20231", To: "20234"})
@@ -272,8 +272,8 @@ func TestFetchLandPrices_ContextTimeout(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	// リトライ待機中にタイムアウトさせる（retryBaseDelay=1s より短い）
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	// リトライ待機中にタイムアウトさせる（retryBaseDelay=1s より短く、CI高負荷時の余裕も考慮）
+	ctx, cancel := context.WithTimeout(context.Background(), 700*time.Millisecond)
 	defer cancel()
 
 	c := newTestClient(ts.URL)
@@ -297,7 +297,7 @@ func TestFetchLandPrices_APIStatusNotOK(t *testing.T) {
 
 	// status!=OK は HTTP 200 として返るため clientError にならずリトライされる。
 	// 3回失敗後にエラーを返すことを確認する。
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	c := newTestClient(ts.URL)
