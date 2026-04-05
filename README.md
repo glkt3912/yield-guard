@@ -152,8 +152,9 @@ yield-guard/
 cd backend
 go test -race ./... -v
 
-# フロントエンド（ローカル確認）
+# フロントエンド
 cd frontend
+npm test           # Vitest（17テスト）
 npm run lint
 npx tsc --noEmit
 ```
@@ -165,7 +166,7 @@ PR・mainへのpush時に GitHub Actions が自動実行される（ワークフ
 | ワークフロー | トリガーパス | チェック内容 |
 |---|---|---|
 | Backend CI | `backend/**`, `backend-ci.yml` | `go vet` / `go test -race` / `go build` |
-| Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `build` |
+| Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `vitest run` / `build` |
 
 ### ビルド
 
