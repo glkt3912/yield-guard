@@ -1,6 +1,6 @@
 import type { InvestmentResult, YearlyResult } from "@/types/investment";
 
-function makeYearlyResult(year: number, overrides: Partial<YearlyResult> = {}): YearlyResult {
+export function makeYearlyResult(year: number, overrides: Partial<YearlyResult> = {}): YearlyResult {
   return {
     year,
     annualRent: 1_200_000,
