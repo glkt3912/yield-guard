@@ -1,6 +1,6 @@
 # 国交省不動産取引価格APIクライアント仕様
 
-`backend/internal/mlit/client.go` / `types.go`
+`backend/internal/mlit/client.go` / `client_test.go` / `types.go`
 
 ---
 
@@ -109,6 +109,27 @@ func parseFloat(s string) float64 {
 
 ---
 
+## Client 構造体
+
+```go
+type Client struct {
+    httpClient *http.Client
+    baseURL    string  // デフォルト: mlitBaseURL（テスト時にモックサーバURLを注入可能）
+}
+
+func NewClient() *Client {
+    return &Client{
+        httpClient: &http.Client{Timeout: requestTimeout},
+        baseURL:    mlitBaseURL,
+    }
+}
+```
+
+`baseURL` をフィールドとして持つことで、`httptest.NewServer` で立てたモックサーバを差し込んでテストできる。
+`buildURL` は `Client` のメソッドとして実装されており、`c.baseURL` を参照してURLを生成する。
+
+---
+
 ## 指数バックオフリトライ
 
 ```go
@@ -182,3 +203,27 @@ if diffFromMedian > stats.MedianTsubo * 0.10 {
 ```
 
 `GET /api/prefectures` はこのマップをコード昇順にソートして返す。
+
+---
+
+## テスト (`client_test.go`)
+
+`net/http/httptest` のモックサーバを使い、実ネットワークなしで全ロジックを検証する。
+
+| テスト | 内容 |
+|--------|------|
+| `TestParseFloat` | 全角数字・カンマ・接尾辞・空文字・浮動小数点・負数 |
+| `TestIsLandType` | 宅地(土地) / 非土地 / 空文字 |
+| `TestBuildURL` | 必須パラメータ欠落エラー・正常生成・cityオプション |
+| `TestParseTransactions` | フィルタリング・単価算出・PricePerTsubo換算・空スライス |
+| `TestFetchLandPrices_InvalidQuery` | buildURL エラーで HTTP リクエストが発生しないこと |
+| `TestFetchLandPrices_RetryOn5xx` | 5xx → リトライ → 成功（3回目） |
+| `TestFetchLandPrices_AllAttemptsFailWith5xx` | 3回連続5xx → エラー返却 |
+| `TestFetchLandPrices_NoRetryOn4xx` | 4xx → リトライなし即エラー |
+| `TestFetchLandPrices_ContextTimeout` | コンテキストタイムアウトでリトライ待機を中断 |
+| `TestFetchLandPrices_APIStatusNotOK` | status!=OK → 3回リトライ後エラー |
+
+```bash
+cd backend
+go test -race ./internal/mlit/... -v
+```
