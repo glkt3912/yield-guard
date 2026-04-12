@@ -59,14 +59,54 @@ function getPeriodLabel(): string {
   return `${year - 2}〜${year - 1}年`;
 }
 
+type FormErrors = Partial<Record<keyof InvestmentInput, string>>;
+
+function validate(input: InvestmentInput): FormErrors {
+  const e: FormErrors = {};
+  if (input.landPrice <= 0 || input.landPrice > 10_000_000_000)
+    e.landPrice = "1〜100億円の範囲で入力してください";
+  if (input.buildingCost <= 0 || input.buildingCost > 10_000_000_000)
+    e.buildingCost = "1〜100億円の範囲で入力してください";
+  if (input.monthlyRent <= 0)
+    e.monthlyRent = "正の値を入力してください";
+  if (input.vacancyRate < 0 || input.vacancyRate >= 1.0)
+    e.vacancyRate = "0〜99%の範囲で入力してください";
+  if (input.loanAmount < 0)
+    e.loanAmount = "0以上の値を入力してください";
+  if (input.annualLoanRate < 0 || input.annualLoanRate > 0.3)
+    e.annualLoanRate = "0〜30%の範囲で入力してください";
+  if (input.loanYears < 0 || input.loanYears > 50)
+    e.loanYears = "0〜50年の範囲で入力してください";
+  if (input.miscExpenseRate < 0 || input.miscExpenseRate > 0.5)
+    e.miscExpenseRate = "0〜50%の範囲で入力してください";
+  if (input.expenseRate < 0 || input.expenseRate > 0.9)
+    e.expenseRate = "0〜90%の範囲で入力してください";
+  if (input.incomeTaxRate < 0 || input.incomeTaxRate > 0.6)
+    e.incomeTaxRate = "0〜60%の範囲で入力してください";
+  if (input.exitYieldTarget <= 0 || input.exitYieldTarget > 0.5)
+    e.exitYieldTarget = "0%超〜50%の範囲で入力してください";
+  if (input.holdingYears < 0 || input.holdingYears > 50)
+    e.holdingYears = "0〜50年の範囲で入力してください";
+  return e;
+}
+
 export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props) {
   const [input, setInput] = useState<InvestmentInput>(DEFAULT_INPUT);
   const [area, setArea] = useState("10");
   const [city, setCity] = useState("10201");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+
   // 制御コンポーネント用ヘルパー
-  const setNum = (key: keyof InvestmentInput, value: number) =>
+  const setNum = (key: keyof InvestmentInput, value: number) => {
     setInput((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
   const setStr = (key: keyof InvestmentInput, value: string) =>
     setInput((prev) => ({ ...prev, [key]: value }));
 
@@ -74,6 +114,13 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
   const fromMan = (s: string) => (parseFloat(s) || 0) * 10_000;
   const toPct = (rate: number, digits = 2) => (rate * 100).toFixed(digits);
   const fromPct = (s: string) => (parseFloat(s) || 0) / 100;
+
+  const handleAnalyze = () => {
+    const errs = validate(input);
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    onAnalyze(input);
+  };
 
   return (
     <div className="space-y-4">
@@ -122,7 +169,8 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
           <div className="grid grid-cols-2 gap-3">
             <Input label="土地取得価格" type="number" suffix="万円"
               value={toMan(input.landPrice)}
-              onChange={(e) => setNum("landPrice", fromMan(e.target.value))} />
+              onChange={(e) => setNum("landPrice", fromMan(e.target.value))}
+              error={errors.landPrice} />
             <Input label="土地面積" type="number" suffix="m²"
               value={String(input.landArea)}
               onChange={(e) => setNum("landArea", parseFloat(e.target.value) || 0)} />
@@ -130,7 +178,8 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
           <div className="grid grid-cols-2 gap-3">
             <Input label="建築費" type="number" suffix="万円"
               value={toMan(input.buildingCost)}
-              onChange={(e) => setNum("buildingCost", fromMan(e.target.value))} />
+              onChange={(e) => setNum("buildingCost", fromMan(e.target.value))}
+              error={errors.buildingCost} />
             <Input label="築年数" type="number" suffix="年（0=新築）"
               value={String(input.buildingAge)}
               onChange={(e) => setNum("buildingAge", parseInt(e.target.value) || 0)} />
@@ -138,7 +187,8 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
           <div className="grid grid-cols-2 gap-3">
             <Input label="想定月額賃料" type="number" suffix="円"
               value={String(input.monthlyRent)}
-              onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)} />
+              onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
+              error={errors.monthlyRent} />
             <Select label="建物構造" value={input.buildingType}
               onChange={(e) => setStr("buildingType", e.target.value as BuildingType)}
               options={BUILDING_TYPES} />
@@ -150,13 +200,16 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
             <div className="grid grid-cols-3 gap-3">
               <Input label="ローン金額" type="number" suffix="万円"
                 value={toMan(input.loanAmount)}
-                onChange={(e) => setNum("loanAmount", fromMan(e.target.value))} />
+                onChange={(e) => setNum("loanAmount", fromMan(e.target.value))}
+                error={errors.loanAmount} />
               <Input label="年利" type="number" suffix="%" step="0.01"
                 value={toPct(input.annualLoanRate)}
-                onChange={(e) => setNum("annualLoanRate", fromPct(e.target.value))} />
+                onChange={(e) => setNum("annualLoanRate", fromPct(e.target.value))}
+                error={errors.annualLoanRate} />
               <Input label="返済期間" type="number" suffix="年"
                 value={String(input.loanYears)}
-                onChange={(e) => setNum("loanYears", parseInt(e.target.value) || 35)} />
+                onChange={(e) => setNum("loanYears", parseInt(e.target.value) || 35)}
+                error={errors.loanYears} />
             </div>
           </div>
 
@@ -166,10 +219,12 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
             <div className="grid grid-cols-2 gap-3">
               <Input label="売却予定年数" type="number" suffix="年後"
                 value={String(input.holdingYears)}
-                onChange={(e) => setNum("holdingYears", parseInt(e.target.value) || 10)} />
+                onChange={(e) => setNum("holdingYears", parseInt(e.target.value) || 10)}
+                error={errors.holdingYears} />
               <Input label="売却時目標利回り（実質）" type="number" suffix="%" step="0.5"
                 value={toPct(input.exitYieldTarget, 1)}
-                onChange={(e) => setNum("exitYieldTarget", fromPct(e.target.value))} />
+                onChange={(e) => setNum("exitYieldTarget", fromPct(e.target.value))}
+                error={errors.exitYieldTarget} />
             </div>
           </div>
 
@@ -184,16 +239,20 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
               <div className="grid grid-cols-2 gap-3">
                 <Input label="諸経費率" type="number" suffix="%" step="0.5"
                   value={toPct(input.miscExpenseRate, 1)}
-                  onChange={(e) => setNum("miscExpenseRate", fromPct(e.target.value))} />
+                  onChange={(e) => setNum("miscExpenseRate", fromPct(e.target.value))}
+                  error={errors.miscExpenseRate} />
                 <Input label="空室率" type="number" suffix="%" step="1"
                   value={toPct(input.vacancyRate, 0)}
-                  onChange={(e) => setNum("vacancyRate", fromPct(e.target.value))} />
+                  onChange={(e) => setNum("vacancyRate", fromPct(e.target.value))}
+                  error={errors.vacancyRate} />
                 <Input label="運営経費率※" type="number" suffix="%" step="1"
                   value={toPct(input.expenseRate, 0)}
-                  onChange={(e) => setNum("expenseRate", fromPct(e.target.value))} />
+                  onChange={(e) => setNum("expenseRate", fromPct(e.target.value))}
+                  error={errors.expenseRate} />
                 <Input label="所得税率（実効）" type="number" suffix="%" step="1"
                   value={toPct(input.incomeTaxRate, 0)}
-                  onChange={(e) => setNum("incomeTaxRate", fromPct(e.target.value))} />
+                  onChange={(e) => setNum("incomeTaxRate", fromPct(e.target.value))}
+                  error={errors.incomeTaxRate} />
               </div>
               <p className="text-xs text-muted-foreground">
                 ※運営経費率はローン利息を含みません（管理費・修繕費・固定資産税・保険等）
@@ -215,7 +274,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
           </div>
 
           <Button className="w-full" size="lg" loading={loading}
-            onClick={() => onAnalyze(input)}>
+            onClick={handleAnalyze}>
             <Calculator className="h-5 w-5" />
             シミュレーション実行
           </Button>
