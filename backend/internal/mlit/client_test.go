@@ -86,34 +86,41 @@ func newTestClient(serverURL string) *Client {
 
 func TestBuildURL(t *testing.T) {
 	c := newTestClient("http://example.com")
+	validQ := LandPriceQuery{Area: "13", Year: 2023, Quarter: 1, ToYear: 2023, ToQuarter: 4}
 
 	t.Run("area が空のときエラー", func(t *testing.T) {
-		_, err := c.buildURL(LandPriceQuery{From: "20231", To: "20234"})
+		q := validQ
+		q.Area = ""
+		_, err := c.buildURL(q)
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
 	})
 
-	t.Run("from が空のときエラー", func(t *testing.T) {
-		_, err := c.buildURL(LandPriceQuery{Area: "13", To: "20234"})
+	t.Run("year が0のときエラー", func(t *testing.T) {
+		q := validQ
+		q.Year = 0
+		_, err := c.buildURL(q)
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
 	})
 
-	t.Run("to が空のときエラー", func(t *testing.T) {
-		_, err := c.buildURL(LandPriceQuery{Area: "13", From: "20231"})
+	t.Run("quarter が範囲外のときエラー", func(t *testing.T) {
+		q := validQ
+		q.Quarter = 5
+		_, err := c.buildURL(q)
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
 	})
 
 	t.Run("必須パラメータが揃っているとき URL を生成する", func(t *testing.T) {
-		got, err := c.buildURL(LandPriceQuery{Area: "13", From: "20231", To: "20234"})
+		got, err := c.buildURL(validQ)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		for _, param := range []string{"area=13", "from=20231", "to=20234"} {
+		for _, param := range []string{"area=13", "year=2023", "quarter=1", "toYear=2023", "toQuarter=4"} {
 			if !strings.Contains(got, param) {
 				t.Errorf("URL %q does not contain %q", got, param)
 			}
@@ -121,7 +128,9 @@ func TestBuildURL(t *testing.T) {
 	})
 
 	t.Run("city が指定されているときクエリに含まれる", func(t *testing.T) {
-		got, err := c.buildURL(LandPriceQuery{Area: "13", From: "20231", To: "20234", City: "13101"})
+		q := validQ
+		q.City = "13101"
+		got, err := c.buildURL(q)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -198,7 +207,7 @@ func okResponse(w http.ResponseWriter) {
 func TestFetchLandPrices_InvalidQuery(t *testing.T) {
 	c := newTestClient("http://example.com")
 	// Area が空 → buildURL がエラーを返し HTTP リクエストは発生しない
-	_, err := c.FetchLandPrices(context.Background(), LandPriceQuery{From: "20231", To: "20234"})
+	_, err := c.FetchLandPrices(context.Background(), LandPriceQuery{Year: 2023, Quarter: 1, ToYear: 2023, ToQuarter: 4})
 	if err == nil {
 		t.Fatal("expected error for missing area, got nil")
 	}
@@ -218,7 +227,7 @@ func TestFetchLandPrices_RetryOn5xx(t *testing.T) {
 
 	c := newTestClient(ts.URL)
 	result, err := c.FetchLandPrices(context.Background(), LandPriceQuery{
-		Area: "13", From: "20231", To: "20234",
+		Area: "13", Year: 2023, Quarter: 1, ToYear: 2023, ToQuarter: 4,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -239,7 +248,7 @@ func TestFetchLandPrices_AllAttemptsFailWith5xx(t *testing.T) {
 
 	c := newTestClient(ts.URL)
 	_, err := c.FetchLandPrices(context.Background(), LandPriceQuery{
-		Area: "13", From: "20231", To: "20234",
+		Area: "13", Year: 2023, Quarter: 1, ToYear: 2023, ToQuarter: 4,
 	})
 	if err == nil {
 		t.Fatal("expected error after all retries, got nil")
@@ -256,7 +265,7 @@ func TestFetchLandPrices_NoRetryOn4xx(t *testing.T) {
 
 	c := newTestClient(ts.URL)
 	_, err := c.FetchLandPrices(context.Background(), LandPriceQuery{
-		Area: "13", From: "20231", To: "20234",
+		Area: "13", Year: 2023, Quarter: 1, ToYear: 2023, ToQuarter: 4,
 	})
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -278,7 +287,7 @@ func TestFetchLandPrices_ContextTimeout(t *testing.T) {
 
 	c := newTestClient(ts.URL)
 	_, err := c.FetchLandPrices(ctx, LandPriceQuery{
-		Area: "13", From: "20231", To: "20234",
+		Area: "13", Year: 2023, Quarter: 1, ToYear: 2023, ToQuarter: 4,
 	})
 	if err == nil {
 		t.Fatal("expected error after context timeout, got nil")
@@ -302,7 +311,7 @@ func TestFetchLandPrices_APIStatusNotOK(t *testing.T) {
 
 	c := newTestClient(ts.URL)
 	_, err := c.FetchLandPrices(ctx, LandPriceQuery{
-		Area: "13", From: "20231", To: "20234",
+		Area: "13", Year: 2023, Quarter: 1, ToYear: 2023, ToQuarter: 4,
 	})
 	if err == nil {
 		t.Fatal("expected error for status=ERROR, got nil")

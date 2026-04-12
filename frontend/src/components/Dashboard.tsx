@@ -10,9 +10,11 @@ import { analyze, compareLandPrice } from "@/lib/api";
 import { ShieldAlert } from "lucide-react";
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
-function getCurrentPeriods(): { from: string; to: string } {
-  const year = new Date().getFullYear();
-  return { from: `${year - 2}1`, to: `${year}4` };
+function getCurrentPeriods(): { year: number; quarter: number; toYear: number; toQuarter: number } {
+  const now = new Date();
+  const toYear = now.getFullYear();
+  const toQuarter = Math.ceil((now.getMonth() + 1) / 3);
+  return { year: toYear - 2, quarter: 1, toYear, toQuarter };
 }
 
 export function Dashboard() {
@@ -39,13 +41,15 @@ export function Dashboard() {
   const handleFetchLandPrices = async (area: string, city: string) => {
     setLoading(true);
     setError(null);
-    const { from, to } = getCurrentPeriods();
+    const { year, quarter, toYear, toQuarter } = getCurrentPeriods();
     try {
       const comp = await compareLandPrice({
         area,
         city,
-        from,
-        to,
+        year,
+        quarter,
+        toYear,
+        toQuarter,
         price: lastInput?.landPrice ?? 5_000_000,
         areaSqm: lastInput?.landArea ?? 0, // ユーザー入力の面積を使用（ISSUE-15）
       });

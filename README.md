@@ -51,11 +51,13 @@ cd backend
 # 依存関係のインストール
 go mod tidy
 
-# 開発サーバー起動 (デフォルト: :8080)
-go run cmd/server/main.go
+# 環境変数の設定（国交省APIキーが必要）
+cp ../.env.example .env
+# .env を編集して MLIT_API_KEY を設定する
+# 申請: https://www.reinfolib.mlit.go.jp/api/request/
 
-# ポートを変更する場合
-PORT=9000 go run cmd/server/main.go
+# 開発サーバー起動 (デフォルト: :8080)
+MLIT_API_KEY=your_key go run cmd/server/main.go
 ```
 
 ### フロントエンド

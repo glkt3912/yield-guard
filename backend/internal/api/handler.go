@@ -19,21 +19,15 @@ func NewHandler(mlitClient *mlit.Client) *Handler {
 }
 
 // GetLandPrices は国交省APIから土地取引価格を取得して統計を返す
-// GET /api/land-prices?area=10&city=10201&from=20231&to=20234
+// GET /api/land-prices?area=10&city=10201&year=2024&quarter=1&to_year=2024&to_quarter=4
 func (h *Handler) GetLandPrices(c *gin.Context) {
-	area := c.Query("area")
-	city := c.Query("city")
-	from := c.Query("from")
-	to := c.Query("to")
-
-	if area == "" || from == "" || to == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "area, from, to は必須パラメータです"})
+	q, err := parseLandPriceQuery(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), mlit.LandPriceQuery{
-		Area: area, City: city, From: from, To: to,
-	})
+	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "国交省APIからのデータ取得に失敗しました: " + err.Error()})
 		return
@@ -44,17 +38,19 @@ func (h *Handler) GetLandPrices(c *gin.Context) {
 }
 
 // CompareLandPrice は検討中の土地価格と相場を比較する
-// GET /api/land-prices/compare?area=10&city=10201&from=20231&to=20234&price=5000000&area_sqm=100
+// GET /api/land-prices/compare?area=10&city=10201&year=2024&quarter=1&to_year=2024&to_quarter=4&price=5000000&area_sqm=100
 func (h *Handler) CompareLandPrice(c *gin.Context) {
-	area := c.Query("area")
-	city := c.Query("city")
-	from := c.Query("from")
-	to := c.Query("to")
+	q, err := parseLandPriceQuery(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	priceStr := c.Query("price")
 	areaSqmStr := c.Query("area_sqm")
 
-	if area == "" || from == "" || to == "" || priceStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "area, from, to, price は必須パラメータです"})
+	if priceStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "price は必須パラメータです"})
 		return
 	}
 
@@ -69,9 +65,7 @@ func (h *Handler) CompareLandPrice(c *gin.Context) {
 		areaSqm, _ = strconv.ParseFloat(areaSqmStr, 64)
 	}
 
-	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), mlit.LandPriceQuery{
-		Area: area, City: city, From: from, To: to,
-	})
+	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "国交省APIからのデータ取得に失敗しました: " + err.Error()})
 		return
@@ -80,6 +74,40 @@ func (h *Handler) CompareLandPrice(c *gin.Context) {
 	stats := domain.CalcLandPriceStats(transactions)
 	comparison := domain.CompareLandPrice(stats, landPrice, areaSqm)
 	c.JSON(http.StatusOK, comparison)
+}
+
+// parseLandPriceQuery はリクエストから LandPriceQuery を組み立てる
+func parseLandPriceQuery(c *gin.Context) (mlit.LandPriceQuery, error) {
+	area := c.Query("area")
+	if area == "" {
+		return mlit.LandPriceQuery{}, errors.New("area は必須パラメータです")
+	}
+
+	year, err := strconv.Atoi(c.Query("year"))
+	if err != nil || year < 2005 {
+		return mlit.LandPriceQuery{}, errors.New("year は2005以降の整数で指定してください")
+	}
+	quarter, err := strconv.Atoi(c.Query("quarter"))
+	if err != nil || quarter < 1 || quarter > 4 {
+		return mlit.LandPriceQuery{}, errors.New("quarter は 1〜4 で指定してください")
+	}
+	toYear, err := strconv.Atoi(c.Query("to_year"))
+	if err != nil || toYear < 2005 {
+		return mlit.LandPriceQuery{}, errors.New("to_year は2005以降の整数で指定してください")
+	}
+	toQuarter, err := strconv.Atoi(c.Query("to_quarter"))
+	if err != nil || toQuarter < 1 || toQuarter > 4 {
+		return mlit.LandPriceQuery{}, errors.New("to_quarter は 1〜4 で指定してください")
+	}
+
+	return mlit.LandPriceQuery{
+		Area:      area,
+		City:      c.Query("city"),
+		Year:      year,
+		Quarter:   quarter,
+		ToYear:    toYear,
+		ToQuarter: toQuarter,
+	}, nil
 }
 
 // Analyze は投資シミュレーションを実行する
