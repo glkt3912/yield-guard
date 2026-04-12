@@ -24,3 +24,6 @@ updates:
       all-dependencies:
         patterns:
           - "*"
+    ignore:
+      - dependency-name: next
+        update-types: ["version-update:semver-major"]
