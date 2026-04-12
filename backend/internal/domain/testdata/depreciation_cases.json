@@ -1,0 +1,135 @@
+[
+  {
+    "name": "木造_新築",
+    "buildingType": "木造",
+    "buildingAge": 0,
+    "expected": 22,
+    "note": "新築は法定耐用年数をそのまま返す"
+  },
+  {
+    "name": "RC造_新築",
+    "buildingType": "RC造",
+    "buildingAge": 0,
+    "expected": 47,
+    "note": "新築は法定耐用年数をそのまま返す"
+  },
+  {
+    "name": "SRC造_新築",
+    "buildingType": "SRC造",
+    "buildingAge": 0,
+    "expected": 47,
+    "note": "SRC造はRC造と同じ法定耐用年数47年"
+  },
+  {
+    "name": "軽量鉄骨3mm以下_新築",
+    "buildingType": "軽量鉄骨(3mm以下)",
+    "buildingAge": 0,
+    "expected": 19,
+    "note": "薄板・プレハブ系の法定耐用年数19年"
+  },
+  {
+    "name": "軽量鉄骨4mm以下_新築",
+    "buildingType": "軽量鉄骨(4mm以下)",
+    "buildingAge": 0,
+    "expected": 27,
+    "note": "法定耐用年数27年"
+  },
+  {
+    "name": "重量鉄骨_新築",
+    "buildingType": "重量鉄骨",
+    "buildingAge": 0,
+    "expected": 34,
+    "note": "法定耐用年数34年"
+  },
+  {
+    "name": "木造_負数age",
+    "buildingType": "木造",
+    "buildingAge": -1,
+    "expected": 22,
+    "note": "負数は新築扱い（buildingAge <= 0 で法定耐用年数を返す）"
+  },
+  {
+    "name": "木造_最小中古1年",
+    "buildingType": "木造",
+    "buildingAge": 1,
+    "expected": 21,
+    "note": "中古未超過の最小値: 経過年数×0.2の端数切捨てで加算分がゼロになるケース"
+  },
+  {
+    "name": "木造_中古10年_法定耐用年数内",
+    "buildingType": "木造",
+    "buildingAge": 10,
+    "expected": 14,
+    "note": "中古未超過の簡便法計算"
+  },
+  {
+    "name": "木造_中古15年_法定耐用年数内",
+    "buildingType": "木造",
+    "buildingAge": 15,
+    "expected": 10,
+    "note": "中古未超過の簡便法計算"
+  },
+  {
+    "name": "RC造_中古20年_法定耐用年数内",
+    "buildingType": "RC造",
+    "buildingAge": 20,
+    "expected": 31,
+    "note": "中古未超過の簡便法計算"
+  },
+  {
+    "name": "軽量鉄骨4mm以下_中古5年_法定耐用年数内",
+    "buildingType": "軽量鉄骨(4mm以下)",
+    "buildingAge": 5,
+    "expected": 23,
+    "note": "中古未超過の簡便法計算"
+  },
+  {
+    "name": "木造_法定耐用年数ちょうど超過",
+    "buildingType": "木造",
+    "buildingAge": 22,
+    "expected": 4,
+    "note": "法定年数ちょうどは超過扱い: 法定×0.2の端数切捨て"
+  },
+  {
+    "name": "RC造_法定耐用年数ちょうど超過",
+    "buildingType": "RC造",
+    "buildingAge": 47,
+    "expected": 9,
+    "note": "法定年数ちょうどは超過扱い: 法定×0.2の端数切捨て"
+  },
+  {
+    "name": "軽量鉄骨3mm以下_法定耐用年数ちょうど超過",
+    "buildingType": "軽量鉄骨(3mm以下)",
+    "buildingAge": 19,
+    "expected": 3,
+    "note": "法定年数ちょうどは超過扱い: 法定×0.2の端数切捨て"
+  },
+  {
+    "name": "重量鉄骨_法定耐用年数ちょうど超過",
+    "buildingType": "重量鉄骨",
+    "buildingAge": 34,
+    "expected": 6,
+    "note": "法定年数ちょうどは超過扱い: 法定×0.2の端数切捨て"
+  },
+  {
+    "name": "木造_大幅超過30年",
+    "buildingType": "木造",
+    "buildingAge": 30,
+    "expected": 4,
+    "note": "超過後は築年数によらず法定×0.2で固定"
+  },
+  {
+    "name": "RC造_大幅超過100年",
+    "buildingType": "RC造",
+    "buildingAge": 100,
+    "expected": 9,
+    "note": "超過後は築年数によらず法定×0.2で固定"
+  },
+  {
+    "name": "未定義BuildingType_デフォルト木造扱い",
+    "buildingType": "",
+    "buildingAge": 0,
+    "expected": 22,
+    "note": "未定義BuildingTypeはdefaultブランチで木造(22年)として扱う"
+  }
+]
