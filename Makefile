@@ -2,9 +2,9 @@
 
 ## dev: バックエンド・フロントエンドの開発サーバーを起動
 dev:
-	@echo "Starting backend..."
+	@echo "==> Starting backend..."
 	cd backend && go run ./cmd/server &
-	@echo "Starting frontend..."
+	@echo "==> Starting frontend..."
 	cd frontend && npm run dev
 
 ## test: 全テストを実行
@@ -20,6 +20,7 @@ lint:
 	cd backend && golangci-lint run ./...
 	@echo "==> Frontend lint"
 	cd frontend && npm run lint
+	cd frontend && npx tsc --noEmit
 
 ## build: 全ビルドを実行
 build:
@@ -30,4 +31,4 @@ build:
 
 ## help: 利用可能なコマンドを表示
 help:
-	@grep -E '^## ' Makefile | sed 's/## //'
+	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/## //'
