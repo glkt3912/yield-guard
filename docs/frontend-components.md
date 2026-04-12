@@ -60,6 +60,23 @@ const equityInvested = result.totalInvestment - input.loanAmount
 `expenseRate`, `incomeTaxRate`, `buildingAge`, `buildingType`, `exitYieldTarget` は
 詳細設定パネルに格納されており、デフォルトでは非表示。
 
+**クライアントサイドバリデーション（`validate`）**:
+「シミュレーション実行」押下時に `validate()` を実行し、エラーがあれば API を呼ばずフィールド直下にエラーメッセージを表示する。
+検証ルールはバックエンドの `validateInvestmentInput()` と同一。フィールドの値を変更するとそのフィールドのエラーをクリアする。
+
+| フィールド | 条件 |
+|-----------|------|
+| `landPrice`, `buildingCost` | 1〜100億円 |
+| `monthlyRent` | 正の値 |
+| `vacancyRate` | 0〜99% |
+| `loanAmount` | 0以上 |
+| `annualLoanRate` | 0〜30% |
+| `loanYears`, `holdingYears` | 0〜50年 |
+| `miscExpenseRate` | 0〜50% |
+| `expenseRate` | 0〜90% |
+| `incomeTaxRate` | 0〜60% |
+| `exitYieldTarget` | 0%超〜50% |
+
 **ストレステストスライダー**:
 - `vacancyRateDelta`: 0〜30%（空室率の追加シナリオ）
 - `loanRateDelta`: 0〜3%（金利上昇シナリオ）
