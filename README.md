@@ -165,8 +165,10 @@ PR・mainへのpush時に GitHub Actions が自動実行される（ワークフ
 
 | ワークフロー | トリガーパス | チェック内容 |
 |---|---|---|
-| Backend CI | `backend/**`, `backend-ci.yml` | `go vet` / `go test -race` / `go build` |
+| Backend CI | `backend/**`, `backend-ci.yml` | `golangci-lint` / `go test -race` / `go build` |
 | Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `vitest run` / `build` |
+
+Dependabot により Go modules・npm の依存パッケージが毎週月曜（JST）に自動更新される（エコシステムごとに1PR）。
 
 ### ビルド
 
