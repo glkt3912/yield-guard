@@ -145,18 +145,24 @@ yield-guard/
 
 ## 開発
 
-### テスト実行
+### よく使うコマンド
+
+```bash
+make help    # 利用可能なコマンド一覧
+make test    # バックエンド・フロントエンドの全テスト実行
+make lint    # バックエンド（golangci-lint）・フロントエンド lint
+make build   # バックエンド・フロントエンドのビルド
+make dev     # 開発サーバー起動（backend :8080 + frontend :3000）
+```
+
+個別に実行する場合：
 
 ```bash
 # バックエンド
-cd backend
-go test -race ./... -v
+cd backend && go test -race ./... -v
 
 # フロントエンド
-cd frontend
-npm test           # Vitest（17テスト）
-npm run lint
-npx tsc --noEmit
+cd frontend && npm test
 ```
 
 ### CI
@@ -173,11 +179,7 @@ Dependabot により Go modules・npm の依存パッケージが毎週月曜（
 ### ビルド
 
 ```bash
-# バックエンド
-cd backend && go build -o yield-guard-server ./cmd/server
-
-# フロントエンド
-cd frontend && npm run build
+make build
 ```
 
 ### 計算ロジック仕様
