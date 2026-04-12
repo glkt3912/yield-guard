@@ -17,12 +17,12 @@ type depreciationCase struct {
 	Note         string       `json:"note"`
 }
 
-func TestCalcResidualUsefulLife_GoldenMaster(t *testing.T) {
+func TestCalcResidualUsefulLife_Table(t *testing.T) {
 	t.Parallel()
 
 	var cases []depreciationCase
 	if err := json.Unmarshal(depreciationFixture, &cases); err != nil {
-		t.Fatalf("Golden Master JSONのパースに失敗しました: %v", err)
+		t.Fatalf("フィクスチャJSONのパースに失敗しました: %v", err)
 	}
 
 	for _, tc := range cases {
