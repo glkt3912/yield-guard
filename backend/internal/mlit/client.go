@@ -81,7 +81,7 @@ func (c *Client) doRequest(ctx context.Context, apiURL string) ([]domain.LandTra
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusOK {
 		var apiResp APIResponse
