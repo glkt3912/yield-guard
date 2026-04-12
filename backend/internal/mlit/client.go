@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -14,7 +15,8 @@ import (
 )
 
 const (
-	mlitBaseURL    = "https://www.land.mlit.go.jp/webland/api/TradeListSearch"
+	// 不動産情報ライブラリ API (2024年4月〜)
+	mlitBaseURL    = "https://www.reinfolib.mlit.go.jp/ex-api/external/XIT001"
 	requestTimeout = 30 * time.Second
 
 	// リトライ設定: 国交省APIは一時的な障害が多いため指数バックオフで再試行する
@@ -26,13 +28,16 @@ const (
 type Client struct {
 	httpClient *http.Client
 	baseURL    string
+	apiKey     string
 }
 
-// NewClient は新しい Client を返す
+// NewClient は新しい Client を返す。
+// 環境変数 MLIT_API_KEY からAPIキーを読み込む。
 func NewClient() *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: requestTimeout},
 		baseURL:    mlitBaseURL,
+		apiKey:     os.Getenv("MLIT_API_KEY"),
 	}
 }
 
@@ -77,6 +82,11 @@ func (c *Client) doRequest(ctx context.Context, apiURL string) ([]domain.LandTra
 		return nil, fmt.Errorf("request build error: %w", err)
 	}
 
+	// 不動産情報ライブラリ API は Ocp-Apim-Subscription-Key ヘッダーによる認証が必要
+	if c.apiKey != "" {
+		req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
+	}
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
@@ -117,14 +127,21 @@ func (c *Client) buildURL(q LandPriceQuery) (string, error) {
 	if q.Area == "" {
 		return "", fmt.Errorf("area is required")
 	}
-	if q.From == "" || q.To == "" {
-		return "", fmt.Errorf("from and to are required")
+	if q.Year == 0 || q.Quarter == 0 || q.ToYear == 0 || q.ToQuarter == 0 {
+		return "", fmt.Errorf("year, quarter, to_year, to_quarter are required")
+	}
+	if q.Quarter < 1 || q.Quarter > 4 || q.ToQuarter < 1 || q.ToQuarter > 4 {
+		return "", fmt.Errorf("quarter must be between 1 and 4")
 	}
 
 	params := url.Values{}
-	params.Set("from", q.From)
-	params.Set("to", q.To)
 	params.Set("area", q.Area)
+	params.Set("year", strconv.Itoa(q.Year))
+	params.Set("quarter", strconv.Itoa(q.Quarter))
+	params.Set("toYear", strconv.Itoa(q.ToYear))
+	params.Set("toQuarter", strconv.Itoa(q.ToQuarter))
+	// 取引価格情報（01）を取得
+	params.Set("priceClassification", "01")
 	if q.City != "" {
 		params.Set("city", q.City)
 	}

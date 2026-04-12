@@ -17,11 +17,13 @@ func TestFetchLandPrices_RealAPI(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// 群馬県(area=10)の直近2年分（20241〜20244）を取得
+	// 群馬県(area=10)の直近2年分を取得
 	q := LandPriceQuery{
-		Area: "10",
-		From: "20241",
-		To:   "20244",
+		Area:      "10",
+		Year:      2024,
+		Quarter:   1,
+		ToYear:    2024,
+		ToQuarter: 4,
 	}
 
 	transactions, err := client.FetchLandPrices(ctx, q)
@@ -56,10 +58,12 @@ func TestFetchLandPrices_RealAPI_WithCity(t *testing.T) {
 
 	// 群馬県 前橋市(10201)に絞り込み
 	q := LandPriceQuery{
-		Area: "10",
-		City: "10201",
-		From: "20241",
-		To:   "20244",
+		Area:      "10",
+		City:      "10201",
+		Year:      2024,
+		Quarter:   1,
+		ToYear:    2024,
+		ToQuarter: 4,
 	}
 
 	transactions, err := client.FetchLandPrices(ctx, q)

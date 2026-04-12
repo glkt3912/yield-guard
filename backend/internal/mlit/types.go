@@ -40,10 +40,12 @@ type Transaction struct {
 
 // LandPriceQuery は土地価格取得APIのクエリパラメータ
 type LandPriceQuery struct {
-	Area string // 都道府県コード (例: "10" = 群馬県)
-	City string // 市区町村コード (例: "10201" = 前橋市)
-	From string // 取得開始時期 (例: "20231" = 2023年第1四半期)
-	To   string // 取得終了時期 (例: "20234" = 2023年第4四半期)
+	Area         string // 都道府県コード (例: "10" = 群馬県)
+	City         string // 市区町村コード (例: "10201" = 前橋市)
+	Year         int    // 取得年 (例: 2024)
+	Quarter      int    // 取得四半期 (1〜4)
+	ToYear       int    // 取得終了年 (例: 2024)
+	ToQuarter    int    // 取得終了四半期 (1〜4)
 }
 
 // Prefectures は都道府県コードマップ
