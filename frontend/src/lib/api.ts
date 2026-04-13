@@ -61,6 +61,17 @@ export async function compareLandPrice(params: {
   return handleResponse<LandPriceComparison>(res);
 }
 
+export interface Municipality {
+  id: string;
+  name: string;
+}
+
+/** 都道府県コードから市区町村一覧を取得（XIT002） */
+export async function fetchMunicipalities(area: string): Promise<Municipality[]> {
+  const res = await fetch(`${BASE}/municipalities?area=${encodeURIComponent(area)}`);
+  return handleResponse<Municipality[]>(res);
+}
+
 /** 投資シミュレーションを実行 */
 export async function analyze(input: InvestmentInput): Promise<InvestmentResult> {
   const res = await fetch(`${BASE}/analyze`, {
