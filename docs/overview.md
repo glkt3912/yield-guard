@@ -141,6 +141,27 @@ npm run dev   # http://localhost:3000
 
 ---
 
+## 国交省API 開発用リクエスト（Makefile）
+
+`.env` の `MLIT_API_KEY` を使って国交省APIへ直接リクエストできる開発者向けターゲット。`jq` が必要。
+
+```bash
+# 市区町村一覧（XIT002）
+make mlit-municipalities area=13
+
+# 土地取引価格（XIT001）
+make mlit-land-prices area=13 year=2024 quarter=1 to_year=2024 to_quarter=4
+
+# 市区町村コード指定あり
+make mlit-land-prices area=13 year=2024 quarter=1 to_year=2024 to_quarter=4 city=13101
+```
+
+- APIキーは `.env`（git管理外）から自動で読み込む。コマンドに直接記載しない
+- レスポンスは gzip 圧縮のため `--compressed` を付与している
+- 必須パラメータが未指定の場合はエラーメッセージを表示して終了する
+
+---
+
 ## テスト実行
 
 ```bash

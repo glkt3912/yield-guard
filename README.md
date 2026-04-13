@@ -174,6 +174,26 @@ make lint        # バックエンド（golangci-lint）・フロントエンド
 make build       # バックエンド・フロントエンドのビルド
 ```
 
+### 国交省API 開発用リクエスト
+
+`.env` の `MLIT_API_KEY` を使って国交省APIに直接リクエストできます（`jq` が必要）。
+
+```bash
+# 市区町村一覧を取得（XIT002）
+make mlit-municipalities area=13        # 東京都
+
+# 土地取引価格を取得（XIT001）
+make mlit-land-prices area=13 year=2024 quarter=1 to_year=2024 to_quarter=4
+make mlit-land-prices area=13 year=2024 quarter=1 to_year=2024 to_quarter=4 city=13101  # 千代田区
+```
+
+| パラメータ | 説明 | 例 |
+|-----------|------|----|
+| `area` | 都道府県コード（必須） | `13`=東京都, `27`=大阪府 |
+| `year` / `to_year` | 取得開始・終了年（必須） | `2024` |
+| `quarter` / `to_quarter` | 四半期（必須、1〜4） | `1` |
+| `city` | 市区町村コード（任意） | `13101`=千代田区 |
+
 個別に実行する場合：
 
 ```bash
