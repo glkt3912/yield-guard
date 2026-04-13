@@ -316,6 +316,62 @@ func TestCompareLandPrice_Success(t *testing.T) {
 	}
 }
 
+func TestGetMunicipalities_MissingArea(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/municipalities", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestGetMunicipalities_APIError(t *testing.T) {
+	client := &mockMLITClient{
+		muniFunc: func(_ context.Context, _ string) ([]mlit.Municipality, error) {
+			return nil, errors.New("upstream error")
+		},
+	}
+	r := newTestRouter(client)
+	req := httptest.NewRequest(http.MethodGet, "/api/municipalities?area=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502, got %d", w.Code)
+	}
+}
+
+func TestGetMunicipalities_Success(t *testing.T) {
+	client := &mockMLITClient{
+		muniFunc: func(_ context.Context, area string) ([]mlit.Municipality, error) {
+			return []mlit.Municipality{
+				{ID: "13101", Name: "千代田区"},
+				{ID: "13102", Name: "中央区"},
+			}, nil
+		},
+	}
+	r := newTestRouter(client)
+	req := httptest.NewRequest(http.MethodGet, "/api/municipalities?area=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var result []mlit.Municipality
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode: %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("expected 2 municipalities, got %d", len(result))
+	}
+	if result[0].ID != "13101" || result[0].Name != "千代田区" {
+		t.Errorf("unexpected first entry: %+v", result[0])
+	}
+}
+
 func TestHealthCheck(t *testing.T) {
 	r := newTestRouter(&mockMLITClient{})
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
