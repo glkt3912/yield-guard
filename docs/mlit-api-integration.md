@@ -62,7 +62,7 @@ APIを使用するサービスには以下の文言を表示すること：
 
 - 同一APIキーで基準期間内に多数のリクエストがあった場合、**アクセス制限が設けられる**
 - 連続実行は避けることが推奨されている
-- 対策として本プロジェクトでは指数バックオフリトライを実装済み（issue #5 でキャッシュ実装予定）
+- 対策として本プロジェクトでは指数バックオフリトライとインメモリキャッシュ（TTL 24時間）を実装済み
 
 ---
 
@@ -247,6 +247,51 @@ for attempt := 0; attempt < maxRetries; attempt++ {
 - **`status != "OK"`（HTTP 200 だがAPIレベルのエラー）はリトライされる**（`clientError` に該当しないため）
 - `context.Done()` チェック付き（タイムアウト・キャンセル対応）
 - 3回失敗後: `"API request failed after 3 attempts: <error>"` を返す
+
+---
+
+## インメモリキャッシュ（`cache.go`）
+
+`Client` はインスタンスごとに TTL 付きインメモリキャッシュを持ち、同一クエリの繰り返しリクエストでAPIコールをスキップする。
+
+```go
+const cacheTTL = 24 * time.Hour
+
+type cacheEntry struct {
+    data      []domain.LandTransaction
+    expiresAt time.Time
+}
+
+type cache struct {
+    mu      sync.RWMutex
+    entries map[string]cacheEntry
+}
+```
+
+### キャッシュキー
+
+```
+area:city:year:quarter:toYear:toQuarter
+例: "13::2024:1:2024:4"（東京都・市区町村指定なし・2024年通年）
+```
+
+### 動作フロー
+
+```
+FetchLandPrices() 呼び出し
+  ├─ キャッシュヒット（TTL内）→ コピーを返す（APIコールなし）
+  └─ キャッシュミス / TTL切れ → API呼び出し → 成功時にキャッシュ保存
+```
+
+### 設計上の判断
+
+| 項目 | 内容 |
+|------|------|
+| **TTL: 24時間** | 土地価格データは四半期単位でしか更新されないため |
+| **返却値はコピー** | 呼び出し元によるスライス変更でキャッシュが汚染されるバグを防ぐ |
+| **Lazy Eviction** | TTL切れエントリは `get` アクセス時に削除。バックグラウンドGCゴルーチンは持たない |
+| **サーバー再起動でリセット** | インメモリのため。永続化の複雑さを避けた割り切り |
+| **API障害時の耐障害性** | TTL内であれば過去データを返し続けられる。ただし初回リクエスト時のAPI障害はカバーしない |
 
 ---
 
