@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,6 +25,9 @@ type mockMLITClient struct {
 }
 
 func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
+	if m.fetchFunc == nil {
+		panic(fmt.Sprintf("mockMLITClient.FetchLandPrices called unexpectedly (fetchFunc is nil)"))
+	}
 	return m.fetchFunc(ctx, q)
 }
 
@@ -31,28 +35,6 @@ func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQu
 func newTestRouter(client MLITClient) *gin.Engine {
 	h := NewHandler(client)
 	return NewRouter(h)
-}
-
-// --- validateInvestmentInput ---
-
-func TestValidateInvestmentInput_Valid(t *testing.T) {
-	input := domain.InvestmentInput{
-		LandPrice:       5_000_000,
-		BuildingCost:    10_000_000,
-		MonthlyRent:     100_000,
-		VacancyRate:     0.05,
-		LoanAmount:      0,
-		AnnualLoanRate:  0.015,
-		LoanYears:       35,
-		MiscExpenseRate: 0.07,
-		ExpenseRate:     0.20,
-		IncomeTaxRate:   0.33,
-		ExitYieldTarget: 0.06,
-		HoldingYears:    10,
-	}
-	if err := validateInvestmentInput(input); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
 }
 
 var validBase = domain.InvestmentInput{
@@ -151,8 +133,6 @@ func TestValidateInvestmentInput_Boundaries(t *testing.T) {
 	}
 }
 
-// --- POST /api/analyze ---
-
 func TestAnalyze_ValidInput(t *testing.T) {
 	r := newTestRouter(&mockMLITClient{})
 
@@ -207,8 +187,6 @@ func TestAnalyze_ValidationError(t *testing.T) {
 		t.Error("expected error message in response")
 	}
 }
-
-// --- GET /api/land-prices ---
 
 func TestGetLandPrices_MissingArea(t *testing.T) {
 	r := newTestRouter(&mockMLITClient{})
@@ -284,15 +262,8 @@ func TestGetLandPrices_Success(t *testing.T) {
 	}
 }
 
-// --- GET /api/land-prices/compare ---
-
 func TestCompareLandPrice_MissingPrice(t *testing.T) {
-	client := &mockMLITClient{
-		fetchFunc: func(_ context.Context, _ mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
-			return []domain.LandTransaction{}, nil
-		},
-	}
-	r := newTestRouter(client)
+	r := newTestRouter(&mockMLITClient{})
 	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/compare?area=13&year=2024&quarter=1&to_year=2024&to_quarter=4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -337,8 +308,6 @@ func TestCompareLandPrice_Success(t *testing.T) {
 		t.Error("expected non-empty assessment")
 	}
 }
-
-// --- GET /health ---
 
 func TestHealthCheck(t *testing.T) {
 	r := newTestRouter(&mockMLITClient{})
