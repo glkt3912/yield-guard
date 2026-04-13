@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,7 +25,7 @@ type mockMLITClient struct {
 
 func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
 	if m.fetchFunc == nil {
-		panic(fmt.Sprintf("mockMLITClient.FetchLandPrices called unexpectedly (fetchFunc is nil)"))
+		panic("mockMLITClient.FetchLandPrices called unexpectedly (fetchFunc is nil)")
 	}
 	return m.fetchFunc(ctx, q)
 }
