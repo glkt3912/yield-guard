@@ -1,4 +1,35 @@
-import type { InvestmentResult, YearlyResult } from "@/types/investment";
+import type { InvestmentResult, LandPriceComparison, LandPriceStats, YearlyResult } from "@/types/investment";
+
+export const ZERO_STATS: LandPriceStats = {
+  count: 0,
+  averageTsubo: 0,
+  medianTsubo: 0,
+  minTsubo: 0,
+  maxTsubo: 0,
+  transactions: [],
+  lowDataWarning: false,
+};
+
+export function makeComparison(overrides: Partial<LandPriceComparison> = {}): LandPriceComparison {
+  return {
+    stats: {
+      count: 15,
+      averageTsubo: 300_000,
+      medianTsubo: 290_000,
+      minTsubo: 200_000,
+      maxTsubo: 400_000,
+      transactions: [],
+      lowDataWarning: false,
+    },
+    inputLandPrice: 10_000_000,
+    inputArea: 100,
+    inputPricePerTsubo: 330_000,
+    diffFromAverage: 30_000,
+    diffFromMedian: 40_000,
+    assessment: "割高",
+    ...overrides,
+  };
+}
 
 export function makeYearlyResult(year: number, overrides: Partial<YearlyResult> = {}): YearlyResult {
   return {

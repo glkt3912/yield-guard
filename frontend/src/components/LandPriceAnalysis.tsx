@@ -13,8 +13,8 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { LandPriceComparison } from "@/types/investment";
-import { formatTsubo, formatMan } from "@/lib/utils";
-import { MapPin, AlertTriangle } from "lucide-react";
+import { formatTsubo } from "@/lib/utils";
+import { MapPin, AlertTriangle, SearchX } from "lucide-react";
 
 interface Props {
   comparison: LandPriceComparison;
@@ -29,12 +29,37 @@ const ASSESSMENT_BADGE: Record<string, "success" | "warning" | "danger"> = {
 export function LandPriceAnalysis({ comparison }: Props) {
   const { stats, assessment, inputPricePerTsubo, diffFromMedian } = comparison;
 
+  // 件数 0 件: 統計・グラフ・判定をすべて非表示
+  if (stats.count === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-primary" />
+            土地価格相場分析
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
+            <SearchX className="h-5 w-5 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold">取引データが見つかりませんでした</p>
+              <p className="text-xs mt-1">エリア・取得期間の条件を変更して再取得してください。</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const scatterData = stats.transactions
     .filter((t) => t.pricePerTsubo > 0 && t.area > 0)
     .map((t) => ({
       area: Math.round(t.area),
       tsubo: Math.round(t.pricePerTsubo / 10_000), // 万円/坪
     }));
+
+  const badgeLabel = stats.lowDataWarning ? `${assessment}（参考値）` : assessment;
 
   return (
     <Card>
@@ -44,20 +69,26 @@ export function LandPriceAnalysis({ comparison }: Props) {
             <MapPin className="h-5 w-5 text-primary" />
             土地価格相場分析
           </CardTitle>
-          <Badge variant={ASSESSMENT_BADGE[assessment] ?? "outline"}>{assessment}</Badge>
+          <Badge variant={ASSESSMENT_BADGE[assessment] ?? "outline"}>{badgeLabel}</Badge>
         </div>
         <p className="text-xs text-muted-foreground">
           取引件数: {stats.count}件 　平均坪単価: {formatTsubo(stats.averageTsubo)} 　中央値: {formatTsubo(stats.medianTsubo)}
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* データ件数不足警告（ISSUE-23） */}
         {stats.lowDataWarning && (
-          <div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-800">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-            <p>{stats.warningMessage ?? "取引データが少ないため、統計の信頼性が低い可能性があります。"}</p>
+          <div className="flex items-start gap-3 rounded-md border-2 border-yellow-400 bg-yellow-50 p-4 text-yellow-900">
+            <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-yellow-600" />
+            <div>
+              <p className="text-sm font-semibold">統計データが不足しています</p>
+              <p className="text-xs mt-1">
+                {stats.warningMessage ?? "取引データが少ないため、統計の信頼性が低い可能性があります。"}
+              </p>
+              <p className="text-xs mt-0.5">以下の結果は参考値としてご確認ください。</p>
+            </div>
           </div>
         )}
+
         {/* 統計サマリー */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
@@ -94,6 +125,9 @@ export function LandPriceAnalysis({ comparison }: Props) {
                 （{diffFromMedian > 0 ? "割高" : "割安"}）
               </span>
             </p>
+            {stats.lowDataWarning && (
+              <p className="text-xs mt-1 text-yellow-700">※ データ件数不足のため参考値</p>
+            )}
           </div>
         )}
 
