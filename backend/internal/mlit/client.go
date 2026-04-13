@@ -15,8 +15,13 @@ import (
 )
 
 const (
-	// 不動産情報ライブラリ API (2024年4月〜)
-	mlitBaseURL    = "https://www.reinfolib.mlit.go.jp/ex-api/external/XIT001"
+	// 不動産情報ライブラリ API ベースURL (2024年4月〜)
+	mlitBaseURL = "https://www.reinfolib.mlit.go.jp/ex-api/external"
+
+	// エンドポイントパス
+	endpointLandPrices     = "/XIT001"
+	endpointMunicipalities = "/XIT002"
+
 	requestTimeout = 30 * time.Second
 
 	// リトライ設定: 国交省APIは一時的な障害が多いため指数バックオフで再試行する
@@ -52,7 +57,7 @@ func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domai
 		return cached, nil
 	}
 
-	apiURL, err := c.buildURL(q)
+	apiURL, err := c.buildLandPricesURL(q)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +87,54 @@ func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domai
 		}
 	}
 	return nil, fmt.Errorf("API request failed after %d attempts: %w", maxRetries, lastErr)
+}
+
+// FetchMunicipalities は指定都道府県の市区町村一覧を取得する（XIT002）。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchMunicipalities(ctx context.Context, area string) ([]Municipality, error) {
+	if area == "" {
+		return nil, fmt.Errorf("area is required")
+	}
+
+	if cached, ok := c.cache.getMuni(area); ok {
+		return cached, nil
+	}
+
+	params := url.Values{}
+	params.Set("area", area)
+	apiURL := c.baseURL + endpointMunicipalities + "?" + params.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request build error: %w", err)
+	}
+	if c.apiKey != "" {
+		req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("municipalities API request failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		return nil, &clientError{code: resp.StatusCode}
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("municipalities API returned status %d", resp.StatusCode)
+	}
+
+	var apiResp MunicipalityResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return nil, fmt.Errorf("municipalities JSON decode error: %w", err)
+	}
+	if apiResp.Status != "OK" {
+		return nil, fmt.Errorf("municipalities API status: %s", apiResp.Status)
+	}
+
+	c.cache.setMuni(area, apiResp.Data)
+	return apiResp.Data, nil
 }
 
 // doRequest は単一のHTTPリクエストを実行し、レスポンスをパースして返す
@@ -131,8 +184,8 @@ func isClientError(err error) bool {
 	return ok
 }
 
-// buildURL はAPIのクエリURLを生成する
-func (c *Client) buildURL(q LandPriceQuery) (string, error) {
+// buildLandPricesURL は XIT001 のクエリURLを生成する
+func (c *Client) buildLandPricesURL(q LandPriceQuery) (string, error) {
 	if q.Area == "" {
 		return "", fmt.Errorf("area is required")
 	}
@@ -155,7 +208,7 @@ func (c *Client) buildURL(q LandPriceQuery) (string, error) {
 		params.Set("city", q.City)
 	}
 
-	return c.baseURL + "?" + params.Encode(), nil
+	return c.baseURL + endpointLandPrices + "?" + params.Encode(), nil
 }
 
 // parseTransactions はAPIレスポンスを domain.LandTransaction スライスに変換する

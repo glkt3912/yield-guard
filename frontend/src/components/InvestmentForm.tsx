@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import type { InvestmentInput, BuildingType } from "@/types/investment";
 import { DEFAULT_INPUT } from "@/types/investment";
 import { formatPct } from "@/lib/utils";
+import { fetchMunicipalities, type Municipality } from "@/lib/api";
 import { Search, Calculator, Info } from "lucide-react";
 
 // 全47都道府県（法的に変容しない静的データ）
@@ -93,9 +94,36 @@ function validate(input: InvestmentInput): FormErrors {
 export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props) {
   const [input, setInput] = useState<InvestmentInput>(DEFAULT_INPUT);
   const [area, setArea] = useState("10");
-  const [city, setCity] = useState("10201");
+  const [city, setCity] = useState("");
+  const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
+  const [muniLoading, setMuniLoading] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+
+  const loadMunicipalities = useCallback(async (areaCode: string) => {
+    setMuniLoading(true);
+    setCity("");
+    try {
+      const data = await fetchMunicipalities(areaCode);
+      setMunicipalities(data);
+      if (data.length > 0) setCity(data[0].id);
+    } catch {
+      setMunicipalities([]);
+    } finally {
+      setMuniLoading(false);
+    }
+  }, []);
+
+  // 初回マウント時に初期都道府県の市区町村を取得
+  useEffect(() => {
+    loadMunicipalities("10");
+  }, [loadMunicipalities]);
+
+  const handleAreaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value;
+    setArea(code);
+    loadMunicipalities(code);
+  };
 
   // 制御コンポーネント用ヘルパー
   const setNum = (key: keyof InvestmentInput, value: number) => {
@@ -137,14 +165,23 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
             <Select
               label="都道府県"
               value={area}
-              onChange={(e) => setArea(e.target.value)}
+              onChange={handleAreaChange}
               options={PREFECTURES}
             />
-            <Input
-              label="市区町村コード"
+            <Select
+              label="市区町村"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              placeholder="例: 10201（前橋市）"
+              options={
+                muniLoading
+                  ? [{ value: "", label: "読み込み中..." }]
+                  : municipalities.length === 0
+                  ? [{ value: "", label: "（全市区町村）" }]
+                  : [
+                      { value: "", label: "（全市区町村）" },
+                      ...municipalities.map((m) => ({ value: m.id, label: m.name })),
+                    ]
+              }
             />
           </div>
           <p className="text-xs text-muted-foreground">

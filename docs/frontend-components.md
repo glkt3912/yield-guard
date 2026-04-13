@@ -52,9 +52,22 @@ const equityInvested = result.totalInvestment - input.loanAmount
 - `toPct(v: number) = v * 100` — 率→%（表示用）
 - `fromPct(v: number) = v / 100` — %→率（送信時）
 
-**STATIC_PREFECTURES**:
-バックエンドが未起動でも動作するための20都道府県フォールバック。
-`fetchPrefectures()` が失敗した場合に使用される。
+**市区町村ドロップダウン（動的取得）**:
+
+都道府県選択に連動して `GET /api/municipalities?area=XX`（XIT002）を呼び出し、市区町村一覧を動的に取得する。
+
+```
+初回マウント時: 初期都道府県（"10" = 群馬県）の市区町村を取得
+都道府県変更時: loadMunicipalities(code) → setCity("") → fetch → setCity(data[0].id)
+```
+
+| 状態 | ドロップダウン表示 |
+|------|-----------------|
+| 取得中 | 「読み込み中...」 |
+| 取得失敗 / データなし | 「（全市区町村）」のみ |
+| 取得成功 | 「（全市区町村）」+ 市区町村名一覧 |
+
+「（全市区町村）」は `city=""` に対応し、バックエンドで市区町村絞り込みなしの都道府県全体検索になる。
 
 **詳細設定トグル（showAdvanced）**:
 `expenseRate`, `incomeTaxRate`, `buildingAge`, `buildingType`, `exitYieldTarget` は
@@ -214,6 +227,7 @@ const deadCrossEndYear = yearlyResults.slice(0, 35)
 | `fetchLandPrices(params)` | `GET /api/land-prices` | 土地取引統計 |
 | `compareLandPrice(params)` | `GET /api/land-prices/compare` | 相場比較 |
 | `analyze(input)` | `POST /api/analyze` | 投資シミュレーション |
+| `fetchMunicipalities(area)` | `GET /api/municipalities` | 市区町村一覧（XIT002） |
 | `fetchPrefectures()` | `GET /api/prefectures` | 都道府県一覧 |
 
 **共通エラーハンドリング（`handleResponse`）**:

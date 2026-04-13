@@ -78,20 +78,20 @@ func TestIsLandType(t *testing.T) {
 	}
 }
 
-// ---- buildURL ----
+// ---- buildLandPricesURL ----
 
 func newTestClient(serverURL string) *Client {
 	return &Client{httpClient: &http.Client{}, baseURL: serverURL, cache: newCache()}
 }
 
-func TestBuildURL(t *testing.T) {
+func TestBuildLandPricesURL(t *testing.T) {
 	c := newTestClient("http://example.com")
 	validQ := LandPriceQuery{Area: "13", Year: 2023, Quarter: 1, ToYear: 2023, ToQuarter: 4}
 
 	t.Run("area が空のときエラー", func(t *testing.T) {
 		q := validQ
 		q.Area = ""
-		_, err := c.buildURL(q)
+		_, err := c.buildLandPricesURL(q)
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
@@ -100,7 +100,7 @@ func TestBuildURL(t *testing.T) {
 	t.Run("year が0のときエラー", func(t *testing.T) {
 		q := validQ
 		q.Year = 0
-		_, err := c.buildURL(q)
+		_, err := c.buildLandPricesURL(q)
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
@@ -109,14 +109,14 @@ func TestBuildURL(t *testing.T) {
 	t.Run("quarter が範囲外のときエラー", func(t *testing.T) {
 		q := validQ
 		q.Quarter = 5
-		_, err := c.buildURL(q)
+		_, err := c.buildLandPricesURL(q)
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
 	})
 
 	t.Run("必須パラメータが揃っているとき URL を生成する", func(t *testing.T) {
-		got, err := c.buildURL(validQ)
+		got, err := c.buildLandPricesURL(validQ)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -130,7 +130,7 @@ func TestBuildURL(t *testing.T) {
 	t.Run("city が指定されているときクエリに含まれる", func(t *testing.T) {
 		q := validQ
 		q.City = "13101"
-		got, err := c.buildURL(q)
+		got, err := c.buildLandPricesURL(q)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -451,5 +451,88 @@ func TestFetchLandPrices_APIStatusNotOK(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for status=ERROR, got nil")
+	}
+}
+
+// ---- FetchMunicipalities ----
+
+func municipalityOKResponse(w http.ResponseWriter, municipalities []Municipality) {
+	resp := MunicipalityResponse{Status: "OK", Data: municipalities}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		panic(err)
+	}
+}
+
+func TestFetchMunicipalities_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointMunicipalities {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		if r.URL.Query().Get("area") != "13" {
+			t.Errorf("area param = %s, want 13", r.URL.Query().Get("area"))
+		}
+		municipalityOKResponse(w, []Municipality{
+			{ID: "13101", Name: "千代田区"},
+			{ID: "13102", Name: "中央区"},
+		})
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchMunicipalities(context.Background(), "13")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("len = %d, want 2", len(result))
+	}
+	if result[0].ID != "13101" || result[0].Name != "千代田区" {
+		t.Errorf("unexpected first municipality: %+v", result[0])
+	}
+}
+
+func TestFetchMunicipalities_EmptyArea(t *testing.T) {
+	c := newTestClient("http://example.com")
+	_, err := c.FetchMunicipalities(context.Background(), "")
+	if err == nil {
+		t.Fatal("expected error for empty area, got nil")
+	}
+}
+
+func TestFetchMunicipalities_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		municipalityOKResponse(w, []Municipality{{ID: "13101", Name: "千代田区"}})
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+
+	// 1回目: APIコール発生
+	if _, err := c.FetchMunicipalities(context.Background(), "13"); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	// 2回目: キャッシュから返す（APIコールなし）
+	if _, err := c.FetchMunicipalities(context.Background(), "13"); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (2nd call should hit cache)", apiCallCount)
+	}
+}
+
+func TestFetchMunicipalities_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchMunicipalities(context.Background(), "13")
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
 	}
 }

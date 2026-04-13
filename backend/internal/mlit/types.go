@@ -38,6 +38,18 @@ type Transaction struct {
 	Remarks          string `json:"Remarks"`          // 取引の事情等
 }
 
+// MunicipalityResponse は XIT002 市区町村一覧APIのレスポンス
+type MunicipalityResponse struct {
+	Status string         `json:"status"`
+	Data   []Municipality `json:"data"`
+}
+
+// Municipality は市区町村の1エントリ
+type Municipality struct {
+	ID   string `json:"id"`   // 市区町村コード (例: "13101")
+	Name string `json:"name"` // 市区町村名 (例: "千代田区")
+}
+
 // LandPriceQuery は土地価格取得APIのクエリパラメータ
 type LandPriceQuery struct {
 	Area         string // 都道府県コード (例: "10" = 群馬県)

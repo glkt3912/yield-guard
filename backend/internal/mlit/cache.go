@@ -18,13 +18,15 @@ type cacheEntry struct {
 
 // cache は TTL 付きインメモリキャッシュ
 type cache struct {
-	mu      sync.RWMutex
-	entries map[string]cacheEntry
+	mu          sync.RWMutex
+	entries     map[string]cacheEntry
+	muniEntries map[string]muniCacheEntry
 }
 
 func newCache() *cache {
 	return &cache{
-		entries: make(map[string]cacheEntry),
+		entries:     make(map[string]cacheEntry),
+		muniEntries: make(map[string]muniCacheEntry),
 	}
 }
 
@@ -59,6 +61,44 @@ func (c *cache) set(key string, data []domain.LandTransaction) {
 	defer c.mu.Unlock()
 
 	c.entries[key] = cacheEntry{
+		data:      data,
+		expiresAt: time.Now().Add(cacheTTL),
+	}
+}
+
+// muniCacheEntry は市区町村キャッシュの1エントリ
+type muniCacheEntry struct {
+	data      []Municipality
+	expiresAt time.Time
+}
+
+// getMuni は市区町村キャッシュを取得する。TTL 切れの場合はエントリを削除して (nil, false) を返す。
+func (c *cache) getMuni(area string) ([]Municipality, bool) {
+	c.mu.RLock()
+	entry, ok := c.muniEntries[area]
+	c.mu.RUnlock()
+
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.muniEntries, area)
+		c.mu.Unlock()
+		return nil, false
+	}
+
+	copied := make([]Municipality, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+// setMuni は市区町村キャッシュに保存する。
+func (c *cache) setMuni(area string, data []Municipality) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.muniEntries[area] = muniCacheEntry{
 		data:      data,
 		expiresAt: time.Now().Add(cacheTTL),
 	}

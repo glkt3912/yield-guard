@@ -14,6 +14,7 @@ import (
 // MLITClient は国交省APIクライアントのインターフェース（テスト時にモック注入可能）
 type MLITClient interface {
 	FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
+	FetchMunicipalities(ctx context.Context, area string) ([]mlit.Municipality, error)
 }
 
 type Handler struct {
@@ -173,6 +174,24 @@ func validateInvestmentInput(in domain.InvestmentInput) error {
 		return errors.New("holdingYears は 0〜50 年の範囲で指定してください")
 	}
 	return nil
+}
+
+// GetMunicipalities は指定都道府県の市区町村一覧を返す（XIT002）
+// GET /api/municipalities?area=10
+func (h *Handler) GetMunicipalities(c *gin.Context) {
+	area := c.Query("area")
+	if area == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "area は必須パラメータです"})
+		return
+	}
+
+	municipalities, err := h.mlitClient.FetchMunicipalities(c.Request.Context(), area)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "市区町村一覧の取得に失敗しました: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, municipalities)
 }
 
 // HealthCheck はサーバーの生存確認
