@@ -402,6 +402,34 @@ func TestCache_ReturnsCopy(t *testing.T) {
 	}
 }
 
+func TestCache_ConcurrentAccess(t *testing.T) {
+	// sync.RWMutex の正確な実装を -race フラグで検証する
+	// 複数ゴルーチンが同時に get / set を呼んでもデータレースが起きないことを確認する
+	c := newCache()
+	key := "concurrent-key"
+	data := []domain.LandTransaction{{Period: "2024年第1四半期", TradePrice: 10_000_000}}
+
+	const goroutines = 50
+	done := make(chan struct{})
+
+	// 書き込みゴルーチン
+	go func() {
+		for i := 0; i < goroutines; i++ {
+			c.set(key, data)
+		}
+		close(done)
+	}()
+
+	// 読み取りゴルーチン群（書き込みと並行）
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			c.get(key)
+		}()
+	}
+
+	<-done
+}
+
 func TestFetchLandPrices_APIStatusNotOK(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := APIResponse{Status: "ERROR", Data: nil}
