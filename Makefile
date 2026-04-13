@@ -29,6 +29,14 @@ build:
 	@echo "==> Frontend build"
 	cd frontend && npm run build
 
+## docker-up: Dockerコンテナをビルドして起動
+docker-up:
+	docker compose up --build
+
+## docker-down: Dockerコンテナを停止・削除
+docker-down:
+	docker compose down
+
 ## help: 利用可能なコマンドを表示
 help:
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/## //'
