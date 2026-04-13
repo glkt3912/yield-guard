@@ -81,7 +81,7 @@ func TestIsLandType(t *testing.T) {
 // ---- buildURL ----
 
 func newTestClient(serverURL string) *Client {
-	return &Client{httpClient: &http.Client{}, baseURL: serverURL}
+	return &Client{httpClient: &http.Client{}, baseURL: serverURL, cache: newCache()}
 }
 
 func TestBuildURL(t *testing.T) {
@@ -292,6 +292,142 @@ func TestFetchLandPrices_ContextTimeout(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error after context timeout, got nil")
 	}
+}
+
+// ---- キャッシュ ----
+
+func TestFetchLandPrices_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		okResponse(w)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	q := LandPriceQuery{Area: "13", Year: 2024, Quarter: 1, ToYear: 2024, ToQuarter: 4}
+
+	// 1回目: APIコール発生
+	result1, err := c.FetchLandPrices(context.Background(), q)
+	if err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+
+	// 2回目: キャッシュから返す（APIコールなし）
+	result2, err := c.FetchLandPrices(context.Background(), q)
+	if err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (2nd call should hit cache)", apiCallCount)
+	}
+	if len(result1) != len(result2) {
+		t.Errorf("result length mismatch: %d vs %d", len(result1), len(result2))
+	}
+}
+
+func TestFetchLandPrices_CacheMissOnDifferentQuery(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		okResponse(w)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	q1 := LandPriceQuery{Area: "13", Year: 2024, Quarter: 1, ToYear: 2024, ToQuarter: 4}
+	q2 := LandPriceQuery{Area: "27", Year: 2024, Quarter: 1, ToYear: 2024, ToQuarter: 4} // 大阪府
+
+	if _, err := c.FetchLandPrices(context.Background(), q1); err != nil {
+		t.Fatalf("q1 call failed: %v", err)
+	}
+	if _, err := c.FetchLandPrices(context.Background(), q2); err != nil {
+		t.Fatalf("q2 call failed: %v", err)
+	}
+
+	// クエリが異なるので両方APIコールが発生する
+	if apiCallCount != 2 {
+		t.Errorf("apiCallCount = %d, want 2 (different queries must not share cache)", apiCallCount)
+	}
+}
+
+func TestCache_TTLExpiry(t *testing.T) {
+	c := newCache()
+	key := "test-key"
+	data := []domain.LandTransaction{{Period: "2024年第1四半期", TradePrice: 10_000_000}}
+
+	// 有効期限を過去に設定して直接注入
+	c.mu.Lock()
+	c.entries[key] = cacheEntry{
+		data:      data,
+		expiresAt: time.Now().Add(-1 * time.Second), // 1秒前に期限切れ
+	}
+	c.mu.Unlock()
+
+	_, ok := c.get(key)
+	if ok {
+		t.Error("expected cache miss after TTL expiry, got hit")
+	}
+
+	// TTL切れエントリは get 後に削除されていること（メモリリーク対策）
+	c.mu.RLock()
+	_, stillExists := c.entries[key]
+	c.mu.RUnlock()
+	if stillExists {
+		t.Error("expected expired entry to be deleted from map, but it still exists")
+	}
+}
+
+func TestCache_ReturnsCopy(t *testing.T) {
+	c := newCache()
+	key := "test-key"
+	original := []domain.LandTransaction{{Period: "2024年第1四半期", TradePrice: 10_000_000}}
+	c.set(key, original)
+
+	result, ok := c.get(key)
+	if !ok {
+		t.Fatal("expected cache hit")
+	}
+
+	// 返されたスライスを変更してもキャッシュが汚染されないこと
+	result[0].TradePrice = 999
+
+	result2, ok := c.get(key)
+	if !ok {
+		t.Fatal("expected cache hit on 2nd get")
+	}
+	if result2[0].TradePrice != 10_000_000 {
+		t.Errorf("cache was mutated by caller: got TradePrice=%v, want 10000000", result2[0].TradePrice)
+	}
+}
+
+func TestCache_ConcurrentAccess(t *testing.T) {
+	// sync.RWMutex の正確な実装を -race フラグで検証する
+	// 複数ゴルーチンが同時に get / set を呼んでもデータレースが起きないことを確認する
+	c := newCache()
+	key := "concurrent-key"
+	data := []domain.LandTransaction{{Period: "2024年第1四半期", TradePrice: 10_000_000}}
+
+	const goroutines = 50
+	done := make(chan struct{})
+
+	// 書き込みゴルーチン
+	go func() {
+		for i := 0; i < goroutines; i++ {
+			c.set(key, data)
+		}
+		close(done)
+	}()
+
+	// 読み取りゴルーチン群（書き込みと並行）
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			c.get(key)
+		}()
+	}
+
+	<-done
 }
 
 func TestFetchLandPrices_APIStatusNotOK(t *testing.T) {

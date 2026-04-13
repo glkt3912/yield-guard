@@ -29,6 +29,7 @@ type Client struct {
 	httpClient *http.Client
 	baseURL    string
 	apiKey     string
+	cache      *cache
 }
 
 // NewClient は新しい Client を返す。
@@ -38,12 +39,19 @@ func NewClient() *Client {
 		httpClient: &http.Client{Timeout: requestTimeout},
 		baseURL:    mlitBaseURL,
 		apiKey:     os.Getenv("MLIT_API_KEY"),
+		cache:      newCache(),
 	}
 }
 
 // FetchLandPrices は指定条件で土地取引価格を取得し、統計を返す。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 // 一時的なネットワーク障害や 5xx レスポンスに対して指数バックオフでリトライする（ISSUE-13）。
 func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domain.LandTransaction, error) {
+	key := cacheKey(q)
+	if cached, ok := c.cache.get(key); ok {
+		return cached, nil
+	}
+
 	apiURL, err := c.buildURL(q)
 	if err != nil {
 		return nil, err
@@ -63,6 +71,7 @@ func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domai
 
 		result, err := c.doRequest(ctx, apiURL)
 		if err == nil {
+			c.cache.set(key, result)
 			return result, nil
 		}
 		lastErr = err
