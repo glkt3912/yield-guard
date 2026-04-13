@@ -32,7 +32,7 @@
 **技術スタック**
 
 - Backend: Go 1.25 / Gin / Clean Architecture
-- Frontend: Next.js 14 (App Router) / TypeScript / Tailwind CSS / Shadcn/UI / Recharts
+- Frontend: Next.js 16 (App Router) / TypeScript / Tailwind CSS v4 / Shadcn/UI / Recharts
 - Data: 国土交通省 不動産取引価格情報取得API（認証不要・公式）
 
 ## セットアップ
