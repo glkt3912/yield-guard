@@ -1,57 +1,24 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
-import type { LandPriceComparison } from "@/types/investment";
-
-function makeComparison(overrides: Partial<LandPriceComparison> = {}): LandPriceComparison {
-  return {
-    stats: {
-      count: 15,
-      averageTsubo: 300_000,
-      medianTsubo: 290_000,
-      minTsubo: 200_000,
-      maxTsubo: 400_000,
-      transactions: [],
-      lowDataWarning: false,
-    },
-    inputLandPrice: 10_000_000,
-    inputArea: 100,
-    inputPricePerTsubo: 330_000,
-    diffFromAverage: 30_000,
-    diffFromMedian: 40_000,
-    assessment: "割高",
-    ...overrides,
-  };
-}
+import { makeComparison, ZERO_STATS } from "./helpers";
 
 describe("LandPriceAnalysis", () => {
   describe("count === 0 のとき", () => {
     it("「取引データが見つかりませんでした」を表示する", () => {
-      render(
-        <LandPriceAnalysis
-          comparison={makeComparison({ stats: { count: 0, averageTsubo: 0, medianTsubo: 0, minTsubo: 0, maxTsubo: 0, transactions: [], lowDataWarning: false } })}
-        />
-      );
+      render(<LandPriceAnalysis comparison={makeComparison({ stats: ZERO_STATS })} />);
       expect(screen.getByText("取引データが見つかりませんでした")).toBeInTheDocument();
     });
 
     it("判定バッジを表示しない", () => {
-      render(
-        <LandPriceAnalysis
-          comparison={makeComparison({ stats: { count: 0, averageTsubo: 0, medianTsubo: 0, minTsubo: 0, maxTsubo: 0, transactions: [], lowDataWarning: false } })}
-        />
-      );
+      render(<LandPriceAnalysis comparison={makeComparison({ stats: ZERO_STATS })} />);
       expect(screen.queryByText("割高")).not.toBeInTheDocument();
       expect(screen.queryByText("割安")).not.toBeInTheDocument();
       expect(screen.queryByText("相場")).not.toBeInTheDocument();
     });
 
     it("統計グリッドを表示しない", () => {
-      render(
-        <LandPriceAnalysis
-          comparison={makeComparison({ stats: { count: 0, averageTsubo: 0, medianTsubo: 0, minTsubo: 0, maxTsubo: 0, transactions: [], lowDataWarning: false } })}
-        />
-      );
+      render(<LandPriceAnalysis comparison={makeComparison({ stats: ZERO_STATS })} />);
       expect(screen.queryByText("最安値")).not.toBeInTheDocument();
       expect(screen.queryByText("中央値")).not.toBeInTheDocument();
     });
