@@ -1,5 +1,8 @@
 frontend/node_modules
 frontend/.next
 
+# 環境変数（APIキー等を含むためgit管理外）
+.env
+
 # docs-mcp-server 設定（絶対パスがマシン依存のため）
 .mcp.json
