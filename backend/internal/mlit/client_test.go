@@ -369,6 +369,37 @@ func TestCache_TTLExpiry(t *testing.T) {
 	if ok {
 		t.Error("expected cache miss after TTL expiry, got hit")
 	}
+
+	// TTL切れエントリは get 後に削除されていること（メモリリーク対策）
+	c.mu.RLock()
+	_, stillExists := c.entries[key]
+	c.mu.RUnlock()
+	if stillExists {
+		t.Error("expected expired entry to be deleted from map, but it still exists")
+	}
+}
+
+func TestCache_ReturnsCopy(t *testing.T) {
+	c := newCache()
+	key := "test-key"
+	original := []domain.LandTransaction{{Period: "2024年第1四半期", TradePrice: 10_000_000}}
+	c.set(key, original)
+
+	result, ok := c.get(key)
+	if !ok {
+		t.Fatal("expected cache hit")
+	}
+
+	// 返されたスライスを変更してもキャッシュが汚染されないこと
+	result[0].TradePrice = 999
+
+	result2, ok := c.get(key)
+	if !ok {
+		t.Fatal("expected cache hit on 2nd get")
+	}
+	if result2[0].TradePrice != 10_000_000 {
+		t.Errorf("cache was mutated by caller: got TradePrice=%v, want 10000000", result2[0].TradePrice)
+	}
 }
 
 func TestFetchLandPrices_APIStatusNotOK(t *testing.T) {

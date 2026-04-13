@@ -28,16 +28,29 @@ func newCache() *cache {
 	}
 }
 
-// get はキャッシュを取得する。TTL 切れの場合は (nil, false) を返す。
+// get はキャッシュを取得する。TTL 切れの場合はエントリを削除して (nil, false) を返す。
+// 呼び出し元がスライスを変更してもキャッシュが汚染されないようコピーを返す。
 func (c *cache) get(key string) ([]domain.LandTransaction, bool) {
+	// まず読み取りロックで存在・有効期限を確認
 	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	entry, ok := c.entries[key]
-	if !ok || time.Now().After(entry.expiresAt) {
+	c.mu.RUnlock()
+
+	if !ok {
 		return nil, false
 	}
-	return entry.data, true
+	if time.Now().After(entry.expiresAt) {
+		// TTL 切れ: 書き込みロックに昇格してエントリを削除
+		c.mu.Lock()
+		delete(c.entries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+
+	// キャッシュヒット: コピーを返して呼び出し元による変更からキャッシュを保護する
+	copied := make([]domain.LandTransaction, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
 }
 
 // set はキャッシュに保存する。
