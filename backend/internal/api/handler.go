@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -10,11 +11,16 @@ import (
 	"github.com/yield-guard/backend/internal/mlit"
 )
 
-type Handler struct {
-	mlitClient *mlit.Client
+// MLITClient は国交省APIクライアントのインターフェース（テスト時にモック注入可能）
+type MLITClient interface {
+	FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
 }
 
-func NewHandler(mlitClient *mlit.Client) *Handler {
+type Handler struct {
+	mlitClient MLITClient
+}
+
+func NewHandler(mlitClient MLITClient) *Handler {
 	return &Handler{mlitClient: mlitClient}
 }
 
