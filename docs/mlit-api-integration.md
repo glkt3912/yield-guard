@@ -9,7 +9,7 @@
 | 項目 | 値 |
 |------|-----|
 | 正式名称 | 国土交通省 不動産情報ライブラリ API |
-| エンドポイント | `https://www.reinfolib.mlit.go.jp/ex-api/external/XIT001` |
+| ベースURL | `https://www.reinfolib.mlit.go.jp/ex-api/external` |
 | 認証 | **APIキー必須**（`Ocp-Apim-Subscription-Key` ヘッダー） |
 | 申請先 | https://www.reinfolib.mlit.go.jp/api/request/（審査5営業日） |
 | タイムアウト | 30秒（`requestTimeout = 30 * time.Second`） |
@@ -68,14 +68,14 @@ APIを使用するサービスには以下の文言を表示すること：
 
 ## 利用可能なAPIエンドポイント全一覧
 
-本プロジェクトで現在使用しているのは **XIT001** のみ。全31エンドポイントの活用方針を記載する。
+本プロジェクトで現在使用しているのは **XIT001, XIT002**。全31エンドポイントの活用方針を記載する。
 
 ### 価格情報
 
 | API ID | 名称 | 本PJ活用方針 | issue |
 |--------|------|------------|-------|
 | **XIT001** | 不動産価格（取引価格・成約価格）情報取得 | ✅ 使用中（土地取引価格・相場判定） | — |
-| **XIT002** | 都道府県内市区町村一覧取得 | 市区町村コードの動的取得・住所検索UI | #58 |
+| **XIT002** | 都道府県内市区町村一覧取得 | ✅ 使用中（市区町村コードの動的取得） | #58 |
 | **XCT001** | 鑑定評価書情報（地価公示・直近5年分） | 国の公式評価との2軸比較・トレンド算出 | #59 |
 | XPT001 | 不動産価格ポイントAPI | 地図上への取引価格プロット表示 | 未定 |
 | XPT002 | 地価公示・地価調査ポイントAPI（1995年〜） | 長期トレンド可視化・出口価格補正 | #59 |
@@ -145,17 +145,22 @@ APIを使用するサービスには以下の文言を表示すること：
 
 → issue #63 で実装予定
 
-> XIT002 を利用すると `types.go` の `Prefectures` マップのように静的に持っている市区町村一覧を動的取得に変更できる。issue #5 のキャッシュ基盤を流用して TTL 付きキャッシュを適用する予定（issue #58）。
-
 ---
 
 ## Client 構造体
 
 ```go
+const (
+    mlitBaseURL            = "https://www.reinfolib.mlit.go.jp/ex-api/external"
+    endpointLandPrices     = "/XIT001"
+    endpointMunicipalities = "/XIT002"
+)
+
 type Client struct {
     httpClient *http.Client
     baseURL    string  // デフォルト: mlitBaseURL（テスト時にモックサーバURLを注入可能）
     apiKey     string  // 環境変数 MLIT_API_KEY から読み込む
+    cache      *cache
 }
 
 func NewClient() *Client {
@@ -163,12 +168,52 @@ func NewClient() *Client {
         httpClient: &http.Client{Timeout: requestTimeout},
         baseURL:    mlitBaseURL,
         apiKey:     os.Getenv("MLIT_API_KEY"),
+        cache:      newCache(),
     }
 }
 ```
 
 `baseURL` をフィールドとして持つことで、`httptest.NewServer` で立てたモックサーバを差し込んでテストできる。
 `apiKey` が空の場合はヘッダーを付与しない（ローカル開発・テスト用）。
+
+---
+
+## XIT002 市区町村一覧API
+
+### エンドポイント
+
+```
+GET /ex-api/external/XIT002?area={都道府県コード}
+```
+
+### パラメータ
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `area` | 必須 | 都道府県コード（`"01"`〜`"47"`） |
+
+### レスポンス
+
+```json
+{
+  "status": "OK",
+  "data": [
+    { "id": "13101", "name": "千代田区" },
+    { "id": "13102", "name": "中央区" }
+  ]
+}
+```
+
+### バックエンドでの利用
+
+`FetchMunicipalities(ctx, area)` を呼び出すと、XIT002 から市区町村一覧を取得して返す。
+キャッシュ（TTL 24時間）に保存するため、同じ都道府県への2回目以降のリクエストはAPIコールをスキップする。
+
+```go
+func (c *Client) FetchMunicipalities(ctx context.Context, area string) ([]Municipality, error)
+```
+
+フロントエンドには `GET /api/municipalities?area=13` として公開されている（`handler.go` `GetMunicipalities`）。
 
 ---
 
@@ -329,18 +374,24 @@ type cacheEntry struct {
     expiresAt time.Time
 }
 
+type muniCacheEntry struct {
+    data      []Municipality
+    expiresAt time.Time
+}
+
 type cache struct {
-    mu      sync.RWMutex
-    entries map[string]cacheEntry
+    mu          sync.RWMutex
+    entries     map[string]cacheEntry      // XIT001 土地価格キャッシュ
+    muniEntries map[string]muniCacheEntry  // XIT002 市区町村キャッシュ（キー: 都道府県コード）
 }
 ```
 
 ### キャッシュキー
 
-```
-area:city:year:quarter:toYear:toQuarter
-例: "13::2024:1:2024:4"（東京都・市区町村指定なし・2024年通年）
-```
+| キャッシュ種別 | キー形式 | 例 |
+|---|---|---|
+| 土地価格（XIT001） | `area:city:year:quarter:toYear:toQuarter` | `"13::2024:1:2024:4"` |
+| 市区町村（XIT002） | 都道府県コード | `"13"` |
 
 ### 動作フロー
 
@@ -348,6 +399,10 @@ area:city:year:quarter:toYear:toQuarter
 FetchLandPrices() 呼び出し
   ├─ キャッシュヒット（TTL内）→ コピーを返す（APIコールなし）
   └─ キャッシュミス / TTL切れ → API呼び出し → 成功時にキャッシュ保存
+
+FetchMunicipalities() 呼び出し
+  ├─ キャッシュヒット（TTL内）→ コピーを返す（APIコールなし）
+  └─ キャッシュミス / TTL切れ → XIT002 呼び出し → 成功時にキャッシュ保存
 ```
 
 ### 設計上の判断
@@ -416,14 +471,18 @@ if diffFromMedian > stats.MedianTsubo * 0.10 {
 |--------|------|
 | `TestParseFloat` | 全角数字・カンマ・接尾辞・空文字・浮動小数点・負数 |
 | `TestIsLandType` | 宅地(土地) / 非土地 / 空文字 |
-| `TestBuildURL` | 必須パラメータ欠落エラー・quarter範囲外エラー・正常URL生成・cityオプション |
+| `TestBuildLandPricesURL` | 必須パラメータ欠落エラー・quarter範囲外エラー・正常URL生成・cityオプション |
 | `TestParseTransactions` | フィルタリング・単価算出・PricePerTsubo換算・空スライス |
-| `TestFetchLandPrices_InvalidQuery` | buildURL エラーで HTTP リクエストが発生しないこと |
+| `TestFetchLandPrices_InvalidQuery` | buildLandPricesURL エラーで HTTP リクエストが発生しないこと |
 | `TestFetchLandPrices_RetryOn5xx` | 5xx → リトライ → 成功（3回目） |
 | `TestFetchLandPrices_AllAttemptsFailWith5xx` | 3回連続5xx → エラー返却 |
 | `TestFetchLandPrices_NoRetryOn4xx` | 4xx → リトライなし即エラー |
 | `TestFetchLandPrices_ContextTimeout` | コンテキストタイムアウトでリトライ待機を中断 |
 | `TestFetchLandPrices_APIStatusNotOK` | status!=OK → 3回リトライ後エラー |
+| `TestFetchMunicipalities_Success` | XIT002 正常取得・パス/パラメータ検証 |
+| `TestFetchMunicipalities_EmptyArea` | area 空文字でエラー（HTTPリクエストなし） |
+| `TestFetchMunicipalities_CacheHit` | 2回目呼び出しがAPIコールなしでキャッシュから返る |
+| `TestFetchMunicipalities_4xxNoRetry` | 4xx でエラー返却（リトライなし） |
 
 ```bash
 # ユニットテスト（モックサーバ使用・APIキー不要）
