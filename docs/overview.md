@@ -20,7 +20,7 @@ Yield-Guard は不動産投資判断を支援するシミュレーションツ�
 ```
 [ブラウザ]
     ↓ http://localhost:3000
-[フロントエンド] Next.js 14 (App Router)
+[フロントエンド] Next.js 16 (App Router)
     ↓ fetch to http://localhost:8080
 [バックエンド] Go + Gin
     ↓ https://www.land.mlit.go.jp/...
@@ -43,10 +43,10 @@ Yield-Guard は不動産投資判断を支援するシミュレーションツ�
 
 | 技術 | 用途 |
 |------|------|
-| Next.js 14 (App Router) | フレームワーク |
-| React 18 | UI |
+| Next.js 16 (App Router) | フレームワーク |
+| React 19 | UI |
 | TypeScript | 言語 |
-| Tailwind CSS 3.4 | スタイリング |
+| Tailwind CSS 4.2 | スタイリング |
 | Shadcn/UI | コンポーネントライブラリ |
 | Recharts 2.12 | グラフ描画 |
 | Lucide React | アイコン |
@@ -144,9 +144,9 @@ npm test
 
 #### フロントエンドテストの方針
 
-- **ツール**: [Vitest](https://vitest.dev/) v2.x + [React Testing Library](https://testing-library.com/react)
+- **ツール**: [Vitest](https://vitest.dev/) v4.x + [React Testing Library](https://testing-library.com/react)
 - **環境**: jsdom（ブラウザAPI をエミュレート）
-- **JSX 変換**: `@vitejs/plugin-react` は使用せず vitest 内蔵の esbuild（`jsxImportSource: "react"`）で処理
+- **JSX 変換**: vitest 内蔵の oxc で処理（v4 で esbuild から移行）
 - **モック**: `ResizeObserver`（Recharts が要求）、APIコールは `vi.fn()` で差し替え
 - **テスト対象コンポーネント**:
   - `YieldAnalysis`: 8%しきい値による分岐（バッジ・カード・色）
@@ -154,7 +154,7 @@ npm test
   - `CashFlowChart`: 自己資金回収年の表示、exitTotalEquity の色分け
   - `InvestmentForm`: コールバック呼び出し、ローディング中のボタン無効化、詳細設定トグル
 
-> **`optionalDependencies` について**: `package.json` に `@emnapi/core` と `@emnapi/runtime` を `optionalDependencies` として明示しているが、これは直接依存ではない。`eslint-config-next` → `eslint-import-resolver-typescript` → `unrs-resolver` の依存チェーンが Linux 環境でこれらを必要とするが、macOS で生成したロックファイルにはプラットフォーム条件で含まれず `npm ci` が失敗するため、明示することでロックファイルへの収録を強制するワークアラウンド。
+> **`@emnapi` の `devDependencies` 明示について**: `@emnapi/core` と `@emnapi/runtime` は `next` → `sharp` のトランジティブ依存。npm 11（macOS arm64）は `optionalDependencies` に記載しても Linux 向けバイナリを lock ファイルから除外するため、`devDependencies` に移動して常に lock ファイルへの収録を強制するワークアラウンドを適用している。
 
 ---
 
