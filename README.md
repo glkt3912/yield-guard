@@ -21,11 +21,11 @@
 │  Frontend (Next.js)         │ ◄──────────► │  Backend (Go / Gin)         │
 │  localhost:3000             │              │  localhost:8080              │
 └─────────────────────────────┘              └──────────────┬──────────────┘
-                                                            │  HTTPS
+                                                            │  HTTPS + APIキー認証
                                                             ▼
                                               ┌─────────────────────────────┐
-                                              │  国交省 不動産取引価格API    │
-                                              │  land.mlit.go.jp            │
+                                              │  国交省 不動産情報ライブラリ  │
+                                              │  reinfolib.mlit.go.jp       │
                                               └─────────────────────────────┘
 ```
 
@@ -33,7 +33,7 @@
 
 - Backend: Go 1.25 / Gin / Clean Architecture
 - Frontend: Next.js 16 (App Router) / TypeScript / Tailwind CSS v4 / Shadcn/UI / Recharts
-- Data: 国土交通省 不動産取引価格情報取得API（認証不要・公式）
+- Data: 国土交通省 不動産情報ライブラリ API（APIキー必須・要申請）
 
 ## セットアップ
 
@@ -41,34 +41,43 @@
 # リポジトリのクローン
 git clone <repository-url>
 cd yield-guard
+
+# 環境変数の設定（プロジェクトルートに .env を作成）
+cp .env.example .env
+# .env を編集して MLIT_API_KEY を設定する
+# APIキー申請: https://www.reinfolib.mlit.go.jp/api/request/（審査5営業日）
 ```
 
-### バックエンド
+### Docker（推奨）
+
+```bash
+# ビルドして起動（初回のみ時間がかかります）
+make docker-up
+
+# 停止
+make docker-down
+```
+
+| サービス | URL |
+|---|---|
+| フロントエンド | http://localhost:3000 |
+| バックエンド | http://localhost:8080 |
+
+### ローカル開発（Docker不使用）
+
+**バックエンド**
 
 ```bash
 cd backend
-
-# 依存関係のインストール
 go mod tidy
-
-# 環境変数の設定（国交省APIキーが必要）
-cp ../.env.example .env
-# .env を編集して MLIT_API_KEY を設定する
-# 申請: https://www.reinfolib.mlit.go.jp/api/request/
-
-# 開発サーバー起動 (デフォルト: :8080)
-MLIT_API_KEY=your_key go run cmd/server/main.go
+go run cmd/server/main.go
 ```
 
-### フロントエンド
+**フロントエンド**
 
 ```bash
 cd frontend
-
-# 依存関係のインストール
 npm install
-
-# 開発サーバー起動 (デフォルト: :3000)
 npm run dev
 ```
 
@@ -118,6 +127,7 @@ yield-guard/
 │       ├── backend-ci.yml          # Go vet / test -race / build
 │       └── frontend-ci.yml         # lint / tsc / build
 ├── backend/
+│   ├── Dockerfile                  # マルチステージビルド（BuildKitキャッシュ最適化）
 │   ├── cmd/server/main.go          # エントリポイント
 │   └── internal/
 │       ├── domain/
@@ -125,8 +135,10 @@ yield-guard/
 │       │   ├── investment.go       # 収支計算ロジック（元利均等・減価償却・税金）
 │       │   └── investment_test.go  # ユニットテスト
 │       ├── mlit/
-│       │   ├── client.go           # 国交省APIクライアント（リトライ付き）
+│       │   ├── client.go           # 国交省APIクライアント（リトライ・キャッシュ付き）
+│       │   ├── cache.go            # TTL付きインメモリキャッシュ（24時間）
 │       │   ├── client_test.go      # ユニットテスト（httptest モック）
+│       │   ├── integration_test.go # 統合テスト（実API疎通・要APIキー）
 │       │   └── types.go            # APIレスポンス型
 │       └── api/
 │           ├── handler.go          # HTTPハンドラー
@@ -137,11 +149,14 @@ yield-guard/
 │   ├── domain-investment-calculation.md
 │   └── ...
 ├── frontend/
+│   ├── Dockerfile                  # マルチステージビルド
 │   └── src/
 │       ├── app/                    # Next.js App Router
 │       ├── components/             # UIコンポーネント
 │       ├── lib/                    # APIクライアント・計算ユーティリティ
 │       └── types/                  # TypeScript型定義
+├── docker-compose.yml              # backend + frontend 一括起動
+├── .env.example                    # 環境変数テンプレート
 └── README.md
 ```
 
@@ -150,11 +165,13 @@ yield-guard/
 ### よく使うコマンド
 
 ```bash
-make help    # 利用可能なコマンド一覧
-make test    # バックエンド・フロントエンドの全テスト実行
-make lint    # バックエンド（golangci-lint）・フロントエンド lint
-make build   # バックエンド・フロントエンドのビルド
-make dev     # 開発サーバー起動（backend :8080 + frontend :3000）
+make help        # 利用可能なコマンド一覧
+make dev         # 開発サーバー起動（backend :8080 + frontend :3000）
+make docker-up   # Dockerコンテナをビルドして起動
+make docker-down # Dockerコンテナを停止・削除
+make test        # バックエンド・フロントエンドの全テスト実行
+make lint        # バックエンド（golangci-lint）・フロントエンド lint
+make build       # バックエンド・フロントエンドのビルド
 ```
 
 個別に実行する場合：

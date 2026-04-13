@@ -23,8 +23,8 @@ Yield-Guard は不動産投資判断を支援するシミュレーションツ�
 [フロントエンド] Next.js 16 (App Router)
     ↓ fetch to http://localhost:8080
 [バックエンド] Go + Gin
-    ↓ https://www.land.mlit.go.jp/...
-[外部API] 国交省 不動産取引価格情報取得API
+    ↓ HTTPS + Ocp-Apim-Subscription-Key ヘッダー
+[外部API] 国交省 不動産情報ライブラリ API (reinfolib.mlit.go.jp)
 ```
 
 ---
@@ -58,6 +58,7 @@ Yield-Guard は不動産投資判断を支援するシミュレーションツ�
 ```
 yield-guard/
 ├── backend/
+│   ├── Dockerfile                 # マルチステージビルド（BuildKitキャッシュ最適化）
 │   ├── cmd/server/main.go         # エントリポイント・グレースフルシャットダウン
 │   └── internal/
 │       ├── domain/
@@ -66,12 +67,15 @@ yield-guard/
 │       │   └── investment_test.go # ユニットテスト
 │       ├── mlit/
 │       │   ├── client.go          # 国交省APIクライアント・リトライ
+│       │   ├── cache.go           # TTL付きインメモリキャッシュ（24時間）
 │       │   ├── client_test.go     # ユニットテスト（httptest モック）
+│       │   ├── integration_test.go # 統合テスト（実API疎通・要APIキー）
 │       │   └── types.go           # APIレスポンス型・都道府県マップ
 │       └── api/
 │           ├── handler.go         # HTTPハンドラー・バリデーション
 │           └── router.go          # Ginルーター・CORS設定
 ├── frontend/
+│   ├── Dockerfile                 # マルチステージビルド
 │   └── src/
 │       ├── app/
 │       │   ├── layout.tsx
@@ -89,6 +93,8 @@ yield-guard/
 │       │   └── utils.ts           # formatMan / formatPct / formatYen
 │       └── types/
 │           └── investment.ts      # TypeScript型定義・DEFAULT_INPUT
+├── docker-compose.yml             # backend + frontend 一括起動
+├── .env.example                   # 環境変数テンプレート
 ├── docs/                          # ドキュメント（docs-mcp-server用）
 │   ├── metadata.json
 │   ├── overview.md
@@ -100,19 +106,32 @@ yield-guard/
 
 ## 開発サーバー起動手順
 
-### バックエンド
+### Docker（推奨）
+
+```bash
+cp .env.example .env   # MLIT_API_KEY を設定する
+make docker-up         # backend :8080 + frontend :3000 を一括起動
+```
+
+### ローカル開発
+
+**バックエンド**
 
 ```bash
 cd backend
 go mod tidy
-PORT=8080 go run cmd/server/main.go
+go run cmd/server/main.go
 ```
 
-環境変数:
-- `PORT`: リッスンポート（デフォルト: `8080`）
-- `ALLOW_ORIGINS`: CORS許可オリジン（デフォルト: `http://localhost:3000`）
+環境変数（プロジェクトルートの `.env` から読み込む）:
 
-### フロントエンド
+| 変数名 | 説明 | デフォルト |
+|---|---|---|
+| `PORT` | リッスンポート | `8080` |
+| `ALLOW_ORIGINS` | CORS許可オリジン | `http://localhost:3000` |
+| `MLIT_API_KEY` | 不動産情報ライブラリ APIキー（必須） | — |
+
+**フロントエンド**
 
 ```bash
 cd frontend
