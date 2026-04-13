@@ -21,6 +21,7 @@ func init() {
 // mockMLITClient は MLITClient インターフェースのテスト用モック
 type mockMLITClient struct {
 	fetchFunc func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
+	muniFunc  func(ctx context.Context, area string) ([]mlit.Municipality, error)
 }
 
 func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
@@ -28,6 +29,13 @@ func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQu
 		panic("mockMLITClient.FetchLandPrices called unexpectedly (fetchFunc is nil)")
 	}
 	return m.fetchFunc(ctx, q)
+}
+
+func (m *mockMLITClient) FetchMunicipalities(ctx context.Context, area string) ([]mlit.Municipality, error) {
+	if m.muniFunc == nil {
+		return []mlit.Municipality{}, nil
+	}
+	return m.muniFunc(ctx, area)
 }
 
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す
