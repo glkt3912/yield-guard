@@ -1,5 +1,5 @@
 .PHONY: dev test lint build help \
-        mlit-land-prices mlit-municipalities mlit-prefectures
+        mlit-land-prices mlit-municipalities
 
 ## dev: バックエンド・フロントエンドの開発サーバーを起動
 dev:
@@ -47,7 +47,6 @@ help:
 # APIキーは .env の MLIT_API_KEY から読み込む（git管理外）
 # ---------------------------------------------------------------------------
 MLIT_BASE := https://www.reinfolib.mlit.go.jp/ex-api/external
-_mlit_key  = $$(source .env 2>/dev/null && echo $$MLIT_API_KEY)
 
 ## mlit-land-prices: 土地取引価格を取得 (XIT001)
 ##   使い方: make mlit-land-prices area=13 year=2024 quarter=1 to_year=2024 to_quarter=4 [city=13101]
