@@ -361,3 +361,69 @@ func TestCompareLandPrice(t *testing.T) {
 		t.Errorf("Assessment = %q, want '割安' (pricePerTsubo=%.0f)", comparison2.Assessment, comparison2.InputPricePerTsubo)
 	}
 }
+
+func TestCalcCriticalErrors_DeadCrossEarly(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:    5_000_000,
+		BuildingCost: 10_000_000,
+		BuildingAge:  0,
+		BuildingType: BuildingTypeWood,
+	}
+	// デッドクロス5年目 → REJECT
+	errs := calcCriticalErrors(input, 5, 22)
+	found := false
+	for _, e := range errs {
+		if e.Code == "DEADCROSS_EARLY" && e.Status == CriticalStatusReject {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected DEADCROSS_EARLY REJECT when deadCrossYear=5")
+	}
+
+	// デッドクロス15年目 → 対象外
+	errs2 := calcCriticalErrors(input, 15, 22)
+	for _, e := range errs2 {
+		if e.Code == "DEADCROSS_EARLY" {
+			t.Error("unexpected DEADCROSS_EARLY when deadCrossYear=15")
+		}
+	}
+}
+
+func TestCalcCriticalErrors_LandValueGuard(t *testing.T) {
+	// 築20年木造: residualLife=6, usefulLife=22
+	// 積算 = 5M + 10M*(6/22) = 5M + 2.73M = 7.73M
+	// 購入総額 = 15M → 7.73/15 = 51.5% → 閾値超のためREJECTなし
+	input := InvestmentInput{
+		LandPrice:    5_000_000,
+		BuildingCost: 10_000_000,
+		BuildingAge:  20,
+		BuildingType: BuildingTypeWood,
+	}
+	errs := calcCriticalErrors(input, -1, 22)
+	for _, e := range errs {
+		if e.Code == "LAND_VALUE_GUARD" {
+			t.Errorf("unexpected LAND_VALUE_GUARD for 51.5%% appraisal ratio")
+		}
+	}
+
+	// 築25年木造(法定超): residualLife=4, usefulLife=22
+	// 積算 = 5M + 10M*(4/22) = 5M + 1.82M = 6.82M
+	// 購入総額 = 20M → 6.82/20 = 34% → REJECT
+	input2 := InvestmentInput{
+		LandPrice:    5_000_000,
+		BuildingCost: 15_000_000,
+		BuildingAge:  25,
+		BuildingType: BuildingTypeWood,
+	}
+	errs2 := calcCriticalErrors(input2, -1, 22)
+	found := false
+	for _, e := range errs2 {
+		if e.Code == "LAND_VALUE_GUARD" && e.Status == CriticalStatusReject {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected LAND_VALUE_GUARD REJECT when appraisal ratio is 34%")
+	}
+}

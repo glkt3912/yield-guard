@@ -137,6 +137,8 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		input, yearlyResults, accumulatedDepreciation, miscExpenses,
 	)
 
+	criticalErrors := calcCriticalErrors(input, deadCrossYear, usefulLife)
+
 	return InvestmentResult{
 		TotalInvestment:       totalInvestment,
 		MiscExpenses:          miscExpenses,
@@ -145,14 +147,55 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		IsAbove8Percent:       grossYield >= targetYield8pct,
 		RequiredCostReduction: landDrop,
 		RequiredMonthlyRent:   requiredRent,
-		DeadCrossYear:            deadCrossYear,
-		YearlyResults:            yearlyResults,
-		ExitSalePrice:            exitSalePrice,
-		ExitCapitalGain:          exitCapGain,
-		ExitTransferTax:          exitTax,
-		ExitNetProceeds:          exitNet,
-		ExitTotalEquity:          exitEquity,
+		DeadCrossYear:         deadCrossYear,
+		YearlyResults:         yearlyResults,
+		CriticalErrors:        criticalErrors,
+		ExitSalePrice:         exitSalePrice,
+		ExitCapitalGain:       exitCapGain,
+		ExitTransferTax:       exitTax,
+		ExitNetProceeds:       exitNet,
+		ExitTotalEquity:       exitEquity,
 	}
+}
+
+// calcCriticalErrors はPhase 1の重大リスク項目を判定する
+func calcCriticalErrors(input InvestmentInput, deadCrossYear, usefulLife int) []CriticalError {
+	var errs []CriticalError
+
+	// LAND_VALUE_GUARD: 積算評価額が購入総額の50%未満
+	// 積算評価 = 土地価格 + 建物費用 × (残存耐用年数 / 法定耐用年数)
+	totalPurchase := input.LandPrice + input.BuildingCost
+	residualLife := CalcResidualUsefulLife(input.BuildingType, input.BuildingAge)
+	buildingAppraisedValue := input.BuildingCost * float64(residualLife) / float64(usefulLife)
+	appraisedValue := input.LandPrice + buildingAppraisedValue
+	if totalPurchase > 0 && appraisedValue < totalPurchase*0.5 {
+		errs = append(errs, CriticalError{
+			Code:   "LAND_VALUE_GUARD",
+			Status: CriticalStatusReject,
+			Message: fmt.Sprintf(
+				"積算評価額（%.0f万円）が購入総額（%.0f万円）の50%%未満です。"+
+					"銀行の担保評価が低くなり次の買主がローンを組めない可能性があります。",
+				appraisedValue/10000, totalPurchase/10000,
+			),
+		})
+	}
+
+	// DEADCROSS_EARLY: デッドクロスが10年以内に発生
+	if deadCrossYear > 0 && deadCrossYear <= 10 {
+		errs = append(errs, CriticalError{
+			Code:   "DEADCROSS_EARLY",
+			Status: CriticalStatusReject,
+			Message: fmt.Sprintf(
+				"%d年目にデッドクロスが発生します。帳簿上は黒字でもキャッシュ不足に陥るリスクがあります。",
+				deadCrossYear,
+			),
+		})
+	}
+
+	if errs == nil {
+		errs = []CriticalError{}
+	}
+	return errs
 }
 
 // calcMonthlyPayment は元利均等返済の月次返済額を計算する
