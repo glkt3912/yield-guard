@@ -144,7 +144,7 @@ func TestAnalyze_ValidInput(t *testing.T) {
 	r := newTestRouter(&mockMLITClient{})
 
 	body, _ := json.Marshal(validBase)
-	req := httptest.NewRequest(http.MethodPost, "/api/analyze", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/investment/analyze", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -164,7 +164,7 @@ func TestAnalyze_ValidInput(t *testing.T) {
 func TestAnalyze_InvalidJSON(t *testing.T) {
 	r := newTestRouter(&mockMLITClient{})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/analyze", bytes.NewBufferString("not-json"))
+	req := httptest.NewRequest(http.MethodPost, "/api/investment/analyze", bytes.NewBufferString("not-json"))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -180,7 +180,7 @@ func TestAnalyze_ValidationError(t *testing.T) {
 	invalid := validBase
 	invalid.LandPrice = -1
 	body, _ := json.Marshal(invalid)
-	req := httptest.NewRequest(http.MethodPost, "/api/analyze", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/investment/analyze", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -197,7 +197,7 @@ func TestAnalyze_ValidationError(t *testing.T) {
 
 func TestGetLandPrices_MissingArea(t *testing.T) {
 	r := newTestRouter(&mockMLITClient{})
-	req := httptest.NewRequest(http.MethodGet, "/api/land-prices?year=2024&quarter=1&to_year=2024&to_quarter=4", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/stats?year=2024&quarter=1&to_year=2024&to_quarter=4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -208,7 +208,7 @@ func TestGetLandPrices_MissingArea(t *testing.T) {
 
 func TestGetLandPrices_InvalidYear(t *testing.T) {
 	r := newTestRouter(&mockMLITClient{})
-	req := httptest.NewRequest(http.MethodGet, "/api/land-prices?area=13&year=2000&quarter=1&to_year=2024&to_quarter=4", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/stats?area=13&year=2000&quarter=1&to_year=2024&to_quarter=4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -219,7 +219,7 @@ func TestGetLandPrices_InvalidYear(t *testing.T) {
 
 func TestGetLandPrices_InvalidQuarter(t *testing.T) {
 	r := newTestRouter(&mockMLITClient{})
-	req := httptest.NewRequest(http.MethodGet, "/api/land-prices?area=13&year=2024&quarter=5&to_year=2024&to_quarter=4", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/stats?area=13&year=2024&quarter=5&to_year=2024&to_quarter=4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -235,7 +235,7 @@ func TestGetLandPrices_APIError(t *testing.T) {
 		},
 	}
 	r := newTestRouter(client)
-	req := httptest.NewRequest(http.MethodGet, "/api/land-prices?area=13&year=2024&quarter=1&to_year=2024&to_quarter=4", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/stats?area=13&year=2024&quarter=1&to_year=2024&to_quarter=4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -253,7 +253,7 @@ func TestGetLandPrices_Success(t *testing.T) {
 		},
 	}
 	r := newTestRouter(client)
-	req := httptest.NewRequest(http.MethodGet, "/api/land-prices?area=13&year=2024&quarter=1&to_year=2024&to_quarter=4", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/stats?area=13&year=2024&quarter=1&to_year=2024&to_quarter=4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
