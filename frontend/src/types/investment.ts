@@ -40,6 +40,7 @@ export interface InvestmentInput {
   exitYieldTarget: number;
   vacancyRateDelta: number;
   loanRateDelta: number;
+  annualPropertyTax: number;  // 固定資産税・都市計画税（年間）。0 = ExpenseRateに含む。
 }
 
 export interface YearlyResult {
@@ -60,13 +61,29 @@ export interface YearlyResult {
   isInDeadCrossZone: boolean;   // デッドクロス継続ゾーン
 }
 
+export interface AcquisitionCostBreakdown {
+  brokerageFee: number;               // 仲介手数料（税込）
+  stampDuty: number;                  // 印紙税
+  registrationTax: number;            // 登録免許税
+  realEstateAcquisitionTax: number;   // 不動産取得税
+  propertyTaxProration: number;       // 固定資産税日割り精算
+  total: number;
+}
+
+export interface CriticalError {
+  code: string;
+  level: "REJECT" | "WARNING";
+  message: string;
+  detail: string;
+}
+
 export interface InvestmentResult {
   totalInvestment: number;
   miscExpenses: number;
   grossYield: number;
   netYield: number;
   isAbove8Percent: boolean;
-  requiredCostReduction: number;  // 土地または建築費いずれか一方の削減必要額
+  requiredCostReduction: number;
   requiredMonthlyRent: number;
   deadCrossYear: number;
   yearlyResults: YearlyResult[];
@@ -131,6 +148,7 @@ export const DEFAULT_INPUT: InvestmentInput = {
   exitYieldTarget: 0.06,
   vacancyRateDelta: 0,
   loanRateDelta: 0,
+  annualPropertyTax: 0,
 };
 
 export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
