@@ -50,25 +50,90 @@ func CalcStampDuty(price float64) float64 {
 	}
 }
 
+// CalcRegistrationTax は登録免許税合計（所有権移転登記＋抵当権設定登記）を算出する。
+//
+// 適用税率（根拠: 租税特別措置法・不動産登記法）:
+//   - 土地所有権移転: 固定資産税評価額 × 2.0%（本則。軽減措置 〜2026/3/31 期限切れ）
+//   - 建物所有権移転（中古）: 固定資産税評価額 × 2.0%
+//   - 建物所有権保存（新築）: 固定資産税評価額 × 0.15%（軽減措置 〜2027/3/31）
+//   - 抵当権設定: 融資額 × 0.4%（投資用物件は住宅ローン軽減0.1%対象外）
+func CalcRegistrationTax(landAssessed, buildingAssessed, loanAmount float64, isNewBuilding bool) float64 {
+	landTransfer := landAssessed * 0.02
+
+	var buildingTransfer float64
+	if isNewBuilding {
+		// 根拠: 租税特別措置法72条の2 新築住宅用建物の所有権保存登記 軽減措置
+		buildingTransfer = buildingAssessed * 0.0015
+	} else {
+		buildingTransfer = buildingAssessed * 0.02
+	}
+
+	mortgage := loanAmount * 0.004 // 抵当権設定: 0.4%
+
+	return math.Round(landTransfer + buildingTransfer + mortgage)
+}
+
+// CalcRealEstateAcquisitionTax は不動産取得税の概算を算出する。
+// 根拠: 地方税法73条の15、租税特別措置法11条の5（特例税率3%、〜2027/3/31）
+//
+// 計算式:
+//   - 土地: 固定資産税評価額 × 1/2 × 3%（1/2課税は租税特別措置法11条の5第2項）
+//   - 建物: 固定資産税評価額 × 3%
+//
+// 注意: 住宅用土地の特例控除（45,000円控除等）は建物面積等が必要なため含まない概算値。
+func CalcRealEstateAcquisitionTax(landAssessed, buildingAssessed float64) float64 {
+	const taxRate = 0.03 // 特例税率 〜2027/3/31
+	landTax := landAssessed * 0.5 * taxRate
+	buildingTax := buildingAssessed * taxRate
+	return math.Round(landTax + buildingTax)
+}
+
 // AcquisitionCostOptions は諸経費計算のオプション
 type AcquisitionCostOptions struct {
 	// BrokerageMultiplier: 1.0=標準, 0.0=仲介手数料無料, 0.5=半額
 	BrokerageMultiplier float64
+
+	// 固定資産税評価額（0 = 推定モード: 土地×70%・建物×60%）
+	AssessedLandValue     float64
+	AssessedBuildingValue float64
+
+	// LoanAmount は抵当権設定登記の計算に使用（0 = 融資なし）
+	LoanAmount float64
+
+	// IsNewBuilding は建物所有権保存登記（新築）か移転登記（中古）かを示す
+	IsNewBuilding bool
 }
 
 // DefaultAcquisitionCostOptions は標準的な取引条件のオプションを返す
+// 評価額は推定モード（取得価格ベース）、融資なし想定
 func DefaultAcquisitionCostOptions() AcquisitionCostOptions {
 	return AcquisitionCostOptions{BrokerageMultiplier: 1.0}
 }
 
-// CalcAcquisitionCosts は取得時の諸経費（#75スコープ）を算出する。
-// 登録免許税・不動産取得税（#76）と固定資産税日割り（#77）は後続issueで追加。
-func CalcAcquisitionCosts(totalPrice float64, opts AcquisitionCostOptions) AcquisitionCostBreakdown {
+// CalcAcquisitionCosts は取得時の諸経費を算出する。
+// 評価額が未入力（0）の場合は推定モード（土地: landPrice×70%、建物: buildingCost×60%）を使用する。
+func CalcAcquisitionCosts(landPrice, buildingCost float64, opts AcquisitionCostOptions) AcquisitionCostBreakdown {
+	totalPrice := landPrice + buildingCost
 	brokerage := CalcBrokerageFee(totalPrice, opts.BrokerageMultiplier)
 	stamp := CalcStampDuty(totalPrice)
+
+	assessedLand := opts.AssessedLandValue
+	if assessedLand == 0 {
+		assessedLand = landPrice * 0.7
+	}
+	assessedBuilding := opts.AssessedBuildingValue
+	if assessedBuilding == 0 {
+		assessedBuilding = buildingCost * 0.6
+	}
+
+	regTax := CalcRegistrationTax(assessedLand, assessedBuilding, opts.LoanAmount, opts.IsNewBuilding)
+	acqTax := CalcRealEstateAcquisitionTax(assessedLand, assessedBuilding)
+
 	return AcquisitionCostBreakdown{
-		BrokerageFee: brokerage,
-		StampDuty:    stamp,
-		Total:        brokerage + stamp,
+		BrokerageFee:             brokerage,
+		StampDuty:                stamp,
+		RegistrationTax:          regTax,
+		RealEstateAcquisitionTax: acqTax,
+		Total:                    brokerage + stamp + regTax + acqTax,
 	}
 }
