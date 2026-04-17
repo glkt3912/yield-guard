@@ -104,7 +104,7 @@ export function Dashboard() {
               </div>
             )}
 
-            {comparison && <LandPriceAnalysis comparison={comparison} />}
+            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} />}
 
             {result && lastInput && (
               <>
