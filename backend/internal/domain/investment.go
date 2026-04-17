@@ -137,10 +137,13 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		input, yearlyResults, accumulatedDepreciation, miscExpenses,
 	)
 
-	// 取得時諸経費の内訳（#76・#77で登録免許税等が追加される）
 	acquisitionCosts := CalcAcquisitionCosts(
-		input.LandPrice+input.BuildingCost,
-		DefaultAcquisitionCostOptions(),
+		input.LandPrice,
+		input.BuildingCost,
+		AcquisitionCostOptions{
+			BrokerageMultiplier: 1.0,
+			LoanAmount:          input.LoanAmount,
+		},
 	)
 
 	return InvestmentResult{
