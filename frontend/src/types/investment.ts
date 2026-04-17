@@ -4,6 +4,12 @@ export interface CriticalError {
   message: string;
 }
 
+export interface AcquisitionCostBreakdown {
+  brokerageFee: number;
+  stampDuty: number;
+  total: number;
+}
+
 export type BuildingType =
   | "木造"
   | "軽量鉄骨(4mm以下)"
@@ -61,12 +67,13 @@ export interface InvestmentResult {
   requiredMonthlyRent: number;
   deadCrossYear: number;
   yearlyResults: YearlyResult[];
+  criticalErrors: CriticalError[];
+  acquisitionCosts: AcquisitionCostBreakdown;
   exitSalePrice: number;
   exitCapitalGain: number;
   exitTransferTax: number;
   exitNetProceeds: number;
   exitTotalEquity: number;
-  criticalErrors: CriticalError[];
 }
 
 export interface LandTransaction {
