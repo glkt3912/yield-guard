@@ -72,6 +72,9 @@ type InvestmentInput struct {
 	// 出口戦略: 売却時目標利回り（実質ベース。NOI / 売却価格）
 	ExitYieldTarget float64 `json:"exitYieldTarget"` // 例: 0.06
 
+	// 現況空室率: 現時点の実際の空室状況（0の場合はVacancyRateと同一とみなす）
+	ActualVacancyRate float64 `json:"actualVacancyRate"`
+
 	// ストレステスト用オフセット
 	VacancyRateDelta float64 `json:"vacancyRateDelta"` // 空室率上昇分 (例: +0.10)
 	LoanRateDelta    float64 `json:"loanRateDelta"`    // 金利上昇分 (例: +0.015)
