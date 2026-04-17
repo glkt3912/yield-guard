@@ -32,7 +32,7 @@ export async function fetchLandPrices(params: {
     to_quarter: String(params.toQuarter),
   });
   if (params.city) q.set("city", params.city);
-  const res = await fetch(`${BASE}/land-prices?${q}`);
+  const res = await fetch(`${BASE}/land-prices/stats?${q}`);
   return handleResponse<LandPriceStats>(res);
 }
 
@@ -74,7 +74,7 @@ export async function fetchMunicipalities(area: string): Promise<Municipality[]>
 
 /** 投資シミュレーションを実行 */
 export async function analyze(input: InvestmentInput): Promise<InvestmentResult> {
-  const res = await fetch(`${BASE}/analyze`, {
+  const res = await fetch(`${BASE}/investment/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
