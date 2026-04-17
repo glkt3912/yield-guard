@@ -83,12 +83,22 @@ export interface LandPriceStats {
   lowDataWarning: boolean;
   warningMessage?: string;
   zoning?: ZoningSummary;
+  urbanRisks?: UrbanRisk[];
 }
 
 export interface ZoningSummary {
   cityPlanning: string;
   buildingCoverage: string;
   floorAreaRatio: string;
+}
+
+export type UrbanRiskLevel = "ERROR" | "WARNING" | "INFO";
+
+export interface UrbanRisk {
+  code: string;
+  level: UrbanRiskLevel;
+  title: string;
+  description: string;
 }
 
 export interface LandPriceComparison {

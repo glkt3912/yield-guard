@@ -159,6 +159,23 @@ type ZoningSummary struct {
 	FloorAreaRatio   string `json:"floorAreaRatio"`   // 最頻の容積率（例: 200%）
 }
 
+// UrbanRiskLevel は都市計画リスクの深刻度
+type UrbanRiskLevel string
+
+const (
+	UrbanRiskLevelError   UrbanRiskLevel = "ERROR"
+	UrbanRiskLevelWarning UrbanRiskLevel = "WARNING"
+	UrbanRiskLevelInfo    UrbanRiskLevel = "INFO"
+)
+
+// UrbanRisk は都市計画上のリスク項目
+type UrbanRisk struct {
+	Code        string         `json:"code"`        // リスクコード（例: URBANIZATION_CONTROL）
+	Level       UrbanRiskLevel `json:"level"`       // ERROR / WARNING / INFO
+	Title       string         `json:"title"`       // 短いタイトル
+	Description string         `json:"description"` // 詳細説明
+}
+
 type LandPriceStats struct {
 	Count          int               `json:"count"`
 	AverageTsubo   float64           `json:"averageTsubo"`
@@ -168,7 +185,8 @@ type LandPriceStats struct {
 	Transactions   []LandTransaction `json:"transactions"`
 	LowDataWarning bool              `json:"lowDataWarning"` // 件数 < 10 件時 true
 	WarningMessage string            `json:"warningMessage,omitempty"`
-	Zoning         *ZoningSummary    `json:"zoning,omitempty"` // 取引データから抽出した用途地域情報
+	Zoning         *ZoningSummary    `json:"zoning,omitempty"`      // 取引データから抽出した用途地域情報
+	UrbanRisks     []UrbanRisk       `json:"urbanRisks,omitempty"` // 都市計画リスク一覧
 }
 
 // LandPriceComparison は検討中の土地価格と相場の比較
