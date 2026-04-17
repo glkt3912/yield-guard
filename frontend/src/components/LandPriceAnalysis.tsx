@@ -12,12 +12,23 @@ import {
 } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { LandPriceComparison } from "@/types/investment";
-import { formatTsubo } from "@/lib/utils";
-import { MapPin, AlertTriangle, SearchX } from "lucide-react";
+import type { InvestmentInput, LandPriceComparison } from "@/types/investment";
+import { formatMan, formatTsubo } from "@/lib/utils";
+import { MapPin, AlertTriangle, SearchX, Home } from "lucide-react";
+
+const SQM_PER_TSUBO = 3.30578;
+
+type LandValueJudgment = "土地値割れ" | "土地値近辺" | "土地値超";
+
+function calcLandValueJudgment(totalPrice: number, estimatedLandValue: number): LandValueJudgment {
+  if (totalPrice < estimatedLandValue) return "土地値割れ";
+  if (totalPrice <= estimatedLandValue * 1.5) return "土地値近辺";
+  return "土地値超";
+}
 
 interface Props {
   comparison: LandPriceComparison;
+  input?: InvestmentInput | null;
 }
 
 const ASSESSMENT_BADGE: Record<string, "success" | "warning" | "danger"> = {
@@ -26,8 +37,17 @@ const ASSESSMENT_BADGE: Record<string, "success" | "warning" | "danger"> = {
   割高: "danger",
 };
 
-export function LandPriceAnalysis({ comparison }: Props) {
+export function LandPriceAnalysis({ comparison, input }: Props) {
   const { stats, assessment, inputPricePerTsubo, diffFromMedian } = comparison;
+
+  const landValueSection = (() => {
+    if (!input || stats.count === 0 || stats.medianTsubo === 0 || comparison.inputArea === 0) return null;
+    const estimatedLandValue = stats.medianTsubo * (comparison.inputArea / SQM_PER_TSUBO);
+    const totalPrice = input.landPrice + input.buildingCost;
+    const judgment = calcLandValueJudgment(totalPrice, estimatedLandValue);
+    const diff = estimatedLandValue - totalPrice;
+    return { estimatedLandValue, totalPrice, judgment, diff };
+  })();
 
   // 件数 0 件: 統計・グラフ・判定をすべて非表示
   if (stats.count === 0) {
@@ -189,6 +209,56 @@ export function LandPriceAnalysis({ comparison }: Props) {
             </ResponsiveContainer>
           </>
         )}
+        {/* 土地値割れ判定 */}
+        {landValueSection && (() => {
+          const { estimatedLandValue, totalPrice, judgment, diff } = landValueSection;
+          const colorMap: Record<LandValueJudgment, string> = {
+            "土地値割れ": "border-green-300 bg-green-50",
+            "土地値近辺": "border-yellow-200 bg-yellow-50",
+            "土地値超": "border-red-200 bg-red-50",
+          };
+          const badgeMap: Record<LandValueJudgment, "success" | "warning" | "danger"> = {
+            "土地値割れ": "success",
+            "土地値近辺": "warning",
+            "土地値超": "danger",
+          };
+          const descMap: Record<LandValueJudgment, string> = {
+            "土地値割れ": "解体しても土地売却で回収可能。安全余白あり",
+            "土地値近辺": "建物価値を含むと相場水準。築古注意",
+            "土地値超": "建物込み価格。建物価値が失われると含み損リスク",
+          };
+          return (
+            <div className={`rounded-md border p-3 ${colorMap[judgment]}`}>
+              <div className="flex items-center justify-between mb-2">
+                <p className="flex items-center gap-1 text-sm font-semibold">
+                  <Home className="h-4 w-4" />
+                  土地値割れ判定
+                </p>
+                <Badge variant={badgeMap[judgment]}>{judgment}</Badge>
+              </div>
+              <dl className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">土地概算価値（中央値×面積）</dt>
+                  <dd className="font-medium">{formatMan(estimatedLandValue)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">総取得価格（土地+建物）</dt>
+                  <dd className="font-medium">{formatMan(totalPrice)}</dd>
+                </div>
+                <div className="flex justify-between border-t pt-1">
+                  <dt className="text-muted-foreground">差額（概算価値 − 総取得価格）</dt>
+                  <dd className={`font-bold ${diff >= 0 ? "text-green-700" : "text-red-700"}`}>
+                    {diff >= 0 ? "+" : ""}{formatMan(diff)}
+                  </dd>
+                </div>
+              </dl>
+              <p className="mt-2 text-xs text-muted-foreground">{descMap[judgment]}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                ※相場データは宅地取引の中央値を使用。用途地域により実際の価値は異なります。
+              </p>
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );
