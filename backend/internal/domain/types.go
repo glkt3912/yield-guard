@@ -146,15 +146,26 @@ type InvestmentResult struct {
 	RequiredCostReduction float64 `json:"requiredCostReduction"`
 	RequiredMonthlyRent   float64 `json:"requiredMonthlyRent"` // または必要月額賃料
 
-	DeadCrossYear  int             `json:"deadCrossYear"` // -1 = デッドクロスなし
-	YearlyResults  []YearlyResult  `json:"yearlyResults"`
-	CriticalErrors []CriticalError `json:"criticalErrors"`
+	DeadCrossYear    int                      `json:"deadCrossYear"` // -1 = デッドクロスなし
+	YearlyResults    []YearlyResult           `json:"yearlyResults"`
+	CriticalErrors   []CriticalError          `json:"criticalErrors"`
+	AcquisitionCosts AcquisitionCostBreakdown `json:"acquisitionCosts"`
 
 	ExitSalePrice   float64 `json:"exitSalePrice"`   // 売却価格（NOI/目標利回り）
 	ExitCapitalGain float64 `json:"exitCapitalGain"` // 譲渡所得
 	ExitTransferTax float64 `json:"exitTransferTax"` // 譲渡所得税
 	ExitNetProceeds float64 `json:"exitNetProceeds"` // 売却手取り（税・残債控除後）
 	ExitTotalEquity float64 `json:"exitTotalEquity"` // 最終手残り（売却手取り+累積CF）
+}
+
+// AcquisitionCostBreakdown は物件取得時の諸経費内訳
+// #75: 仲介手数料・印紙税
+// #76: 登録免許税・抵当権設定費・不動産取得税（後続issueで追加）
+// #77: 固定資産税日割り精算（後続issueで追加）
+type AcquisitionCostBreakdown struct {
+	BrokerageFee float64 `json:"brokerageFee"` // 仲介手数料（税込）
+	StampDuty    float64 `json:"stampDuty"`    // 印紙税（売買契約書）
+	Total        float64 `json:"total"`        // 合計（後続issueの項目を含む）
 }
 
 // LandTransaction は国交省APIから取得した土地取引1件
