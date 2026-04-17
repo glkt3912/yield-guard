@@ -69,6 +69,15 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
     exitTransferTax: 400_000,
     exitNetProceeds: 11_600_000,
     exitTotalEquity: 3_000_000,
+    acquisitionCosts: {
+      brokerageFee: 561_000,
+      stampDuty: 20_000,
+      registrationTax: 420_000,
+      realEstateAcquisitionTax: 315_000,
+      propertyTaxProration: 0,
+      total: 1_316_000,
+    },
+    criticalErrors: [],
     ...overrides,
   };
 }

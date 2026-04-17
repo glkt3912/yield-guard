@@ -5,6 +5,7 @@ import { YieldAnalysis } from "@/components/YieldAnalysis";
 import { CashFlowChart } from "@/components/CashFlowChart";
 import { DeadCrossChart } from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
+import CostBreakdown from "@/components/CostBreakdown";
 import type { InvestmentInput, InvestmentResult, LandPriceComparison } from "@/types/investment";
 import { analyze, compareLandPrice } from "@/lib/api";
 import { ShieldAlert } from "lucide-react";
@@ -109,6 +110,16 @@ export function Dashboard() {
             {result && lastInput && (
               <>
                 <YieldAnalysis result={result} />
+                {result.acquisitionCosts && (
+                  <div className="rounded-xl border bg-white p-5 shadow-sm">
+                    <CostBreakdown
+                      input={lastInput}
+                      acquisitionCosts={result.acquisitionCosts}
+                      yearlyResults={result.yearlyResults}
+                      miscExpenses={result.miscExpenses}
+                    />
+                  </div>
+                )}
                 {/* 自己資金 = 総投資額 - ローン金額（ISSUE-22: 投資回収年の正確な計算に使用） */}
                 <CashFlowChart result={result} equityInvested={result.totalInvestment - lastInput.loanAmount} />
                 <DeadCrossChart result={result} />
