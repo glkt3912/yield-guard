@@ -78,6 +78,9 @@ type InvestmentInput struct {
 	// ストレステスト用オフセット
 	VacancyRateDelta float64 `json:"vacancyRateDelta"` // 空室率上昇分 (例: +0.10)
 	LoanRateDelta    float64 `json:"loanRateDelta"`    // 金利上昇分 (例: +0.015)
+
+	// 固定資産税・都市計画税（年間合計）。0 の場合は ExpenseRate に含まれる想定。
+	AnnualPropertyTax float64 `json:"annualPropertyTax"`
 }
 
 // Defaults は構造的デフォルト（省略可能なフィールド）にのみ適用する。
@@ -159,14 +162,12 @@ type InvestmentResult struct {
 }
 
 // AcquisitionCostBreakdown は物件取得時の諸経費内訳
-// #75: 仲介手数料・印紙税
-// #76: 登録免許税・不動産取得税（本issue）
-// #77: 固定資産税日割り精算（後続issueで追加）
 type AcquisitionCostBreakdown struct {
 	BrokerageFee             float64 `json:"brokerageFee"`             // 仲介手数料（税込）
 	StampDuty                float64 `json:"stampDuty"`                // 印紙税（売買契約書）
 	RegistrationTax          float64 `json:"registrationTax"`          // 登録免許税（所有権移転+抵当権設定）
 	RealEstateAcquisitionTax float64 `json:"realEstateAcquisitionTax"` // 不動産取得税（概算）
+	PropertyTaxProration     float64 `json:"propertyTaxProration"`     // 固定資産税日割り精算（買主負担分）
 	Total                    float64 `json:"total"`
 }
 
