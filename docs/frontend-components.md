@@ -125,6 +125,7 @@ const equityInvested = result.totalInvestment - input.loanAmount
 
 **props**:
 - `result: InvestmentResult`
+- `input: InvestmentInput`
 
 **ゲージ設計**:
 ```typescript
@@ -144,6 +145,18 @@ targetPosition = (TARGET_PCT / MAX_YIELD_PCT) * 100           // = 50%（常に�
 **8%超え時の表示**:
 - `(grossYield - 0.08)`: 目標に対する余裕度（%表示）
 - 「賃料が何%下落すると8%を下回るか」も表示: `(grossYield - 0.08) / grossYield`
+
+**空室率シナリオ比較テーブル**:
+
+フロントエンドのみで3シナリオを計算して表示する（バックエンド呼び出しなし）。
+
+| シナリオ | 空室率 | 計算式 |
+|---------|--------|--------|
+| 満室想定 | 0% | `grossYield × (1 - expenseRate)` |
+| 現況 | `actualVacancyRate`（0の場合は`vacancyRate`にフォールバック） | `grossYield × (1 - actualV) × (1 - expenseRate)` |
+| ストレス | `actualV + vacancyRateDelta`（上限99%） | `grossYield × (1 - stressV) × (1 - expenseRate)` |
+
+表面利回りが8%以上の行は緑、未満は赤で表示。
 
 ---
 
@@ -260,6 +273,7 @@ export const DEFAULT_INPUT: InvestmentInput = {
   holdingYears: 10,
   exitYieldTarget: 0.06,
   vacancyRate: 0.05,
+  actualVacancyRate: 0,  // 未入力扱い（シナリオ比較では vacancyRate にフォールバック）
   miscExpenseRate: 0.07,
   vacancyRateDelta: 0,
   loanRateDelta: 0,

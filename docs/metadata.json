@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-03-28",
+  "lastUpdated": "2026-04-17",
   "documents": [
     {
       "id": "overview",
@@ -16,11 +16,11 @@
       "id": "domain-investment-calculation",
       "path": "docs/domain-investment-calculation.md",
       "title": "投資計算ロジック詳細仕様",
-      "description": "表面利回り・実質利回り・元利均等返済・課税所得・税引後キャッシュフロー・8%逆算の計算式と実装根拠。InvestmentInput/InvestmentResult/YearlyResult の全フィールド解説。",
-      "tags": ["利回り", "キャッシュフロー", "ローン", "元利均等", "投資計算", "表面利回り", "実質利回り", "8%境界線"],
+      "description": "表面利回り・実質利回り・元利均等返済・課税所得・税引後キャッシュフロー・8%逆算の計算式と実装根拠。InvestmentInput/InvestmentResult/YearlyResult の全フィールド解説。ActualVacancyRate（現況空室率）フィールド含む。",
+      "tags": ["利回り", "キャッシュフロー", "ローン", "元利均等", "投資計算", "表面利回り", "実質利回り", "8%境界線", "空室率"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["grossYield", "netYield", "calcMonthlyPayment", "calcYearlyLoanComponents", "TaxableIncome", "AfterTaxCashFlow", "calcRequired8pct", "ストレステスト", "InvestmentInput", "YearlyResult"],
-      "updatedAt": "2026-03-28"
+      "topics": ["grossYield", "netYield", "calcMonthlyPayment", "calcYearlyLoanComponents", "TaxableIncome", "AfterTaxCashFlow", "calcRequired8pct", "ストレステスト", "InvestmentInput", "YearlyResult", "ActualVacancyRate", "actualVacancyRate", "VacancyRate"],
+      "updatedAt": "2026-04-17"
     },
     {
       "id": "domain-depreciation-dead-cross",
@@ -43,14 +43,24 @@
       "updatedAt": "2026-03-28"
     },
     {
+      "id": "domain-zoning",
+      "path": "docs/domain-zoning.md",
+      "title": "用途地域・都市計画区域 ドメイン型仕様",
+      "description": "ZoningType（13種）・ZoningRiskLevel（None/Caution/High）・ZoningMeta（建ぺい率・容積率・リスクメッセージ）・CityPlanningArea（4種）の定義と変換関数仕様。都市計画法第8条準拠。",
+      "tags": ["用途地域", "都市計画", "ゾーニング", "リスク", "不動産"],
+      "industry": ["不動産"],
+      "topics": ["ZoningType", "ZoningRiskLevel", "ZoningMeta", "CityPlanningArea", "ParseZoningType", "ParseCityPlanningArea", "IsHighRisk", "市街化調整区域", "工業専用地域", "田園住居地域", "建ぺい率", "容積率", "都市計画法"],
+      "updatedAt": "2026-04-17"
+    },
+    {
       "id": "api-reference",
       "path": "docs/api-reference.md",
       "title": "APIリファレンス",
-      "description": "全エンドポイント（/api/land-prices、/api/land-prices/compare、/api/analyze、/api/prefectures、/health）の入出力・バリデーション範囲・エラー仕様。CORS設定とALLOW_ORIGINS環境変数。",
+      "description": "全エンドポイント（/api/land-prices/stats、/api/land-prices/compare、/api/investment/analyze、/api/municipalities、/health）の入出力・バリデーション範囲・エラー仕様。CORS設定とALLOW_ORIGINS環境変数。",
       "tags": ["API", "エンドポイント", "REST", "バリデーション", "CORS"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["GET /api/land-prices", "GET /api/land-prices/compare", "POST /api/analyze", "GET /api/prefectures", "GET /health", "InvestmentInput", "InvestmentResult", "LandPriceStats", "LandPriceComparison", "エラーレスポンス", "Gin"],
-      "updatedAt": "2026-03-28"
+      "topics": ["GET /api/land-prices/stats", "GET /api/land-prices/compare", "POST /api/investment/analyze", "GET /api/municipalities", "GET /health", "InvestmentInput", "InvestmentResult", "LandPriceStats", "LandPriceComparison", "エラーレスポンス", "Gin"],
+      "updatedAt": "2026-04-17"
     },
     {
       "id": "mlit-api-integration",
@@ -66,11 +76,11 @@
       "id": "frontend-components",
       "path": "docs/frontend-components.md",
       "title": "フロントエンドコンポーネント仕様",
-      "description": "Dashboard・InvestmentForm・YieldAnalysis・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック・ストレステストスライダー・breakEvenYear計算・二軸グラフ設計",
-      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ"],
+      "description": "Dashboard・InvestmentForm・YieldAnalysis・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック・ストレステストスライダー・breakEvenYear計算・二軸グラフ設計。YieldAnalysisの空室率3シナリオ比較テーブル含む。",
+      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ", "空室率", "シナリオ"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "breakEvenYear", "equityInvested", "DEFAULT_INPUT", "BUILDING_USEFUL_LIFE"],
-      "updatedAt": "2026-03-28"
+      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "breakEvenYear", "equityInvested", "DEFAULT_INPUT", "BUILDING_USEFUL_LIFE", "actualVacancyRate", "シナリオ比較", "満室想定", "現況", "ストレス"],
+      "updatedAt": "2026-04-17"
     }
   ]
 }
