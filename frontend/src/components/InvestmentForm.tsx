@@ -278,7 +278,10 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
                   value={toPct(input.miscExpenseRate, 1)}
                   onChange={(e) => setNum("miscExpenseRate", fromPct(e.target.value))}
                   error={errors.miscExpenseRate} />
-                <Input label="空室率" type="number" suffix="%" step="1"
+                <Input label="現況空室率" type="number" suffix="%" step="1"
+                  value={toPct(input.actualVacancyRate, 0)}
+                  onChange={(e) => setNum("actualVacancyRate", fromPct(e.target.value))} />
+                <Input label="想定空室率（長期）" type="number" suffix="%" step="1"
                   value={toPct(input.vacancyRate, 0)}
                   onChange={(e) => setNum("vacancyRate", fromPct(e.target.value))}
                   error={errors.vacancyRate} />
