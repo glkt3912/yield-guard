@@ -1,3 +1,9 @@
+export interface CriticalError {
+  code: string;
+  status: "REJECT" | "WARNING";
+  message: string;
+}
+
 export type BuildingType =
   | "木造"
   | "軽量鉄骨(4mm以下)"
@@ -60,6 +66,7 @@ export interface InvestmentResult {
   exitTransferTax: number;
   exitNetProceeds: number;
   exitTotalEquity: number;
+  criticalErrors: CriticalError[];
 }
 
 export interface LandTransaction {
