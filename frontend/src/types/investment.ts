@@ -82,6 +82,13 @@ export interface LandPriceStats {
   transactions: LandTransaction[];
   lowDataWarning: boolean;
   warningMessage?: string;
+  zoning?: ZoningSummary;
+}
+
+export interface ZoningSummary {
+  cityPlanning: string;
+  buildingCoverage: string;
+  floorAreaRatio: string;
 }
 
 export interface LandPriceComparison {
