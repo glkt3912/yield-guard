@@ -108,7 +108,7 @@ export function Dashboard() {
 
             {result && lastInput && (
               <>
-                <YieldAnalysis result={result} />
+                <YieldAnalysis result={result} input={lastInput} />
                 {/* 自己資金 = 総投資額 - ローン金額（ISSUE-22: 投資回収年の正確な計算に使用） */}
                 <CashFlowChart result={result} equityInvested={result.totalInvestment - lastInput.loanAmount} />
                 <DeadCrossChart result={result} />

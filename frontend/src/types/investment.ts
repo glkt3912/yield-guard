@@ -13,7 +13,8 @@ export interface InvestmentInput {
   buildingAge: number;    // 築年数 (0=新築)
   miscExpenseRate: number;
   monthlyRent: number;
-  vacancyRate: number;
+  vacancyRate: number;        // 想定空室率（長期シミュレーション用）
+  actualVacancyRate: number;  // 現況空室率（現時点の実態）
   loanAmount: number;
   annualLoanRate: number;
   loanYears: number;
@@ -102,6 +103,7 @@ export const DEFAULT_INPUT: InvestmentInput = {
   miscExpenseRate: 0.07,
   monthlyRent: 120_000,
   vacancyRate: 0.05,
+  actualVacancyRate: 0,
   loanAmount: 13_000_000,
   annualLoanRate: 0.015,
   loanYears: 35,

@@ -13,7 +13,8 @@
 | `BuildingAge` | int | 年 | 築年数（0 = 新築） | — |
 | `MiscExpenseRate` | float64 | 率 | 諸経費率（0.07 = 7%） | 0.07 |
 | `MonthlyRent` | float64 | 円/月 | 満室想定月額賃料 | — |
-| `VacancyRate` | float64 | 率 | 空室率（0.05 = 5%） | — |
+| `VacancyRate` | float64 | 率 | 想定空室率・長期シミュレーション用（0.05 = 5%） | — |
+| `ActualVacancyRate` | float64 | 率 | 現況空室率・現時点の実態（0 = 未入力扱い。フロントのシナリオ比較のみで使用。バックエンド計算には影響しない） | — |
 | `LoanAmount` | float64 | 円 | ローン金額 | — |
 | `AnnualLoanRate` | float64 | 率 | 年利（0.015 = 1.5%） | — |
 | `LoanYears` | int | 年 | ローン期間 | 35 |
