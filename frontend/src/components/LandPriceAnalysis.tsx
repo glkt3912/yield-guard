@@ -12,9 +12,9 @@ import {
 } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { InvestmentInput, LandPriceComparison } from "@/types/investment";
+import type { InvestmentInput, LandPriceComparison, UrbanRiskLevel } from "@/types/investment";
 import { formatMan, formatTsubo } from "@/lib/utils";
-import { MapPin, AlertTriangle, SearchX, Home, Building2 } from "lucide-react";
+import { MapPin, AlertTriangle, SearchX, Home, Building2, ShieldAlert, ShieldCheck } from "lucide-react";
 
 const SQM_PER_TSUBO = 3.30578;
 
@@ -35,6 +35,27 @@ const ASSESSMENT_BADGE: Record<string, "success" | "warning" | "danger"> = {
   割安: "success",
   相場: "warning",
   割高: "danger",
+};
+
+const RISK_STYLE: Record<UrbanRiskLevel, { border: string; bg: string; text: string; icon: React.ReactNode }> = {
+  ERROR: {
+    border: "border-red-300",
+    bg: "bg-red-50",
+    text: "text-red-900",
+    icon: <ShieldAlert className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />,
+  },
+  WARNING: {
+    border: "border-yellow-300",
+    bg: "bg-yellow-50",
+    text: "text-yellow-900",
+    icon: <AlertTriangle className="h-4 w-4 shrink-0 text-yellow-600 mt-0.5" />,
+  },
+  INFO: {
+    border: "border-blue-300",
+    bg: "bg-blue-50",
+    text: "text-blue-900",
+    icon: <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600 mt-0.5" />,
+  },
 };
 
 export function LandPriceAnalysis({ comparison, input }: Props) {
@@ -106,6 +127,27 @@ export function LandPriceAnalysis({ comparison, input }: Props) {
               </p>
               <p className="text-xs mt-0.5">以下の結果は参考値としてご確認ください。</p>
             </div>
+          </div>
+        )}
+
+        {/* 都市計画リスク警告 */}
+        {stats.urbanRisks && stats.urbanRisks.length > 0 && (
+          <div className="space-y-2">
+            {stats.urbanRisks.map((risk) => {
+              const style = RISK_STYLE[risk.level];
+              return (
+                <div
+                  key={risk.code}
+                  className={`flex items-start gap-2 rounded-md border ${style.border} ${style.bg} px-3 py-2`}
+                >
+                  {style.icon}
+                  <div>
+                    <p className={`text-xs font-semibold ${style.text}`}>{risk.title}</p>
+                    <p className={`text-xs mt-0.5 ${style.text}`}>{risk.description}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
