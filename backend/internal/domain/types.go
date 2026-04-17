@@ -119,6 +119,21 @@ type YearlyResult struct {
 	IsInDeadCrossZone    bool    `json:"isInDeadCrossZone"` // デッドクロス継続中
 }
 
+// CriticalErrorStatus は重大エラーの深刻度
+type CriticalErrorStatus string
+
+const (
+	CriticalStatusReject  CriticalErrorStatus = "REJECT"
+	CriticalStatusWarning CriticalErrorStatus = "WARNING"
+)
+
+// CriticalError は投資判断における重大リスク項目
+type CriticalError struct {
+	Code    string              `json:"code"`
+	Status  CriticalErrorStatus `json:"status"`
+	Message string              `json:"message"`
+}
+
 // InvestmentResult は収支シミュレーションの結果
 type InvestmentResult struct {
 	TotalInvestment float64 `json:"totalInvestment"` // 総投資額（土地+建物+諸経費）
@@ -131,8 +146,9 @@ type InvestmentResult struct {
 	RequiredCostReduction float64 `json:"requiredCostReduction"`
 	RequiredMonthlyRent   float64 `json:"requiredMonthlyRent"` // または必要月額賃料
 
-	DeadCrossYear int            `json:"deadCrossYear"` // -1 = デッドクロスなし
-	YearlyResults []YearlyResult `json:"yearlyResults"`
+	DeadCrossYear  int             `json:"deadCrossYear"` // -1 = デッドクロスなし
+	YearlyResults  []YearlyResult  `json:"yearlyResults"`
+	CriticalErrors []CriticalError `json:"criticalErrors"`
 
 	ExitSalePrice   float64 `json:"exitSalePrice"`   // 売却価格（NOI/目標利回り）
 	ExitCapitalGain float64 `json:"exitCapitalGain"` // 譲渡所得
