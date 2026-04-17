@@ -24,7 +24,7 @@ func CalcBrokerageFee(price, multiplier float64) float64 {
 
 // CalcStampDuty は売買契約書の印紙税を返す。
 // 根拠: 印紙税法別表第一 第1号文書（不動産譲渡契約書）
-// 2024年4月以降は軽減措置終了のため本則税率を適用。
+// 軽減措置は2027年3月31日まで延長中だが、本則税率で保守的に試算する（国税庁・令和6年度税制改正）。
 func CalcStampDuty(price float64) float64 {
 	switch {
 	case price <= 100_000:
