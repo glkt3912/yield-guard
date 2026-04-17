@@ -88,6 +88,7 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
     requiredMonthlyRent: 120_000,
     deadCrossYear: 0,
     yearlyResults,
+    criticalErrors: [],
     exitSalePrice: 12_000_000,
     exitCapitalGain: 2_000_000,
     exitTransferTax: 400_000,
