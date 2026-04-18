@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/domain"
@@ -15,6 +16,7 @@ import (
 type MLITClient interface {
 	FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
 	FetchMunicipalities(ctx context.Context, area string) ([]mlit.Municipality, error)
+	FetchStationRidership(ctx context.Context, area, city string) ([]mlit.StationRidership, error)
 }
 
 type Handler struct {
@@ -218,6 +220,8 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 		stationMinutes, _ = strconv.Atoi(sm)
 	}
 
+	ridershipScore := domain.RidershipDemandScore(c.Query("ridership_score"))
+
 	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "国交省APIからのデータ取得に失敗しました: " + err.Error()})
@@ -230,6 +234,7 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 		LandArea:       areaSqm,
 		BuildingAge:    buildingAge,
 		StationMinutes: stationMinutes,
+		RidershipScore: ridershipScore,
 	})
 	if !ok {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "理論価格の推定に必要なデータが不足しています（取引事例に建築年データがありません）"})
@@ -237,6 +242,49 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// GetStationRidership は指定エリアの駅別乗降客数と需要スコアを返す（XKT015）
+// GET /api/station-ridership?area=13&city=13113
+func (h *Handler) GetStationRidership(c *gin.Context) {
+	area := c.Query("area")
+	if area == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "area は必須パラメータです"})
+		return
+	}
+	city := c.Query("city")
+
+	stations, err := h.mlitClient.FetchStationRidership(c.Request.Context(), area, city)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "駅別乗降客数の取得に失敗しました: " + err.Error()})
+		return
+	}
+
+	results := make([]domain.StationRidershipResult, 0, len(stations))
+	for _, s := range stations {
+		passengers := int(parsePassengers(s.Passengers))
+		score := domain.CalcRidershipDemandScore(passengers)
+		results = append(results, domain.StationRidershipResult{
+			StationName: s.StationName,
+			LineName:    s.LineName,
+			Passengers:  passengers,
+			DemandScore: score,
+			Correction:  domain.RidershipCorrectionFactor(score),
+		})
+	}
+
+	c.JSON(http.StatusOK, results)
+}
+
+// parsePassengers は乗降客数の文字列をfloat64にパースする
+func parsePassengers(s string) float64 {
+	s = strings.ReplaceAll(s, ",", "")
+	s = strings.TrimSpace(s)
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0
+	}
+	return v
 }
 
 // GetMunicipalities は指定都道府県の市区町村一覧を返す（XIT002）

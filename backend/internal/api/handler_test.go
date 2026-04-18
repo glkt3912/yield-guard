@@ -20,8 +20,9 @@ func init() {
 
 // mockMLITClient は MLITClient インターフェースのテスト用モック
 type mockMLITClient struct {
-	fetchFunc func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
-	muniFunc  func(ctx context.Context, area string) ([]mlit.Municipality, error)
+	fetchFunc      func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
+	muniFunc       func(ctx context.Context, area string) ([]mlit.Municipality, error)
+	ridershipFunc  func(ctx context.Context, area, city string) ([]mlit.StationRidership, error)
 }
 
 func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
@@ -36,6 +37,13 @@ func (m *mockMLITClient) FetchMunicipalities(ctx context.Context, area string) (
 		return []mlit.Municipality{}, nil
 	}
 	return m.muniFunc(ctx, area)
+}
+
+func (m *mockMLITClient) FetchStationRidership(ctx context.Context, area, city string) ([]mlit.StationRidership, error) {
+	if m.ridershipFunc == nil {
+		return []mlit.StationRidership{}, nil
+	}
+	return m.ridershipFunc(ctx, area, city)
 }
 
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す
