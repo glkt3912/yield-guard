@@ -429,6 +429,22 @@ FetchMunicipalities() 呼び出し
 - `PricePerTsubo == 0` のデータは統計から除外
 - **`lowDataWarning = true`**: 有効データが 10件未満のとき
 
+**用途地域サマリー抽出（`calcZoningSummary`）**:
+
+`CalcLandPriceStats` 内で呼び出され、取引データから最頻の用途地域情報を抽出して `LandPriceStats.Zoning` に格納する。
+
+```go
+type ZoningSummary struct {
+    CityPlanning     string  // 最頻の用途地域（例: 第一種住居地域）
+    BuildingCoverage string  // 最頻の建ぺい率（例: 60%）
+    FloorAreaRatio   string  // 最頻の容積率（例: 200%）
+}
+```
+
+- `modalString()` で各フィールドの最頻値（空文字除外）を取得
+- 3フィールドすべて空の場合は `nil` を返す（`json:"zoning,omitempty"` で出力省略）
+- 同数タイの場合は Go の map イテレーション順に依存（非決定論的）
+
 ---
 
 ## 相場判定ロジック（`CompareLandPrice`）

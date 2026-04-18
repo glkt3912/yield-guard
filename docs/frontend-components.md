@@ -126,6 +126,18 @@ const equityInvested = result.totalInvestment - input.loanAmount
 - `"相場"` → 黄バッジ（データ不足時は「相場（参考値）」）
 - `"割高"` → 赤バッジ（データ不足時は「割高（参考値）」）
 
+**用途地域情報パネル（`stats.zoning`）**:
+
+`stats.zoning` が存在する場合のみ青いパネルで表示。取引データの最頻値から抽出した参考情報。
+
+| フィールド | 表示ラベル |
+|-----------|----------|
+| `cityPlanning` | 用途地域 |
+| `buildingCoverage` | 建ぺい率 |
+| `floorAreaRatio` | 容積率 |
+
+各フィールドは個別に `&&` で存在チェックし、空文字の場合は非表示。
+
 ---
 
 ## YieldAnalysis
