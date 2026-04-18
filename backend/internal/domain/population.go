@@ -36,7 +36,7 @@ type PopulationForecastResult struct {
 func CalcPopulationForecast(items []PopulationForecastItem) PopulationForecastResult {
 	snapshots := make([]PopulationSnapshot, 0, len(items))
 	for _, it := range items {
-		snapshots = append(snapshots, PopulationSnapshot{Year: it.Year, Pop: it.Pop})
+		snapshots = append(snapshots, PopulationSnapshot(it))
 	}
 
 	var base, future float64
