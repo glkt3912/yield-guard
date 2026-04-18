@@ -68,7 +68,7 @@ APIを使用するサービスには以下の文言を表示すること：
 
 ## 利用可能なAPIエンドポイント全一覧
 
-本プロジェクトで現在使用しているのは **XIT001, XIT002**。全31エンドポイントの活用方針を記載する。
+本プロジェクトで現在使用しているのは **XIT001, XIT002, XKT015**。全31エンドポイントの活用方針を記載する。
 
 ### 価格情報
 
@@ -110,8 +110,8 @@ APIを使用するサービスには以下の文言を表示すること：
 
 | API ID | 名称 | 本PJ活用方針 | issue |
 |--------|------|------------|-------|
-| **XKT013** | 将来推計人口（250mメッシュ） | 人口減少シナリオによるストレステスト自動生成 | #64 |
-| **XKT015** | 駅別乗降客数 | 駅勢力による賃貸需要補正・理論価格推定精度向上 | #65 |
+| **XKT013** | 将来推計人口（250mメッシュ） | 人口減少シナリオによるストレステスト自動生成 | #63 |
+| **XKT015** | 駅別乗降客数 | ✅ 使用中（駅規模による賃貸需要スコア・理論価格補正） | #64 |
 | XKT031 | 人口集中地区 | 都市度の判定・賃貸需要の参考指標 | 未定 |
 
 ### 防災情報
@@ -151,9 +151,10 @@ APIを使用するサービスには以下の文言を表示すること：
 
 ```go
 const (
-    mlitBaseURL            = "https://www.reinfolib.mlit.go.jp/ex-api/external"
-    endpointLandPrices     = "/XIT001"
-    endpointMunicipalities = "/XIT002"
+    mlitBaseURL              = "https://www.reinfolib.mlit.go.jp/ex-api/external"
+    endpointLandPrices       = "/XIT001"
+    endpointMunicipalities   = "/XIT002"
+    endpointStationRidership = "/XKT015"
 )
 
 type Client struct {
@@ -380,9 +381,10 @@ type muniCacheEntry struct {
 }
 
 type cache struct {
-    mu          sync.RWMutex
-    entries     map[string]cacheEntry      // XIT001 土地価格キャッシュ
-    muniEntries map[string]muniCacheEntry  // XIT002 市区町村キャッシュ（キー: 都道府県コード）
+    mu               sync.RWMutex
+    entries          map[string]cacheEntry          // XIT001 土地価格キャッシュ
+    muniEntries      map[string]muniCacheEntry      // XIT002 市区町村キャッシュ（キー: 都道府県コード）
+    ridershipEntries map[string]ridershipCacheEntry // XKT015 乗降客数キャッシュ（キー: "ridership:area:city"）
 }
 ```
 
@@ -392,6 +394,7 @@ type cache struct {
 |---|---|---|
 | 土地価格（XIT001） | `area:city:year:quarter:toYear:toQuarter` | `"13::2024:1:2024:4"` |
 | 市区町村（XIT002） | 都道府県コード | `"13"` |
+| 駅別乗降客数（XKT015） | `ridership:area:city` | `"ridership:13:13113"` |
 
 ### 動作フロー
 
@@ -403,6 +406,10 @@ FetchLandPrices() 呼び出し
 FetchMunicipalities() 呼び出し
   ├─ キャッシュヒット（TTL内）→ コピーを返す（APIコールなし）
   └─ キャッシュミス / TTL切れ → XIT002 呼び出し → 成功時にキャッシュ保存
+
+FetchStationRidership() 呼び出し
+  ├─ キャッシュヒット（TTL内）→ コピーを返す（APIコールなし）
+  └─ キャッシュミス / TTL切れ → XKT015 呼び出し → 成功時にキャッシュ保存
 ```
 
 ### 設計上の判断

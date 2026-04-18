@@ -122,7 +122,7 @@
 
 ## GET /api/land-prices/estimate
 
-築年数・駅距離補正による理論価格と販売価格乖離率を返す。
+築年数・駅距離・需要スコア補正による理論価格と販売価格乖離率を返す。
 
 ### クエリパラメータ
 
@@ -137,15 +137,17 @@
 | `area_sqm` | 必須 | 土地面積（m²、正の数値） |
 | `building_age` | 任意 | 物件築年数（省略時は 0） |
 | `station_minutes` | 任意 | 最寄り駅徒歩分（省略または 0 で駅距離補正なし） |
+| `ridership_score` | 任意 | 需要スコア（`A`〜`E`。省略で補正なし。`GET /api/station-ridership` で取得） |
 | `city` | 任意 | 市区町村コード |
 
 ### 補正式
 
 ```
-AgeCorrection     = clamp(-0.02 × (buildingAge - medianAge),     -0.30, +0.30)
-StationCorrection = clamp(-0.01 × (stationMin  - medianStation), -0.20, +0.20)
-TheoreticalPrice  = medianTsubo × (1+AgeCorr) × (1+StationCorr) × (area_sqm / 3.30578)
-DeviationPct      = (price - TheoreticalPrice) / TheoreticalPrice × 100
+AgeCorrection        = clamp(-0.02 × (buildingAge - medianAge),     -0.30, +0.30)
+StationCorrection    = clamp(-0.01 × (stationMin  - medianStation), -0.20, +0.20)
+RidershipCorrection  = RidershipCorrectionFactor(ridership_score)  ← 省略時 0
+TheoreticalPrice     = medianTsubo × (1+AgeCorr) × (1+StationCorr) × (1+RidershipCorr) × (area_sqm / 3.30578)
+DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 ```
 
 中央値築年数・中央値駅距離は取引事例データから算出。
@@ -158,16 +160,21 @@ DeviationPct      = (price - TheoreticalPrice) / TheoreticalPrice × 100
   "deviationPct": 3.1,
   "ageCorrection": 0.10,
   "stationCorrection": 0.05,
+  "ridershipCorrection": 0.08,
   "medianBuildingAge": 18,
   "medianStationMinutes": 10,
   "isLowDataWarning": false,
-  "hasStationData": true
+  "hasStationData": true,
+  "ridershipScore": "B",
+  "hasRidershipData": true
 }
 ```
 
 - `deviationPct`: 正＝割高、負＝割安。±20%超で `LandPriceAnalysis` が強調表示する
 - `isLowDataWarning`: 築年数データが10件未満のとき `true`（参考値扱い）
 - `hasStationData`: `station_minutes` が指定かつ取引事例に駅距離データがある場合 `true`
+- `ridershipScore`: `ridership_score` 指定時のみ含まれる（省略時はフィールドなし）
+- `hasRidershipData`: `ridership_score` が指定された場合 `true`
 
 ### エラー
 
@@ -175,6 +182,60 @@ DeviationPct      = (price - TheoreticalPrice) / TheoreticalPrice × 100
 |--------|------|
 | 400 | 必須パラメータ不足 |
 | 422 | 取引事例に築年数データがなく推定不可 |
+| 502 | 国交省APIへのリクエスト失敗 |
+
+---
+
+## GET /api/station-ridership
+
+指定エリアの駅別乗降客数と賃貸需要スコアを返す（国交省 XKT015）。
+
+### クエリパラメータ
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `area` | 必須 | 都道府県コード（例: `"13"` = 東京都） |
+| `city` | 任意 | 市区町村コード（例: `"13113"` = 渋谷区） |
+
+### レスポンス: `StationRidershipResult[]`
+
+```json
+[
+  {
+    "stationName": "渋谷",
+    "lineName": "JR山手線",
+    "passengers": 360000,
+    "demandScore": "A",
+    "correction": 0.15
+  },
+  {
+    "stationName": "代々木上原",
+    "lineName": "小田急小田原線",
+    "passengers": 85000,
+    "demandScore": "A",
+    "correction": 0.15
+  }
+]
+```
+
+### 需要スコア変換基準
+
+| スコア | 乗降客数/日 | 補正係数 | 説明 |
+|--------|------------|---------|------|
+| A | ≥ 100,000人 | +0.15 | 超大型駅（渋谷・新宿・池袋等） |
+| B | ≥ 30,000人 | +0.08 | 大型駅（地方政令市主要駅等） |
+| C | ≥ 10,000人 | 0.00 | 中型駅（基準値） |
+| D | ≥ 2,000人 | -0.08 | 小型駅 |
+| E | < 2,000人 | -0.15 | 極小駅（地方小規模駅） |
+
+- 結果は TTL 24時間でインメモリキャッシュされる
+- `correction` の値を `GET /api/land-prices/estimate` の `ridership_score` パラメータに渡すことで理論価格に反映できる
+
+### エラー
+
+| コード | 条件 |
+|--------|------|
+| 400 | `area` が未指定 |
 | 502 | 国交省APIへのリクエスト失敗 |
 
 ---
