@@ -53,6 +53,39 @@ func TestParseFloat(t *testing.T) {
 	}
 }
 
+// ---- parseJapaneseYear ----
+
+func TestParseJapaneseYear(t *testing.T) {
+	tests := []struct {
+		input string
+		want  int
+	}{
+		{"令和5年", 2023},
+		{"令和1年", 2019},
+		{"平成15年", 2003},
+		{"平成元年", 0}, // "元" は非対応（数字でない）
+		{"昭和63年", 1988},
+		{"昭和1年", 1926},
+		{"大正10年", 1921},
+		{"明治45年", 1912},
+		{"2020年", 2020},
+		{"2020", 2020},
+		{"1990", 1990},
+		{"", 0},
+		{"－", 0},
+		{"不明", 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := parseJapaneseYear(tt.input)
+			if got != tt.want {
+				t.Errorf("parseJapaneseYear(%q) = %d, want %d", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 // ---- isLandType ----
 
 func TestIsLandType(t *testing.T) {

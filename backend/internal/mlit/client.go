@@ -241,9 +241,52 @@ func parseTransactions(raw []Transaction) []domain.LandTransaction {
 			CityPlanning:     t.CityPlanning,
 			BuildingCoverage: t.BuildingCoverage,
 			FloorAreaRatio:   t.FloorAreaRatio,
+			BuildingYear:     parseJapaneseYear(t.BuildingYear),
+			StationMinutes:   int(parseFloat(t.TimeToNearestStation)),
 		})
 	}
 	return result
+}
+
+// parseJapaneseYear は国交省APIの建築年文字列を西暦年に変換する
+// 例: "昭和63年" → 1988, "平成15年" → 2003, "令和5年" → 2023
+func parseJapaneseYear(s string) int {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "－" {
+		return 0
+	}
+
+	eraMap := []struct {
+		prefix string
+		base   int
+	}{
+		{"令和", 2018},
+		{"平成", 1988},
+		{"昭和", 1925},
+		{"大正", 1911},
+		{"明治", 1867},
+	}
+
+	for _, e := range eraMap {
+		if strings.HasPrefix(s, e.prefix) {
+			numStr := strings.TrimPrefix(s, e.prefix)
+			numStr = strings.TrimSuffix(numStr, "年")
+			numStr = strings.TrimSpace(numStr)
+			n, err := strconv.Atoi(numStr)
+			if err != nil || n <= 0 {
+				return 0
+			}
+			return e.base + n
+		}
+	}
+
+	// 西暦形式 ("2023年" or "2023")
+	numStr := strings.TrimSuffix(s, "年")
+	n, err := strconv.Atoi(strings.TrimSpace(numStr))
+	if err != nil || n < 1900 || n > 2100 {
+		return 0
+	}
+	return n
 }
 
 // isLandType は取引種別が宅地(土地)かどうかを判定する
