@@ -19,8 +19,9 @@ const (
 	mlitBaseURL = "https://www.reinfolib.mlit.go.jp/ex-api/external"
 
 	// エンドポイントパス
-	endpointLandPrices     = "/XIT001"
-	endpointMunicipalities = "/XIT002"
+	endpointLandPrices      = "/XIT001"
+	endpointMunicipalities  = "/XIT002"
+	endpointStationRidership = "/XKT015"
 
 	requestTimeout = 30 * time.Second
 
@@ -134,6 +135,58 @@ func (c *Client) FetchMunicipalities(ctx context.Context, area string) ([]Munici
 	}
 
 	c.cache.setMuni(area, apiResp.Data)
+	return apiResp.Data, nil
+}
+
+// FetchStationRidership は指定エリアの駅別乗降客数を取得する（XKT015）。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchStationRidership(ctx context.Context, area, city string) ([]StationRidership, error) {
+	if area == "" {
+		return nil, fmt.Errorf("area is required")
+	}
+
+	key := fmt.Sprintf("ridership:%s:%s", area, city)
+	if cached, ok := c.cache.getRidership(key); ok {
+		return cached, nil
+	}
+
+	params := url.Values{}
+	params.Set("area", area)
+	if city != "" {
+		params.Set("city", city)
+	}
+	apiURL := c.baseURL + endpointStationRidership + "?" + params.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request build error: %w", err)
+	}
+	if c.apiKey != "" {
+		req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("station ridership API request failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		return nil, &clientError{code: resp.StatusCode}
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("station ridership API returned status %d", resp.StatusCode)
+	}
+
+	var apiResp StationRidershipResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return nil, fmt.Errorf("station ridership JSON decode error: %w", err)
+	}
+	if apiResp.Status != "OK" {
+		return nil, fmt.Errorf("station ridership API status: %s", apiResp.Status)
+	}
+
+	c.cache.setRidership(key, apiResp.Data)
 	return apiResp.Data, nil
 }
 
