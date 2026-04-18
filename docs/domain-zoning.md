@@ -106,6 +106,20 @@ MLIT API の `CityPlanning` フィールドの生文字列を `CityPlanningArea`
 
 ---
 
+## フロントエンド側モデル（`frontend/src/lib/zoning.ts`）
+
+バックエンドの `zoning.go` とは独立したフロントエンド専用の定義。主な差異:
+
+| 項目 | バックエンド | フロントエンド |
+|------|------------|--------------|
+| リスクレベル数 | 3段階（None/Caution/High） | 4段階（0=なし/1=低/2=中/3=高） |
+| 市街化調整区域の扱い | `CityPlanningArea` として分離 | `ZoningType` の選択肢に含める |
+| 建ぺい率・容積率 | `ZoningMeta` に保持 | 保持しない（表示用メッセージのみ） |
+
+`zoningType` は `InvestmentInput` に含まれず、フォームのローカル状態として管理される。
+
+---
+
 ## 後続機能との関係
 
 | issue | 機能 | 使用する型 |

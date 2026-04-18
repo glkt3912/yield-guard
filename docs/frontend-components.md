@@ -104,6 +104,19 @@ const equityInvested = result.totalInvestment - input.loanAmount
 - `loanRateDelta`: 0〜3%（金利上昇シナリオ）
 - `InvestmentInput.vacancyRateDelta`, `loanRateDelta` にそのまま渡す
 
+**用途地域リスク警告（`zoningType`）**:
+
+`lib/zoning.ts` の `ZONING_META` を参照してインラインで色分けバナーを表示する。バックエンド呼び出しなし。
+
+| riskLevel | 色 | ラベル |
+|-----------|-----|--------|
+| 0 | 緑 | 良好な住環境です |
+| 1 | 青 | 低リスク |
+| 2 | 黄 | 中リスク |
+| 3 | 赤 | 高リスク |
+
+`zoningType` は `InvestmentInput` に含まれない（表示のみのローカル状態）。
+
 ---
 
 ## LandPriceAnalysis
