@@ -403,11 +403,23 @@ func TestGetStationRidership_InvalidLatLng(t *testing.T) {
 	}
 }
 
+func TestGetStationRidership_InvalidZ(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?lat=35.6762&lng=139.6503&z=16", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
 func TestGetStationRidership_Success(t *testing.T) {
 	client := &mockMLITClient{
 		ridershipFunc: func(_ context.Context, z, x, y int) ([]mlit.StationRidership, error) {
-			if z != 14 {
-				t.Errorf("unexpected z: %d", z)
+			// lat=35.6762, lng=139.6503, z=14 → x=14547, y=6451
+			if z != 14 || x != 14547 || y != 6451 {
+				t.Errorf("unexpected tile: z=%d x=%d y=%d", z, x, y)
 			}
 			return []mlit.StationRidership{
 				{StationName: "渋谷", LineName: "JR山手線", Passengers: 360000},

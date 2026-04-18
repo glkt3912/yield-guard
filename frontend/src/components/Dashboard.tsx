@@ -44,6 +44,7 @@ export function Dashboard() {
   const handleFetchLandPrices = async (area: string, city: string, lat?: number, lng?: number) => {
     setLoading(true);
     setError(null);
+    setStationRidership(null);
     const { year, quarter, toYear, toQuarter } = getCurrentPeriods();
     try {
       const baseParams = {

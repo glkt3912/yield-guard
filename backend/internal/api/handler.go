@@ -273,9 +273,12 @@ func (h *Handler) GetStationRidership(c *gin.Context) {
 
 	z := 14
 	if zStr := c.Query("z"); zStr != "" {
-		if zv, err := strconv.Atoi(zStr); err == nil && zv >= 11 && zv <= 15 {
-			z = zv
+		zv, err := strconv.Atoi(zStr)
+		if err != nil || zv < 11 || zv > 15 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "z は 11〜15 の整数で指定してください"})
+			return
 		}
+		z = zv
 	}
 
 	tx, ty := mlit.LatLngToTile(lat, lng, z)

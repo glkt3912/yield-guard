@@ -86,10 +86,9 @@ type StationRidershipProperties struct {
 	P2023 int `json:"S12_057"`
 }
 
-// StationRidershipGeometry は GeoJSON Geometry（実際は LineString 形式で返る）
+// StationRidershipGeometry は GeoJSON Geometry（実際は LineString 形式で返る）。座標は使用しないため省略。
 type StationRidershipGeometry struct {
 	Type string `json:"type"`
-	// Coordinates はパース不要のため raw で保持
 }
 
 // StationRidership はハンドラ層との橋渡し用の処理済みレコード
