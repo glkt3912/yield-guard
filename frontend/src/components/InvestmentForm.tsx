@@ -9,7 +9,8 @@ import type { InvestmentInput, BuildingType } from "@/types/investment";
 import { DEFAULT_INPUT } from "@/types/investment";
 import { formatPct } from "@/lib/utils";
 import { fetchMunicipalities, type Municipality } from "@/lib/api";
-import { Search, Calculator, Info } from "lucide-react";
+import { Search, Calculator, Info, AlertTriangle, ShieldCheck } from "lucide-react";
+import { ZONING_TYPES, ZONING_META, type ZoningType } from "@/lib/zoning";
 
 // 全47都道府県（法的に変容しない静的データ）
 const PREFECTURES = [
@@ -100,6 +101,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
   const [muniFilter, setMuniFilter] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [zoningType, setZoningType] = useState<ZoningType>("");
 
   const filteredMunicipalities = useMemo(
     () => muniFilter.trim()
@@ -293,6 +295,44 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
                 onChange={(e) => setNum("exitYieldTarget", fromPct(e.target.value))}
                 error={errors.exitYieldTarget} />
             </div>
+          </div>
+
+          {/* 用途地域 */}
+          <div className="border-t pt-3 space-y-2">
+            <Select
+              label="用途地域（任意）"
+              value={zoningType}
+              onChange={(e) => setZoningType(e.target.value as ZoningType)}
+              options={[
+                { value: "", label: "（未選択）" },
+                ...ZONING_TYPES.map((z) => ({ value: z, label: z })),
+              ]}
+            />
+            {zoningType && (() => {
+              const meta = ZONING_META[zoningType];
+              if (!meta) return null;
+              if (meta.riskLevel === 0) return (
+                <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 p-2 text-green-800 text-xs">
+                  <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>良好な住環境です</span>
+                </div>
+              );
+              const styles: Record<number, string> = {
+                1: "border-blue-200 bg-blue-50 text-blue-800",
+                2: "border-yellow-300 bg-yellow-50 text-yellow-800",
+                3: "border-red-300 bg-red-50 text-red-800",
+              };
+              const labels: Record<number, string> = { 1: "低リスク", 2: "中リスク", 3: "高リスク" };
+              return (
+                <div className={`flex items-start gap-2 rounded-md border p-2 text-xs ${styles[meta.riskLevel]}`}>
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold">{labels[meta.riskLevel]}: </span>
+                    <span>{meta.riskMessage}</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* 詳細設定 */}
