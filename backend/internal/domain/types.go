@@ -182,6 +182,20 @@ type LandTransaction struct {
 	CityPlanning     string  `json:"cityPlanning"`
 	BuildingCoverage string  `json:"buildingCoverage"`
 	FloorAreaRatio   string  `json:"floorAreaRatio"`
+	BuildingYear     int     `json:"buildingYear,omitempty"`   // 建築年（西暦）
+	StationMinutes   int     `json:"stationMinutes,omitempty"` // 最寄り駅徒歩分
+}
+
+// TheoreticalPriceResult は築年数・駅距離補正による理論価格推定の結果
+type TheoreticalPriceResult struct {
+	TheoreticalPriceJPY  float64 `json:"theoreticalPriceJPY"`  // 理論価格 (円)
+	DeviationPct         float64 `json:"deviationPct"`          // 乖離率 % (正=割高, 負=割安)
+	AgeCorrection        float64 `json:"ageCorrection"`         // 築年数補正 (-0.3〜0.3)
+	StationCorrection    float64 `json:"stationCorrection"`     // 駅距離補正 (-0.2〜0.2)
+	MedianBuildingAge    int     `json:"medianBuildingAge"`     // 取引事例中央値築年数
+	MedianStationMinutes int     `json:"medianStationMinutes"`  // 取引事例中央値駅距離(分)
+	IsLowDataWarning     bool    `json:"isLowDataWarning"`      // 築年数サンプル不足
+	HasStationData       bool    `json:"hasStationData"`        // 駅距離補正が有効か
 }
 
 // ZoningSummary はエリア内の取引から抽出した代表的な用途地域情報

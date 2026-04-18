@@ -23,7 +23,8 @@ type Transaction struct {
 	LandShape        string `json:"LandShape"`        // 土地の形状
 	Frontage         string `json:"Frontage"`         // 間口 (m)
 	TotalFloorArea   string `json:"TotalFloorArea"`   // 延床面積
-	BuildingYear     string `json:"BuildingYear"`     // 建築年
+	BuildingYear           string `json:"BuildingYear"`           // 建築年
+	TimeToNearestStation   string `json:"TimeToNearestStation"`   // 最寄り駅距離 (分)
 	Structure        string `json:"Structure"`        // 建物構造
 	Use              string `json:"Use"`              // 用途
 	Purpose          string `json:"Purpose"`          // 今後の利用目的
