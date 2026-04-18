@@ -9,6 +9,7 @@ export interface AcquisitionCostBreakdown {
   stampDuty: number;
   registrationTax: number;
   realEstateAcquisitionTax: number;
+  propertyTaxProration: number;
   total: number;
 }
 
