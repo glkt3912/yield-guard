@@ -53,7 +53,9 @@
       "pricePerTsubo": 2810000,
       "cityPlanning": "第一種住居地域",
       "buildingCoverage": "60",
-      "floorAreaRatio": "200"
+      "floorAreaRatio": "200",
+      "buildingYear": 2005,
+      "stationMinutes": 8
     }
   ],
   "lowDataWarning": false,
@@ -114,6 +116,65 @@
 | コード | 条件 |
 |--------|------|
 | 400 | 必須パラメータ不足、または `price` が正の数値でない |
+| 502 | 国交省APIへのリクエスト失敗 |
+
+---
+
+## GET /api/land-prices/estimate
+
+築年数・駅距離補正による理論価格と販売価格乖離率を返す。
+
+### クエリパラメータ
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `area` | 必須 | 都道府県コード |
+| `year` | 必須 | 取得開始年 |
+| `quarter` | 必須 | 取得開始四半期（`1`〜`4`） |
+| `to_year` | 必須 | 取得終了年 |
+| `to_quarter` | 必須 | 取得終了四半期（`1`〜`4`） |
+| `price` | 必須 | 販売価格（円、正の数値） |
+| `area_sqm` | 必須 | 土地面積（m²、正の数値） |
+| `building_age` | 任意 | 物件築年数（省略時は 0） |
+| `station_minutes` | 任意 | 最寄り駅徒歩分（省略または 0 で駅距離補正なし） |
+| `city` | 任意 | 市区町村コード |
+
+### 補正式
+
+```
+AgeCorrection     = clamp(-0.02 × (buildingAge - medianAge),     -0.30, +0.30)
+StationCorrection = clamp(-0.01 × (stationMin  - medianStation), -0.20, +0.20)
+TheoreticalPrice  = medianTsubo × (1+AgeCorr) × (1+StationCorr) × (area_sqm / 3.30578)
+DeviationPct      = (price - TheoreticalPrice) / TheoreticalPrice × 100
+```
+
+中央値築年数・中央値駅距離は取引事例データから算出。
+
+### レスポンス: `TheoreticalPriceResult`
+
+```json
+{
+  "theoreticalPriceJPY": 4850000,
+  "deviationPct": 3.1,
+  "ageCorrection": 0.10,
+  "stationCorrection": 0.05,
+  "medianBuildingAge": 18,
+  "medianStationMinutes": 10,
+  "isLowDataWarning": false,
+  "hasStationData": true
+}
+```
+
+- `deviationPct`: 正＝割高、負＝割安。±20%超で `LandPriceAnalysis` が強調表示する
+- `isLowDataWarning`: 築年数データが10件未満のとき `true`（参考値扱い）
+- `hasStationData`: `station_minutes` が指定かつ取引事例に駅距離データがある場合 `true`
+
+### エラー
+
+| コード | 条件 |
+|--------|------|
+| 400 | 必須パラメータ不足 |
+| 422 | 取引事例に築年数データがなく推定不可 |
 | 502 | 国交省APIへのリクエスト失敗 |
 
 ---
