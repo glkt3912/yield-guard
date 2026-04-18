@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-17",
+  "lastUpdated": "2026-04-18",
   "documents": [
     {
       "id": "overview",
@@ -16,11 +16,11 @@
       "id": "domain-investment-calculation",
       "path": "docs/domain-investment-calculation.md",
       "title": "投資計算ロジック詳細仕様",
-      "description": "表面利回り・実質利回り・元利均等返済・課税所得・税引後キャッシュフロー・8%逆算の計算式と実装根拠。InvestmentInput/InvestmentResult/YearlyResult の全フィールド解説。ActualVacancyRate（現況空室率）フィールド含む。",
-      "tags": ["利回り", "キャッシュフロー", "ローン", "元利均等", "投資計算", "表面利回り", "実質利回り", "8%境界線", "空室率"],
+      "description": "表面利回り・実質利回り・元利均等返済・課税所得・税引後キャッシュフロー・8%逆算の計算式と実装根拠。InvestmentInput/InvestmentResult/YearlyResult の全フィールド解説。ActualVacancyRate（現況空室率）フィールド含む。取得時諸経費（仲介手数料・印紙税・登録免許税・不動産取得税）の算出ロジックと AcquisitionCostBreakdown 型仕様。",
+      "tags": ["利回り", "キャッシュフロー", "ローン", "元利均等", "投資計算", "表面利回り", "実質利回り", "8%境界線", "空室率", "諸経費", "登録免許税", "不動産取得税"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["grossYield", "netYield", "calcMonthlyPayment", "calcYearlyLoanComponents", "TaxableIncome", "AfterTaxCashFlow", "calcRequired8pct", "ストレステスト", "InvestmentInput", "YearlyResult", "ActualVacancyRate", "actualVacancyRate", "VacancyRate"],
-      "updatedAt": "2026-04-17"
+      "topics": ["grossYield", "netYield", "calcMonthlyPayment", "calcYearlyLoanComponents", "TaxableIncome", "AfterTaxCashFlow", "calcRequired8pct", "ストレステスト", "InvestmentInput", "YearlyResult", "ActualVacancyRate", "actualVacancyRate", "VacancyRate", "AcquisitionCostBreakdown", "CalcAcquisitionCosts", "CalcBrokerageFee", "CalcStampDuty", "CalcRegistrationTax", "CalcRealEstateAcquisitionTax", "registrationTax", "realEstateAcquisitionTax", "AcquisitionCostOptions"],
+      "updatedAt": "2026-04-18"
     },
     {
       "id": "domain-depreciation-dead-cross",

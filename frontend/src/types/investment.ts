@@ -7,6 +7,8 @@ export interface CriticalError {
 export interface AcquisitionCostBreakdown {
   brokerageFee: number;
   stampDuty: number;
+  registrationTax: number;
+  realEstateAcquisitionTax: number;
   total: number;
 }
 
