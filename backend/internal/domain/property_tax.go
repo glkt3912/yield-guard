@@ -71,21 +71,24 @@ func CalcPropertyTax(assessedLand, assessedBuilding float64, opts PropertyTaxOpt
 // CalcPropertyTaxProration は引渡し日基準で買主負担分の固定資産税日割り額を算出する。
 //
 // 慣行: 売主が1月1日〜引渡し前日分、買主が引渡し日〜12月31日分を負担。
-// うるう年は非考慮（誤差軽微のため365日固定）。
-func CalcPropertyTaxProration(annualTax float64, deliveryMonth, deliveryDay int) float64 {
+// year は取引年（JST）を呼び出し側で渡す。うるう年に対応。
+func CalcPropertyTaxProration(annualTax float64, deliveryMonth, deliveryDay, year int) float64 {
 	if annualTax <= 0 || deliveryMonth < 1 || deliveryMonth > 12 || deliveryDay < 1 {
 		return 0
 	}
-	// 引渡し日の通算日数（1月1日=1）、うるう年非考慮
 	daysInMonth := []int{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+	daysInYear := 365
+	if year%4 == 0 && (year%100 != 0 || year%400 == 0) {
+		daysInMonth[1] = 29
+		daysInYear = 366
+	}
 	deliveryDOY := deliveryDay
 	for m := 0; m < deliveryMonth-1; m++ {
 		deliveryDOY += daysInMonth[m]
 	}
-	// 買主負担日数 = 12月31日(365) - 引渡し日 + 1
-	buyerDays := 365 - deliveryDOY + 1
+	buyerDays := daysInYear - deliveryDOY + 1
 	if buyerDays <= 0 {
 		return 0
 	}
-	return math.Round(annualTax * float64(buyerDays) / 365)
+	return math.Round(annualTax * float64(buyerDays) / float64(daysInYear))
 }

@@ -103,7 +103,9 @@ type AcquisitionCostOptions struct {
 	// IsNewBuilding は建物所有権保存登記（新築）か移転登記（中古）かを示す
 	IsNewBuilding bool
 
-	// 引渡し日（固定資産税日割り精算用）。0 の場合は日割り計算なし。
+	// 引渡し日（固定資産税日割り精算用）。Month=0 の場合は日割り計算なし。
+	// Year は JST の取引年を呼び出し側で渡す（0 = 日割りなし）。
+	DeliveryYear  int
 	DeliveryMonth int
 	DeliveryDay   int
 
@@ -137,11 +139,11 @@ func CalcAcquisitionCosts(landPrice, buildingCost float64, opts AcquisitionCostO
 	acqTax := CalcRealEstateAcquisitionTax(assessedLand, assessedBuilding)
 
 	propTaxProration := 0.0
-	if opts.DeliveryMonth > 0 && opts.DeliveryDay > 0 {
+	if opts.DeliveryYear > 0 && opts.DeliveryMonth > 0 && opts.DeliveryDay > 0 {
 		annual := CalcPropertyTax(assessedLand, assessedBuilding, PropertyTaxOptions{
 			LandAreaSqm: opts.LandAreaSqm,
 		}).AnnualTotal
-		propTaxProration = CalcPropertyTaxProration(annual, opts.DeliveryMonth, opts.DeliveryDay)
+		propTaxProration = CalcPropertyTaxProration(annual, opts.DeliveryMonth, opts.DeliveryDay, opts.DeliveryYear)
 	}
 
 	return AcquisitionCostBreakdown{
