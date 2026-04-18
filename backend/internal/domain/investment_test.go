@@ -427,3 +427,106 @@ func TestCalcCriticalErrors_LandValueGuard(t *testing.T) {
 		t.Error("expected LAND_VALUE_GUARD REJECT when appraisal ratio is 34%")
 	}
 }
+
+func makeTx(cityPlanning string) LandTransaction {
+	return LandTransaction{
+		CityPlanning:     cityPlanning,
+		BuildingCoverage: "60",
+		FloorAreaRatio:   "200",
+		PricePerTsubo:    100_000,
+	}
+}
+
+func TestDetectUrbanRisks_ControlZone(t *testing.T) {
+	txs := []LandTransaction{makeTx("市街化調整区域")}
+	zoning := calcZoningSummary(txs)
+	risks := detectUrbanRisks(txs, zoning)
+
+	found := false
+	for _, r := range risks {
+		if r.Code == "URBANIZATION_CONTROL_ZONE" && r.Level == UrbanRiskLevelError {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected URBANIZATION_CONTROL_ZONE ERROR for 市街化調整区域")
+	}
+}
+
+func TestDetectUrbanRisks_UnzonedArea(t *testing.T) {
+	for _, cp := range []string{"非線引き区域", "都市計画区域外"} {
+		txs := []LandTransaction{makeTx(cp)}
+		zoning := calcZoningSummary(txs)
+		risks := detectUrbanRisks(txs, zoning)
+
+		found := false
+		for _, r := range risks {
+			if r.Code == "UNZONED_AREA" && r.Level == UrbanRiskLevelWarning {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("expected UNZONED_AREA WARNING for cityPlanning=%q", cp)
+		}
+	}
+}
+
+func TestDetectUrbanRisks_MixedZone30Pct(t *testing.T) {
+	// 10件中3件が市街化調整区域 → 30% → WARNING
+	txs := make([]LandTransaction, 10)
+	for i := range txs {
+		cp := "第一種住居地域"
+		if i < 3 {
+			cp = "市街化調整区域"
+		}
+		txs[i] = makeTx(cp)
+	}
+	zoning := calcZoningSummary(txs) // 最頻値は第一種住居地域
+	risks := detectUrbanRisks(txs, zoning)
+
+	found := false
+	for _, r := range risks {
+		if r.Code == "MIXED_ZONE_CAUTION" && r.Level == UrbanRiskLevelWarning {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected MIXED_ZONE_CAUTION WARNING when 30% are 市街化調整区域")
+	}
+}
+
+func TestDetectUrbanRisks_MixedZoneBelow30Pct(t *testing.T) {
+	// 10件中2件が市街化調整区域 → 20% → WARNING なし
+	txs := make([]LandTransaction, 10)
+	for i := range txs {
+		cp := "第一種住居地域"
+		if i < 2 {
+			cp = "市街化調整区域"
+		}
+		txs[i] = makeTx(cp)
+	}
+	zoning := calcZoningSummary(txs)
+	risks := detectUrbanRisks(txs, zoning)
+
+	for _, r := range risks {
+		if r.Code == "MIXED_ZONE_CAUTION" {
+			t.Error("unexpected MIXED_ZONE_CAUTION when only 20% are 市街化調整区域")
+		}
+	}
+}
+
+func TestDetectUrbanRisks_NilZoning(t *testing.T) {
+	risks := detectUrbanRisks(nil, nil)
+	if len(risks) != 0 {
+		t.Errorf("expected no risks for nil zoning, got %d", len(risks))
+	}
+}
+
+func TestDetectUrbanRisks_NoRisks(t *testing.T) {
+	txs := []LandTransaction{makeTx("第一種低層住居専用地域")}
+	zoning := calcZoningSummary(txs)
+	risks := detectUrbanRisks(txs, zoning)
+	if len(risks) != 0 {
+		t.Errorf("expected no risks for normal zoning, got %d", len(risks))
+	}
+}

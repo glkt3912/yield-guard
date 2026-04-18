@@ -218,8 +218,8 @@ type LandPriceStats struct {
 	Transactions   []LandTransaction `json:"transactions"`
 	LowDataWarning bool              `json:"lowDataWarning"` // 件数 < 10 件時 true
 	WarningMessage string            `json:"warningMessage,omitempty"`
-	Zoning         *ZoningSummary    `json:"zoning,omitempty"`      // 取引データから抽出した用途地域情報
-	UrbanRisks     []UrbanRisk       `json:"urbanRisks,omitempty"` // 都市計画リスク一覧
+	Zoning     *ZoningSummary `json:"zoning,omitempty"`     // 取引データから抽出した用途地域情報
+	UrbanRisks []UrbanRisk    `json:"urbanRisks,omitempty"` // 都市計画リスク一覧
 }
 
 // LandPriceComparison は検討中の土地価格と相場の比較
