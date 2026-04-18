@@ -218,6 +218,63 @@ func (c *Client) FetchMunicipalities(ctx context.Context, area string) ([]Munici
 
 ---
 
+## XKT015 駅別乗降客数API
+
+### エンドポイント（タイル座標形式）
+
+```
+GET /ex-api/external/XKT015?response_format=geojson&z={z}&x={x}&y={y}
+```
+
+| パラメータ | 説明 |
+|-----------|------|
+| `response_format` | `geojson` 固定 |
+| `z` | ズームレベル（11〜15）。z=14 を推奨（約1.7km×1.7km の範囲） |
+| `x` / `y` | WebMercator タイル座標 |
+
+> XIT001/XIT002 の `area`/`city` パラメータ形式とは異なる。PR #101 では誤って `area`/`city` 形式で実装していたが、PR #103 で修正した。
+
+### 緯度経度→タイル座標変換（`LatLngToTile`）
+
+```go
+func LatLngToTile(lat, lng float64, z int) (x, y int) {
+    n := math.Pow(2, float64(z))
+    x = int(math.Floor((lng + 180.0) / 360.0 * n))
+    latRad := lat * math.Pi / 180.0
+    y = int(math.Floor((1.0 - math.Log(math.Tan(latRad)+1.0/math.Cos(latRad))/math.Pi) / 2.0 * n))
+    return x, y
+}
+```
+
+WebMercator（EPSG:3857）標準の変換式。`mlit` パッケージで公開されており、ハンドラ層から呼び出される。
+
+### GeoJSONレスポンス形式
+
+XKT015 は `FeatureCollection` を返す。各フィーチャのフィールド：
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `S12_001_ja` | string | 駅名 |
+| `S12_002_ja` | string | 運営会社名 |
+| `S12_003_ja` | string | 路線名 |
+| `S12_001c` | string | 駅コード |
+| `S12_009` | int | 乗降客数/日（2011年） |
+| `S12_057` | int | 乗降客数/日（2023年・最新） |
+
+年別乗降客数は4フィールド1組の構造（乗降客数+フラグ×3）になっており、`S12_009`=2011年、4ずつ増加して `S12_057`=2023年。`latestPassengers` で2023年を優先し、欠損時は2011年にフォールバックする。
+
+`geometry.type` は `LineString`（線形フィーチャ）で返るため座標は使用しない。
+
+### FetchStationRidership シグネチャ
+
+```go
+func (c *Client) FetchStationRidership(ctx context.Context, z, x, y int) ([]StationRidership, error)
+```
+
+フロントエンドには `GET /api/station-ridership?lat=35.6762&lng=139.6503[&z=14]` として公開されている。ハンドラ内で `LatLngToTile` によりタイル座標に変換してから呼び出す。
+
+---
+
 ## クエリパラメータ仕様
 
 `LandPriceQuery` 構造体にマップされる。
@@ -384,7 +441,7 @@ type cache struct {
     mu               sync.RWMutex
     entries          map[string]cacheEntry          // XIT001 土地価格キャッシュ
     muniEntries      map[string]muniCacheEntry      // XIT002 市区町村キャッシュ（キー: 都道府県コード）
-    ridershipEntries map[string]ridershipCacheEntry // XKT015 乗降客数キャッシュ（キー: "ridership:area:city"）
+    ridershipEntries map[string]ridershipCacheEntry // XKT015 乗降客数キャッシュ（キー: "ridership:z:x:y"）
 }
 ```
 
@@ -394,7 +451,7 @@ type cache struct {
 |---|---|---|
 | 土地価格（XIT001） | `area:city:year:quarter:toYear:toQuarter` | `"13::2024:1:2024:4"` |
 | 市区町村（XIT002） | 都道府県コード | `"13"` |
-| 駅別乗降客数（XKT015） | `ridership:area:city` | `"ridership:13:13113"` |
+| 駅別乗降客数（XKT015） | `ridership:z:x:y` | `"ridership:14:14547:6451"` |
 
 ### 動作フロー
 
@@ -519,6 +576,7 @@ if diffFromMedian > stats.MedianTsubo * 0.10 {
 | `TestFetchMunicipalities_EmptyArea` | area 空文字でエラー（HTTPリクエストなし） |
 | `TestFetchMunicipalities_CacheHit` | 2回目呼び出しがAPIコールなしでキャッシュから返る |
 | `TestFetchMunicipalities_4xxNoRetry` | 4xx でエラー返却（リトライなし） |
+| `TestLatLngToTile` | WebMercator 変換の期待タイル座標（渋谷付近・赤道・東経180度） |
 
 ```bash
 # ユニットテスト（モックサーバ使用・APIキー不要）

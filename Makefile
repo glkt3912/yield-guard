@@ -1,5 +1,6 @@
 .PHONY: dev test lint build help \
-        mlit-land-prices mlit-municipalities
+        mlit-land-prices mlit-municipalities mlit-station-ridership \
+        api-station-ridership api-estimate-ridership
 
 ## dev: バックエンド・フロントエンドの開発サーバーを起動
 dev:
@@ -73,3 +74,42 @@ mlit-municipalities:
 	   --compressed \
 	   "$(MLIT_BASE)/XIT002?area=$(area)" \
 	   | jq .
+
+## mlit-station-ridership: 駅別乗降客数を取得 (XKT015) ※国交省APIへ直接リクエスト
+##   使い方: make mlit-station-ridership z=14 x=14547 y=6451
+##   緯度経度→タイル変換例(z=14): 渋谷付近 → x=14547 y=6451
+mlit-station-ridership:
+	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
+	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
+	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
+	@source .env 2>/dev/null; \
+	 curl -s \
+	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
+	   --compressed \
+	   "$(MLIT_BASE)/XKT015?response_format=geojson&z=$(z)&x=$(x)&y=$(y)" \
+	   | jq .
+
+# ---------------------------------------------------------------------------
+# ローカル開発サーバー向けAPIテスト (backend が :8080 で起動中であること)
+# ---------------------------------------------------------------------------
+API_BASE := http://localhost:8080/api
+
+## api-station-ridership: ローカルの /api/station-ridership を呼び出す
+##   使い方: make api-station-ridership lat=35.6762 lng=139.6503 [z=14]
+api-station-ridership:
+	@test -n "$(lat)" || (echo "ERROR: lat は必須です (例: lat=35.6762)"; exit 1)
+	@test -n "$(lng)" || (echo "ERROR: lng は必須です (例: lng=139.6503)"; exit 1)
+	curl -s \
+	  "$(API_BASE)/station-ridership?lat=$(lat)&lng=$(lng)$(if $(z),&z=$(z),)" \
+	  | jq .
+
+## api-estimate-ridership: 需要スコア補正付き理論価格推定を呼び出す
+##   使い方: make api-estimate-ridership area=13 city=13113 price=50000000 area_sqm=100 building_age=10 station_minutes=5 ridership_score=A
+api-estimate-ridership:
+	@test -n "$(area)"           || (echo "ERROR: area は必須です";           exit 1)
+	@test -n "$(price)"          || (echo "ERROR: price は必須です";          exit 1)
+	@test -n "$(area_sqm)"       || (echo "ERROR: area_sqm は必須です";       exit 1)
+	@test -n "$(building_age)"   || (echo "ERROR: building_age は必須です";   exit 1)
+	curl -s \
+	  "$(API_BASE)/land-prices/estimate?area=$(area)$(if $(city),&city=$(city),)&year=2024&quarter=1&to_year=2024&to_quarter=4&price=$(price)&area_sqm=$(area_sqm)&building_age=$(building_age)$(if $(station_minutes),&station_minutes=$(station_minutes),)$(if $(ridership_score),&ridership_score=$(ridership_score),)" \
+	  | jq .

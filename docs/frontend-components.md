@@ -28,7 +28,12 @@ page.tsx
 **状態管理**:
 - `result`: `InvestmentResult | null`
 - `comparison`: `LandPriceComparison | null`
+- `stationRidership`: `StationRidershipResult[] | null` — 緯度・経度が指定された場合に `GET /api/station-ridership` から取得
 - `loading`, `error`: ローディング・エラー状態
+
+**`handleFetchLandPrices(area, city, lat?, lng?)`**:
+
+lat/lng が両方渡された場合のみ `fetchStationRidership({lat, lng})` を呼び出し、結果を `stationRidership` ステートに保存する。取得失敗はログに記録するのみで相場データ取得（`fetchLandPrices`）はブロックしない。呼び出し開始時に `setStationRidership(null)` でリセットする。
 
 **`equityInvested` の計算**:
 ```typescript
@@ -81,6 +86,10 @@ const equityInvested = result.totalInvestment - input.loanAmount
 **最寄り駅徒歩（`stationMinutes`）**:
 
 `InvestmentInput.stationMinutes`（0=未入力）。「相場データを取得」押下時に `GET /api/land-prices/estimate` へ渡され、理論価格の駅距離補正に使用される。0のままでも理論価格は築年数補正のみで算出される。
+
+**物件の緯度・経度（任意入力）**:
+
+`propertyLat`, `propertyLng`（コンポーネント内ローカル状態、`InvestmentInput` には含まれない）。都道府県・市区町村セレクトの下に2カラムグリッドで配置。「相場データを取得」押下時に有効な数値が入力されていれば `Dashboard.handleFetchLandPrices` に渡され、`GET /api/station-ridership?lat=&lng=` の呼び出しに使用される。未入力または不正値（`parseFloat` → `NaN`）の場合は undefined として渡され、駅別乗降客数の取得はスキップされる。
 
 **詳細設定トグル（showAdvanced）**:
 `expenseRate`, `incomeTaxRate`, `buildingAge`, `buildingType`, `exitYieldTarget` は
@@ -348,7 +357,7 @@ const deadCrossEndYear = yearlyResults.slice(0, 35)
 | `fetchLandPrices(params)` | `GET /api/land-prices/stats` | 土地取引統計 |
 | `compareLandPrice(params)` | `GET /api/land-prices/compare` | 相場比較 |
 | `estimateLandPrice(params)` | `GET /api/land-prices/estimate` | 理論価格推定（築年数・駅距離・需要スコア補正） |
-| `fetchStationRidership(params)` | `GET /api/station-ridership` | 駅別乗降客数・需要スコア（XKT015） |
+| `fetchStationRidership({lat, lng, z?})` | `GET /api/station-ridership` | 物件緯度経度から周辺駅の乗降客数・需要スコア（XKT015） |
 | `analyze(input)` | `POST /api/investment/analyze` | 投資シミュレーション |
 | `fetchMunicipalities(area)` | `GET /api/municipalities` | 市区町村一覧（XIT002） |
 | `fetchPrefectures()` | `GET /api/prefectures` | 都道府県一覧 |

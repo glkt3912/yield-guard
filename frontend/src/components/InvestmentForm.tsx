@@ -51,7 +51,7 @@ const BUILDING_TYPES: { value: BuildingType; label: string }[] = [
 
 interface Props {
   onAnalyze: (input: InvestmentInput) => Promise<void>;
-  onFetchLandPrices: (area: string, city: string) => Promise<void>;
+  onFetchLandPrices: (area: string, city: string, lat?: number, lng?: number) => Promise<void>;
   loading: boolean;
 }
 
@@ -96,6 +96,8 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
   const [input, setInput] = useState<InvestmentInput>(DEFAULT_INPUT);
   const [area, setArea] = useState("10");
   const [city, setCity] = useState("");
+  const [propertyLat, setPropertyLat] = useState("");
+  const [propertyLng, setPropertyLng] = useState("");
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [muniLoading, setMuniLoading] = useState(false);
   const [muniFilter, setMuniFilter] = useState("");
@@ -216,11 +218,42 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
               )}
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-foreground">緯度（任意）</label>
+              <input
+                type="number"
+                placeholder="例: 35.6762"
+                step="0.0001"
+                value={propertyLat}
+                onChange={(e) => setPropertyLat(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                aria-label="物件の緯度"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-foreground">経度（任意）</label>
+              <input
+                type="number"
+                placeholder="例: 139.6503"
+                step="0.0001"
+                value={propertyLng}
+                onChange={(e) => setPropertyLng(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                aria-label="物件の経度"
+              />
+            </div>
+          </div>
           <p className="text-xs text-muted-foreground">
-            {getPeriodLabel()}分の宅地取引実績（国交省公式API）を取得します
+            {getPeriodLabel()}分の宅地取引実績（国交省公式API）を取得します。緯度・経度を入力すると周辺駅の需要スコアも取得します
           </p>
           <Button variant="outline" className="w-full" loading={loading}
-            onClick={() => onFetchLandPrices(area, city)}>
+            onClick={() => {
+              const lat = parseFloat(propertyLat);
+              const lng = parseFloat(propertyLng);
+              const hasCoords = !isNaN(lat) && !isNaN(lng);
+              onFetchLandPrices(area, city, hasCoords ? lat : undefined, hasCoords ? lng : undefined);
+            }}>
             <Search className="h-4 w-4" />相場データを取得
           </Button>
         </CardContent>

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -138,23 +139,28 @@ func (c *Client) FetchMunicipalities(ctx context.Context, area string) ([]Munici
 	return apiResp.Data, nil
 }
 
-// FetchStationRidership は指定エリアの駅別乗降客数を取得する（XKT015）。
-// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
-func (c *Client) FetchStationRidership(ctx context.Context, area, city string) ([]StationRidership, error) {
-	if area == "" {
-		return nil, fmt.Errorf("area is required")
-	}
+// LatLngToTile は緯度経度をWebMercatorタイル座標に変換する。
+func LatLngToTile(lat, lng float64, z int) (x, y int) {
+	n := math.Pow(2, float64(z))
+	x = int(math.Floor((lng + 180.0) / 360.0 * n))
+	latRad := lat * math.Pi / 180.0
+	y = int(math.Floor((1.0 - math.Log(math.Tan(latRad)+1.0/math.Cos(latRad))/math.Pi) / 2.0 * n))
+	return x, y
+}
 
-	key := fmt.Sprintf("ridership:%s:%s", area, city)
+// FetchStationRidership はタイル座標で XKT015 を呼び出し駅別乗降客数を取得する。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchStationRidership(ctx context.Context, z, x, y int) ([]StationRidership, error) {
+	key := fmt.Sprintf("ridership:%d:%d:%d", z, x, y)
 	if cached, ok := c.cache.getRidership(key); ok {
 		return cached, nil
 	}
 
 	params := url.Values{}
-	params.Set("area", area)
-	if city != "" {
-		params.Set("city", city)
-	}
+	params.Set("response_format", "geojson")
+	params.Set("z", strconv.Itoa(z))
+	params.Set("x", strconv.Itoa(x))
+	params.Set("y", strconv.Itoa(y))
 	apiURL := c.baseURL + endpointStationRidership + "?" + params.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
@@ -178,16 +184,53 @@ func (c *Client) FetchStationRidership(ctx context.Context, area, city string) (
 		return nil, fmt.Errorf("station ridership API returned status %d", resp.StatusCode)
 	}
 
-	var apiResp StationRidershipResponse
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("station ridership JSON decode error: %w", err)
-	}
-	if apiResp.Status != "OK" {
-		return nil, fmt.Errorf("station ridership API status: %s", apiResp.Status)
+	var geoResp StationRidershipGeoJSON
+	if err := json.NewDecoder(resp.Body).Decode(&geoResp); err != nil {
+		return nil, fmt.Errorf("station ridership GeoJSON decode error: %w", err)
 	}
 
-	c.cache.setRidership(key, apiResp.Data)
-	return apiResp.Data, nil
+	result := parseStationRiderships(geoResp.Features)
+	c.cache.setRidership(key, result)
+	return result, nil
+}
+
+// parseStationRiderships は GeoJSON フィーチャを StationRidership スライスに変換する。
+// 同一（駅名, 路線名）の重複フィーチャは乗降客数が最大のものを残す。
+func parseStationRiderships(features []StationRidershipFeature) []StationRidership {
+	type key struct{ station, line string }
+	best := make(map[key]StationRidership, len(features))
+	for _, f := range features {
+		p := f.Properties.StationName
+		l := f.Properties.LineName
+		if p == "" {
+			continue
+		}
+		k := key{p, l}
+		s := StationRidership{
+			StationName: p,
+			LineName:    l,
+			Passengers:  latestPassengers(f.Properties),
+		}
+		if prev, ok := best[k]; !ok || s.Passengers > prev.Passengers {
+			best[k] = s
+		}
+	}
+	result := make([]StationRidership, 0, len(best))
+	for _, s := range best {
+		result = append(result, s)
+	}
+	return result
+}
+
+// latestPassengers は年別乗降客数フィールドから最新の有効値（非ゼロ）を返す。
+// 2023年（S12_057）から降順にスキャンし、最初に非ゼロの値を返す。全年ゼロなら 0 を返す。
+func latestPassengers(p StationRidershipProperties) int {
+	for _, v := range []int{p.P2023, p.P2022, p.P2021, p.P2020, p.P2019, p.P2018, p.P2017, p.P2016, p.P2015, p.P2014, p.P2013, p.P2012, p.P2011} {
+		if v > 0 {
+			return v
+		}
+	}
+	return 0
 }
 
 // doRequest は単一のHTTPリクエストを実行し、レスポンスをパースして返す

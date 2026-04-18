@@ -23,7 +23,7 @@ func init() {
 type mockMLITClient struct {
 	fetchFunc      func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
 	muniFunc       func(ctx context.Context, area string) ([]mlit.Municipality, error)
-	ridershipFunc  func(ctx context.Context, area, city string) ([]mlit.StationRidership, error)
+	ridershipFunc  func(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error)
 }
 
 func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
@@ -40,11 +40,11 @@ func (m *mockMLITClient) FetchMunicipalities(ctx context.Context, area string) (
 	return m.muniFunc(ctx, area)
 }
 
-func (m *mockMLITClient) FetchStationRidership(ctx context.Context, area, city string) ([]mlit.StationRidership, error) {
+func (m *mockMLITClient) FetchStationRidership(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error) {
 	if m.ridershipFunc == nil {
 		return []mlit.StationRidership{}, nil
 	}
-	return m.ridershipFunc(ctx, area, city)
+	return m.ridershipFunc(ctx, z, x, y)
 }
 
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す
@@ -381,7 +381,7 @@ func TestGetMunicipalities_Success(t *testing.T) {
 	}
 }
 
-func TestGetStationRidership_MissingArea(t *testing.T) {
+func TestGetStationRidership_MissingLatLng(t *testing.T) {
 	r := newTestRouter(&mockMLITClient{})
 	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership", nil)
 	w := httptest.NewRecorder()
@@ -392,20 +392,43 @@ func TestGetStationRidership_MissingArea(t *testing.T) {
 	}
 }
 
+func TestGetStationRidership_InvalidLatLng(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?lat=999&lng=139.6503", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestGetStationRidership_InvalidZ(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?lat=35.6762&lng=139.6503&z=16", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
 func TestGetStationRidership_Success(t *testing.T) {
 	client := &mockMLITClient{
-		ridershipFunc: func(_ context.Context, area, city string) ([]mlit.StationRidership, error) {
-			if area != "13" || city != "13113" {
-				t.Errorf("unexpected params: area=%s city=%s", area, city)
+		ridershipFunc: func(_ context.Context, z, x, y int) ([]mlit.StationRidership, error) {
+			// lat=35.6762, lng=139.6503, z=14 → x=14547, y=6451
+			if z != 14 || x != 14547 || y != 6451 {
+				t.Errorf("unexpected tile: z=%d x=%d y=%d", z, x, y)
 			}
 			return []mlit.StationRidership{
-				{StationName: "渋谷", LineName: "JR山手線", Passengers: "360000"},
-				{StationName: "代々木上原", LineName: "小田急小田原線", Passengers: "85,000"},
+				{StationName: "渋谷", LineName: "JR山手線", Passengers: 360000},
+				{StationName: "代々木上原", LineName: "小田急小田原線", Passengers: 85000},
 			}, nil
 		},
 	}
 	r := newTestRouter(client)
-	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?area=13&city=13113", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?lat=35.6762&lng=139.6503", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -428,19 +451,16 @@ func TestGetStationRidership_Success(t *testing.T) {
 	if result[0].DemandScore != domain.RidershipScoreA {
 		t.Errorf("expected score A, got %s", result[0].DemandScore)
 	}
-	if result[1].Passengers != 85000 {
-		t.Errorf("expected 85000 passengers (comma-separated), got %d", result[1].Passengers)
-	}
 }
 
 func TestGetStationRidership_APIError(t *testing.T) {
 	client := &mockMLITClient{
-		ridershipFunc: func(_ context.Context, _, _ string) ([]mlit.StationRidership, error) {
+		ridershipFunc: func(_ context.Context, _, _, _ int) ([]mlit.StationRidership, error) {
 			return nil, fmt.Errorf("upstream error")
 		},
 	}
 	r := newTestRouter(client)
-	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?area=13", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?lat=35.6762&lng=139.6503", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
