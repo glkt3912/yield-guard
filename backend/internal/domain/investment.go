@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 )
 
 const (
@@ -375,6 +376,7 @@ func CalcLandPriceStats(transactions []LandTransaction) LandPriceStats {
 		warning = fmt.Sprintf("取引件数が%d件と少ないため統計の信頼性が低い可能性があります", len(prices))
 	}
 
+	zoning := calcZoningSummary(transactions)
 	return LandPriceStats{
 		Count:          len(prices),
 		AverageTsubo:   avg,
@@ -384,7 +386,8 @@ func CalcLandPriceStats(transactions []LandTransaction) LandPriceStats {
 		Transactions:   transactions,
 		LowDataWarning: len(prices) < lowDataThreshold,
 		WarningMessage: warning,
-		Zoning:         calcZoningSummary(transactions),
+		Zoning:         zoning,
+		UrbanRisks:     detectUrbanRisks(transactions, zoning),
 	}
 }
 
@@ -404,6 +407,58 @@ func calcZoningSummary(transactions []LandTransaction) *ZoningSummary {
 		BuildingCoverage: bc,
 		FloorAreaRatio:   far,
 	}
+}
+
+// detectUrbanRisks は取引データと用途地域サマリーから都市計画リスクを検出する
+func detectUrbanRisks(transactions []LandTransaction, zoning *ZoningSummary) []UrbanRisk {
+	var risks []UrbanRisk
+	if zoning == nil {
+		return risks
+	}
+
+	// 市街化調整区域（最頻値が調整区域）
+	if strings.Contains(zoning.CityPlanning, "市街化調整区域") {
+		risks = append(risks, UrbanRisk{
+			Code:        "URBANIZATION_CONTROL_ZONE",
+			Level:       UrbanRiskLevelError,
+			Title:       "市街化調整区域",
+			Description: "原則として新たな建築・用途変更が制限されます。既存建物の建替えが困難になる可能性があります。",
+		})
+	}
+
+	// 都市計画区域外 / 非線引き区域
+	if strings.Contains(zoning.CityPlanning, "非線引") || zoning.CityPlanning == "都市計画区域外" {
+		risks = append(risks, UrbanRisk{
+			Code:        "UNZONED_AREA",
+			Level:       UrbanRiskLevelWarning,
+			Title:       "非線引き・都市計画区域外",
+			Description: "インフラ整備が遅れやすく、将来の資産価値が不安定になる可能性があります。",
+		})
+	}
+
+	// 調整区域が最頻値でなくとも30%以上混在する場合の注意
+	if !strings.Contains(zoning.CityPlanning, "市街化調整区域") {
+		controlCount, totalWithCP := 0, 0
+		for _, t := range transactions {
+			if t.CityPlanning != "" {
+				totalWithCP++
+				if strings.Contains(t.CityPlanning, "市街化調整区域") {
+					controlCount++
+				}
+			}
+		}
+		if totalWithCP > 0 && float64(controlCount)/float64(totalWithCP) >= 0.3 {
+			ratio := float64(controlCount) / float64(totalWithCP) * 100
+			risks = append(risks, UrbanRisk{
+				Code:        "MIXED_ZONE_CAUTION",
+				Level:       UrbanRiskLevelWarning,
+				Title:       "市街化調整区域が混在",
+				Description: fmt.Sprintf("エリア内取引の約%.0f%%が市街化調整区域です。対象物件の区域区分を必ず確認してください。", ratio),
+			})
+		}
+	}
+
+	return risks
 }
 
 // modalString は transactions から getter で取得した文字列の最頻値を返す（空文字は除外）

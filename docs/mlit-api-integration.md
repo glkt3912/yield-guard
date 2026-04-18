@@ -445,6 +445,19 @@ type ZoningSummary struct {
 - 3フィールドすべて空の場合は `nil` を返す（`json:"zoning,omitempty"` で出力省略）
 - 同数タイの場合は Go の map イテレーション順に依存（非決定論的）
 
+**都市計画リスク検出（`detectUrbanRisks`）**:
+
+`CalcLandPriceStats` 内で `calcZoningSummary` の結果を受けて呼び出される。`LandPriceStats.UrbanRisks` に格納。
+
+| コード | レベル | 検出条件 |
+|--------|--------|---------|
+| `URBANIZATION_CONTROL_ZONE` | ERROR | 最頻 CityPlanning が「市街化調整区域」を含む |
+| `UNZONED_AREA` | WARNING | 最頻 CityPlanning が「非線引」含む または「都市計画区域外」 |
+| `MIXED_ZONE_CAUTION` | WARNING | 最頻値が調整区域でなく、かつ取引の30%以上が市街化調整区域 |
+
+- `zoning == nil`（取引データなし）の場合は空スライスを返す
+- `UrbanRisks` は `[]UrbanRisk` 型。nil スライスは `json:"urbanRisks,omitempty"` で出力省略
+
 ---
 
 ## 相場判定ロジック（`CompareLandPrice`）
