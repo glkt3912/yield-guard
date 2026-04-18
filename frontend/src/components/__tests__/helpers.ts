@@ -89,7 +89,7 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
     deadCrossYear: 0,
     yearlyResults,
     criticalErrors: [],
-    acquisitionCosts: { brokerageFee: 0, stampDuty: 0, total: 0 },
+    acquisitionCosts: { brokerageFee: 0, stampDuty: 0, registrationTax: 0, realEstateAcquisitionTax: 0, total: 0 },
     exitSalePrice: 12_000_000,
     exitCapitalGain: 2_000_000,
     exitTransferTax: 400_000,
