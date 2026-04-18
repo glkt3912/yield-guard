@@ -110,7 +110,7 @@ APIを使用するサービスには以下の文言を表示すること：
 
 | API ID | 名称 | 本PJ活用方針 | issue |
 |--------|------|------------|-------|
-| **XKT013** | 将来推計人口（250mメッシュ） | 人口減少シナリオによるストレステスト自動生成 | #63 |
+| **XKT013** | 将来推計人口（250mメッシュ） | ✅ 使用中（人口減少シナリオによるストレステスト自動生成・人口動態インジケーター） | #63 |
 | **XKT015** | 駅別乗降客数 | ✅ 使用中（駅規模による賃貸需要スコア・理論価格補正） | #64 |
 | XKT031 | 人口集中地区 | 都市度の判定・賃貸需要の参考指標 | 未定 |
 
@@ -151,10 +151,11 @@ APIを使用するサービスには以下の文言を表示すること：
 
 ```go
 const (
-    mlitBaseURL              = "https://www.reinfolib.mlit.go.jp/ex-api/external"
-    endpointLandPrices       = "/XIT001"
-    endpointMunicipalities   = "/XIT002"
-    endpointStationRidership = "/XKT015"
+    mlitBaseURL                 = "https://www.reinfolib.mlit.go.jp/ex-api/external"
+    endpointLandPrices          = "/XIT001"
+    endpointMunicipalities      = "/XIT002"
+    endpointStationRidership    = "/XKT015"
+    endpointPopulationForecast  = "/XKT013"
 )
 
 type Client struct {
@@ -272,6 +273,89 @@ func (c *Client) FetchStationRidership(ctx context.Context, z, x, y int) ([]Stat
 ```
 
 フロントエンドには `GET /api/station-ridership?lat=35.6762&lng=139.6503[&z=14]` として公開されている。ハンドラ内で `LatLngToTile` によりタイル座標に変換してから呼び出す。
+
+---
+
+## XKT013 将来推計人口API
+
+### エンドポイント（タイル座標形式）
+
+```
+GET /ex-api/external/XKT013?response_format=geojson&z={z}&x={x}&y={y}
+```
+
+XKT015 と同じタイル座標形式。z=14 で約1.7km×1.7km の範囲のメッシュデータを返す。
+
+### GeoJSONレスポンス形式
+
+1タイルに複数（数十〜100件以上）の250mメッシュフィーチャが含まれる。主要フィールド：
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `MESH_ID` | string | 地域メッシュコード（250mメッシュ） |
+| `SHICODE` | string | 行政区域コード |
+| `PTN_2020` | float | 2020年総人口（国勢調査基準値） |
+| `PTN_2025` | float | 2025年推計総人口 |
+| `PTN_2030` | float | 2030年推計総人口 |
+| `PTN_2035` | float | 2035年推計総人口 |
+| `PTN_2040` | float | 2040年推計総人口 |
+| `PTN_2045` | float | 2045年推計総人口 |
+| `PTN_2050` | float | 2050年推計総人口 |
+
+実際には `PTN_2055`〜`PTN_2070` も存在するが、30年シナリオ（2020→2050）のみを使用する。また年齢別人口（`PT00_YYYY`〜`PT20_YYYY`）・年齢区分別（`PTA_YYYY`〜`PTE_YYYY`）・比率（`RTA_YYYY`〜`RTE_YYYY`）・非住宅割合（`HITOKU_YYYY`）なども含まれる。
+
+出典: 国土数値情報「250mメッシュ別将来推計人口データ（R6国政局推計）」
+
+### 型定義
+
+```go
+type PopulationForecastGeoJSON struct {
+    Type     string                      `json:"type"`
+    Features []PopulationForecastFeature `json:"features"`
+}
+
+type PopulationForecastProperties struct {
+    MeshID  string  `json:"MESH_ID"`
+    PTN2020 float64 `json:"PTN_2020"`
+    PTN2025 float64 `json:"PTN_2025"`
+    PTN2030 float64 `json:"PTN_2030"`
+    PTN2035 float64 `json:"PTN_2035"`
+    PTN2040 float64 `json:"PTN_2040"`
+    PTN2045 float64 `json:"PTN_2045"`
+    PTN2050 float64 `json:"PTN_2050"`
+}
+```
+
+`domain.PopulationForecastItem`（`{Year int, Pop float64}`）はドメイン層で定義し、`mlit` → `domain` の循環インポートを防いでいる。
+
+### 複数メッシュの集計
+
+タイル内の全フィーチャ人口を年ごとに合算する（`parsePopulationForecasts`）。
+
+```go
+func (c *Client) FetchPopulationForecast(ctx context.Context, z, x, y int) ([]domain.PopulationForecastItem, error)
+```
+
+フロントエンドには `GET /api/population-forecast?lat=36.3906&lng=139.0608[&z=14]` として公開されている。
+
+### ドメインロジック（`domain/population.go`）
+
+```go
+func CalcPopulationForecast(items []PopulationForecastItem) PopulationForecastResult
+```
+
+| 処理 | 計算式 |
+|------|--------|
+| 30年変化率 | `(PTN_2050 - PTN_2020) / PTN_2020` |
+| 空室率増加推定 | `max(0, -changeRate × 0.5)` |
+| トレンド分類 | `> 0`: 増加 / `-5%〜0`: 現状維持 / `-20%〜-5%`: 緩やかな減少 / `< -20%`: 急激な減少 |
+
+**実測値（2026-04-19 統合テスト）**:
+
+| エリア | 2020年人口 | 2050年人口 | 30年変化率 | 空室率増加推定 |
+|--------|-----------|-----------|-----------|-------------|
+| 渋谷付近（z=14, x=14547, y=6451） | 79,785人 | 84,132人 | **+5%** | 0% |
+| 前橋市付近（z=14, x=14479, y=6412） | 1,898人 | 1,404人 | **-26%** | +13%pt |
 
 ---
 
@@ -438,10 +522,11 @@ type muniCacheEntry struct {
 }
 
 type cache struct {
-    mu               sync.RWMutex
-    entries          map[string]cacheEntry          // XIT001 土地価格キャッシュ
-    muniEntries      map[string]muniCacheEntry      // XIT002 市区町村キャッシュ（キー: 都道府県コード）
-    ridershipEntries map[string]ridershipCacheEntry // XKT015 乗降客数キャッシュ（キー: "ridership:z:x:y"）
+    mu                 sync.RWMutex
+    entries            map[string]cacheEntry            // XIT001 土地価格キャッシュ
+    muniEntries        map[string]muniCacheEntry        // XIT002 市区町村キャッシュ（キー: 都道府県コード）
+    ridershipEntries   map[string]ridershipCacheEntry   // XKT015 乗降客数キャッシュ（キー: "ridership:z:x:y"）
+    populationEntries  map[string]populationCacheEntry  // XKT013 将来推計人口キャッシュ（キー: "population:z:x:y"）
 }
 ```
 
@@ -452,6 +537,7 @@ type cache struct {
 | 土地価格（XIT001） | `area:city:year:quarter:toYear:toQuarter` | `"13::2024:1:2024:4"` |
 | 市区町村（XIT002） | 都道府県コード | `"13"` |
 | 駅別乗降客数（XKT015） | `ridership:z:x:y` | `"ridership:14:14547:6451"` |
+| 将来推計人口（XKT013） | `population:z:x:y` | `"population:14:14547:6451"` |
 
 ### 動作フロー
 
@@ -467,6 +553,10 @@ FetchMunicipalities() 呼び出し
 FetchStationRidership() 呼び出し
   ├─ キャッシュヒット（TTL内）→ コピーを返す（APIコールなし）
   └─ キャッシュミス / TTL切れ → XKT015 呼び出し → 成功時にキャッシュ保存
+
+FetchPopulationForecast() 呼び出し
+  ├─ キャッシュヒット（TTL内）→ コピーを返す（APIコールなし）
+  └─ キャッシュミス / TTL切れ → XKT013 呼び出し → 成功時にキャッシュ保存
 ```
 
 ### 設計上の判断

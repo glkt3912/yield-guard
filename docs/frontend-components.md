@@ -10,14 +10,14 @@
 page.tsx
   └── Dashboard
         ├── InvestmentForm     (入力 → onAnalyze, onFetchLandPrices)
-        ├── LandPriceAnalysis  (comparison を受け取り表示)
-        ├── YieldAnalysis      (result を受け取り表示)
+        ├── LandPriceAnalysis  (comparison + populationForecast を受け取り表示)
+        ├── YieldAnalysis      (result + populationForecast を受け取り表示)
         ├── CostBreakdown      (result.acquisitionCosts + yearlyResults を受け取り表示)
         ├── CashFlowChart      (result + equityInvested を受け取り表示)
         └── DeadCrossChart     (result を受け取り表示)
 ```
 
-`Dashboard` が `result: InvestmentResult | null` と `comparison: LandPriceComparison | null` を管理する。
+`Dashboard` が `result: InvestmentResult | null`、`comparison: LandPriceComparison | null`、`populationForecast: PopulationForecastResult | null` を管理する。
 
 ---
 
@@ -29,11 +29,12 @@ page.tsx
 - `result`: `InvestmentResult | null`
 - `comparison`: `LandPriceComparison | null`
 - `stationRidership`: `StationRidershipResult[] | null` — 緯度・経度が指定された場合に `GET /api/station-ridership` から取得
+- `populationForecast`: `PopulationForecastResult | null` — 緯度・経度が指定された場合に `GET /api/population-forecast` から取得
 - `loading`, `error`: ローディング・エラー状態
 
 **`handleFetchLandPrices(area, city, lat?, lng?)`**:
 
-lat/lng が両方渡された場合のみ `fetchStationRidership({lat, lng})` を呼び出し、結果を `stationRidership` ステートに保存する。取得失敗はログに記録するのみで相場データ取得（`fetchLandPrices`）はブロックしない。呼び出し開始時に `setStationRidership(null)` でリセットする。
+lat/lng が両方渡された場合、`fetchStationRidership` と `fetchPopulationForecast` を `Promise.allSettled` で並行実行する。どちらか一方が失敗しても他方の結果は利用する。呼び出し開始時に両ステートを `null` でリセットする。
 
 **`equityInvested` の計算**:
 ```typescript
@@ -141,6 +142,7 @@ const equityInvested = result.totalInvestment - input.loanAmount
 - `input?: InvestmentInput | null`
 - `theoreticalPrice?: TheoreticalPriceResult | null`
 - `stationRidership?: StationRidershipResult[] | null`
+- `populationForecast?: PopulationForecastResult | null`
 
 **表示の3状態**:
 
@@ -191,6 +193,19 @@ const equityInvested = result.totalInvestment - input.loanAmount
 
 各フィールドは個別に `&&` で存在チェックし、空文字の場合は非表示。
 
+**人口動態インジケーター（`populationForecast`）**:
+
+`populationForecast` prop が存在する場合のみ表示（都市計画リスクパネルの直後）。`GET /api/population-forecast` のレスポンス。
+
+| `trend` | 枠色 | 背景色 |
+|---------|------|--------|
+| `"増加"` | 緑 | 緑薄 |
+| `"現状維持"` | 黄 | 黄薄 |
+| `"緩やかな減少"` | オレンジ | オレンジ薄 |
+| `"急激な減少"` | 赤 | 赤薄 |
+
+2020/2030/2040/2050年の推計人口を4カラムグリッドで表示。2020年以外は2020年比の増減率（%）を色付きで併記。右上にトレンドラベルを表示。フッターに30年後変化率・推定空室率増加幅を記載。
+
 **都市計画リスクパネル（`stats.urbanRisks`）**:
 
 `stats.urbanRisks` が1件以上ある場合のみ表示。レベル別カラーリング（`RISK_STYLE` マップ）でカード一覧を描画。
@@ -212,6 +227,7 @@ const equityInvested = result.totalInvestment - input.loanAmount
 **props**:
 - `result: InvestmentResult`
 - `input: InvestmentInput`
+- `populationForecast?: PopulationForecastResult | null`
 
 **ゲージ設計**:
 ```typescript
@@ -243,6 +259,19 @@ targetPosition = (TARGET_PCT / MAX_YIELD_PCT) * 100           // = 50%（常に�
 | ストレス | `actualV + vacancyRateDelta`（上限99%） | `grossYield × (1 - stressV) × (1 - expenseRate)` |
 
 表面利回りが8%以上の行は緑、未満は赤で表示。
+
+**人口減少シナリオ（`populationForecast`）**:
+
+`populationForecast` prop が存在する場合のみシナリオテーブル直下に表示。
+
+| 表示項目 | 計算式 |
+|---------|--------|
+| 想定空室率 | `min(actualV + vacancyRateDelta, 0.99)` |
+| 表面利回り | `grossYield × (1 - popV)` |
+| 実質利回り | `grossYield × (1 - popV) × (1 - expenseRate)` |
+| 年間CF（概算） | `grossYield × totalInvestment × (1 - popV) − loanPayment − expenses` |
+
+CF がマイナスの場合は「赤字転落 ⚠️」バッジを表示。フッターに「30年後人口推計: XX%（現在比）／トレンド: ○○」を記載。
 
 ---
 
@@ -358,6 +387,7 @@ const deadCrossEndYear = yearlyResults.slice(0, 35)
 | `compareLandPrice(params)` | `GET /api/land-prices/compare` | 相場比較 |
 | `estimateLandPrice(params)` | `GET /api/land-prices/estimate` | 理論価格推定（築年数・駅距離・需要スコア補正） |
 | `fetchStationRidership({lat, lng, z?})` | `GET /api/station-ridership` | 物件緯度経度から周辺駅の乗降客数・需要スコア（XKT015） |
+| `fetchPopulationForecast({lat, lng, z?})` | `GET /api/population-forecast` | 物件緯度経度から将来推計人口・人口減少シナリオ（XKT013） |
 | `analyze(input)` | `POST /api/investment/analyze` | 投資シミュレーション |
 | `fetchMunicipalities(area)` | `GET /api/municipalities` | 市区町村一覧（XIT002） |
 | `fetchPrefectures()` | `GET /api/prefectures` | 都道府県一覧 |
