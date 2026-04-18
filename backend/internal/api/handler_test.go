@@ -512,3 +512,64 @@ func TestHealthCheck(t *testing.T) {
 		t.Errorf("expected status=ok, got %q", resp["status"])
 	}
 }
+
+func TestGetPopulationForecast_MissingLatLng(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/population-forecast", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestGetPopulationForecast_Success(t *testing.T) {
+	client := &mockMLITClient{
+		populationFunc: func(_ context.Context, z, x, y int) ([]domain.PopulationForecastItem, error) {
+			return []domain.PopulationForecastItem{
+				{Year: 2020, Pop: 1000},
+				{Year: 2025, Pop: 950},
+				{Year: 2030, Pop: 900},
+				{Year: 2035, Pop: 850},
+				{Year: 2040, Pop: 800},
+				{Year: 2045, Pop: 760},
+				{Year: 2050, Pop: 720},
+			}, nil
+		},
+	}
+	r := newTestRouter(client)
+	req := httptest.NewRequest(http.MethodGet, "/api/population-forecast?lat=35.6762&lng=139.6503", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.PopulationForecastResult
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if resp.ChangeRate30yr >= 0 {
+		t.Errorf("expected negative change rate, got %f", resp.ChangeRate30yr)
+	}
+	if resp.VacancyRateDelta <= 0 {
+		t.Errorf("expected positive vacancy delta, got %f", resp.VacancyRateDelta)
+	}
+}
+
+func TestGetPopulationForecast_UpstreamError(t *testing.T) {
+	client := &mockMLITClient{
+		populationFunc: func(_ context.Context, z, x, y int) ([]domain.PopulationForecastItem, error) {
+			return nil, errors.New("upstream error")
+		},
+	}
+	r := newTestRouter(client)
+	req := httptest.NewRequest(http.MethodGet, "/api/population-forecast?lat=35.6762&lng=139.6503", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502, got %d", w.Code)
+	}
+}
