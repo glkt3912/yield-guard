@@ -75,20 +75,21 @@ type StationRidershipFeature struct {
 }
 
 // StationRidershipProperties は駅別乗降客数の属性。フィールド名は国交省 XKT015 仕様に準拠（S12_XXX 形式）。
+// 年別乗降客数フィールドは4フィールド1組: S12_009=2011年、S12_013=2012年、…、S12_057=2023年（最新）。
 type StationRidershipProperties struct {
 	StationCode  string `json:"S12_001c"`   // 駅コード
 	StationName  string `json:"S12_001_ja"` // 駅名
 	OperatorName string `json:"S12_002_ja"` // 運営会社名
 	LineName     string `json:"S12_003_ja"` // 路線名
-	// 年別乗降客数。S12_009=2011年、S12_057=2023年（最新）。
-	P2011 string `json:"S12_009"`
-	P2023 string `json:"S12_057"`
+	// 年別乗降客数（整数値）。S12_009=2011年、S12_057=2023年（最新）。
+	P2011 int `json:"S12_009"`
+	P2023 int `json:"S12_057"`
 }
 
-// StationRidershipGeometry は GeoJSON Geometry（Point）
+// StationRidershipGeometry は GeoJSON Geometry（実際は LineString 形式で返る）
 type StationRidershipGeometry struct {
-	Type        string    `json:"type"`
-	Coordinates []float64 `json:"coordinates"` // [lng, lat]
+	Type string `json:"type"`
+	// Coordinates はパース不要のため raw で保持
 }
 
 // StationRidership はハンドラ層との橋渡し用の処理済みレコード

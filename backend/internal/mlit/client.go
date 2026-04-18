@@ -210,23 +210,10 @@ func parseStationRiderships(features []StationRidershipFeature) []StationRidersh
 // latestPassengers は年別乗降客数フィールドから最新の有効値（非ゼロ）を返す。
 // 2023年（S12_057）を優先し、欠損時は2011年（S12_009）にフォールバックする。
 func latestPassengers(p StationRidershipProperties) int {
-	for _, s := range []string{p.P2023, p.P2011} {
-		if v := parsePassengerInt(s); v > 0 {
-			return v
-		}
+	if p.P2023 > 0 {
+		return p.P2023
 	}
-	return 0
-}
-
-// parsePassengerInt は乗降客数の文字列を int にパースする。カンマ区切りに対応。
-func parsePassengerInt(s string) int {
-	s = strings.TrimSpace(s)
-	s = strings.ReplaceAll(s, ",", "")
-	v, err := strconv.ParseFloat(s, 64)
-	if err != nil || v <= 0 {
-		return 0
-	}
-	return int(v)
+	return p.P2011
 }
 
 // doRequest は単一のHTTPリクエストを実行し、レスポンスをパースして返す
