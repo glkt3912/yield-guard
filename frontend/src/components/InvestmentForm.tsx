@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -101,9 +101,12 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const filteredMunicipalities = muniFilter.trim()
-    ? municipalities.filter((m) => m.name.includes(muniFilter.trim()))
-    : municipalities;
+  const filteredMunicipalities = useMemo(
+    () => muniFilter.trim()
+      ? municipalities.filter((m) => m.name.includes(muniFilter.trim()))
+      : municipalities,
+    [municipalities, muniFilter]
+  );
 
   const loadMunicipalities = useCallback(async (areaCode: string) => {
     setMuniLoading(true);
