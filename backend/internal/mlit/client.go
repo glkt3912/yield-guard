@@ -195,25 +195,42 @@ func (c *Client) FetchStationRidership(ctx context.Context, z, x, y int) ([]Stat
 }
 
 // parseStationRiderships は GeoJSON フィーチャを StationRidership スライスに変換する。
+// 同一（駅名, 路線名）の重複フィーチャは乗降客数が最大のものを残す。
 func parseStationRiderships(features []StationRidershipFeature) []StationRidership {
-	result := make([]StationRidership, 0, len(features))
+	type key struct{ station, line string }
+	best := make(map[key]StationRidership, len(features))
 	for _, f := range features {
-		result = append(result, StationRidership{
-			StationName: f.Properties.StationName,
-			LineName:    f.Properties.LineName,
+		p := f.Properties.StationName
+		l := f.Properties.LineName
+		if p == "" {
+			continue
+		}
+		k := key{p, l}
+		s := StationRidership{
+			StationName: p,
+			LineName:    l,
 			Passengers:  latestPassengers(f.Properties),
-		})
+		}
+		if prev, ok := best[k]; !ok || s.Passengers > prev.Passengers {
+			best[k] = s
+		}
+	}
+	result := make([]StationRidership, 0, len(best))
+	for _, s := range best {
+		result = append(result, s)
 	}
 	return result
 }
 
 // latestPassengers は年別乗降客数フィールドから最新の有効値（非ゼロ）を返す。
-// 2023年（S12_057）を優先し、欠損時は2011年（S12_009）にフォールバックする。
+// 2023年（S12_057）から降順にスキャンし、最初に非ゼロの値を返す。全年ゼロなら 0 を返す。
 func latestPassengers(p StationRidershipProperties) int {
-	if p.P2023 > 0 {
-		return p.P2023
+	for _, v := range []int{p.P2023, p.P2022, p.P2021, p.P2020, p.P2019, p.P2018, p.P2017, p.P2016, p.P2015, p.P2014, p.P2013, p.P2012, p.P2011} {
+		if v > 0 {
+			return v
+		}
 	}
-	return p.P2011
+	return 0
 }
 
 // doRequest は単一のHTTPリクエストを実行し、レスポンスをパースして返す

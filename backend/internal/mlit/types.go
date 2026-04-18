@@ -81,8 +81,19 @@ type StationRidershipProperties struct {
 	StationName  string `json:"S12_001_ja"` // 駅名
 	OperatorName string `json:"S12_002_ja"` // 運営会社名
 	LineName     string `json:"S12_003_ja"` // 路線名
-	// 年別乗降客数（整数値）。S12_009=2011年、S12_057=2023年（最新）。
+	// 年別乗降客数（整数値）。フィールドは +4 刻み: S12_009=2011〜S12_057=2023。
 	P2011 int `json:"S12_009"`
+	P2012 int `json:"S12_013"`
+	P2013 int `json:"S12_017"`
+	P2014 int `json:"S12_021"`
+	P2015 int `json:"S12_025"`
+	P2016 int `json:"S12_029"`
+	P2017 int `json:"S12_033"`
+	P2018 int `json:"S12_037"`
+	P2019 int `json:"S12_041"`
+	P2020 int `json:"S12_045"`
+	P2021 int `json:"S12_049"`
+	P2022 int `json:"S12_053"`
 	P2023 int `json:"S12_057"`
 }
 
