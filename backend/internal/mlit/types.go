@@ -61,19 +61,41 @@ type LandPriceQuery struct {
 	ToQuarter    int    // 取得終了四半期 (1〜4)
 }
 
-// StationRidershipResponse は XKT015 駅別乗降客数APIのレスポンス
-type StationRidershipResponse struct {
-	Status string             `json:"status"`
-	Data   []StationRidership `json:"data"`
+// StationRidershipGeoJSON は XKT015 駅別乗降客数APIのGeoJSONレスポンス
+type StationRidershipGeoJSON struct {
+	Type     string                   `json:"type"`
+	Features []StationRidershipFeature `json:"features"`
 }
 
-// StationRidership は駅別乗降客数の1レコード
+// StationRidershipFeature は GeoJSON の1フィーチャ（駅1件）
+type StationRidershipFeature struct {
+	Type       string                     `json:"type"`
+	Properties StationRidershipProperties `json:"properties"`
+	Geometry   StationRidershipGeometry   `json:"geometry"`
+}
+
+// StationRidershipProperties は駅別乗降客数の属性。フィールド名は国交省 XKT015 仕様に準拠（S12_XXX 形式）。
+type StationRidershipProperties struct {
+	StationCode  string `json:"S12_001c"`   // 駅コード
+	StationName  string `json:"S12_001_ja"` // 駅名
+	OperatorName string `json:"S12_002_ja"` // 運営会社名
+	LineName     string `json:"S12_003_ja"` // 路線名
+	// 年別乗降客数。S12_009=2011年、S12_057=2023年（最新）。
+	P2011 string `json:"S12_009"`
+	P2023 string `json:"S12_057"`
+}
+
+// StationRidershipGeometry は GeoJSON Geometry（Point）
+type StationRidershipGeometry struct {
+	Type        string    `json:"type"`
+	Coordinates []float64 `json:"coordinates"` // [lng, lat]
+}
+
+// StationRidership はハンドラ層との橋渡し用の処理済みレコード
 type StationRidership struct {
-	StationName  string `json:"StationName"`  // 駅名
-	LineName     string `json:"LineName"`     // 路線名
-	Passengers   string `json:"Passengers"`   // 乗降客数/日
-	Prefecture   string `json:"Prefecture"`   // 都道府県名
-	Municipality string `json:"Municipality"` // 市区町村名
+	StationName string `json:"stationName"`
+	LineName    string `json:"lineName"`
+	Passengers  int    `json:"passengers"` // 乗降客数/日
 }
 
 // Prefectures は都道府県コードマップ

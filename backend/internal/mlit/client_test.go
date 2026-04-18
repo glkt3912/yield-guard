@@ -569,3 +569,27 @@ func TestFetchMunicipalities_4xxNoRetry(t *testing.T) {
 		t.Fatal("expected error for 4xx, got nil")
 	}
 }
+
+func TestLatLngToTile(t *testing.T) {
+	tests := []struct {
+		name    string
+		lat     float64
+		lng     float64
+		z       int
+		wantX   int
+		wantY   int
+	}{
+		{"渋谷付近 z=14", 35.6762, 139.6503, 14, 14547, 6451},
+		{"世界の端（東経180度）z=1", 0, 180, 1, 2, 1},
+		{"赤道・本初子午線 z=1", 0, 0, 1, 1, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			x, y := LatLngToTile(tt.lat, tt.lng, tt.z)
+			if x != tt.wantX || y != tt.wantY {
+				t.Errorf("LatLngToTile(%v, %v, %d) = (%d, %d), want (%d, %d)",
+					tt.lat, tt.lng, tt.z, x, y, tt.wantX, tt.wantY)
+			}
+		})
+	}
+}
