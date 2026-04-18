@@ -75,17 +75,12 @@ export function Dashboard() {
         }
       }
       if (lat !== undefined && lng !== undefined) {
-        try {
-          const [ridership, population] = await Promise.allSettled([
-            fetchStationRidership({ lat, lng }),
-            fetchPopulationForecast({ lat, lng }),
-          ]);
-          setStationRidership(ridership.status === "fulfilled" ? ridership.value : null);
-          setPopulationForecast(population.status === "fulfilled" ? population.value : null);
-        } catch {
-          setStationRidership(null);
-          setPopulationForecast(null);
-        }
+        const [ridership, population] = await Promise.allSettled([
+          fetchStationRidership({ lat, lng }),
+          fetchPopulationForecast({ lat, lng }),
+        ]);
+        setStationRidership(ridership.status === "fulfilled" ? ridership.value : null);
+        setPopulationForecast(population.status === "fulfilled" ? population.value : null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "相場データの取得に失敗しました");

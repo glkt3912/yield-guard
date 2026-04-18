@@ -170,7 +170,7 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice, station
         )}
 
         {/* 人口動態インジケーター */}
-        {populationForecast && (() => {
+        {populationForecast && populationForecast.snapshots.length > 0 && (() => {
           const style = POPULATION_TREND_STYLE[populationForecast.trend] ?? POPULATION_TREND_STYLE["現状維持"];
           const displayYears = [2020, 2030, 2040, 2050];
           const snapshotMap = Object.fromEntries(populationForecast.snapshots.map(s => [s.year, s.pop]));

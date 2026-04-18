@@ -343,6 +343,11 @@ func (h *Handler) GetPopulationForecast(c *gin.Context) {
 		return
 	}
 
+	if len(items) == 0 {
+		c.JSON(http.StatusOK, gin.H{"snapshots": []struct{}{}, "changeRate30yr": 0, "vacancyRateDelta": 0, "trend": ""})
+		return
+	}
+
 	result := domain.CalcPopulationForecast(items)
 	c.JSON(http.StatusOK, result)
 }

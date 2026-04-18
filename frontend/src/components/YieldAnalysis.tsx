@@ -124,12 +124,9 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
           </div>
 
           {/* 人口減少シナリオ */}
-          {populationForecast && (() => {
+          {populationForecast && populationForecast.snapshots.length > 0 && (() => {
             const popV = Math.min(actualV + populationForecast.vacancyRateDelta, 0.99);
             const popNetYield = result.grossYield * factor(popV);
-            const annualCF = result.yearlyResults[0]
-              ? result.yearlyResults[0].annualRent * (1 - popV / (1 - actualV || 1)) - result.yearlyResults[0].annualLoanPayment - result.yearlyResults[0].annualExpenses
-              : null;
             const popAnnualRent = result.grossYield * result.totalInvestment * (1 - popV);
             const popCF = popAnnualRent - (result.yearlyResults[0]?.annualLoanPayment ?? 0) - (result.yearlyResults[0]?.annualExpenses ?? 0);
             const isDeficit = popCF < 0;

@@ -282,8 +282,12 @@ func (c *Client) FetchPopulationForecast(ctx context.Context, z, x, y int) ([]do
 }
 
 // parsePopulationForecasts は GeoJSON フィーチャを年別人口スライスに変換する。
+// フィーチャが0件（タイル外・海上等）の場合は nil を返す。
 // 複数メッシュの人口は合算する。
 func parsePopulationForecasts(features []PopulationForecastFeature) []domain.PopulationForecastItem {
+	if len(features) == 0 {
+		return nil
+	}
 	type yearPop struct {
 		year int
 		pop  float64
