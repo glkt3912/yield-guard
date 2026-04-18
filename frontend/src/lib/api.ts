@@ -106,13 +106,17 @@ export async function estimateLandPrice(params: {
   return handleResponse<TheoreticalPriceResult>(res);
 }
 
-/** 駅別乗降客数と需要スコアを取得（XKT015） */
+/** 物件の緯度経度から周辺駅の乗降客数と需要スコアを取得（XKT015） */
 export async function fetchStationRidership(params: {
-  area: string;
-  city?: string;
+  lat: number;
+  lng: number;
+  z?: number;
 }): Promise<StationRidershipResult[]> {
-  const q = new URLSearchParams({ area: params.area });
-  if (params.city) q.set("city", params.city);
+  const q = new URLSearchParams({
+    lat: String(params.lat),
+    lng: String(params.lng),
+  });
+  if (params.z !== undefined) q.set("z", String(params.z));
   const res = await fetch(`${BASE}/station-ridership?${q}`);
   return handleResponse<StationRidershipResult[]>(res);
 }
