@@ -6,8 +6,8 @@ import { CashFlowChart } from "@/components/CashFlowChart";
 import { DeadCrossChart } from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
-import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult } from "@/types/investment";
-import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership } from "@/lib/api";
+import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult } from "@/types/investment";
+import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast } from "@/lib/api";
 import { ShieldAlert, XOctagon, AlertTriangle } from "lucide-react";
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
@@ -26,6 +26,7 @@ export function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [lastInput, setLastInput] = useState<InvestmentInput | null>(null);
   const [stationRidership, setStationRidership] = useState<StationRidershipResult[] | null>(null);
+  const [populationForecast, setPopulationForecast] = useState<PopulationForecastResult | null>(null);
 
   const handleAnalyze = async (input: InvestmentInput) => {
     setLoading(true);
@@ -45,6 +46,7 @@ export function Dashboard() {
     setLoading(true);
     setError(null);
     setStationRidership(null);
+    setPopulationForecast(null);
     const { year, quarter, toYear, toQuarter } = getCurrentPeriods();
     try {
       const baseParams = {
@@ -74,10 +76,15 @@ export function Dashboard() {
       }
       if (lat !== undefined && lng !== undefined) {
         try {
-          const ridership = await fetchStationRidership({ lat, lng });
-          setStationRidership(ridership);
+          const [ridership, population] = await Promise.allSettled([
+            fetchStationRidership({ lat, lng }),
+            fetchPopulationForecast({ lat, lng }),
+          ]);
+          setStationRidership(ridership.status === "fulfilled" ? ridership.value : null);
+          setPopulationForecast(population.status === "fulfilled" ? population.value : null);
         } catch {
           setStationRidership(null);
+          setPopulationForecast(null);
         }
       }
     } catch (e) {
@@ -130,7 +137,7 @@ export function Dashboard() {
               </div>
             )}
 
-            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} />}
+            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} />}
 
             {result && lastInput && (
               <>
@@ -159,7 +166,7 @@ export function Dashboard() {
                     ))}
                   </div>
                 )}
-                <YieldAnalysis result={result} input={lastInput} />
+                <YieldAnalysis result={result} input={lastInput} populationForecast={populationForecast} />
                 {result.acquisitionCosts && (
                   <div className="rounded-xl border bg-white p-5 shadow-sm">
                     <CostBreakdown
