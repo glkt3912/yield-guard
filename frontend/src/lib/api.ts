@@ -4,6 +4,8 @@ import type {
   LandPriceStats,
   LandPriceComparison,
   TheoreticalPriceResult,
+  StationRidershipResult,
+  RidershipDemandScore,
 } from "@/types/investment";
 
 const BASE = "/api";
@@ -73,7 +75,7 @@ export async function fetchMunicipalities(area: string): Promise<Municipality[]>
   return handleResponse<Municipality[]>(res);
 }
 
-/** 築年数・駅距離補正による理論価格推定 */
+/** 築年数・駅距離・乗降客数補正による理論価格推定 */
 export async function estimateLandPrice(params: {
   area: string;
   city?: string;
@@ -85,6 +87,7 @@ export async function estimateLandPrice(params: {
   areaSqm: number;
   buildingAge: number;
   stationMinutes?: number;
+  ridershipScore?: RidershipDemandScore;
 }): Promise<TheoreticalPriceResult> {
   const q = new URLSearchParams({
     area: params.area,
@@ -98,8 +101,20 @@ export async function estimateLandPrice(params: {
   });
   if (params.city) q.set("city", params.city);
   if (params.stationMinutes) q.set("station_minutes", String(params.stationMinutes));
+  if (params.ridershipScore) q.set("ridership_score", params.ridershipScore);
   const res = await fetch(`${BASE}/land-prices/estimate?${q}`);
   return handleResponse<TheoreticalPriceResult>(res);
+}
+
+/** 駅別乗降客数と需要スコアを取得（XKT015） */
+export async function fetchStationRidership(params: {
+  area: string;
+  city?: string;
+}): Promise<StationRidershipResult[]> {
+  const q = new URLSearchParams({ area: params.area });
+  if (params.city) q.set("city", params.city);
+  const res = await fetch(`${BASE}/station-ridership?${q}`);
+  return handleResponse<StationRidershipResult[]>(res);
 }
 
 /** 投資シミュレーションを実行 */

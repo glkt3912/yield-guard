@@ -129,6 +129,9 @@ const equityInvested = result.totalInvestment - input.loanAmount
 
 **props**:
 - `comparison: LandPriceComparison`
+- `input?: InvestmentInput | null`
+- `theoreticalPrice?: TheoreticalPriceResult | null`
+- `stationRidership?: StationRidershipResult[] | null`
 
 **表示の3状態**:
 
@@ -153,7 +156,19 @@ const equityInvested = result.totalInvestment - input.loanAmount
 | < -20% | 緑 | 割安 |
 | ±20%以内 | 青 | 相場 |
 
-補正係数の内訳（築年数補正・駅距離補正）を `%` で表示。`hasStationData=false` のとき駅距離補正行は非表示。
+補正係数の内訳（築年数補正・駅距離補正・需要スコア補正）を `%` で表示。`hasStationData=false` のとき駅距離補正行は、`hasRidershipData=false` のとき需要スコア補正行はそれぞれ非表示。
+
+**駅別乗降客数パネル（`stationRidership`）**:
+
+`stationRidership` prop が1件以上ある場合のみ紫パネルで表示。`GET /api/station-ridership` のレスポンス（上位5件まで表示）。
+
+| フィールド | 表示内容 |
+|-----------|---------|
+| `stationName` + `lineName` | 駅名（路線名） |
+| `passengers` | 乗降客数/日（カンマ区切り） |
+| `demandScore` | A〜E のカラーラベル |
+
+需要スコアのカラー: A=紫・B=青・C=緑・D=黄・E=赤
 
 **用途地域情報パネル（`stats.zoning`）**:
 
@@ -330,9 +345,11 @@ const deadCrossEndYear = yearlyResults.slice(0, 35)
 
 | 関数 | エンドポイント | 説明 |
 |------|--------------|------|
-| `fetchLandPrices(params)` | `GET /api/land-prices` | 土地取引統計 |
+| `fetchLandPrices(params)` | `GET /api/land-prices/stats` | 土地取引統計 |
 | `compareLandPrice(params)` | `GET /api/land-prices/compare` | 相場比較 |
-| `analyze(input)` | `POST /api/analyze` | 投資シミュレーション |
+| `estimateLandPrice(params)` | `GET /api/land-prices/estimate` | 理論価格推定（築年数・駅距離・需要スコア補正） |
+| `fetchStationRidership(params)` | `GET /api/station-ridership` | 駅別乗降客数・需要スコア（XKT015） |
+| `analyze(input)` | `POST /api/investment/analyze` | 投資シミュレーション |
 | `fetchMunicipalities(area)` | `GET /api/municipalities` | 市区町村一覧（XIT002） |
 | `fetchPrefectures()` | `GET /api/prefectures` | 都道府県一覧 |
 

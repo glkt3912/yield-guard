@@ -18,15 +18,17 @@ type cacheEntry struct {
 
 // cache は TTL 付きインメモリキャッシュ
 type cache struct {
-	mu          sync.RWMutex
-	entries     map[string]cacheEntry
-	muniEntries map[string]muniCacheEntry
+	mu               sync.RWMutex
+	entries          map[string]cacheEntry
+	muniEntries      map[string]muniCacheEntry
+	ridershipEntries map[string]ridershipCacheEntry
 }
 
 func newCache() *cache {
 	return &cache{
-		entries:     make(map[string]cacheEntry),
-		muniEntries: make(map[string]muniCacheEntry),
+		entries:          make(map[string]cacheEntry),
+		muniEntries:      make(map[string]muniCacheEntry),
+		ridershipEntries: make(map[string]ridershipCacheEntry),
 	}
 }
 
@@ -99,6 +101,44 @@ func (c *cache) setMuni(area string, data []Municipality) {
 	defer c.mu.Unlock()
 
 	c.muniEntries[area] = muniCacheEntry{
+		data:      data,
+		expiresAt: time.Now().Add(cacheTTL),
+	}
+}
+
+// ridershipCacheEntry は駅別乗降客数キャッシュの1エントリ
+type ridershipCacheEntry struct {
+	data      []StationRidership
+	expiresAt time.Time
+}
+
+// getRidership は駅別乗降客数キャッシュを取得する。
+func (c *cache) getRidership(key string) ([]StationRidership, bool) {
+	c.mu.RLock()
+	entry, ok := c.ridershipEntries[key]
+	c.mu.RUnlock()
+
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.ridershipEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+
+	copied := make([]StationRidership, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+// setRidership は駅別乗降客数キャッシュに保存する。
+func (c *cache) setRidership(key string, data []StationRidership) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.ridershipEntries[key] = ridershipCacheEntry{
 		data:      data,
 		expiresAt: time.Now().Add(cacheTTL),
 	}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,8 +21,9 @@ func init() {
 
 // mockMLITClient は MLITClient インターフェースのテスト用モック
 type mockMLITClient struct {
-	fetchFunc func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
-	muniFunc  func(ctx context.Context, area string) ([]mlit.Municipality, error)
+	fetchFunc      func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
+	muniFunc       func(ctx context.Context, area string) ([]mlit.Municipality, error)
+	ridershipFunc  func(ctx context.Context, area, city string) ([]mlit.StationRidership, error)
 }
 
 func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
@@ -36,6 +38,13 @@ func (m *mockMLITClient) FetchMunicipalities(ctx context.Context, area string) (
 		return []mlit.Municipality{}, nil
 	}
 	return m.muniFunc(ctx, area)
+}
+
+func (m *mockMLITClient) FetchStationRidership(ctx context.Context, area, city string) ([]mlit.StationRidership, error) {
+	if m.ridershipFunc == nil {
+		return []mlit.StationRidership{}, nil
+	}
+	return m.ridershipFunc(ctx, area, city)
 }
 
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す
@@ -369,6 +378,94 @@ func TestGetMunicipalities_Success(t *testing.T) {
 	}
 	if result[0].ID != "13101" || result[0].Name != "千代田区" {
 		t.Errorf("unexpected first entry: %+v", result[0])
+	}
+}
+
+func TestGetStationRidership_MissingArea(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestGetStationRidership_Success(t *testing.T) {
+	client := &mockMLITClient{
+		ridershipFunc: func(_ context.Context, area, city string) ([]mlit.StationRidership, error) {
+			if area != "13" || city != "13113" {
+				t.Errorf("unexpected params: area=%s city=%s", area, city)
+			}
+			return []mlit.StationRidership{
+				{StationName: "渋谷", LineName: "JR山手線", Passengers: "360000"},
+				{StationName: "代々木上原", LineName: "小田急小田原線", Passengers: "85,000"},
+			}, nil
+		},
+	}
+	r := newTestRouter(client)
+	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?area=13&city=13113", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var result []domain.StationRidershipResult
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("expected 2 stations, got %d", len(result))
+	}
+	if result[0].StationName != "渋谷" {
+		t.Errorf("unexpected station: %+v", result[0])
+	}
+	if result[0].Passengers != 360000 {
+		t.Errorf("expected 360000 passengers, got %d", result[0].Passengers)
+	}
+	if result[0].DemandScore != domain.RidershipScoreA {
+		t.Errorf("expected score A, got %s", result[0].DemandScore)
+	}
+	if result[1].Passengers != 85000 {
+		t.Errorf("expected 85000 passengers (comma-separated), got %d", result[1].Passengers)
+	}
+}
+
+func TestGetStationRidership_APIError(t *testing.T) {
+	client := &mockMLITClient{
+		ridershipFunc: func(_ context.Context, _, _ string) ([]mlit.StationRidership, error) {
+			return nil, fmt.Errorf("upstream error")
+		},
+	}
+	r := newTestRouter(client)
+	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?area=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502, got %d", w.Code)
+	}
+}
+
+func TestEstimateLandPrice_InvalidRidershipScore(t *testing.T) {
+	client := &mockMLITClient{
+		fetchFunc: func(_ context.Context, _ mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
+			return []domain.LandTransaction{
+				{PricePerTsubo: 200_000, BuildingYear: 2010, StationMinutes: 10},
+			}, nil
+		},
+	}
+	r := newTestRouter(client)
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/land-prices/estimate?area=10&year=2024&quarter=1&to_year=2024&to_quarter=4&price=5000000&area_sqm=100&building_age=10&ridership_score=Z",
+		nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for invalid ridership_score, got %d", w.Code)
 	}
 }
 

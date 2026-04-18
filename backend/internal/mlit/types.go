@@ -61,6 +61,21 @@ type LandPriceQuery struct {
 	ToQuarter    int    // 取得終了四半期 (1〜4)
 }
 
+// StationRidershipResponse は XKT015 駅別乗降客数APIのレスポンス
+type StationRidershipResponse struct {
+	Status string             `json:"status"`
+	Data   []StationRidership `json:"data"`
+}
+
+// StationRidership は駅別乗降客数の1レコード
+type StationRidership struct {
+	StationName  string `json:"StationName"`  // 駅名
+	LineName     string `json:"LineName"`     // 路線名
+	Passengers   string `json:"Passengers"`   // 乗降客数/日
+	Prefecture   string `json:"Prefecture"`   // 都道府県名
+	Municipality string `json:"Municipality"` // 市区町村名
+}
+
 // Prefectures は都道府県コードマップ
 var Prefectures = map[string]string{
 	"01": "北海道", "02": "青森県", "03": "岩手県", "04": "宮城県",

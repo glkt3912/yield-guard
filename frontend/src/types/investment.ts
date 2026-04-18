@@ -21,15 +21,28 @@ export type BuildingType =
   | "RC造"
   | "SRC造";
 
+export type RidershipDemandScore = "A" | "B" | "C" | "D" | "E";
+
 export interface TheoreticalPriceResult {
   theoreticalPriceJPY: number;
   deviationPct: number;
   ageCorrection: number;
   stationCorrection: number;
+  ridershipCorrection: number;
   medianBuildingAge: number;
   medianStationMinutes: number;
   isLowDataWarning: boolean;
   hasStationData: boolean;
+  ridershipScore?: RidershipDemandScore;
+  hasRidershipData: boolean;
+}
+
+export interface StationRidershipResult {
+  stationName: string;
+  lineName: string;
+  passengers: number;
+  demandScore: RidershipDemandScore;
+  correction: number;
 }
 
 export interface InvestmentInput {

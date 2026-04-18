@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { InvestmentInput, LandPriceComparison, UrbanRiskLevel, TheoreticalPriceResult } from "@/types/investment";
+import type { InvestmentInput, LandPriceComparison, UrbanRiskLevel, TheoreticalPriceResult, StationRidershipResult } from "@/types/investment";
 import { formatMan, formatTsubo } from "@/lib/utils";
 import { MapPin, AlertTriangle, SearchX, Home, Building2, ShieldAlert, ShieldCheck, TrendingUp } from "lucide-react";
 
@@ -30,6 +30,7 @@ interface Props {
   comparison: LandPriceComparison;
   input?: InvestmentInput | null;
   theoreticalPrice?: TheoreticalPriceResult | null;
+  stationRidership?: StationRidershipResult[] | null;
 }
 
 const ASSESSMENT_BADGE: Record<string, "success" | "warning" | "danger"> = {
@@ -59,7 +60,15 @@ const RISK_STYLE: Record<UrbanRiskLevel, { border: string; bg: string; text: str
   },
 };
 
-export function LandPriceAnalysis({ comparison, input, theoreticalPrice }: Props) {
+const RIDERSHIP_SCORE_LABEL: Record<string, { label: string; color: string }> = {
+  A: { label: "A（超大型駅）", color: "text-purple-700" },
+  B: { label: "B（大型駅）", color: "text-blue-700" },
+  C: { label: "C（中型駅）", color: "text-green-700" },
+  D: { label: "D（小型駅）", color: "text-yellow-700" },
+  E: { label: "E（極小駅）", color: "text-red-700" },
+};
+
+export function LandPriceAnalysis({ comparison, input, theoreticalPrice, stationRidership }: Props) {
   const { stats, assessment, inputPricePerTsubo, diffFromMedian } = comparison;
 
   const landValueSection = (() => {
@@ -282,9 +291,30 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice }: Props
             </ResponsiveContainer>
           </>
         )}
+        {/* 駅別乗降客数・需要スコア */}
+        {stationRidership && stationRidership.length > 0 && (
+          <div className="rounded-md border border-purple-200 bg-purple-50 p-3">
+            <p className="text-xs font-semibold text-purple-800 mb-2">最寄り駅の乗降客数・賃貸需要スコア</p>
+            <div className="space-y-1">
+              {stationRidership.slice(0, 5).map((s) => {
+                const scoreInfo = RIDERSHIP_SCORE_LABEL[s.demandScore] ?? { label: s.demandScore, color: "text-gray-700" };
+                return (
+                  <div key={`${s.stationName}-${s.lineName}`} className="flex items-center justify-between text-xs">
+                    <span className="text-purple-900">{s.stationName}（{s.lineName}）</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-purple-700">{s.passengers.toLocaleString()}人/日</span>
+                      <span className={`font-bold ${scoreInfo.color}`}>{scoreInfo.label}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* 理論価格推定 */}
         {theoreticalPrice && (() => {
-          const { theoreticalPriceJPY, deviationPct, ageCorrection, stationCorrection, medianBuildingAge, medianStationMinutes, isLowDataWarning, hasStationData } = theoreticalPrice;
+          const { theoreticalPriceJPY, deviationPct, ageCorrection, stationCorrection, ridershipCorrection, medianBuildingAge, medianStationMinutes, isLowDataWarning, hasStationData, hasRidershipData, ridershipScore } = theoreticalPrice;
           const isOverpriced = deviationPct > 20;
           const isUnderpriced = deviationPct < -20;
           const color = isOverpriced
@@ -296,7 +326,7 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice }: Props
             <div className={`rounded-md border p-3 ${color}`}>
               <p className="flex items-center gap-1 text-sm font-semibold mb-2">
                 <TrendingUp className="h-4 w-4" />
-                理論価格推定（築年数・駅距離補正）
+                理論価格推定（築年数・駅距離・需要スコア補正）
               </p>
               {isLowDataWarning && (
                 <p className="text-xs text-yellow-700 mb-2">※ 築年数データが少ないため参考値</p>
@@ -321,6 +351,12 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice }: Props
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <dt>駅距離補正（中央値{medianStationMinutes}分）</dt>
                     <dd>{stationCorrection >= 0 ? "+" : ""}{(stationCorrection * 100).toFixed(1)}%</dd>
+                  </div>
+                )}
+                {hasRidershipData && ridershipScore && (
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <dt>需要スコア補正（スコア: {RIDERSHIP_SCORE_LABEL[ridershipScore]?.label ?? ridershipScore}）</dt>
+                    <dd>{ridershipCorrection >= 0 ? "+" : ""}{(ridershipCorrection * 100).toFixed(1)}%</dd>
                   </div>
                 )}
               </dl>
