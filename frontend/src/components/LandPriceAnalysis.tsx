@@ -12,9 +12,9 @@ import {
 } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { InvestmentInput, LandPriceComparison, UrbanRiskLevel, TheoreticalPriceResult, StationRidershipResult } from "@/types/investment";
+import type { InvestmentInput, LandPriceComparison, UrbanRiskLevel, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult } from "@/types/investment";
 import { formatMan, formatTsubo } from "@/lib/utils";
-import { MapPin, AlertTriangle, SearchX, Home, Building2, ShieldAlert, ShieldCheck, TrendingUp } from "lucide-react";
+import { MapPin, AlertTriangle, SearchX, Home, Building2, ShieldAlert, ShieldCheck, TrendingUp, Users } from "lucide-react";
 
 const SQM_PER_TSUBO = 3.30578;
 
@@ -26,11 +26,19 @@ function calcLandValueJudgment(totalPrice: number, estimatedLandValue: number): 
   return "土地値超";
 }
 
+const POPULATION_TREND_STYLE: Record<string, { border: string; bg: string; text: string }> = {
+  "増加":         { border: "border-green-300",  bg: "bg-green-50",  text: "text-green-900" },
+  "現状維持":     { border: "border-yellow-300", bg: "bg-yellow-50", text: "text-yellow-900" },
+  "緩やかな減少": { border: "border-orange-300", bg: "bg-orange-50", text: "text-orange-900" },
+  "急激な減少":   { border: "border-red-300",    bg: "bg-red-50",    text: "text-red-900" },
+};
+
 interface Props {
   comparison: LandPriceComparison;
   input?: InvestmentInput | null;
   theoreticalPrice?: TheoreticalPriceResult | null;
   stationRidership?: StationRidershipResult[] | null;
+  populationForecast?: PopulationForecastResult | null;
 }
 
 const ASSESSMENT_BADGE: Record<string, "success" | "warning" | "danger"> = {
@@ -68,7 +76,7 @@ const RIDERSHIP_SCORE_LABEL: Record<string, { label: string; color: string }> = 
   E: { label: "E（極小駅）", color: "text-red-700" },
 };
 
-export function LandPriceAnalysis({ comparison, input, theoreticalPrice, stationRidership }: Props) {
+export function LandPriceAnalysis({ comparison, input, theoreticalPrice, stationRidership, populationForecast }: Props) {
   const { stats, assessment, inputPricePerTsubo, diffFromMedian } = comparison;
 
   const landValueSection = (() => {
@@ -160,6 +168,43 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice, station
             })}
           </div>
         )}
+
+        {/* 人口動態インジケーター */}
+        {populationForecast && populationForecast.snapshots.length > 0 && (() => {
+          const style = POPULATION_TREND_STYLE[populationForecast.trend] ?? POPULATION_TREND_STYLE["現状維持"];
+          const displayYears = [2020, 2030, 2040, 2050];
+          const snapshotMap = Object.fromEntries(populationForecast.snapshots.map(s => [s.year, s.pop]));
+          const base2020 = snapshotMap[2020] ?? 0;
+          return (
+            <div className={`rounded-md border ${style.border} ${style.bg} p-3`}>
+              <p className={`flex items-center gap-1 text-xs font-semibold mb-2 ${style.text}`}>
+                <Users className="h-3.5 w-3.5" />
+                人口動態インジケーター（XKT013 将来推計人口）
+                <span className="ml-auto font-bold">{populationForecast.trend}</span>
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {displayYears.map(year => {
+                  const pop = snapshotMap[year] ?? 0;
+                  const ratePct = base2020 > 0 ? ((pop - base2020) / base2020 * 100) : 0;
+                  return (
+                    <div key={year} className="text-center">
+                      <p className={`text-xs ${style.text} opacity-70`}>{year}年</p>
+                      <p className={`text-xs font-semibold ${style.text}`}>{pop > 0 ? pop.toFixed(0) : "−"}人</p>
+                      {year !== 2020 && base2020 > 0 && (
+                        <p className={`text-xs ${ratePct >= 0 ? "text-green-700" : "text-red-700"}`}>
+                          {ratePct >= 0 ? "+" : ""}{ratePct.toFixed(0)}%
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className={`mt-2 text-xs ${style.text} opacity-70`}>
+                30年後変化率: {(populationForecast.changeRate30yr * 100).toFixed(0)}% ／ 推定空室率増加: +{(populationForecast.vacancyRateDelta * 100).toFixed(0)}%pt
+              </p>
+            </div>
+          );
+        })()}
 
         {/* 統計サマリー */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

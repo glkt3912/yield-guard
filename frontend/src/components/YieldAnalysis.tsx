@@ -2,19 +2,20 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { InvestmentInput, InvestmentResult } from "@/types/investment";
+import type { InvestmentInput, InvestmentResult, PopulationForecastResult } from "@/types/investment";
 import { formatMan, formatPct, formatYen } from "@/lib/utils";
-import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Users } from "lucide-react";
 
 interface Props {
   result: InvestmentResult;
   input: InvestmentInput;
+  populationForecast?: PopulationForecastResult | null;
 }
 
 const MAX_YIELD_PCT = 16; // ゲージ上限（8%が中央に来る設計）
 const TARGET_PCT = 8;
 
-export function YieldAnalysis({ result, input }: Props) {
+export function YieldAnalysis({ result, input, populationForecast }: Props) {
   const yieldPct = result.grossYield * 100;
   const netYieldPct = result.netYield * 100;
   const isGood = result.isAbove8Percent;
@@ -121,6 +122,41 @@ export function YieldAnalysis({ result, input }: Props) {
               </tbody>
             </table>
           </div>
+
+          {/* 人口減少シナリオ */}
+          {populationForecast && populationForecast.snapshots.length > 0 && (() => {
+            const popV = Math.min(actualV + populationForecast.vacancyRateDelta, 0.99);
+            const popNetYield = result.grossYield * factor(popV);
+            const popAnnualRent = result.grossYield * result.totalInvestment * (1 - popV);
+            const popCF = popAnnualRent - (result.yearlyResults[0]?.annualLoanPayment ?? 0) - (result.yearlyResults[0]?.annualExpenses ?? 0);
+            const isDeficit = popCF < 0;
+            return (
+              <div className={`mt-4 rounded-md border p-3 ${isDeficit ? "border-red-300 bg-red-50" : "border-yellow-200 bg-yellow-50"}`}>
+                <p className="flex items-center gap-1 text-sm font-semibold mb-2">
+                  <Users className="h-4 w-4" />
+                  人口減少シナリオ（30年後推計）
+                  {isDeficit && <Badge variant="danger" className="ml-2">赤字転落 ⚠️</Badge>}
+                </p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                  <div className="text-muted-foreground">想定空室率</div>
+                  <div className="text-right font-medium">{(popV * 100).toFixed(0)}%</div>
+                  <div className="text-muted-foreground">表面利回り</div>
+                  <div className={`text-right font-medium ${popNetYield * 100 >= 8 ? "text-green-600" : "text-red-600"}`}>
+                    {(result.grossYield * (1 - popV) * 100).toFixed(2)}%
+                  </div>
+                  <div className="text-muted-foreground">実質利回り</div>
+                  <div className="text-right text-muted-foreground">{(popNetYield * 100).toFixed(2)}%</div>
+                  <div className="text-muted-foreground">年間CF（概算）</div>
+                  <div className={`text-right font-bold ${isDeficit ? "text-red-700" : "text-green-700"}`}>
+                    {formatMan(popCF)}
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  ※ このエリアの30年後人口推計: {(populationForecast.changeRate30yr * 100).toFixed(0)}%（現在比）／トレンド: {populationForecast.trend}
+                </p>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 

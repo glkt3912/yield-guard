@@ -18,17 +18,19 @@ type cacheEntry struct {
 
 // cache は TTL 付きインメモリキャッシュ
 type cache struct {
-	mu               sync.RWMutex
-	entries          map[string]cacheEntry
-	muniEntries      map[string]muniCacheEntry
-	ridershipEntries map[string]ridershipCacheEntry
+	mu                 sync.RWMutex
+	entries            map[string]cacheEntry
+	muniEntries        map[string]muniCacheEntry
+	ridershipEntries   map[string]ridershipCacheEntry
+	populationEntries  map[string]populationCacheEntry
 }
 
 func newCache() *cache {
 	return &cache{
-		entries:          make(map[string]cacheEntry),
-		muniEntries:      make(map[string]muniCacheEntry),
-		ridershipEntries: make(map[string]ridershipCacheEntry),
+		entries:           make(map[string]cacheEntry),
+		muniEntries:       make(map[string]muniCacheEntry),
+		ridershipEntries:  make(map[string]ridershipCacheEntry),
+		populationEntries: make(map[string]populationCacheEntry),
 	}
 }
 
@@ -139,6 +141,44 @@ func (c *cache) setRidership(key string, data []StationRidership) {
 	defer c.mu.Unlock()
 
 	c.ridershipEntries[key] = ridershipCacheEntry{
+		data:      data,
+		expiresAt: time.Now().Add(cacheTTL),
+	}
+}
+
+// populationCacheEntry は将来推計人口キャッシュの1エントリ
+type populationCacheEntry struct {
+	data      []domain.PopulationForecastItem
+	expiresAt time.Time
+}
+
+// getPopulation は将来推計人口キャッシュを取得する。
+func (c *cache) getPopulation(key string) ([]domain.PopulationForecastItem, bool) {
+	c.mu.RLock()
+	entry, ok := c.populationEntries[key]
+	c.mu.RUnlock()
+
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.populationEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+
+	copied := make([]domain.PopulationForecastItem, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+// setPopulation は将来推計人口キャッシュに保存する。
+func (c *cache) setPopulation(key string, data []domain.PopulationForecastItem) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.populationEntries[key] = populationCacheEntry{
 		data:      data,
 		expiresAt: time.Now().Add(cacheTTL),
 	}

@@ -50,6 +50,87 @@ func TestFetchLandPrices_RealAPI(t *testing.T) {
 	}
 }
 
+// TestFetchPopulationForecast_RealAPI は XKT013 将来推計人口APIへの疎通を確認する。
+// 渋谷付近 (z=14, x=14547, y=6451) でテスト。
+func TestFetchPopulationForecast_RealAPI(t *testing.T) {
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 渋谷付近タイル座標 (z=14)
+	z, x, y := 14, 14547, 6451
+
+	items, err := client.FetchPopulationForecast(ctx, z, x, y)
+	if err != nil {
+		t.Fatalf("FetchPopulationForecast failed: %v", err)
+	}
+
+	t.Logf("取得年数: %d 年分", len(items))
+	for _, it := range items {
+		t.Logf("  %d年: %.1f人", it.Year, it.Pop)
+	}
+
+	if len(items) == 0 {
+		t.Skip("フィーチャが0件のタイルでした（エリア外の可能性）")
+	}
+
+	// 返却された年のセットを検証
+	years := make(map[int]float64, len(items))
+	for _, it := range items {
+		years[it.Year] = it.Pop
+	}
+	for _, wantYear := range []int{2020, 2025, 2030, 2035, 2040, 2045, 2050} {
+		if _, ok := years[wantYear]; !ok {
+			t.Errorf("year %d が結果に含まれていません", wantYear)
+		}
+	}
+
+	// 2020年の基準人口が正 (> 0) であることを確認
+	if pop2020 := years[2020]; pop2020 <= 0 {
+		t.Errorf("PTN_2020 should be positive, got %f", pop2020)
+	}
+}
+
+// TestFetchPopulationForecast_RealAPI_Rural は地方都市（前橋市付近）での疎通テスト。
+// 都市部より人口減少が大きいエリアの確認用。
+func TestFetchPopulationForecast_RealAPI_Rural(t *testing.T) {
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 前橋市付近タイル座標 (z=14)
+	z, x, y := 14, 14479, 6412
+
+	items, err := client.FetchPopulationForecast(ctx, z, x, y)
+	if err != nil {
+		t.Fatalf("FetchPopulationForecast (rural) failed: %v", err)
+	}
+
+	t.Logf("前橋市付近 - 取得年数: %d 年分", len(items))
+	for _, it := range items {
+		t.Logf("  %d年: %.1f人", it.Year, it.Pop)
+	}
+
+	if len(items) == 0 {
+		t.Skip("フィーチャが0件のタイルでした")
+	}
+
+	// 2020→2050 変化率をログ出力
+	pop2020, pop2050 := 0.0, 0.0
+	for _, it := range items {
+		if it.Year == 2020 {
+			pop2020 = it.Pop
+		}
+		if it.Year == 2050 {
+			pop2050 = it.Pop
+		}
+	}
+	if pop2020 > 0 {
+		rate := (pop2050 - pop2020) / pop2020 * 100
+		t.Logf("30年後変化率: %+.1f%%", rate)
+	}
+}
+
 // TestFetchLandPrices_RealAPI_WithCity は市区町村コード絞り込みの疎通テスト。
 func TestFetchLandPrices_RealAPI_WithCity(t *testing.T) {
 	client := NewClient()

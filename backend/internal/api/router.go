@@ -42,6 +42,7 @@ func NewRouter(h *Handler) *gin.Engine {
 		api.POST("/investment/analyze", h.Analyze)
 		api.GET("/municipalities", h.GetMunicipalities)
 		api.GET("/station-ridership", h.GetStationRidership)
+		api.GET("/population-forecast", h.GetPopulationForecast)
 	}
 
 	return r

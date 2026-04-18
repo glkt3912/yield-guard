@@ -1,6 +1,7 @@
 .PHONY: dev test lint build help \
-        mlit-land-prices mlit-municipalities mlit-station-ridership \
-        api-station-ridership api-estimate-ridership
+        mlit-land-prices mlit-municipalities mlit-station-ridership mlit-population-forecast \
+        api-station-ridership api-estimate-ridership api-population-forecast \
+        integration integration-population
 
 ## dev: バックエンド・フロントエンドの開発サーバーを起動
 dev:
@@ -89,6 +90,20 @@ mlit-station-ridership:
 	   "$(MLIT_BASE)/XKT015?response_format=geojson&z=$(z)&x=$(x)&y=$(y)" \
 	   | jq .
 
+## mlit-population-forecast: 将来推計人口を取得 (XKT013) ※国交省APIへ直接リクエスト
+##   使い方: make mlit-population-forecast z=14 x=14547 y=6451
+##   緯度経度→タイル変換例(z=14): 渋谷付近 → x=14547 y=6451 / 前橋付近 → x=14479 y=6412
+mlit-population-forecast:
+	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
+	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
+	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
+	@source .env 2>/dev/null; \
+	 curl -s \
+	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
+	   --compressed \
+	   "$(MLIT_BASE)/XKT013?response_format=geojson&z=$(z)&x=$(x)&y=$(y)" \
+	   | jq '{feature_count: (.features | length), sample: (.features[:2] | map(.properties | {MESH_ID, PTN_2020, PTN_2030, PTN_2040, PTN_2050}))}'
+
 # ---------------------------------------------------------------------------
 # ローカル開発サーバー向けAPIテスト (backend が :8080 で起動中であること)
 # ---------------------------------------------------------------------------
@@ -103,6 +118,15 @@ api-station-ridership:
 	  "$(API_BASE)/station-ridership?lat=$(lat)&lng=$(lng)$(if $(z),&z=$(z),)" \
 	  | jq .
 
+## api-population-forecast: ローカルの /api/population-forecast を呼び出す
+##   使い方: make api-population-forecast lat=35.6762 lng=139.6503 [z=14]
+api-population-forecast:
+	@test -n "$(lat)" || (echo "ERROR: lat は必須です (例: lat=35.6762)"; exit 1)
+	@test -n "$(lng)" || (echo "ERROR: lng は必須です (例: lng=139.6503)"; exit 1)
+	curl -s \
+	  "$(API_BASE)/population-forecast?lat=$(lat)&lng=$(lng)$(if $(z),&z=$(z),)" \
+	  | jq .
+
 ## api-estimate-ridership: 需要スコア補正付き理論価格推定を呼び出す
 ##   使い方: make api-estimate-ridership area=13 city=13113 price=50000000 area_sqm=100 building_age=10 station_minutes=5 ridership_score=A
 api-estimate-ridership:
@@ -113,3 +137,17 @@ api-estimate-ridership:
 	curl -s \
 	  "$(API_BASE)/land-prices/estimate?area=$(area)$(if $(city),&city=$(city),)&year=2024&quarter=1&to_year=2024&to_quarter=4&price=$(price)&area_sqm=$(area_sqm)&building_age=$(building_age)$(if $(station_minutes),&station_minutes=$(station_minutes),)$(if $(ridership_score),&ridership_score=$(ridership_score),)" \
 	  | jq .
+
+# ---------------------------------------------------------------------------
+# 統合テスト (実際の国交省APIへ疎通確認)
+# ---------------------------------------------------------------------------
+
+## integration: 全統合テストを実行 (MLIT_API_KEY 必須)
+integration:
+	cd backend && source ../.env 2>/dev/null; \
+	go test -tags=integration ./internal/mlit/... -v -timeout 120s
+
+## integration-population: 将来推計人口 (XKT013) の統合テストのみ実行
+integration-population:
+	cd backend && source ../.env 2>/dev/null; \
+	go test -tags=integration ./internal/mlit/... -v -timeout 60s -run TestFetchPopulationForecast

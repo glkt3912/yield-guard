@@ -20,9 +20,10 @@ const (
 	mlitBaseURL = "https://www.reinfolib.mlit.go.jp/ex-api/external"
 
 	// エンドポイントパス
-	endpointLandPrices      = "/XIT001"
-	endpointMunicipalities  = "/XIT002"
-	endpointStationRidership = "/XKT015"
+	endpointLandPrices          = "/XIT001"
+	endpointMunicipalities      = "/XIT002"
+	endpointStationRidership    = "/XKT015"
+	endpointPopulationForecast  = "/XKT013"
 
 	requestTimeout = 30 * time.Second
 
@@ -231,6 +232,84 @@ func latestPassengers(p StationRidershipProperties) int {
 		}
 	}
 	return 0
+}
+
+// FetchPopulationForecast はタイル座標で XKT013 を呼び出し将来推計人口を取得する。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+// 複数メッシュヒット時は人口を合算して返す。
+func (c *Client) FetchPopulationForecast(ctx context.Context, z, x, y int) ([]domain.PopulationForecastItem, error) {
+	key := fmt.Sprintf("population:%d:%d:%d", z, x, y)
+	if cached, ok := c.cache.getPopulation(key); ok {
+		return cached, nil
+	}
+
+	params := url.Values{}
+	params.Set("response_format", "geojson")
+	params.Set("z", strconv.Itoa(z))
+	params.Set("x", strconv.Itoa(x))
+	params.Set("y", strconv.Itoa(y))
+	apiURL := c.baseURL + endpointPopulationForecast + "?" + params.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request build error: %w", err)
+	}
+	if c.apiKey != "" {
+		req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("population forecast API request failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		return nil, &clientError{code: resp.StatusCode}
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("population forecast API returned status %d", resp.StatusCode)
+	}
+
+	var geoResp PopulationForecastGeoJSON
+	if err := json.NewDecoder(resp.Body).Decode(&geoResp); err != nil {
+		return nil, fmt.Errorf("population forecast GeoJSON decode error: %w", err)
+	}
+
+	result := parsePopulationForecasts(geoResp.Features)
+	c.cache.setPopulation(key, result)
+	return result, nil
+}
+
+// parsePopulationForecasts は GeoJSON フィーチャを年別人口スライスに変換する。
+// フィーチャが0件（タイル外・海上等）の場合は nil を返す。
+// 複数メッシュの人口は合算する。
+func parsePopulationForecasts(features []PopulationForecastFeature) []domain.PopulationForecastItem {
+	if len(features) == 0 {
+		return nil
+	}
+	type yearPop struct {
+		year int
+		pop  float64
+	}
+	totals := []yearPop{
+		{2020, 0}, {2025, 0}, {2030, 0}, {2035, 0}, {2040, 0}, {2045, 0}, {2050, 0},
+	}
+	for _, f := range features {
+		p := f.Properties
+		totals[0].pop += p.PTN2020
+		totals[1].pop += p.PTN2025
+		totals[2].pop += p.PTN2030
+		totals[3].pop += p.PTN2035
+		totals[4].pop += p.PTN2040
+		totals[5].pop += p.PTN2045
+		totals[6].pop += p.PTN2050
+	}
+	result := make([]domain.PopulationForecastItem, 0, len(totals))
+	for _, t := range totals {
+		result = append(result, domain.PopulationForecastItem{Year: t.year, Pop: t.pop})
+	}
+	return result
 }
 
 // doRequest は単一のHTTPリクエストを実行し、レスポンスをパースして返す

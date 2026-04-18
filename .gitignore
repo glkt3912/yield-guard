@@ -6,3 +6,11 @@ frontend/.next
 
 # docs-mcp-server 設定（絶対パスがマシン依存のため）
 .mcp.json
+
+# Claude Code 内部ファイル
+.claude/
+backend/.claude/
+frontend/.claude/
+
+# TypeScript ビルドキャッシュ
+frontend/tsconfig.tsbuildinfo
