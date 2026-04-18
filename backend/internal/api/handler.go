@@ -220,7 +220,15 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 		stationMinutes, _ = strconv.Atoi(sm)
 	}
 
-	ridershipScore := domain.RidershipDemandScore(c.Query("ridership_score"))
+	var ridershipScore domain.RidershipDemandScore
+	if raw := c.Query("ridership_score"); raw != "" {
+		score := domain.RidershipDemandScore(raw)
+		if !score.IsValid() {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ridership_score は A〜E で指定してください"})
+			return
+		}
+		ridershipScore = score
+	}
 
 	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
 	if err != nil {
@@ -262,7 +270,7 @@ func (h *Handler) GetStationRidership(c *gin.Context) {
 
 	results := make([]domain.StationRidershipResult, 0, len(stations))
 	for _, s := range stations {
-		passengers := int(parsePassengers(s.Passengers))
+		passengers := parsePassengers(s.Passengers)
 		score := domain.CalcRidershipDemandScore(passengers)
 		results = append(results, domain.StationRidershipResult{
 			StationName: s.StationName,
@@ -276,15 +284,22 @@ func (h *Handler) GetStationRidership(c *gin.Context) {
 	c.JSON(http.StatusOK, results)
 }
 
-// parsePassengers は乗降客数の文字列をfloat64にパースする
-func parsePassengers(s string) float64 {
-	s = strings.ReplaceAll(s, ",", "")
+// parsePassengers は乗降客数の文字列を int にパースする。
+// カンマ区切り・全角数字に対応（XKT015 レスポンスの表記揺れを吸収）。
+func parsePassengers(s string) int {
 	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, ",", "")
+	s = strings.Map(func(r rune) rune {
+		if r >= '０' && r <= '９' {
+			return r - '０' + '0'
+		}
+		return r
+	}, s)
 	v, err := strconv.ParseFloat(s, 64)
 	if err != nil {
 		return 0
 	}
-	return v
+	return int(v)
 }
 
 // GetMunicipalities は指定都道府県の市区町村一覧を返す（XIT002）

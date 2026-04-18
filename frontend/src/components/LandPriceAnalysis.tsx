@@ -296,10 +296,10 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice, station
           <div className="rounded-md border border-purple-200 bg-purple-50 p-3">
             <p className="text-xs font-semibold text-purple-800 mb-2">最寄り駅の乗降客数・賃貸需要スコア</p>
             <div className="space-y-1">
-              {stationRidership.slice(0, 5).map((s, i) => {
+              {stationRidership.slice(0, 5).map((s) => {
                 const scoreInfo = RIDERSHIP_SCORE_LABEL[s.demandScore] ?? { label: s.demandScore, color: "text-gray-700" };
                 return (
-                  <div key={i} className="flex items-center justify-between text-xs">
+                  <div key={`${s.stationName}-${s.lineName}`} className="flex items-center justify-between text-xs">
                     <span className="text-purple-900">{s.stationName}（{s.lineName}）</span>
                     <div className="flex items-center gap-2">
                       <span className="text-purple-700">{s.passengers.toLocaleString()}人/日</span>

@@ -18,6 +18,15 @@ const (
 	ridershipCorrE = -0.15
 )
 
+// IsValid は RidershipDemandScore が有効な値（A〜E）かどうかを返す
+func (s RidershipDemandScore) IsValid() bool {
+	switch s {
+	case RidershipScoreA, RidershipScoreB, RidershipScoreC, RidershipScoreD, RidershipScoreE:
+		return true
+	}
+	return false
+}
+
 // CalcRidershipDemandScore は日乗降客数から需要スコアを算出する
 func CalcRidershipDemandScore(passengersPerDay int) RidershipDemandScore {
 	switch {
