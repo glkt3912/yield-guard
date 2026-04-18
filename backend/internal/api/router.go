@@ -38,6 +38,7 @@ func NewRouter(h *Handler) *gin.Engine {
 	{
 		api.GET("/land-prices/stats", h.GetLandPrices)
 		api.GET("/land-prices/compare", h.CompareLandPrice)
+		api.GET("/land-prices/estimate", h.EstimateLandPrice)
 		api.POST("/investment/analyze", h.Analyze)
 		api.GET("/municipalities", h.GetMunicipalities)
 	}

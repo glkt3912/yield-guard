@@ -6,8 +6,8 @@ import { CashFlowChart } from "@/components/CashFlowChart";
 import { DeadCrossChart } from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
-import type { InvestmentInput, InvestmentResult, LandPriceComparison } from "@/types/investment";
-import { analyze, compareLandPrice } from "@/lib/api";
+import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult } from "@/types/investment";
+import { analyze, compareLandPrice, estimateLandPrice } from "@/lib/api";
 import { ShieldAlert, XOctagon, AlertTriangle } from "lucide-react";
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
@@ -21,6 +21,7 @@ function getCurrentPeriods(): { year: number; quarter: number; toYear: number; t
 export function Dashboard() {
   const [result, setResult] = useState<InvestmentResult | null>(null);
   const [comparison, setComparison] = useState<LandPriceComparison | null>(null);
+  const [theoreticalPrice, setTheoreticalPrice] = useState<TheoreticalPriceResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastInput, setLastInput] = useState<InvestmentInput | null>(null);
@@ -44,7 +45,7 @@ export function Dashboard() {
     setError(null);
     const { year, quarter, toYear, toQuarter } = getCurrentPeriods();
     try {
-      const comp = await compareLandPrice({
+      const baseParams = {
         area,
         city,
         year,
@@ -52,9 +53,23 @@ export function Dashboard() {
         toYear,
         toQuarter,
         price: lastInput?.landPrice ?? 5_000_000,
-        areaSqm: lastInput?.landArea ?? 0, // ユーザー入力の面積を使用（ISSUE-15）
-      });
+        areaSqm: lastInput?.landArea ?? 0,
+      };
+      const comp = await compareLandPrice(baseParams);
       setComparison(comp);
+
+      if (lastInput && lastInput.landArea > 0) {
+        try {
+          const est = await estimateLandPrice({
+            ...baseParams,
+            buildingAge: lastInput.buildingAge,
+            stationMinutes: lastInput.stationMinutes,
+          });
+          setTheoreticalPrice(est);
+        } catch {
+          setTheoreticalPrice(null);
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "相場データの取得に失敗しました");
     } finally {
@@ -105,7 +120,7 @@ export function Dashboard() {
               </div>
             )}
 
-            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} />}
+            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} />}
 
             {result && lastInput && (
               <>

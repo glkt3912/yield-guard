@@ -176,6 +176,69 @@ func validateInvestmentInput(in domain.InvestmentInput) error {
 	return nil
 }
 
+// EstimateLandPrice は築年数・駅距離補正による理論価格と乖離率を返す
+// GET /api/land-prices/estimate?area=10&city=...&price=5000000&area_sqm=100&building_age=10&station_minutes=5
+func (h *Handler) EstimateLandPrice(c *gin.Context) {
+	q, err := parseLandPriceQuery(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	priceStr := c.Query("price")
+	areaSqmStr := c.Query("area_sqm")
+	buildingAgeStr := c.Query("building_age")
+
+	if priceStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "price は必須パラメータです"})
+		return
+	}
+	listingPrice, err := strconv.ParseFloat(priceStr, 64)
+	if err != nil || listingPrice <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "price は正の数値で指定してください"})
+		return
+	}
+
+	areaSqm := 0.0
+	if areaSqmStr != "" {
+		areaSqm, _ = strconv.ParseFloat(areaSqmStr, 64)
+	}
+	if areaSqm <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "area_sqm は正の数値で指定してください"})
+		return
+	}
+
+	buildingAge := 0
+	if buildingAgeStr != "" {
+		buildingAge, _ = strconv.Atoi(buildingAgeStr)
+	}
+
+	stationMinutes := 0
+	if sm := c.Query("station_minutes"); sm != "" {
+		stationMinutes, _ = strconv.Atoi(sm)
+	}
+
+	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "国交省APIからのデータ取得に失敗しました: " + err.Error()})
+		return
+	}
+
+	stats := domain.CalcLandPriceStats(transactions)
+	result, ok := domain.EstimateTheoreticalPrice(stats, domain.TheoreticalPriceInput{
+		ListingPrice:   listingPrice,
+		LandArea:       areaSqm,
+		BuildingAge:    buildingAge,
+		StationMinutes: stationMinutes,
+	})
+	if !ok {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "理論価格の推定に必要なデータが不足しています（取引事例に建築年データがありません）"})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // GetMunicipalities は指定都道府県の市区町村一覧を返す（XIT002）
 // GET /api/municipalities?area=10
 func (h *Handler) GetMunicipalities(c *gin.Context) {

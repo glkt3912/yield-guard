@@ -252,6 +252,9 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
             <Input label="築年数" type="number" suffix="年（0=新築）"
               value={String(input.buildingAge)}
               onChange={(e) => setNum("buildingAge", parseInt(e.target.value) || 0)} />
+            <Input label="最寄り駅徒歩" type="number" suffix="分（0=未入力）"
+              value={String(input.stationMinutes)}
+              onChange={(e) => setNum("stationMinutes", parseInt(e.target.value) || 0)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Input label="想定月額賃料" type="number" suffix="円"

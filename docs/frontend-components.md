@@ -78,6 +78,10 @@ const equityInvested = result.totalInvestment - input.loanAmount
 - `muniFilter: string` — テキスト入力の現在値
 - `filteredMunicipalities` — `useMemo([municipalities, muniFilter])` でメモ化済み
 
+**最寄り駅徒歩（`stationMinutes`）**:
+
+`InvestmentInput.stationMinutes`（0=未入力）。「相場データを取得」押下時に `GET /api/land-prices/estimate` へ渡され、理論価格の駅距離補正に使用される。0のままでも理論価格は築年数補正のみで算出される。
+
 **詳細設定トグル（showAdvanced）**:
 `expenseRate`, `incomeTaxRate`, `buildingAge`, `buildingType`, `exitYieldTarget` は
 詳細設定パネルに格納されており、デフォルトでは非表示。
@@ -138,6 +142,18 @@ const equityInvested = result.totalInvestment - input.loanAmount
 - `"割安"` → 緑バッジ（データ不足時は「割安（参考値）」）
 - `"相場"` → 黄バッジ（データ不足時は「相場（参考値）」）
 - `"割高"` → 赤バッジ（データ不足時は「割高（参考値）」）
+
+**理論価格パネル（`theoreticalPrice`）**:
+
+`theoreticalPrice?: TheoreticalPriceResult` prop が存在する場合のみ表示。`GET /api/land-prices/estimate` のレスポンス。
+
+| `deviationPct` | 背景色 | ラベル |
+|----------------|--------|--------|
+| > +20% | 赤 | 割高 |
+| < -20% | 緑 | 割安 |
+| ±20%以内 | 青 | 相場 |
+
+補正係数の内訳（築年数補正・駅距離補正）を `%` で表示。`hasStationData=false` のとき駅距離補正行は非表示。
 
 **用途地域情報パネル（`stats.zoning`）**:
 
