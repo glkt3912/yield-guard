@@ -1,4 +1,29 @@
-import type { InvestmentResult, LandPriceComparison, LandPriceStats, YearlyResult } from "@/types/investment";
+import type { InvestmentInput, InvestmentResult, LandPriceComparison, LandPriceStats, YearlyResult } from "@/types/investment";
+
+export function makeInput(overrides: Partial<InvestmentInput> = {}): InvestmentInput {
+  return {
+    landPrice: 10_000_000,
+    landArea: 100,
+    buildingCost: 5_000_000,
+    buildingAge: 10,
+    miscExpenseRate: 0.07,
+    monthlyRent: 120_000,
+    vacancyRate: 0.05,
+    actualVacancyRate: 0,
+    loanAmount: 13_000_000,
+    annualLoanRate: 0.015,
+    loanYears: 35,
+    buildingType: "木造",
+    expenseRate: 0.20,
+    incomeTaxRate: 0.33,
+    holdingYears: 10,
+    exitYieldTarget: 0.06,
+    vacancyRateDelta: 0,
+    loanRateDelta: 0,
+    annualPropertyTax: 0,
+    ...overrides,
+  };
+}
 
 export const ZERO_STATS: LandPriceStats = {
   count: 0,
@@ -64,6 +89,15 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
     requiredMonthlyRent: 120_000,
     deadCrossYear: 0,
     yearlyResults,
+    criticalErrors: [],
+    acquisitionCosts: {
+      brokerageFee: 561_000,
+      stampDuty: 20_000,
+      registrationTax: 420_000,
+      realEstateAcquisitionTax: 315_000,
+      propertyTaxProration: 0,
+      total: 1_316_000,
+    },
     exitSalePrice: 12_000_000,
     exitCapitalGain: 2_000_000,
     exitTransferTax: 400_000,

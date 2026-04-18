@@ -36,9 +36,9 @@ func NewRouter(h *Handler) *gin.Engine {
 
 	api := r.Group("/api")
 	{
-		api.GET("/land-prices", h.GetLandPrices)
+		api.GET("/land-prices/stats", h.GetLandPrices)
 		api.GET("/land-prices/compare", h.CompareLandPrice)
-		api.POST("/analyze", h.Analyze)
+		api.POST("/investment/analyze", h.Analyze)
 		api.GET("/municipalities", h.GetMunicipalities)
 	}
 

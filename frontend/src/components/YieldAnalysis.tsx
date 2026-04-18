@@ -2,21 +2,35 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { InvestmentResult } from "@/types/investment";
+import type { InvestmentInput, InvestmentResult } from "@/types/investment";
 import { formatMan, formatPct, formatYen } from "@/lib/utils";
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle } from "lucide-react";
 
 interface Props {
   result: InvestmentResult;
+  input: InvestmentInput;
 }
 
 const MAX_YIELD_PCT = 16; // ゲージ上限（8%が中央に来る設計）
 const TARGET_PCT = 8;
 
-export function YieldAnalysis({ result }: Props) {
+export function YieldAnalysis({ result, input }: Props) {
   const yieldPct = result.grossYield * 100;
   const netYieldPct = result.netYield * 100;
   const isGood = result.isAbove8Percent;
+
+  // 3シナリオ利回り計算: netYield(v) = grossYield * (1 - v) * (1 - expenseRate)
+  const actualV = input.actualVacancyRate > 0 ? input.actualVacancyRate : input.vacancyRate;
+  const stressV = Math.min(actualV + input.vacancyRateDelta, 0.99);
+  const factor = (v: number) => (1 - v) * (1 - input.expenseRate);
+  const fullNetYield = result.grossYield * (1 - input.expenseRate);
+  const actualNetYield = result.grossYield * factor(actualV);
+  const stressNetYield = result.grossYield * factor(stressV);
+  const scenarios = [
+    { label: "満室想定", vacancy: "0%", yield: result.grossYield, net: fullNetYield, note: "広告表面利回り基準" },
+    { label: "現況", vacancy: `${(actualV * 100).toFixed(0)}%`, yield: result.grossYield * (1 - actualV), net: actualNetYield, note: "実態に即した収益" },
+    { label: "ストレス", vacancy: `${(stressV * 100).toFixed(0)}%`, yield: result.grossYield * (1 - stressV), net: stressNetYield, note: "最悪ケース" },
+  ];
 
   const gaugePosition = Math.min(yieldPct / MAX_YIELD_PCT, 1) * 100;
   const targetPosition = (TARGET_PCT / MAX_YIELD_PCT) * 100; // = 50%
@@ -70,6 +84,42 @@ export function YieldAnalysis({ result }: Props) {
               <div className="absolute top-0 h-full w-0.5 bg-orange-500"
                 style={{ left: `${targetPosition}%` }} />
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3シナリオ比較 */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">空室率シナリオ比較</CardTitle></CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-muted-foreground">
+                  <th className="pb-2 text-left font-medium">シナリオ</th>
+                  <th className="pb-2 text-right font-medium">空室率</th>
+                  <th className="pb-2 text-right font-medium">表面利回り</th>
+                  <th className="pb-2 text-right font-medium">実質利回り</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scenarios.map((s) => (
+                  <tr key={s.label} className="border-b last:border-0">
+                    <td className="py-2">
+                      <span className="font-medium">{s.label}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">{s.note}</span>
+                    </td>
+                    <td className="py-2 text-right">{s.vacancy}</td>
+                    <td className={`py-2 text-right font-medium ${s.yield * 100 >= 8 ? "text-green-600" : "text-red-600"}`}>
+                      {(s.yield * 100).toFixed(2)}%
+                    </td>
+                    <td className="py-2 text-right text-muted-foreground">
+                      {(s.net * 100).toFixed(2)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>

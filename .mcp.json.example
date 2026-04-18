@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "docs": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["../docs-mcp-server/build/index.js"],
+      "env": {
+        "PROJECT_ROOT": "/path/to/yield-guard",
+        "LOCAL_MODE": "true",
+        "DOCS_BASE_PATH": "./docs"
+      }
+    }
+  }
+}

@@ -5,9 +5,10 @@ import { YieldAnalysis } from "@/components/YieldAnalysis";
 import { CashFlowChart } from "@/components/CashFlowChart";
 import { DeadCrossChart } from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
+import CostBreakdown from "@/components/CostBreakdown";
 import type { InvestmentInput, InvestmentResult, LandPriceComparison } from "@/types/investment";
 import { analyze, compareLandPrice } from "@/lib/api";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, XOctagon, AlertTriangle } from "lucide-react";
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
 function getCurrentPeriods(): { year: number; quarter: number; toYear: number; toQuarter: number } {
@@ -104,11 +105,45 @@ export function Dashboard() {
               </div>
             )}
 
-            {comparison && <LandPriceAnalysis comparison={comparison} />}
+            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} />}
 
             {result && lastInput && (
               <>
-                <YieldAnalysis result={result} />
+                {result.criticalErrors.length > 0 && (
+                  <div className="space-y-2">
+                    {result.criticalErrors.map((err) => (
+                      <div
+                        key={err.code}
+                        className={`flex items-start gap-3 rounded-md border-2 p-4 ${
+                          err.status === "REJECT"
+                            ? "border-red-500 bg-red-50 text-red-900"
+                            : "border-yellow-400 bg-yellow-50 text-yellow-900"
+                        }`}
+                      >
+                        {err.status === "REJECT"
+                          ? <XOctagon className="h-5 w-5 shrink-0 mt-0.5 text-red-600" />
+                          : <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-yellow-600" />
+                        }
+                        <div>
+                          <p className="text-sm font-bold">
+                            {err.status === "REJECT" ? "⛔ 一発退場" : "⚠ 警告"}: {err.code}
+                          </p>
+                          <p className="text-sm mt-0.5">{err.message}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <YieldAnalysis result={result} input={lastInput} />
+                {result.acquisitionCosts && (
+                  <div className="rounded-xl border bg-white p-5 shadow-sm">
+                    <CostBreakdown
+                      input={lastInput}
+                      acquisitionCosts={result.acquisitionCosts}
+                      yearlyResults={result.yearlyResults}
+                    />
+                  </div>
+                )}
                 {/* 自己資金 = 総投資額 - ローン金額（ISSUE-22: 投資回収年の正確な計算に使用） */}
                 <CashFlowChart result={result} equityInvested={result.totalInvestment - lastInput.loanAmount} />
                 <DeadCrossChart result={result} />

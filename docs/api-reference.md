@@ -19,7 +19,7 @@
 
 ---
 
-## GET /api/land-prices
+## GET /api/land-prices/stats
 
 国交省APIから土地取引価格を取得し、統計を返す。
 
@@ -118,7 +118,7 @@
 
 ---
 
-## POST /api/analyze
+## POST /api/investment/analyze
 
 投資シミュレーションを実行する。
 

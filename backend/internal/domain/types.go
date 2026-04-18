@@ -72,9 +72,15 @@ type InvestmentInput struct {
 	// 出口戦略: 売却時目標利回り（実質ベース。NOI / 売却価格）
 	ExitYieldTarget float64 `json:"exitYieldTarget"` // 例: 0.06
 
+	// 現況空室率: 現時点の実際の空室状況（0の場合はVacancyRateと同一とみなす）
+	ActualVacancyRate float64 `json:"actualVacancyRate"`
+
 	// ストレステスト用オフセット
 	VacancyRateDelta float64 `json:"vacancyRateDelta"` // 空室率上昇分 (例: +0.10)
 	LoanRateDelta    float64 `json:"loanRateDelta"`    // 金利上昇分 (例: +0.015)
+
+	// 固定資産税・都市計画税（年間合計）。0 の場合は ExpenseRate に含まれる想定。
+	AnnualPropertyTax float64 `json:"annualPropertyTax"`
 }
 
 // Defaults は構造的デフォルト（省略可能なフィールド）にのみ適用する。
@@ -116,6 +122,21 @@ type YearlyResult struct {
 	IsInDeadCrossZone    bool    `json:"isInDeadCrossZone"` // デッドクロス継続中
 }
 
+// CriticalErrorStatus は重大エラーの深刻度
+type CriticalErrorStatus string
+
+const (
+	CriticalStatusReject  CriticalErrorStatus = "REJECT"
+	CriticalStatusWarning CriticalErrorStatus = "WARNING"
+)
+
+// CriticalError は投資判断における重大リスク項目
+type CriticalError struct {
+	Code    string              `json:"code"`
+	Status  CriticalErrorStatus `json:"status"`
+	Message string              `json:"message"`
+}
+
 // InvestmentResult は収支シミュレーションの結果
 type InvestmentResult struct {
 	TotalInvestment float64 `json:"totalInvestment"` // 総投資額（土地+建物+諸経費）
@@ -128,14 +149,26 @@ type InvestmentResult struct {
 	RequiredCostReduction float64 `json:"requiredCostReduction"`
 	RequiredMonthlyRent   float64 `json:"requiredMonthlyRent"` // または必要月額賃料
 
-	DeadCrossYear int            `json:"deadCrossYear"` // -1 = デッドクロスなし
-	YearlyResults []YearlyResult `json:"yearlyResults"`
+	DeadCrossYear    int                      `json:"deadCrossYear"` // -1 = デッドクロスなし
+	YearlyResults    []YearlyResult           `json:"yearlyResults"`
+	CriticalErrors   []CriticalError          `json:"criticalErrors"`
+	AcquisitionCosts AcquisitionCostBreakdown `json:"acquisitionCosts"`
 
 	ExitSalePrice   float64 `json:"exitSalePrice"`   // 売却価格（NOI/目標利回り）
 	ExitCapitalGain float64 `json:"exitCapitalGain"` // 譲渡所得
 	ExitTransferTax float64 `json:"exitTransferTax"` // 譲渡所得税
 	ExitNetProceeds float64 `json:"exitNetProceeds"` // 売却手取り（税・残債控除後）
 	ExitTotalEquity float64 `json:"exitTotalEquity"` // 最終手残り（売却手取り+累積CF）
+}
+
+// AcquisitionCostBreakdown は物件取得時の諸経費内訳
+type AcquisitionCostBreakdown struct {
+	BrokerageFee             float64 `json:"brokerageFee"`             // 仲介手数料（税込）
+	StampDuty                float64 `json:"stampDuty"`                // 印紙税（売買契約書）
+	RegistrationTax          float64 `json:"registrationTax"`          // 登録免許税（所有権移転+抵当権設定）
+	RealEstateAcquisitionTax float64 `json:"realEstateAcquisitionTax"` // 不動産取得税（概算）
+	PropertyTaxProration     float64 `json:"propertyTaxProration"`     // 固定資産税日割り精算（買主負担分）
+	Total                    float64 `json:"total"`
 }
 
 // LandTransaction は国交省APIから取得した土地取引1件

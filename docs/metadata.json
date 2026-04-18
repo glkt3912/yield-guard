@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-03-28",
+  "lastUpdated": "2026-04-18",
   "documents": [
     {
       "id": "overview",
@@ -16,11 +16,11 @@
       "id": "domain-investment-calculation",
       "path": "docs/domain-investment-calculation.md",
       "title": "投資計算ロジック詳細仕様",
-      "description": "表面利回り・実質利回り・元利均等返済・課税所得・税引後キャッシュフロー・8%逆算の計算式と実装根拠。InvestmentInput/InvestmentResult/YearlyResult の全フィールド解説。",
-      "tags": ["利回り", "キャッシュフロー", "ローン", "元利均等", "投資計算", "表面利回り", "実質利回り", "8%境界線"],
+      "description": "表面利回り・実質利回り・元利均等返済・課税所得・税引後キャッシュフロー・8%逆算の計算式と実装根拠。InvestmentInput/InvestmentResult/YearlyResult の全フィールド解説。ActualVacancyRate（現況空室率）フィールド含む。取得時諸経費（仲介手数料・印紙税・登録免許税・不動産取得税・固定資産税日割り）の算出ロジックと AcquisitionCostBreakdown 型仕様。固定資産税・都市計画税の年間計算・小規模住宅用地特例・うるう年対応日割り精算。",
+      "tags": ["利回り", "キャッシュフロー", "ローン", "元利均等", "投資計算", "表面利回り", "実質利回り", "8%境界線", "空室率", "諸経費", "登録免許税", "不動産取得税", "固定資産税", "都市計画税"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["grossYield", "netYield", "calcMonthlyPayment", "calcYearlyLoanComponents", "TaxableIncome", "AfterTaxCashFlow", "calcRequired8pct", "ストレステスト", "InvestmentInput", "YearlyResult"],
-      "updatedAt": "2026-03-28"
+      "topics": ["grossYield", "netYield", "calcMonthlyPayment", "calcYearlyLoanComponents", "TaxableIncome", "AfterTaxCashFlow", "calcRequired8pct", "ストレステスト", "InvestmentInput", "YearlyResult", "ActualVacancyRate", "actualVacancyRate", "VacancyRate", "AcquisitionCostBreakdown", "CalcAcquisitionCosts", "CalcBrokerageFee", "CalcStampDuty", "CalcRegistrationTax", "CalcRealEstateAcquisitionTax", "registrationTax", "realEstateAcquisitionTax", "AcquisitionCostOptions", "CalcPropertyTax", "CalcPropertyTaxProration", "PropertyTaxBreakdown", "PropertyTaxOptions", "AnnualPropertyTax", "propertyTaxProration", "小規模住宅用地特例", "固定資産税日割り"],
+      "updatedAt": "2026-04-18"
     },
     {
       "id": "domain-depreciation-dead-cross",
@@ -43,14 +43,24 @@
       "updatedAt": "2026-03-28"
     },
     {
+      "id": "domain-zoning",
+      "path": "docs/domain-zoning.md",
+      "title": "用途地域・都市計画区域 ドメイン型仕様",
+      "description": "ZoningType（13種）・ZoningRiskLevel（None/Caution/High）・ZoningMeta（建ぺい率・容積率・リスクメッセージ）・CityPlanningArea（4種）の定義と変換関数仕様。都市計画法第8条準拠。",
+      "tags": ["用途地域", "都市計画", "ゾーニング", "リスク", "不動産"],
+      "industry": ["不動産"],
+      "topics": ["ZoningType", "ZoningRiskLevel", "ZoningMeta", "CityPlanningArea", "ParseZoningType", "ParseCityPlanningArea", "IsHighRisk", "市街化調整区域", "工業専用地域", "田園住居地域", "建ぺい率", "容積率", "都市計画法"],
+      "updatedAt": "2026-04-17"
+    },
+    {
       "id": "api-reference",
       "path": "docs/api-reference.md",
       "title": "APIリファレンス",
-      "description": "全エンドポイント（/api/land-prices、/api/land-prices/compare、/api/analyze、/api/prefectures、/health）の入出力・バリデーション範囲・エラー仕様。CORS設定とALLOW_ORIGINS環境変数。",
+      "description": "全エンドポイント（/api/land-prices/stats、/api/land-prices/compare、/api/investment/analyze、/api/municipalities、/health）の入出力・バリデーション範囲・エラー仕様。CORS設定とALLOW_ORIGINS環境変数。",
       "tags": ["API", "エンドポイント", "REST", "バリデーション", "CORS"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["GET /api/land-prices", "GET /api/land-prices/compare", "POST /api/analyze", "GET /api/prefectures", "GET /health", "InvestmentInput", "InvestmentResult", "LandPriceStats", "LandPriceComparison", "エラーレスポンス", "Gin"],
-      "updatedAt": "2026-03-28"
+      "topics": ["GET /api/land-prices/stats", "GET /api/land-prices/compare", "POST /api/investment/analyze", "GET /api/municipalities", "GET /health", "InvestmentInput", "InvestmentResult", "LandPriceStats", "LandPriceComparison", "エラーレスポンス", "Gin"],
+      "updatedAt": "2026-04-17"
     },
     {
       "id": "mlit-api-integration",
@@ -61,6 +71,16 @@
       "industry": ["不動産"],
       "topics": ["FetchLandPrices", "TradeListSearch", "isLandType", "parseFloat", "CalcLandPriceStats", "CompareLandPrice", "LandPriceQuery", "exponential backoff", "都道府県コード", "市区町村コード", "YYYYQ", "lowDataWarning"],
       "updatedAt": "2026-03-28"
+    },
+    {
+      "id": "usecases",
+      "path": "docs/usecases.md",
+      "title": "ユースケース一覧",
+      "description": "Yield-Guard の全ユースケース（UC-01〜UC-10）。土地価格相場確認・長期収支シミュレーション・デッドクロス把握・ストレステスト・出口戦略・市区町村絞り込み・現況空室率2軸比較・土地値割れ判定・Critical Error判定のシナリオと使い方。",
+      "tags": ["ユースケース", "シナリオ", "機能一覧", "不動産投資", "土地値割れ", "CriticalError", "一発退場"],
+      "industry": ["不動産", "フィンテック"],
+      "topics": ["UC-01", "UC-02", "UC-03", "UC-04", "UC-05", "UC-06", "UC-07", "UC-09", "UC-10", "土地価格", "相場確認", "長期収支", "デッドクロス", "ストレステスト", "出口戦略", "市区町村", "空室率", "シナリオ比較", "土地値割れ", "土地値近辺", "土地値超", "LAND_VALUE_GUARD", "DEADCROSS_EARLY", "積算評価"],
+      "updatedAt": "2026-04-17"
     },
     {
       "id": "frontend-components",

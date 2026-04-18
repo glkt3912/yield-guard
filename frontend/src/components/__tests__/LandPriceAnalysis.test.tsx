@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
-import { makeComparison, ZERO_STATS } from "./helpers";
+import { makeComparison, makeInput, ZERO_STATS } from "./helpers";
 
 describe("LandPriceAnalysis", () => {
   describe("count === 0 のとき", () => {
@@ -59,6 +59,33 @@ describe("LandPriceAnalysis", () => {
       render(<LandPriceAnalysis comparison={makeComparison({ stats: lowDataStats })} />);
       expect(screen.getByText("最安値")).toBeInTheDocument();
       expect(screen.getByText("中央値")).toBeInTheDocument();
+    });
+  });
+
+  describe("土地値割れ判定", () => {
+    it("総取得価格 < 土地概算価値 のとき「土地値割れ」を表示する", () => {
+      // medianTsubo=300_000, inputArea=100m² → 推定土地価値 ≒ 9,074,000円
+      // landPrice+buildingCost = 5_000_000+5_000_000 = 10_000_000 → 土地値超になるためlandPriceを下げる
+      const input = makeInput({ landPrice: 4_000_000, buildingCost: 2_000_000 }); // 計6,000,000 < 9,074,000
+      render(<LandPriceAnalysis comparison={makeComparison({ inputArea: 100 })} input={input} />);
+      expect(screen.getByText("土地値割れ")).toBeInTheDocument();
+    });
+
+    it("総取得価格 > 土地概算価値 × 1.5 のとき「土地値超」を表示する", () => {
+      // medianTsubo=300_000, inputArea=100m² → 推定土地価値 ≒ 9,074,000円 × 1.5 = 13,611,000円
+      const input = makeInput({ landPrice: 10_000_000, buildingCost: 10_000_000 }); // 計20,000,000 > 13,611,000
+      render(<LandPriceAnalysis comparison={makeComparison({ inputArea: 100 })} input={input} />);
+      expect(screen.getByText("土地値超")).toBeInTheDocument();
+    });
+
+    it("input が null のとき土地値判定セクションを表示しない", () => {
+      render(<LandPriceAnalysis comparison={makeComparison()} input={null} />);
+      expect(screen.queryByText("土地値割れ判定")).not.toBeInTheDocument();
+    });
+
+    it("stats.count === 0 のとき土地値判定セクションを表示しない", () => {
+      render(<LandPriceAnalysis comparison={makeComparison({ stats: ZERO_STATS })} input={makeInput()} />);
+      expect(screen.queryByText("土地値割れ判定")).not.toBeInTheDocument();
     });
   });
 

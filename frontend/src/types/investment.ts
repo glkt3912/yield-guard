@@ -1,3 +1,18 @@
+export interface CriticalError {
+  code: string;
+  status: "REJECT" | "WARNING";
+  message: string;
+}
+
+export interface AcquisitionCostBreakdown {
+  brokerageFee: number;
+  stampDuty: number;
+  registrationTax: number;
+  realEstateAcquisitionTax: number;
+  propertyTaxProration: number;
+  total: number;
+}
+
 export type BuildingType =
   | "木造"
   | "軽量鉄骨(4mm以下)"
@@ -13,7 +28,8 @@ export interface InvestmentInput {
   buildingAge: number;    // 築年数 (0=新築)
   miscExpenseRate: number;
   monthlyRent: number;
-  vacancyRate: number;
+  vacancyRate: number;        // 想定空室率（長期シミュレーション用）
+  actualVacancyRate: number;  // 現況空室率（現時点の実態）
   loanAmount: number;
   annualLoanRate: number;
   loanYears: number;
@@ -24,6 +40,7 @@ export interface InvestmentInput {
   exitYieldTarget: number;
   vacancyRateDelta: number;
   loanRateDelta: number;
+  annualPropertyTax: number;  // 固定資産税・都市計画税（年間）。0 = ExpenseRateに含む。
 }
 
 export interface YearlyResult {
@@ -50,10 +67,12 @@ export interface InvestmentResult {
   grossYield: number;
   netYield: number;
   isAbove8Percent: boolean;
-  requiredCostReduction: number;  // 土地または建築費いずれか一方の削減必要額
+  requiredCostReduction: number;
   requiredMonthlyRent: number;
   deadCrossYear: number;
   yearlyResults: YearlyResult[];
+  criticalErrors: CriticalError[];
+  acquisitionCosts: AcquisitionCostBreakdown;
   exitSalePrice: number;
   exitCapitalGain: number;
   exitTransferTax: number;
@@ -102,6 +121,7 @@ export const DEFAULT_INPUT: InvestmentInput = {
   miscExpenseRate: 0.07,
   monthlyRent: 120_000,
   vacancyRate: 0.05,
+  actualVacancyRate: 0,
   loanAmount: 13_000_000,
   annualLoanRate: 0.015,
   loanYears: 35,
@@ -112,6 +132,7 @@ export const DEFAULT_INPUT: InvestmentInput = {
   exitYieldTarget: 0.06,
   vacancyRateDelta: 0,
   loanRateDelta: 0,
+  annualPropertyTax: 0,
 };
 
 export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
