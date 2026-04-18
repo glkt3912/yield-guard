@@ -21,9 +21,10 @@ func init() {
 
 // mockMLITClient は MLITClient インターフェースのテスト用モック
 type mockMLITClient struct {
-	fetchFunc      func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
-	muniFunc       func(ctx context.Context, area string) ([]mlit.Municipality, error)
-	ridershipFunc  func(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error)
+	fetchFunc          func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
+	muniFunc           func(ctx context.Context, area string) ([]mlit.Municipality, error)
+	ridershipFunc      func(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error)
+	populationFunc     func(ctx context.Context, z, x, y int) ([]domain.PopulationForecastItem, error)
 }
 
 func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
@@ -45,6 +46,13 @@ func (m *mockMLITClient) FetchStationRidership(ctx context.Context, z, x, y int)
 		return []mlit.StationRidership{}, nil
 	}
 	return m.ridershipFunc(ctx, z, x, y)
+}
+
+func (m *mockMLITClient) FetchPopulationForecast(ctx context.Context, z, x, y int) ([]domain.PopulationForecastItem, error) {
+	if m.populationFunc == nil {
+		return []domain.PopulationForecastItem{}, nil
+	}
+	return m.populationFunc(ctx, z, x, y)
 }
 
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す

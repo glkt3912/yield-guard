@@ -16,6 +16,7 @@ type MLITClient interface {
 	FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
 	FetchMunicipalities(ctx context.Context, area string) ([]mlit.Municipality, error)
 	FetchStationRidership(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error)
+	FetchPopulationForecast(ctx context.Context, z, x, y int) ([]domain.PopulationForecastItem, error)
 }
 
 type Handler struct {
@@ -302,6 +303,48 @@ func (h *Handler) GetStationRidership(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, results)
+}
+
+// GetPopulationForecast は物件の緯度経度からタイル座標を計算し、将来推計人口と人口減少シナリオを返す（XKT013）
+// GET /api/population-forecast?lat=35.6762&lng=139.6503[&z=14]
+func (h *Handler) GetPopulationForecast(c *gin.Context) {
+	latStr := c.Query("lat")
+	lngStr := c.Query("lng")
+	if latStr == "" || lngStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
+		return
+	}
+	lat, err := strconv.ParseFloat(latStr, 64)
+	if err != nil || lat < -90 || lat > 90 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は -90〜90 の数値で指定してください"})
+		return
+	}
+	lng, err := strconv.ParseFloat(lngStr, 64)
+	if err != nil || lng < -180 || lng > 180 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は -180〜180 の数値で指定してください"})
+		return
+	}
+
+	z := 14
+	if zStr := c.Query("z"); zStr != "" {
+		zv, err := strconv.Atoi(zStr)
+		if err != nil || zv < 11 || zv > 15 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "z は 11〜15 の整数で指定してください"})
+			return
+		}
+		z = zv
+	}
+
+	tx, ty := mlit.LatLngToTile(lat, lng, z)
+
+	items, err := h.mlitClient.FetchPopulationForecast(c.Request.Context(), z, tx, ty)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "将来推計人口の取得に失敗しました: " + err.Error()})
+		return
+	}
+
+	result := domain.CalcPopulationForecast(items)
+	c.JSON(http.StatusOK, result)
 }
 
 // GetMunicipalities は指定都道府県の市区町村一覧を返す（XIT002）
