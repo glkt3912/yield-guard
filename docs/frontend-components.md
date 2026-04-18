@@ -138,6 +138,18 @@ const equityInvested = result.totalInvestment - input.loanAmount
 
 各フィールドは個別に `&&` で存在チェックし、空文字の場合は非表示。
 
+**都市計画リスクパネル（`stats.urbanRisks`）**:
+
+`stats.urbanRisks` が1件以上ある場合のみ表示。レベル別カラーリング（`RISK_STYLE` マップ）でカード一覧を描画。
+
+| レベル | 色 | アイコン |
+|--------|-----|---------|
+| `ERROR` | 赤 | `ShieldAlert` |
+| `WARNING` | 黄 | `AlertTriangle` |
+| `INFO` | 青 | `ShieldCheck` |
+
+`key={risk.code}` で安定したキーを使用。
+
 ---
 
 ## YieldAnalysis
