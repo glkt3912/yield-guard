@@ -86,11 +86,11 @@
       "id": "frontend-components",
       "path": "docs/frontend-components.md",
       "title": "フロントエンドコンポーネント仕様",
-      "description": "Dashboard・InvestmentForm・YieldAnalysis・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック・ストレステストスライダー・breakEvenYear計算・二軸グラフ設計。YieldAnalysisの空室率3シナリオ比較テーブル含む。",
-      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ", "空室率", "シナリオ"],
+      "description": "Dashboard・InvestmentForm・YieldAnalysis・CostBreakdown・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック・ストレステストスライダー・breakEvenYear計算・二軸グラフ設計。YieldAnalysisの空室率3シナリオ比較テーブル、CostBreakdownの初期投資・諸経費・年間費用ドーナツグラフ含む。",
+      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ", "空室率", "シナリオ", "諸経費", "コスト内訳"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "breakEvenYear", "equityInvested", "DEFAULT_INPUT", "BUILDING_USEFUL_LIFE", "actualVacancyRate", "シナリオ比較", "満室想定", "現況", "ストレス"],
-      "updatedAt": "2026-04-17"
+      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CostBreakdown", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "breakEvenYear", "equityInvested", "DEFAULT_INPUT", "BUILDING_USEFUL_LIFE", "actualVacancyRate", "annualPropertyTax", "シナリオ比較", "満室想定", "現況", "ストレス", "AcquisitionCostBreakdown", "PieChart", "fmt"],
+      "updatedAt": "2026-04-18"
     }
   ]
 }

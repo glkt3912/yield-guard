@@ -12,6 +12,7 @@ page.tsx
         ├── InvestmentForm     (入力 → onAnalyze, onFetchLandPrices)
         ├── LandPriceAnalysis  (comparison を受け取り表示)
         ├── YieldAnalysis      (result を受け取り表示)
+        ├── CostBreakdown      (result.acquisitionCosts + yearlyResults を受け取り表示)
         ├── CashFlowChart      (result + equityInvested を受け取り表示)
         └── DeadCrossChart     (result を受け取り表示)
 ```
@@ -157,6 +158,37 @@ targetPosition = (TARGET_PCT / MAX_YIELD_PCT) * 100           // = 50%（常に�
 | ストレス | `actualV + vacancyRateDelta`（上限99%） | `grossYield × (1 - stressV) × (1 - expenseRate)` |
 
 表面利回りが8%以上の行は緑、未満は赤で表示。
+
+---
+
+## CostBreakdown
+
+`frontend/src/components/CostBreakdown.tsx`
+
+**props**:
+- `input: InvestmentInput`
+- `acquisitionCosts: AcquisitionCostBreakdown`
+- `yearlyResults: YearlyResult[]`
+
+**表示セクション**:
+
+1. **初期投資内訳**（ドーナツグラフ + 凡例）  
+   土地・建物・仲介手数料・印紙税・登録免許税・不動産取得税・固定資産税日割り（> 0 の項目のみ）  
+   各項目は割合（%）と金額を表示。
+
+2. **取得時諸経費明細テーブル**  
+   `acquisitionCosts` の各費用と合計。`propertyTaxProration === 0` の行は非表示。
+
+3. **年間費用内訳（1年目）**（ドーナツグラフ + 凡例）  
+   `yearlyResults[0]` から: ローン返済・運営経費・所得税（> 0 の項目のみ）
+
+**`fmt` ヘルパー**:
+```typescript
+n >= 10_000_000 → `${(n / 10_000_000).toFixed(1)}千万円`
+otherwise       → `${Math.round(n / 10_000).toLocaleString()}万円`
+```
+
+**カラーパレット**: `COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"]`
 
 ---
 

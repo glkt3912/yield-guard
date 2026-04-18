@@ -40,6 +40,7 @@ export interface InvestmentInput {
   exitYieldTarget: number;
   vacancyRateDelta: number;
   loanRateDelta: number;
+  annualPropertyTax: number;  // 固定資産税・都市計画税（年間）。0 = ExpenseRateに含む。
 }
 
 export interface YearlyResult {
@@ -66,7 +67,7 @@ export interface InvestmentResult {
   grossYield: number;
   netYield: number;
   isAbove8Percent: boolean;
-  requiredCostReduction: number;  // 土地または建築費いずれか一方の削減必要額
+  requiredCostReduction: number;
   requiredMonthlyRent: number;
   deadCrossYear: number;
   yearlyResults: YearlyResult[];
@@ -131,6 +132,7 @@ export const DEFAULT_INPUT: InvestmentInput = {
   exitYieldTarget: 0.06,
   vacancyRateDelta: 0,
   loanRateDelta: 0,
+  annualPropertyTax: 0,
 };
 
 export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
