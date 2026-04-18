@@ -61,22 +61,6 @@ export interface YearlyResult {
   isInDeadCrossZone: boolean;   // デッドクロス継続ゾーン
 }
 
-export interface AcquisitionCostBreakdown {
-  brokerageFee: number;               // 仲介手数料（税込）
-  stampDuty: number;                  // 印紙税
-  registrationTax: number;            // 登録免許税
-  realEstateAcquisitionTax: number;   // 不動産取得税
-  propertyTaxProration: number;       // 固定資産税日割り精算
-  total: number;
-}
-
-export interface CriticalError {
-  code: string;
-  level: "REJECT" | "WARNING";
-  message: string;
-  detail: string;
-}
-
 export interface InvestmentResult {
   totalInvestment: number;
   miscExpenses: number;

@@ -141,7 +141,6 @@ export function Dashboard() {
                       input={lastInput}
                       acquisitionCosts={result.acquisitionCosts}
                       yearlyResults={result.yearlyResults}
-                      miscExpenses={result.miscExpenses}
                     />
                   </div>
                 )}

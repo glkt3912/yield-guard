@@ -7,7 +7,6 @@ interface Props {
   input: InvestmentInput;
   acquisitionCosts: AcquisitionCostBreakdown;
   yearlyResults: YearlyResult[];
-  miscExpenses: number;
 }
 
 const fmt = (n: number) =>
@@ -20,8 +19,8 @@ const COLORS = [
   "#8b5cf6", "#06b6d4", "#f97316",
 ];
 
-export default function CostBreakdown({ input, acquisitionCosts, yearlyResults, miscExpenses }: Props) {
-  // 初期投資の内訳
+export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }: Props) {
+  // 初期投資の内訳（miscExpenses は別軸の概算値のため表示しない）
   const initialCostItems = [
     { name: "土地", value: input.landPrice },
     { name: "建物", value: input.buildingCost },
@@ -31,9 +30,6 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults, 
     { name: "不動産取得税", value: acquisitionCosts.realEstateAcquisitionTax },
     ...(acquisitionCosts.propertyTaxProration > 0
       ? [{ name: "固定資産税日割り", value: acquisitionCosts.propertyTaxProration }]
-      : []),
-    ...(miscExpenses > acquisitionCosts.brokerageFee + acquisitionCosts.stampDuty
-      ? [{ name: "その他諸経費", value: miscExpenses - acquisitionCosts.brokerageFee - acquisitionCosts.stampDuty - acquisitionCosts.registrationTax - acquisitionCosts.realEstateAcquisitionTax - acquisitionCosts.propertyTaxProration }]
       : []),
   ].filter((item) => item.value > 0);
 
@@ -70,8 +66,8 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults, 
                 dataKey="value"
                 nameKey="name"
               >
-                {initialCostItems.map((_, idx) => (
-                  <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                {initialCostItems.map((item, idx) => (
+                  <Cell key={item.name} fill={COLORS[idx % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip formatter={(v: number) => fmt(v)} />
@@ -149,8 +145,8 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults, 
                   dataKey="value"
                   nameKey="name"
                 >
-                  {annualCostItems.map((_, idx) => (
-                    <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                  {annualCostItems.map((item, idx) => (
+                    <Cell key={item.name} fill={COLORS[idx % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(v: number) => fmt(v)} />
@@ -159,9 +155,9 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults, 
             </ResponsiveContainer>
 
             <div className="space-y-1.5">
-              {annualCostItems.map((item, idx) => {
+              {(() => {
                 const total = annualCostItems.reduce((s, i) => s + i.value, 0);
-                return (
+                return annualCostItems.map((item, idx) => (
                   <div key={item.name} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <span
@@ -177,8 +173,8 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults, 
                       </span>
                     </span>
                   </div>
-                );
-              })}
+                ));
+              })()}
             </div>
           </div>
         </div>
