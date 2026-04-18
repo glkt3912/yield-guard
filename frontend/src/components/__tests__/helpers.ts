@@ -20,6 +20,7 @@ export function makeInput(overrides: Partial<InvestmentInput> = {}): InvestmentI
     exitYieldTarget: 0.06,
     vacancyRateDelta: 0,
     loanRateDelta: 0,
+    annualPropertyTax: 0,
     ...overrides,
   };
 }
@@ -89,12 +90,6 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
     deadCrossYear: 0,
     yearlyResults,
     criticalErrors: [],
-    acquisitionCosts: { brokerageFee: 0, stampDuty: 0, registrationTax: 0, realEstateAcquisitionTax: 0, propertyTaxProration: 0, total: 0 },
-    exitSalePrice: 12_000_000,
-    exitCapitalGain: 2_000_000,
-    exitTransferTax: 400_000,
-    exitNetProceeds: 11_600_000,
-    exitTotalEquity: 3_000_000,
     acquisitionCosts: {
       brokerageFee: 561_000,
       stampDuty: 20_000,
@@ -103,7 +98,11 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
       propertyTaxProration: 0,
       total: 1_316_000,
     },
-    criticalErrors: [],
+    exitSalePrice: 12_000_000,
+    exitCapitalGain: 2_000_000,
+    exitTransferTax: 400_000,
+    exitNetProceeds: 11_600_000,
+    exitTotalEquity: 3_000_000,
     ...overrides,
   };
 }
