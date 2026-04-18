@@ -83,7 +83,7 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		}
 
 		yearAnnualRent := annualRent
-		yearExpenses := yearAnnualRent * input.ExpenseRate
+		yearExpenses := yearAnnualRent*input.ExpenseRate + input.AnnualPropertyTax
 
 		// 減価償却は耐用年数内のみ
 		yearDepreciation := 0.0
