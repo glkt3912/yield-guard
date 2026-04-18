@@ -6,6 +6,7 @@ export function makeInput(overrides: Partial<InvestmentInput> = {}): InvestmentI
     landArea: 100,
     buildingCost: 5_000_000,
     buildingAge: 10,
+    stationMinutes: 0,
     miscExpenseRate: 0.07,
     monthlyRent: 120_000,
     vacancyRate: 0.05,

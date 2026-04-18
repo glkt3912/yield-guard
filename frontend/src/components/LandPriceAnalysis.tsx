@@ -12,9 +12,9 @@ import {
 } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { InvestmentInput, LandPriceComparison, UrbanRiskLevel } from "@/types/investment";
+import type { InvestmentInput, LandPriceComparison, UrbanRiskLevel, TheoreticalPriceResult } from "@/types/investment";
 import { formatMan, formatTsubo } from "@/lib/utils";
-import { MapPin, AlertTriangle, SearchX, Home, Building2, ShieldAlert, ShieldCheck } from "lucide-react";
+import { MapPin, AlertTriangle, SearchX, Home, Building2, ShieldAlert, ShieldCheck, TrendingUp } from "lucide-react";
 
 const SQM_PER_TSUBO = 3.30578;
 
@@ -29,6 +29,7 @@ function calcLandValueJudgment(totalPrice: number, estimatedLandValue: number): 
 interface Props {
   comparison: LandPriceComparison;
   input?: InvestmentInput | null;
+  theoreticalPrice?: TheoreticalPriceResult | null;
 }
 
 const ASSESSMENT_BADGE: Record<string, "success" | "warning" | "danger"> = {
@@ -58,7 +59,7 @@ const RISK_STYLE: Record<UrbanRiskLevel, { border: string; bg: string; text: str
   },
 };
 
-export function LandPriceAnalysis({ comparison, input }: Props) {
+export function LandPriceAnalysis({ comparison, input, theoreticalPrice }: Props) {
   const { stats, assessment, inputPricePerTsubo, diffFromMedian } = comparison;
 
   const landValueSection = (() => {
@@ -281,6 +282,52 @@ export function LandPriceAnalysis({ comparison, input }: Props) {
             </ResponsiveContainer>
           </>
         )}
+        {/* 理論価格推定 */}
+        {theoreticalPrice && (() => {
+          const { theoreticalPriceJPY, deviationPct, ageCorrection, stationCorrection, medianBuildingAge, medianStationMinutes, isLowDataWarning, hasStationData } = theoreticalPrice;
+          const isOverpriced = deviationPct > 20;
+          const isUnderpriced = deviationPct < -20;
+          const color = isOverpriced
+            ? "border-red-200 bg-red-50"
+            : isUnderpriced
+            ? "border-green-200 bg-green-50"
+            : "border-blue-200 bg-blue-50";
+          return (
+            <div className={`rounded-md border p-3 ${color}`}>
+              <p className="flex items-center gap-1 text-sm font-semibold mb-2">
+                <TrendingUp className="h-4 w-4" />
+                理論価格推定（築年数・駅距離補正）
+              </p>
+              {isLowDataWarning && (
+                <p className="text-xs text-yellow-700 mb-2">※ 築年数データが少ないため参考値</p>
+              )}
+              <dl className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">理論価格</dt>
+                  <dd className="font-medium">{formatMan(theoreticalPriceJPY)}</dd>
+                </div>
+                <div className="flex justify-between border-t pt-1">
+                  <dt className="text-muted-foreground">乖離率（販売価格 vs 理論価格）</dt>
+                  <dd className={`font-bold ${isOverpriced ? "text-red-700" : isUnderpriced ? "text-green-700" : ""}`}>
+                    {deviationPct > 0 ? "+" : ""}{deviationPct.toFixed(1)}%
+                    {isOverpriced ? "（割高）" : isUnderpriced ? "（割安）" : "（相場）"}
+                  </dd>
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <dt>築年数補正（中央値{medianBuildingAge}年）</dt>
+                  <dd>{ageCorrection >= 0 ? "+" : ""}{(ageCorrection * 100).toFixed(1)}%</dd>
+                </div>
+                {hasStationData && (
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <dt>駅距離補正（中央値{medianStationMinutes}分）</dt>
+                    <dd>{stationCorrection >= 0 ? "+" : ""}{(stationCorrection * 100).toFixed(1)}%</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          );
+        })()}
+
         {/* 土地値割れ判定 */}
         {landValueSection && (() => {
           const { estimatedLandValue, totalPrice, judgment, diff } = landValueSection;
