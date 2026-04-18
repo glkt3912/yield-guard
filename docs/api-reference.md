@@ -180,7 +180,7 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 
 | コード | 条件 |
 |--------|------|
-| 400 | 必須パラメータ不足 |
+| 400 | 必須パラメータ不足、または `ridership_score` が `A`〜`E` 以外の値 |
 | 422 | 取引事例に築年数データがなく推定不可 |
 | 502 | 国交省APIへのリクエスト失敗 |
 
