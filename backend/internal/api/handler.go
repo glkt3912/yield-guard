@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/domain"
@@ -16,7 +15,7 @@ import (
 type MLITClient interface {
 	FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
 	FetchMunicipalities(ctx context.Context, area string) ([]mlit.Municipality, error)
-	FetchStationRidership(ctx context.Context, area, city string) ([]mlit.StationRidership, error)
+	FetchStationRidership(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error)
 }
 
 type Handler struct {
@@ -252,17 +251,36 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// GetStationRidership は指定エリアの駅別乗降客数と需要スコアを返す（XKT015）
-// GET /api/station-ridership?area=13&city=13113
+// GetStationRidership は物件の緯度経度からタイル座標を計算し、駅別乗降客数と需要スコアを返す（XKT015）
+// GET /api/station-ridership?lat=35.6762&lng=139.6503[&z=14]
 func (h *Handler) GetStationRidership(c *gin.Context) {
-	area := c.Query("area")
-	if area == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "area は必須パラメータです"})
+	latStr := c.Query("lat")
+	lngStr := c.Query("lng")
+	if latStr == "" || lngStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
 		return
 	}
-	city := c.Query("city")
+	lat, err := strconv.ParseFloat(latStr, 64)
+	if err != nil || lat < -90 || lat > 90 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は -90〜90 の数値で指定してください"})
+		return
+	}
+	lng, err := strconv.ParseFloat(lngStr, 64)
+	if err != nil || lng < -180 || lng > 180 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は -180〜180 の数値で指定してください"})
+		return
+	}
 
-	stations, err := h.mlitClient.FetchStationRidership(c.Request.Context(), area, city)
+	z := 14
+	if zStr := c.Query("z"); zStr != "" {
+		if zv, err := strconv.Atoi(zStr); err == nil && zv >= 11 && zv <= 15 {
+			z = zv
+		}
+	}
+
+	tx, ty := mlit.LatLngToTile(lat, lng, z)
+
+	stations, err := h.mlitClient.FetchStationRidership(c.Request.Context(), z, tx, ty)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "駅別乗降客数の取得に失敗しました: " + err.Error()})
 		return
@@ -270,36 +288,17 @@ func (h *Handler) GetStationRidership(c *gin.Context) {
 
 	results := make([]domain.StationRidershipResult, 0, len(stations))
 	for _, s := range stations {
-		passengers := parsePassengers(s.Passengers)
-		score := domain.CalcRidershipDemandScore(passengers)
+		score := domain.CalcRidershipDemandScore(s.Passengers)
 		results = append(results, domain.StationRidershipResult{
 			StationName: s.StationName,
 			LineName:    s.LineName,
-			Passengers:  passengers,
+			Passengers:  s.Passengers,
 			DemandScore: score,
 			Correction:  domain.RidershipCorrectionFactor(score),
 		})
 	}
 
 	c.JSON(http.StatusOK, results)
-}
-
-// parsePassengers は乗降客数の文字列を int にパースする。
-// カンマ区切り・全角数字に対応（XKT015 レスポンスの表記揺れを吸収）。
-func parsePassengers(s string) int {
-	s = strings.TrimSpace(s)
-	s = strings.ReplaceAll(s, ",", "")
-	s = strings.Map(func(r rune) rune {
-		if r >= '０' && r <= '９' {
-			return r - '０' + '0'
-		}
-		return r
-	}, s)
-	v, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return 0
-	}
-	return int(v)
 }
 
 // GetMunicipalities は指定都道府県の市区町村一覧を返す（XIT002）
