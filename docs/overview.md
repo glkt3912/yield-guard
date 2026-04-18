@@ -62,9 +62,11 @@ yield-guard/
 │   ├── cmd/server/main.go         # エントリポイント・グレースフルシャットダウン
 │   └── internal/
 │       ├── domain/
-│       │   ├── types.go           # ドメインモデル・BuildingType・耐用年数
-│       │   ├── investment.go      # 計算ロジック・Analyze・calcExit
-│       │   └── investment_test.go # ユニットテスト
+│       │   ├── types.go                    # ドメインモデル・BuildingType・耐用年数
+│       │   ├── investment.go               # 計算ロジック・Analyze・calcExit
+│       │   ├── investment_test.go          # ユニットテスト
+│       │   ├── theoretical_price.go        # 理論価格推定・補正計算
+│       │   └── theoretical_price_test.go   # ユニットテスト
 │       ├── mlit/
 │       │   ├── client.go          # 国交省APIクライアント・リトライ
 │       │   ├── cache.go           # TTL付きインメモリキャッシュ（24時間）
@@ -179,8 +181,9 @@ npm test
 | レイヤー | ファイル | ツール | テスト数 |
 |---|---|---|---|
 | ドメイン計算 | `backend/internal/domain/investment_test.go` | go test | 複数 |
-| MLIT クライアント | `backend/internal/mlit/client_test.go` | go test / httptest | 11 |
-| フロントエンド UI | `frontend/src/components/__tests__/*.test.tsx` | Vitest + RTL | 17 |
+| 理論価格推定 | `backend/internal/domain/theoretical_price_test.go` | go test | 9 |
+| MLIT クライアント | `backend/internal/mlit/client_test.go` | go test / httptest | 複数 |
+| フロントエンド UI | `frontend/src/components/__tests__/*.test.tsx` | Vitest + RTL | 複数 |
 
 #### フロントエンドテストの方針
 

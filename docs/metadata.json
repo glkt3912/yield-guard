@@ -56,40 +56,40 @@
       "id": "api-reference",
       "path": "docs/api-reference.md",
       "title": "APIリファレンス",
-      "description": "全エンドポイント（/api/land-prices/stats、/api/land-prices/compare、/api/investment/analyze、/api/municipalities、/health）の入出力・バリデーション範囲・エラー仕様。CORS設定とALLOW_ORIGINS環境変数。",
-      "tags": ["API", "エンドポイント", "REST", "バリデーション", "CORS"],
+      "description": "全エンドポイント（/api/land-prices/stats、/api/land-prices/compare、/api/land-prices/estimate、/api/investment/analyze、/api/municipalities、/health）の入出力・バリデーション範囲・エラー仕様。CORS設定とALLOW_ORIGINS環境変数。/api/land-prices/estimate は築年数・駅距離補正による理論価格推定（TheoreticalPriceResult）。",
+      "tags": ["API", "エンドポイント", "REST", "バリデーション", "CORS", "理論価格", "築年数補正", "駅距離補正"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["GET /api/land-prices/stats", "GET /api/land-prices/compare", "POST /api/investment/analyze", "GET /api/municipalities", "GET /health", "InvestmentInput", "InvestmentResult", "LandPriceStats", "LandPriceComparison", "エラーレスポンス", "Gin"],
-      "updatedAt": "2026-04-17"
+      "topics": ["GET /api/land-prices/stats", "GET /api/land-prices/compare", "GET /api/land-prices/estimate", "POST /api/investment/analyze", "GET /api/municipalities", "GET /health", "InvestmentInput", "InvestmentResult", "LandPriceStats", "LandPriceComparison", "TheoreticalPriceResult", "deviationPct", "ageCorrection", "stationCorrection", "エラーレスポンス", "Gin"],
+      "updatedAt": "2026-04-18"
     },
     {
       "id": "mlit-api-integration",
       "path": "docs/mlit-api-integration.md",
       "title": "国交省不動産取引価格APIクライアント仕様",
-      "description": "国土交通省不動産取引価格情報取得APIのクエリパラメータ・宅地フィルタリング・坪単価算出・parseFloat正規化・指数バックオフリトライ・相場判定ロジック（中央値±10%）・取引データからの用途地域サマリー抽出（ZoningSummary・calcZoningSummary・modalString）・都市計画リスク検出（UrbanRisk・detectUrbanRisks）",
-      "tags": ["国交省API", "土地価格", "相場", "外部API", "リトライ", "坪単価", "用途地域", "都市計画リスク"],
+      "description": "国土交通省不動産取引価格情報取得APIのクエリパラメータ・宅地フィルタリング・坪単価算出・parseFloat正規化・parseJapaneseYear（和暦→西暦変換）・指数バックオフリトライ・相場判定ロジック（中央値±10%）・取引データからの用途地域サマリー抽出（ZoningSummary・calcZoningSummary・modalString）・都市計画リスク検出（UrbanRisk・detectUrbanRisks）。LandTransaction に BuildingYear・StationMinutes フィールド追加済み。",
+      "tags": ["国交省API", "土地価格", "相場", "外部API", "リトライ", "坪単価", "用途地域", "都市計画リスク", "和暦変換", "建築年", "駅距離"],
       "industry": ["不動産"],
-      "topics": ["FetchLandPrices", "TradeListSearch", "isLandType", "parseFloat", "CalcLandPriceStats", "CompareLandPrice", "LandPriceQuery", "exponential backoff", "都道府県コード", "市区町村コード", "YYYYQ", "lowDataWarning", "ZoningSummary", "calcZoningSummary", "modalString", "UrbanRisk", "UrbanRiskLevel", "detectUrbanRisks", "URBANIZATION_CONTROL_ZONE", "UNZONED_AREA", "MIXED_ZONE_CAUTION"],
+      "topics": ["FetchLandPrices", "TradeListSearch", "isLandType", "parseFloat", "parseJapaneseYear", "BuildingYear", "TimeToNearestStation", "StationMinutes", "CalcLandPriceStats", "CompareLandPrice", "LandPriceQuery", "exponential backoff", "都道府県コード", "市区町村コード", "YYYYQ", "lowDataWarning", "ZoningSummary", "calcZoningSummary", "modalString", "UrbanRisk", "UrbanRiskLevel", "detectUrbanRisks", "URBANIZATION_CONTROL_ZONE", "UNZONED_AREA", "MIXED_ZONE_CAUTION"],
       "updatedAt": "2026-04-18"
     },
     {
       "id": "usecases",
       "path": "docs/usecases.md",
       "title": "ユースケース一覧",
-      "description": "Yield-Guard の全ユースケース（UC-01〜UC-11）。土地価格相場確認・長期収支シミュレーション・デッドクロス把握・ストレステスト・出口戦略・市区町村絞り込み・現況空室率2軸比較・用途地域リスク警告・土地値割れ判定・Critical Error判定・諸経費明細のシナリオと使い方。",
-      "tags": ["ユースケース", "シナリオ", "機能一覧", "不動産投資", "土地値割れ", "CriticalError", "一発退場", "用途地域リスク"],
+      "description": "Yield-Guard の全ユースケース（UC-01〜UC-13）。土地価格相場確認・長期収支シミュレーション・デッドクロス把握・ストレステスト・出口戦略・市区町村絞り込み・現況空室率2軸比較・用途地域リスク警告（自動/手動）・土地値割れ判定・Critical Error判定・諸経費明細・理論価格推定のシナリオと使い方。",
+      "tags": ["ユースケース", "シナリオ", "機能一覧", "不動産投資", "土地値割れ", "CriticalError", "一発退場", "用途地域リスク", "理論価格", "乖離率"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["UC-01", "UC-02", "UC-03", "UC-04", "UC-05", "UC-06", "UC-07", "UC-08", "UC-09", "UC-10", "UC-11", "土地価格", "相場確認", "長期収支", "デッドクロス", "ストレステスト", "出口戦略", "市区町村", "空室率", "シナリオ比較", "土地値割れ", "土地値近辺", "土地値超", "LAND_VALUE_GUARD", "DEADCROSS_EARLY", "積算評価", "市街化調整区域", "URBANIZATION_CONTROL_ZONE", "MIXED_ZONE_CAUTION"],
+      "topics": ["UC-01", "UC-02", "UC-03", "UC-04", "UC-05", "UC-06", "UC-07", "UC-08", "UC-09", "UC-10", "UC-11", "UC-12", "UC-13", "土地価格", "相場確認", "長期収支", "デッドクロス", "ストレステスト", "出口戦略", "市区町村", "空室率", "シナリオ比較", "土地値割れ", "土地値近辺", "土地値超", "LAND_VALUE_GUARD", "DEADCROSS_EARLY", "積算評価", "市街化調整区域", "URBANIZATION_CONTROL_ZONE", "MIXED_ZONE_CAUTION", "理論価格", "築年数補正", "駅距離補正", "deviationPct", "TheoreticalPriceResult"],
       "updatedAt": "2026-04-18"
     },
     {
       "id": "frontend-components",
       "path": "docs/frontend-components.md",
       "title": "フロントエンドコンポーネント仕様",
-      "description": "Dashboard・InvestmentForm・YieldAnalysis・CostBreakdown・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック・ストレステストスライダー・breakEvenYear計算・二軸グラフ設計。YieldAnalysisの空室率3シナリオ比較テーブル、CostBreakdownの初期投資・諸経費・年間費用ドーナツグラフ、InvestmentFormの市区町村インクリメンタルサーチ（useMemo・useEffect自動選択）、LandPriceAnalysisの用途地域パネル・都市計画リスクパネル（UrbanRisk・RISK_STYLE）含む。",
-      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ", "空室率", "シナリオ", "諸経費", "コスト内訳", "インクリメンタルサーチ", "用途地域", "都市計画リスク"],
+      "description": "Dashboard・InvestmentForm・YieldAnalysis・CostBreakdown・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック・ストレステストスライダー・breakEvenYear計算・二軸グラフ設計。YieldAnalysisの空室率3シナリオ比較テーブル、CostBreakdownの初期投資・諸経費・年間費用ドーナツグラフ、InvestmentFormの市区町村インクリメンタルサーチ（useMemo・useEffect自動選択）・stationMinutes入力欄、LandPriceAnalysisの用途地域パネル・都市計画リスクパネル（UrbanRisk・RISK_STYLE）・理論価格パネル（TheoreticalPriceResult・乖離率±20%強調表示・築年数補正%・駅距離補正%）含む。",
+      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ", "空室率", "シナリオ", "諸経費", "コスト内訳", "インクリメンタルサーチ", "用途地域", "都市計画リスク", "理論価格", "乖離率", "駅距離"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CostBreakdown", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "breakEvenYear", "equityInvested", "DEFAULT_INPUT", "BUILDING_USEFUL_LIFE", "actualVacancyRate", "annualPropertyTax", "シナリオ比較", "満室想定", "現況", "ストレス", "AcquisitionCostBreakdown", "PieChart", "fmt", "muniFilter", "filteredMunicipalities", "インクリメンタルサーチ", "自動選択", "ZoningSummary", "用途地域パネル", "UrbanRisk", "UrbanRiskLevel", "RISK_STYLE", "都市計画リスクパネル"],
+      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CostBreakdown", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "breakEvenYear", "equityInvested", "DEFAULT_INPUT", "BUILDING_USEFUL_LIFE", "actualVacancyRate", "annualPropertyTax", "シナリオ比較", "満室想定", "現況", "ストレス", "AcquisitionCostBreakdown", "PieChart", "fmt", "muniFilter", "filteredMunicipalities", "インクリメンタルサーチ", "自動選択", "ZoningSummary", "用途地域パネル", "UrbanRisk", "UrbanRiskLevel", "RISK_STYLE", "都市計画リスクパネル", "stationMinutes", "TheoreticalPriceResult", "theoreticalPrice", "deviationPct", "ageCorrection", "stationCorrection", "理論価格パネル", "estimateLandPrice"],
       "updatedAt": "2026-04-18"
     }
   ]
