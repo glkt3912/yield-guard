@@ -21,11 +21,23 @@ export type BuildingType =
   | "RC造"
   | "SRC造";
 
+export interface TheoreticalPriceResult {
+  theoreticalPriceJPY: number;
+  deviationPct: number;
+  ageCorrection: number;
+  stationCorrection: number;
+  medianBuildingAge: number;
+  medianStationMinutes: number;
+  isLowDataWarning: boolean;
+  hasStationData: boolean;
+}
+
 export interface InvestmentInput {
   landPrice: number;
   landArea: number;       // 土地面積 (m²)
   buildingCost: number;
   buildingAge: number;    // 築年数 (0=新築)
+  stationMinutes: number; // 最寄り駅徒歩分 (0=未入力)
   miscExpenseRate: number;
   monthlyRent: number;
   vacancyRate: number;        // 想定空室率（長期シミュレーション用）
@@ -135,6 +147,7 @@ export const DEFAULT_INPUT: InvestmentInput = {
   landArea: 100,
   buildingCost: 10_000_000,
   buildingAge: 0,
+  stationMinutes: 0,
   miscExpenseRate: 0.07,
   monthlyRent: 120_000,
   vacancyRate: 0.05,

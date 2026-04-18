@@ -3,6 +3,7 @@ import type {
   InvestmentResult,
   LandPriceStats,
   LandPriceComparison,
+  TheoreticalPriceResult,
 } from "@/types/investment";
 
 const BASE = "/api";
@@ -70,6 +71,35 @@ export interface Municipality {
 export async function fetchMunicipalities(area: string): Promise<Municipality[]> {
   const res = await fetch(`${BASE}/municipalities?area=${encodeURIComponent(area)}`);
   return handleResponse<Municipality[]>(res);
+}
+
+/** 築年数・駅距離補正による理論価格推定 */
+export async function estimateLandPrice(params: {
+  area: string;
+  city?: string;
+  year: number;
+  quarter: number;
+  toYear: number;
+  toQuarter: number;
+  price: number;
+  areaSqm: number;
+  buildingAge: number;
+  stationMinutes?: number;
+}): Promise<TheoreticalPriceResult> {
+  const q = new URLSearchParams({
+    area: params.area,
+    year: String(params.year),
+    quarter: String(params.quarter),
+    to_year: String(params.toYear),
+    to_quarter: String(params.toQuarter),
+    price: String(params.price),
+    area_sqm: String(params.areaSqm),
+    building_age: String(params.buildingAge),
+  });
+  if (params.city) q.set("city", params.city);
+  if (params.stationMinutes) q.set("station_minutes", String(params.stationMinutes));
+  const res = await fetch(`${BASE}/land-prices/estimate?${q}`);
+  return handleResponse<TheoreticalPriceResult>(res);
 }
 
 /** 投資シミュレーションを実行 */
