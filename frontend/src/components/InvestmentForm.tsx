@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -97,12 +97,21 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
   const [city, setCity] = useState("");
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [muniLoading, setMuniLoading] = useState(false);
+  const [muniFilter, setMuniFilter] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+
+  const filteredMunicipalities = useMemo(
+    () => muniFilter.trim()
+      ? municipalities.filter((m) => m.name.includes(muniFilter.trim()))
+      : municipalities,
+    [municipalities, muniFilter]
+  );
 
   const loadMunicipalities = useCallback(async (areaCode: string) => {
     setMuniLoading(true);
     setCity("");
+    setMuniFilter("");
     try {
       const data = await fetchMunicipalities(areaCode);
       setMunicipalities(data);
@@ -118,6 +127,13 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
   useEffect(() => {
     loadMunicipalities("10");
   }, [loadMunicipalities]);
+
+  // フィルタ結果が1件になったら自動選択
+  useEffect(() => {
+    if (filteredMunicipalities.length === 1) {
+      setCity(filteredMunicipalities[0].id);
+    }
+  }, [filteredMunicipalities]);
 
   const handleAreaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const code = e.target.value;
@@ -168,21 +184,35 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
               onChange={handleAreaChange}
               options={PREFECTURES}
             />
-            <Select
-              label="市区町村"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              options={
-                muniLoading
-                  ? [{ value: "", label: "読み込み中..." }]
-                  : municipalities.length === 0
-                  ? [{ value: "", label: "（全市区町村）" }]
-                  : [
-                      { value: "", label: "（全市区町村）" },
-                      ...municipalities.map((m) => ({ value: m.id, label: m.name })),
-                    ]
-              }
-            />
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-foreground">市区町村</label>
+              <input
+                type="text"
+                placeholder="例: 前橋市"
+                value={muniFilter}
+                onChange={(e) => setMuniFilter(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                aria-label="市区町村を検索"
+              />
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">（全市区町村）</option>
+                {muniLoading
+                  ? <option disabled>読み込み中...</option>
+                  : filteredMunicipalities.length === 0 && muniFilter.trim()
+                  ? <option disabled>該当なし</option>
+                  : filteredMunicipalities.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))
+                }
+              </select>
+              {muniFilter.trim() && filteredMunicipalities.length > 0 && (
+                <p className="text-xs text-muted-foreground">{filteredMunicipalities.length}件該当</p>
+              )}
+            </div>
           </div>
           <p className="text-xs text-muted-foreground">
             {getPeriodLabel()}分の宅地取引実績（国交省公式API）を取得します

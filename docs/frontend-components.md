@@ -53,22 +53,30 @@ const equityInvested = result.totalInvestment - input.loanAmount
 - `toPct(v: number) = v * 100` — 率→%（表示用）
 - `fromPct(v: number) = v / 100` — %→率（送信時）
 
-**市区町村ドロップダウン（動的取得）**:
+**市区町村インクリメンタルサーチ**:
 
-都道府県選択に連動して `GET /api/municipalities?area=XX`（XIT002）を呼び出し、市区町村一覧を動的に取得する。
+都道府県選択に連動して `GET /api/municipalities?area=XX`（XIT002）を呼び出し、市区町村一覧を動的に取得する。取得後はテキスト入力でリアルタイムフィルタリングが可能。
 
 ```
 初回マウント時: 初期都道府県（"10" = 群馬県）の市区町村を取得
-都道府県変更時: loadMunicipalities(code) → setCity("") → fetch → setCity(data[0].id)
+都道府県変更時: loadMunicipalities(code) → setCity("") → setMuniFilter("") → fetch → setCity(data[0].id)
+フィルタ入力時: filteredMunicipalities（useMemo）が再計算 → ドロップダウンを絞り込み
+               → 結果が1件になると useEffect が setCity() で自動選択
 ```
 
 | 状態 | ドロップダウン表示 |
 |------|-----------------|
-| 取得中 | 「読み込み中...」 |
+| 取得中 | 「読み込み中...」（disabled） |
 | 取得失敗 / データなし | 「（全市区町村）」のみ |
-| 取得成功 | 「（全市区町村）」+ 市区町村名一覧 |
+| フィルタ一致なし | 「該当なし」（disabled） |
+| フィルタあり・複数一致 | 絞り込み結果 + 件数表示 |
+| フィルタなし | 「（全市区町村）」+ 全市区町村名 |
 
 「（全市区町村）」は `city=""` に対応し、バックエンドで市区町村絞り込みなしの都道府県全体検索になる。
+
+**状態変数**:
+- `muniFilter: string` — テキスト入力の現在値
+- `filteredMunicipalities` — `useMemo([municipalities, muniFilter])` でメモ化済み
 
 **詳細設定トグル（showAdvanced）**:
 `expenseRate`, `incomeTaxRate`, `buildingAge`, `buildingType`, `exitYieldTarget` は
