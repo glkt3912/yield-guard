@@ -15,19 +15,21 @@ const (
 
 // TheoreticalPriceInput は理論価格推定の入力値
 type TheoreticalPriceInput struct {
-	ListingPrice   float64 // 販売価格 (円)
-	LandArea       float64 // 土地面積 (m²)
-	BuildingAge    int     // 物件築年数
-	StationMinutes int     // 最寄り駅徒歩分 (0=未入力)
+	ListingPrice    float64              // 販売価格 (円)
+	LandArea        float64              // 土地面積 (m²)
+	BuildingAge     int                  // 物件築年数
+	StationMinutes  int                  // 最寄り駅徒歩分 (0=未入力)
+	RidershipScore  RidershipDemandScore // 最寄り駅需要スコア (空文字=未入力)
 }
 
 // EstimateTheoreticalPrice は取引事例の中央値と補正係数から理論価格を推定する。
 // 取引事例が不足またはデータ不整合の場合は (TheoreticalPriceResult{}, false) を返す。
 //
 // 補正式:
-//   AgeCorrection     = clamp(-0.02 × (buildingAge - medianAge), -0.3, 0.3)
-//   StationCorrection = clamp(-0.01 × (stationMin - medianStation), -0.2, 0.2)
-//   TheoreticalPrice  = medianTsubo × (1+AgeCorr) × (1+StationCorr) × (area/SqmPerTsubo)
+//   AgeCorrection        = clamp(-0.02 × (buildingAge - medianAge), -0.3, 0.3)
+//   StationCorrection    = clamp(-0.01 × (stationMin - medianStation), -0.2, 0.2)
+//   RidershipCorrection  = RidershipCorrectionFactor(score) if score != ""
+//   TheoreticalPrice     = medianTsubo × (1+AgeCorr) × (1+StationCorr) × (1+RidershipCorr) × (area/SqmPerTsubo)
 func EstimateTheoreticalPrice(stats LandPriceStats, input TheoreticalPriceInput) (TheoreticalPriceResult, bool) {
 	if stats.MedianTsubo == 0 || input.LandArea <= 0 || input.ListingPrice <= 0 {
 		return TheoreticalPriceResult{}, false
@@ -70,8 +72,14 @@ func EstimateTheoreticalPrice(stats LandPriceStats, input TheoreticalPriceInput)
 		)
 	}
 
+	hasRidershipData := input.RidershipScore != ""
+	ridershipCorrection := 0.0
+	if hasRidershipData {
+		ridershipCorrection = RidershipCorrectionFactor(input.RidershipScore)
+	}
+
 	landAreaTsubo := input.LandArea / SqmPerTsubo
-	theoreticalPrice := stats.MedianTsubo * (1 + ageCorrection) * (1 + stationCorrection) * landAreaTsubo
+	theoreticalPrice := stats.MedianTsubo * (1 + ageCorrection) * (1 + stationCorrection) * (1 + ridershipCorrection) * landAreaTsubo
 	deviationPct := (input.ListingPrice - theoreticalPrice) / theoreticalPrice * 100
 
 	return TheoreticalPriceResult{
@@ -79,10 +87,13 @@ func EstimateTheoreticalPrice(stats LandPriceStats, input TheoreticalPriceInput)
 		DeviationPct:         deviationPct,
 		AgeCorrection:        ageCorrection,
 		StationCorrection:    stationCorrection,
+		RidershipCorrection:  ridershipCorrection,
 		MedianBuildingAge:    medianAge,
 		MedianStationMinutes: medianStation,
 		IsLowDataWarning:     len(buildingAges) < 10,
 		HasStationData:       hasStationData,
+		RidershipScore:       input.RidershipScore,
+		HasRidershipData:     hasRidershipData,
 	}, true
 }
 
