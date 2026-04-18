@@ -14,7 +14,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { InvestmentInput, LandPriceComparison } from "@/types/investment";
 import { formatMan, formatTsubo } from "@/lib/utils";
-import { MapPin, AlertTriangle, SearchX, Home } from "lucide-react";
+import { MapPin, AlertTriangle, SearchX, Home, Building2 } from "lucide-react";
 
 const SQM_PER_TSUBO = 3.30578;
 
@@ -148,6 +148,36 @@ export function LandPriceAnalysis({ comparison, input }: Props) {
             {stats.lowDataWarning && (
               <p className="text-xs mt-1 text-yellow-700">※ データ件数不足のため参考値</p>
             )}
+          </div>
+        )}
+
+        {/* 用途地域情報 */}
+        {stats.zoning && (
+          <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+            <p className="flex items-center gap-1 text-xs font-semibold text-blue-800 mb-2">
+              <Building2 className="h-3.5 w-3.5" />
+              このエリアの代表的な用途地域（取引データより）
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {stats.zoning.cityPlanning && (
+                <div className="text-center">
+                  <p className="text-xs text-blue-600">用途地域</p>
+                  <p className="text-xs font-medium text-blue-900">{stats.zoning.cityPlanning}</p>
+                </div>
+              )}
+              {stats.zoning.buildingCoverage && (
+                <div className="text-center">
+                  <p className="text-xs text-blue-600">建ぺい率</p>
+                  <p className="text-xs font-medium text-blue-900">{stats.zoning.buildingCoverage}</p>
+                </div>
+              )}
+              {stats.zoning.floorAreaRatio && (
+                <div className="text-center">
+                  <p className="text-xs text-blue-600">容積率</p>
+                  <p className="text-xs font-medium text-blue-900">{stats.zoning.floorAreaRatio}</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

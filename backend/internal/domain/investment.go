@@ -384,7 +384,44 @@ func CalcLandPriceStats(transactions []LandTransaction) LandPriceStats {
 		Transactions:   transactions,
 		LowDataWarning: len(prices) < lowDataThreshold,
 		WarningMessage: warning,
+		Zoning:         calcZoningSummary(transactions),
 	}
+}
+
+// calcZoningSummary は取引データから最頻の用途地域情報を抽出する
+func calcZoningSummary(transactions []LandTransaction) *ZoningSummary {
+	if len(transactions) == 0 {
+		return nil
+	}
+	cp := modalString(transactions, func(t LandTransaction) string { return t.CityPlanning })
+	bc := modalString(transactions, func(t LandTransaction) string { return t.BuildingCoverage })
+	far := modalString(transactions, func(t LandTransaction) string { return t.FloorAreaRatio })
+	if cp == "" && bc == "" && far == "" {
+		return nil
+	}
+	return &ZoningSummary{
+		CityPlanning:     cp,
+		BuildingCoverage: bc,
+		FloorAreaRatio:   far,
+	}
+}
+
+// modalString は transactions から getter で取得した文字列の最頻値を返す（空文字は除外）
+func modalString(transactions []LandTransaction, getter func(LandTransaction) string) string {
+	counts := make(map[string]int, len(transactions))
+	for _, t := range transactions {
+		v := getter(t)
+		if v != "" {
+			counts[v]++
+		}
+	}
+	best, bestCount := "", 0
+	for v, c := range counts {
+		if c > bestCount {
+			best, bestCount = v, c
+		}
+	}
+	return best
 }
 
 // CompareLandPrice は検討中の土地価格と相場を比較する

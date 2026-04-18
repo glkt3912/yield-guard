@@ -184,6 +184,13 @@ type LandTransaction struct {
 	FloorAreaRatio   string  `json:"floorAreaRatio"`
 }
 
+// ZoningSummary はエリア内の取引から抽出した代表的な用途地域情報
+type ZoningSummary struct {
+	CityPlanning     string `json:"cityPlanning"`     // 最頻の都市計画区域（例: 第一種住居地域）
+	BuildingCoverage string `json:"buildingCoverage"` // 最頻の建ぺい率（例: 60%）
+	FloorAreaRatio   string `json:"floorAreaRatio"`   // 最頻の容積率（例: 200%）
+}
+
 // LandPriceStats は土地価格の統計情報
 type LandPriceStats struct {
 	Count          int               `json:"count"`
@@ -194,6 +201,7 @@ type LandPriceStats struct {
 	Transactions   []LandTransaction `json:"transactions"`
 	LowDataWarning bool              `json:"lowDataWarning"` // 件数 < 10 件時 true
 	WarningMessage string            `json:"warningMessage,omitempty"`
+	Zoning         *ZoningSummary    `json:"zoning,omitempty"` // 取引データから抽出した用途地域情報
 }
 
 // LandPriceComparison は検討中の土地価格と相場の比較
