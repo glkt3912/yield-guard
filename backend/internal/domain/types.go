@@ -184,7 +184,6 @@ type LandTransaction struct {
 	FloorAreaRatio   string  `json:"floorAreaRatio"`
 }
 
-// LandPriceStats は土地価格の統計情報
 // ZoningSummary はエリア内の取引から抽出した代表的な用途地域情報
 type ZoningSummary struct {
 	CityPlanning     string `json:"cityPlanning"`     // 最頻の都市計画区域（例: 第一種住居地域）
@@ -192,6 +191,7 @@ type ZoningSummary struct {
 	FloorAreaRatio   string `json:"floorAreaRatio"`   // 最頻の容積率（例: 200%）
 }
 
+// LandPriceStats は土地価格の統計情報
 type LandPriceStats struct {
 	Count          int               `json:"count"`
 	AverageTsubo   float64           `json:"averageTsubo"`
