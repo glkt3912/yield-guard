@@ -188,35 +188,40 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 
 ## GET /api/station-ridership
 
-指定エリアの駅別乗降客数と賃貸需要スコアを返す（国交省 XKT015）。
+物件の緯度経度からタイル座標を算出し、周辺駅の乗降客数と賃貸需要スコアを返す（国交省 XKT015）。
 
 ### クエリパラメータ
 
 | パラメータ | 必須 | 説明 |
 |-----------|------|------|
-| `area` | 必須 | 都道府県コード（例: `"13"` = 東京都） |
-| `city` | 任意 | 市区町村コード（例: `"13113"` = 渋谷区） |
+| `lat` | 必須 | 緯度（-90〜90） |
+| `lng` | 必須 | 経度（-180〜180） |
+| `z` | 任意 | ズームレベル（11〜15、デフォルト: 14）。値が大きいほど狭域・詳細 |
+
+バックエンドで緯度経度を WebMercator タイル座標（x, y）に変換し、XKT015 に `response_format=geojson&z=Z&x=X&y=Y` 形式でリクエストする。
 
 ### レスポンス: `StationRidershipResult[]`
 
 ```json
 [
   {
-    "stationName": "渋谷",
-    "lineName": "JR山手線",
-    "passengers": 360000,
-    "demandScore": "A",
-    "correction": 0.15
+    "stationName": "方南町",
+    "lineName": "4号線丸ノ内線分岐線",
+    "passengers": 38148,
+    "demandScore": "B",
+    "correction": 0.08
   },
   {
-    "stationName": "代々木上原",
-    "lineName": "小田急小田原線",
-    "passengers": 85000,
-    "demandScore": "A",
-    "correction": 0.15
+    "stationName": "永福町",
+    "lineName": "井の頭線",
+    "passengers": 29479,
+    "demandScore": "B",
+    "correction": 0.08
   }
 ]
 ```
+
+乗降客数は最新年（2023年, `S12_057`）を優先し、欠損時は2011年（`S12_009`）を使用する。
 
 ### 需要スコア変換基準
 
@@ -228,14 +233,15 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 | D | ≥ 2,000人 | -0.08 | 小型駅 |
 | E | < 2,000人 | -0.15 | 極小駅（地方小規模駅） |
 
-- 結果は TTL 24時間でインメモリキャッシュされる
+- 結果は TTL 24時間でインメモリキャッシュされる（キー: `ridership:z:x:y`）
 - `correction` の値を `GET /api/land-prices/estimate` の `ridership_score` パラメータに渡すことで理論価格に反映できる
 
 ### エラー
 
 | コード | 条件 |
 |--------|------|
-| 400 | `area` が未指定 |
+| 400 | `lat` または `lng` が未指定・範囲外 |
+| 400 | `z` が 11〜15 の範囲外 |
 | 502 | 国交省APIへのリクエスト失敗 |
 
 ---
