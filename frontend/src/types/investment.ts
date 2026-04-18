@@ -155,6 +155,18 @@ export interface LandPriceComparison {
   assessment: "割安" | "相場" | "割高";
 }
 
+export interface PopulationSnapshot {
+  year: number;
+  pop: number;
+}
+
+export interface PopulationForecastResult {
+  snapshots: PopulationSnapshot[];
+  changeRate30yr: number;
+  vacancyRateDelta: number;
+  trend: "増加" | "現状維持" | "緩やかな減少" | "急激な減少";
+}
+
 export const DEFAULT_INPUT: InvestmentInput = {
   landPrice: 5_000_000,
   landArea: 100,

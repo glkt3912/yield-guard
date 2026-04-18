@@ -6,6 +6,7 @@ import type {
   TheoreticalPriceResult,
   StationRidershipResult,
   RidershipDemandScore,
+  PopulationForecastResult,
 } from "@/types/investment";
 
 const BASE = "/api";
@@ -119,6 +120,21 @@ export async function fetchStationRidership(params: {
   if (params.z !== undefined) q.set("z", String(params.z));
   const res = await fetch(`${BASE}/station-ridership?${q}`);
   return handleResponse<StationRidershipResult[]>(res);
+}
+
+/** 物件の緯度経度から将来推計人口と人口減少シナリオを取得（XKT013） */
+export async function fetchPopulationForecast(params: {
+  lat: number;
+  lng: number;
+  z?: number;
+}): Promise<PopulationForecastResult> {
+  const q = new URLSearchParams({
+    lat: String(params.lat),
+    lng: String(params.lng),
+  });
+  if (params.z !== undefined) q.set("z", String(params.z));
+  const res = await fetch(`${BASE}/population-forecast?${q}`);
+  return handleResponse<PopulationForecastResult>(res);
 }
 
 /** 投資シミュレーションを実行 */
