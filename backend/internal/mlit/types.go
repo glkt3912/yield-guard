@@ -109,6 +109,30 @@ type StationRidership struct {
 	Passengers  int    `json:"passengers"` // 乗降客数/日
 }
 
+// PopulationForecastGeoJSON は XKT013 将来推計人口APIのGeoJSONレスポンス
+type PopulationForecastGeoJSON struct {
+	Type     string                      `json:"type"`
+	Features []PopulationForecastFeature `json:"features"`
+}
+
+// PopulationForecastFeature は GeoJSON の1フィーチャ（250mメッシュ1件）
+type PopulationForecastFeature struct {
+	Properties PopulationForecastProperties `json:"properties"`
+}
+
+// PopulationForecastProperties は将来推計人口の属性。フィールド名は国交省 XKT013 仕様に準拠。
+// PTN_YYYY は総人口（5年刻み: 2020〜2050）。
+type PopulationForecastProperties struct {
+	MeshID  string  `json:"MESH_ID"`
+	PTN2020 float64 `json:"PTN_2020"`
+	PTN2025 float64 `json:"PTN_2025"`
+	PTN2030 float64 `json:"PTN_2030"`
+	PTN2035 float64 `json:"PTN_2035"`
+	PTN2040 float64 `json:"PTN_2040"`
+	PTN2045 float64 `json:"PTN_2045"`
+	PTN2050 float64 `json:"PTN_2050"`
+}
+
 // Prefectures は都道府県コードマップ
 var Prefectures = map[string]string{
 	"01": "北海道", "02": "青森県", "03": "岩手県", "04": "宮城県",
