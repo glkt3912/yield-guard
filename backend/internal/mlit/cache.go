@@ -23,14 +23,16 @@ type cache struct {
 	muniEntries        map[string]muniCacheEntry
 	ridershipEntries   map[string]ridershipCacheEntry
 	populationEntries  map[string]populationCacheEntry
+	appraisalEntries   map[string]appraisalCacheEntry
 }
 
 func newCache() *cache {
 	return &cache{
-		entries:           make(map[string]cacheEntry),
-		muniEntries:       make(map[string]muniCacheEntry),
-		ridershipEntries:  make(map[string]ridershipCacheEntry),
+		entries:          make(map[string]cacheEntry),
+		muniEntries:      make(map[string]muniCacheEntry),
+		ridershipEntries: make(map[string]ridershipCacheEntry),
 		populationEntries: make(map[string]populationCacheEntry),
+		appraisalEntries: make(map[string]appraisalCacheEntry),
 	}
 }
 
@@ -179,6 +181,44 @@ func (c *cache) setPopulation(key string, data []domain.PopulationForecastItem) 
 	defer c.mu.Unlock()
 
 	c.populationEntries[key] = populationCacheEntry{
+		data:      data,
+		expiresAt: time.Now().Add(cacheTTL),
+	}
+}
+
+// appraisalCacheEntry は地価公示キャッシュの1エントリ
+type appraisalCacheEntry struct {
+	data      []domain.LandAppraisalItem
+	expiresAt time.Time
+}
+
+// getAppraisals は地価公示キャッシュを取得する。
+func (c *cache) getAppraisals(key string) ([]domain.LandAppraisalItem, bool) {
+	c.mu.RLock()
+	entry, ok := c.appraisalEntries[key]
+	c.mu.RUnlock()
+
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.appraisalEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+
+	copied := make([]domain.LandAppraisalItem, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+// setAppraisals は地価公示キャッシュに保存する。
+func (c *cache) setAppraisals(key string, data []domain.LandAppraisalItem) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.appraisalEntries[key] = appraisalCacheEntry{
 		data:      data,
 		expiresAt: time.Now().Add(cacheTTL),
 	}

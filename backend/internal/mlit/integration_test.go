@@ -131,6 +131,59 @@ func TestFetchPopulationForecast_RealAPI_Rural(t *testing.T) {
 	}
 }
 
+// TestFetchLandAppraisals は XCT001 地価公示APIへの疎通を確認する統合テスト。
+// 東京都(area=13)・住宅地(division=00)・2024年のデータを取得してフィールドを検証する。
+func TestFetchLandAppraisals(t *testing.T) {
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	items, err := client.FetchLandAppraisals(ctx, "13", "", 2024, "00")
+	if err != nil {
+		t.Fatalf("FetchLandAppraisals failed: %v", err)
+	}
+
+	if len(items) == 0 {
+		t.Fatal("expected at least 1 appraisal item, got 0")
+	}
+	t.Logf("取得件数: %d 件", len(items))
+
+	for i, item := range items[:min(5, len(items))] {
+		t.Logf("  [%d] 地区=%s 価格=%v円/m² 変動率=%.2f%%", i, item.District, item.PricePerSqm, item.ChangeRate*100)
+		if item.PricePerSqm <= 0 {
+			t.Errorf("items[%d]: PricePerSqm should be positive", i)
+		}
+		if item.Year != 2024 {
+			t.Errorf("items[%d]: Year = %d, want 2024", i, item.Year)
+		}
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// TestFetchLandAppraisals_CityFilter は市区町村コードによるフィルタリングの疎通テスト。
+func TestFetchLandAppraisals_CityFilter(t *testing.T) {
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 千代田区(13101)に絞り込み
+	items, err := client.FetchLandAppraisals(ctx, "13", "13101", 2024, "00")
+	if err != nil {
+		t.Fatalf("FetchLandAppraisals (city filter) failed: %v", err)
+	}
+
+	t.Logf("千代田区の取得件数: %d 件", len(items))
+	for _, item := range items {
+		t.Logf("  地区=%s 価格=%v円/m²", item.District, item.PricePerSqm)
+	}
+}
+
 // TestFetchLandPrices_RealAPI_WithCity は市区町村コード絞り込みの疎通テスト。
 func TestFetchLandPrices_RealAPI_WithCity(t *testing.T) {
 	client := NewClient()
