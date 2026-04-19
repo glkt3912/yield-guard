@@ -730,7 +730,7 @@ func TestInternalKeyMiddleware_CorrectKey(t *testing.T) {
 	req.Header.Set("X-Internal-Key", "secret")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-	if w.Code == http.StatusUnauthorized {
-		t.Fatalf("expected non-401 with correct key, got %d", w.Code)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 with correct key, got %d", w.Code)
 	}
 }
