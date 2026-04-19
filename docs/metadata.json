@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-19",
+  "lastUpdated": "2026-04-19T12:40:00",
   "documents": [
     {
       "id": "overview",
@@ -56,20 +56,20 @@
       "id": "api-reference",
       "path": "docs/api-reference.md",
       "title": "APIリファレンス",
-      "description": "全エンドポイント（/api/land-prices/stats、/api/land-prices/compare、/api/land-prices/estimate、/api/investment/analyze、/api/municipalities、/api/station-ridership、/api/population-forecast、/health）の入出力・バリデーション範囲・エラー仕様。CORS設定とALLOW_ORIGINS環境変数。/api/population-forecast は lat/lng/z パラメータで XKT013 将来推計人口を取得し、30年後変化率・空室率増加推定（×0.5係数）・4段階トレンド（増加/現状維持/緩やかな減少/急激な減少）を返す。PopulationForecastResult型（snapshots/changeRate30yr/vacancyRateDelta/trend）。",
-      "tags": ["API", "エンドポイント", "REST", "バリデーション", "CORS", "理論価格", "築年数補正", "駅距離補正", "需要スコア", "乗降客数", "XKT015", "XKT013", "将来推計人口", "人口減少", "ストレステスト", "タイル座標", "lat", "lng"],
+      "description": "全エンドポイント（/api/land-prices/stats、/api/land-prices/compare、/api/land-prices/estimate、/api/investment/analyze、/api/municipalities、/api/station-ridership、/api/population-forecast、/api/land-appraisals、/health）の入出力・バリデーション範囲・エラー仕様。CORS設定とALLOW_ORIGINS環境変数。/api/land-appraisals は XCT001 地価公示データを取得し公示価格中央値・変動率・トレンドラベルを返す（AppraisalComparisonResult型）。/api/population-forecast は lat/lng/z パラメータで XKT013 将来推計人口を取得し、30年後変化率・空室率増加推定（×0.5係数）・4段階トレンドを返す。",
+      "tags": ["API", "エンドポイント", "REST", "バリデーション", "CORS", "理論価格", "築年数補正", "駅距離補正", "需要スコア", "乗降客数", "XKT015", "XKT013", "XCT001", "地価公示", "将来推計人口", "人口減少", "ストレステスト", "タイル座標", "lat", "lng"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["GET /api/land-prices/stats", "GET /api/land-prices/compare", "GET /api/land-prices/estimate", "GET /api/station-ridership", "GET /api/population-forecast", "POST /api/investment/analyze", "GET /api/municipalities", "GET /health", "InvestmentInput", "InvestmentResult", "LandPriceStats", "LandPriceComparison", "TheoreticalPriceResult", "StationRidershipResult", "PopulationForecastResult", "PopulationSnapshot", "changeRate30yr", "vacancyRateDelta", "trend", "RidershipDemandScore", "deviationPct", "ageCorrection", "stationCorrection", "ridershipCorrection", "ridership_score", "lat", "lng", "z", "タイル座標", "エラーレスポンス", "Gin"],
+      "topics": ["GET /api/land-prices/stats", "GET /api/land-prices/compare", "GET /api/land-prices/estimate", "GET /api/station-ridership", "GET /api/population-forecast", "GET /api/land-appraisals", "POST /api/investment/analyze", "GET /api/municipalities", "GET /health", "AppraisalComparisonResult", "appraisalMedianPerSqm", "appraisalCount", "appraisalTrend", "trendLabel", "InvestmentInput", "InvestmentResult", "LandPriceStats", "TheoreticalPriceResult", "PopulationForecastResult", "changeRate30yr", "vacancyRateDelta", "RidershipDemandScore", "lat", "lng", "z", "division", "エラーレスポンス", "Gin"],
       "updatedAt": "2026-04-19"
     },
     {
       "id": "mlit-api-integration",
       "path": "docs/mlit-api-integration.md",
       "title": "国交省不動産取引価格APIクライアント仕様",
-      "description": "国土交通省不動産取引価格情報取得APIのクエリパラメータ・宅地フィルタリング・坪単価算出・parseFloat正規化・parseJapaneseYear（和暦→西暦変換）・指数バックオフリトライ・相場判定ロジック（中央値±10%）・取引データからの用途地域サマリー抽出・都市計画リスク検出。XKT015 駅別乗降客数は GeoJSON タイル座標形式で取得。XKT013 将来推計人口（250mメッシュ）は FetchPopulationForecast(ctx, z, x, y int) で取得。PTN_2020〜PTN_2050（5年刻み）の人口を複数メッシュ合算して domain.PopulationForecastItem スライスを返す。キャッシュキー population:z:x:y。CalcPopulationForecast でトレンド分類・空室率増加推定（×0.5）を算出。",
-      "tags": ["国交省API", "土地価格", "相場", "外部API", "リトライ", "坪単価", "用途地域", "都市計画リスク", "和暦変換", "建築年", "駅距離", "駅別乗降客数", "需要スコア", "XKT015", "XKT013", "将来推計人口", "250mメッシュ", "人口減少", "ストレステスト", "タイル座標", "GeoJSON", "WebMercator"],
+      "description": "国土交通省不動産取引価格情報取得APIのクエリパラメータ・宅地フィルタリング・坪単価算出・parseFloat正規化・parseJapaneseYear（和暦→西暦変換）・指数バックオフリトライ・相場判定ロジック。XCT001 地価公示API（鑑定評価書情報）は area/year/division（用途区分）パラメータで取得。フィールド名が日本語文字列（スペース含む）の特殊形式。FetchLandAppraisals でキャッシュ・city フィルタリング・変動率変換（÷100）。CalcAppraisalComparison で中央値・平均変動率・トレンドラベル（上昇/安定/下落 ±3%閾値）算出。XKT015 駅別乗降客数は GeoJSON タイル座標形式で取得。XKT013 将来推計人口（250mメッシュ）は FetchPopulationForecast(ctx, z, x, y int) で取得。",
+      "tags": ["国交省API", "土地価格", "相場", "外部API", "リトライ", "坪単価", "用途地域", "都市計画リスク", "和暦変換", "建築年", "駅距離", "駅別乗降客数", "需要スコア", "XKT015", "XKT013", "XCT001", "地価公示", "鑑定評価", "将来推計人口", "250mメッシュ", "人口減少", "ストレステスト", "タイル座標", "GeoJSON", "WebMercator"],
       "industry": ["不動産"],
-      "topics": ["FetchLandPrices", "FetchStationRidership", "FetchPopulationForecast", "PopulationForecastGeoJSON", "PopulationForecastProperties", "PopulationForecastItem", "CalcPopulationForecast", "PopulationForecastResult", "PopulationSnapshot", "PopulationTrend", "PTN_2020", "PTN_2050", "changeRate30yr", "vacancyRateDelta", "populationEntries", "StationRidership", "StationRidershipGeoJSON", "LatLngToTile", "isLandType", "parseFloat", "parseJapaneseYear", "CalcLandPriceStats", "CompareLandPrice", "LandPriceQuery", "exponential backoff", "ZoningSummary", "UrbanRisk", "UrbanRiskLevel", "detectUrbanRisks", "RidershipDemandScore", "CalcRidershipDemandScore", "z", "x", "y", "タイル座標", "GeoJSON", "WebMercator", "S12_057"],
+      "topics": ["FetchLandPrices", "FetchLandAppraisals", "FetchStationRidership", "FetchPopulationForecast", "LandAppraisalResponse", "LandAppraisalRaw", "LandAppraisalItem", "AppraisalComparisonResult", "CalcAppraisalComparison", "appraisalTrendLabel", "parseLandAppraisals", "appraisalEntries", "getAppraisals", "setAppraisals", "PopulationForecastGeoJSON", "PopulationForecastItem", "CalcPopulationForecast", "StationRidership", "LatLngToTile", "isLandType", "parseFloat", "parseJapaneseYear", "CalcLandPriceStats", "LandPriceQuery", "division", "変動率", "S12_057", "PTN_2020", "PTN_2050"],
       "updatedAt": "2026-04-19"
     },
     {
@@ -86,10 +86,10 @@
       "id": "frontend-components",
       "path": "docs/frontend-components.md",
       "title": "フロントエンドコンポーネント仕様",
-      "description": "Dashboard・InvestmentForm・YieldAnalysis・CostBreakdown・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック。YieldAnalysisに人口減少シナリオ（4シナリオ目）を追加: populationForecast.vacancyRateDelta を加算した空室率でCF算出・赤字転落バッジ・トレンド脚注。LandPriceAnalysisに人口動態インジケーター追加: 2020/2030/2040/2050推計人口グリッド・4段階トレンド色分け・30年変化率表示。Dashboard の populationForecast ステート管理・fetchStationRidership と fetchPopulationForecast を Promise.allSettled で並行呼び出し。",
-      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ", "空室率", "シナリオ", "人口減少", "ストレステスト", "XKT013", "将来推計人口", "諸経費", "コスト内訳", "インクリメンタルサーチ", "用途地域", "都市計画リスク", "理論価格", "乖離率", "駅距離", "需要スコア", "乗降客数", "緯度経度", "タイル座標"],
+      "description": "Dashboard・InvestmentForm・YieldAnalysis・CostBreakdown・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック。LandPriceAnalysis に地価公示2軸比較セクション追加（XCT001）: 公示価格中央値・取引価格中央値・取引/公示比率・前年比トレンドバッジ（上昇/安定/下落）。Dashboard に landAppraisal ステートを追加し fetchLandAppraisals を呼び出す。YieldAnalysisに人口減少シナリオ（4シナリオ目）追加。Dashboard の populationForecast・stationRidership を Promise.allSettled で並行呼び出し。",
+      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ", "空室率", "シナリオ", "人口減少", "ストレステスト", "XKT013", "XCT001", "地価公示", "2軸比較", "将来推計人口", "諸経費", "コスト内訳", "用途地域", "都市計画リスク", "理論価格", "乖離率", "駅距離", "需要スコア", "乗降客数"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CostBreakdown", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "breakEvenYear", "equityInvested", "DEFAULT_INPUT", "populationForecast", "PopulationForecastResult", "PopulationSnapshot", "fetchPopulationForecast", "人口減少シナリオ", "vacancyRateDelta", "changeRate30yr", "trend", "人口動態インジケーター", "POPULATION_TREND_STYLE", "Promise.allSettled", "stationRidership", "muniFilter", "filteredMunicipalities", "ZoningSummary", "UrbanRisk", "UrbanRiskLevel", "RISK_STYLE", "StationRidershipResult", "RidershipDemandScore", "RIDERSHIP_SCORE_LABEL", "TheoreticalPriceResult", "theoreticalPrice", "deviationPct", "fetchStationRidership", "handleFetchLandPrices"],
+      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CostBreakdown", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "landAppraisal", "AppraisalComparisonResult", "fetchLandAppraisals", "appraisalMedianPerSqm", "appraisalTrend", "trendLabel", "取引/公示比率", "populationForecast", "fetchPopulationForecast", "Promise.allSettled", "stationRidership", "POPULATION_TREND_STYLE", "RISK_STYLE", "StationRidershipResult", "RidershipDemandScore", "RIDERSHIP_SCORE_LABEL", "TheoreticalPriceResult", "handleFetchLandPrices"],
       "updatedAt": "2026-04-19"
     }
   ]

@@ -151,11 +151,12 @@ APIを使用するサービスには以下の文言を表示すること：
 
 ```go
 const (
-    mlitBaseURL                 = "https://www.reinfolib.mlit.go.jp/ex-api/external"
-    endpointLandPrices          = "/XIT001"
-    endpointMunicipalities      = "/XIT002"
-    endpointStationRidership    = "/XKT015"
-    endpointPopulationForecast  = "/XKT013"
+    mlitBaseURL                = "https://www.reinfolib.mlit.go.jp/ex-api/external"
+    endpointLandPrices         = "/XIT001"
+    endpointMunicipalities     = "/XIT002"
+    endpointStationRidership   = "/XKT015"
+    endpointPopulationForecast = "/XKT013"
+    endpointLandAppraisals     = "/XCT001"
 )
 
 type Client struct {
@@ -177,6 +178,110 @@ func NewClient() *Client {
 
 `baseURL` をフィールドとして持つことで、`httptest.NewServer` で立てたモックサーバを差し込んでテストできる。
 `apiKey` が空の場合はヘッダーを付与しない（ローカル開発・テスト用）。
+
+---
+
+## XCT001 地価公示情報API
+
+### エンドポイント
+
+```
+GET /ex-api/external/XCT001?area={都道府県コード}&year={年}&division={用途区分}
+```
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `area` | 必須 | 都道府県コード（例: `"13"` = 東京都）。カンマ区切りで複数指定可 |
+| `year` | 必須 | 価格時点（2022〜2026） |
+| `division` | 必須 | 用途区分。`00`=住宅地, `05`=商業地, `07`=準工業地, `09`=工業地 |
+
+> XIT001/XIT002 と同形式のパラメータだが `city` パラメータは存在しない。市区町村絞り込みはクライアントサイドで行う。
+
+### レスポンス形式
+
+```json
+{
+  "status": "OK",
+  "data": [
+    {
+      "価格時点": "2024",
+      "標準地番号 市区町村コード 県コード": "13",
+      "標準地番号 市区町村コード 市区町村コード": "101",
+      "標準地番号 地域名": "千代田",
+      "標準地番号 用途区分": "住宅地",
+      "1㎡当たりの価格": "1200000",
+      "公示価格": "1200000",
+      "変動率": "3.5",
+      "位置座標 緯度": "35.68950000",
+      "位置座標 経度": "139.69050000"
+    }
+  ]
+}
+```
+
+フィールド名はすべて日本語文字列（スペース含む）。型はすべて文字列形式で返る。
+
+### 主要フィールド
+
+| フィールド | 説明 |
+|-----------|------|
+| `"1㎡当たりの価格"` | 1㎡当たりの公示価格（円/m²）← 主要データ |
+| `"公示価格"` | 正常価格（`1㎡当たりの価格`と通常同一） |
+| `"変動率"` | 前年比変動率（百分率文字列: `"3.5"` = +3.5%） |
+| `"標準地番号 市区町村コード 県コード"` | 都道府県コード（2桁） |
+| `"標準地番号 市区町村コード 市区町村コード"` | 市区町村コード（3桁）。結合で5桁になる: `"13" + "101" = "13101"` |
+
+### 型定義
+
+```go
+type LandAppraisalResponse struct {
+    Status string             `json:"status"`
+    Data   []LandAppraisalRaw `json:"data"`
+}
+
+type LandAppraisalRaw struct {
+    Year           string `json:"価格時点"`
+    PrefCode       string `json:"標準地番号 市区町村コード 県コード"`
+    CityCode       string `json:"標準地番号 市区町村コード 市区町村コード"`
+    DistrictName   string `json:"標準地番号 地域名"`
+    UsageType      string `json:"標準地番号 用途区分"`
+    PricePerSqm    string `json:"1㎡当たりの価格"`
+    AnnouncedPrice string `json:"公示価格"`
+    ChangeRate     string `json:"変動率"`
+}
+```
+
+`domain.LandAppraisalItem`（`{Year int, PricePerSqm float64, ChangeRate float64, District string}`）はドメイン層で定義。
+
+### FetchLandAppraisals シグネチャ
+
+```go
+func (c *Client) FetchLandAppraisals(ctx context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error)
+```
+
+- city が空でない場合: `prefCode + cityCode == city` の条件でクライアントサイドフィルタリング
+- `変動率` 文字列は `parseFloat(s) / 100` で小数に変換（例: `"3.5"` → `0.035`）
+- キャッシュキー: `"appraisals:{area}:{city}:{year}:{division}"`（TTL 24時間）
+
+フロントエンドには `GET /api/land-appraisals?area=13&year=2024[&city=13101][&division=00]` として公開されている。
+
+### ドメインロジック（`domain/land_appraisal.go`）
+
+```go
+func CalcAppraisalComparison(items []LandAppraisalItem) AppraisalComparisonResult
+```
+
+| 処理 | 計算式 |
+|------|--------|
+| 公示価格中央値 | `PricePerSqm` の中央値（ゼロ値を除外） |
+| 平均変動率 | 全地点の `ChangeRate` の算術平均 |
+| トレンド分類 | `> 3%`: 上昇 / `-3%〜3%`: 安定 / `< -3%`: 下落 |
+
+**実測値（東京都・住宅地・2024年）**:
+
+| area | division | 件数 | 公示価格中央値 |
+|------|----------|------|-------------|
+| 13（東京都） | 00（住宅地） | 3,394件 | ※実APIで確認 |
 
 ---
 
