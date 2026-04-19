@@ -390,6 +390,11 @@ func (h *Handler) GetLandAppraisals(c *gin.Context) {
 
 	city := c.Query("city")
 	division := c.DefaultQuery("division", "00")
+	validDivisions := map[string]bool{"00": true, "05": true, "07": true, "09": true}
+	if !validDivisions[division] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "division は 00/05/07/09 のいずれかを指定してください"})
+		return
+	}
 
 	items, err := h.mlitClient.FetchLandAppraisals(c.Request.Context(), area, city, year, division)
 	if err != nil {

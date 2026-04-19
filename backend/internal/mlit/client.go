@@ -316,6 +316,7 @@ func parsePopulationForecasts(features []PopulationForecastFeature) []domain.Pop
 // FetchLandAppraisals は XCT001 を呼び出し地価公示情報を取得する。
 // city が指定された場合は都道府県コード+市区町村コードで絞り込む（クライアントサイドフィルタリング）。
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+// 一時的なネットワーク障害や 5xx レスポンスに対して指数バックオフでリトライする。
 func (c *Client) FetchLandAppraisals(ctx context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error) {
 	key := fmt.Sprintf("appraisals:%s:%s:%d:%s", area, city, year, division)
 	if cached, ok := c.cache.getAppraisals(key); ok {
@@ -328,6 +329,32 @@ func (c *Client) FetchLandAppraisals(ctx context.Context, area, city string, yea
 	params.Set("division", division)
 	apiURL := c.baseURL + endpointLandAppraisals + "?" + params.Encode()
 
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			delay := retryBaseDelay * time.Duration(1<<uint(attempt-1))
+			select {
+			case <-ctx.Done():
+				return nil, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
+			case <-time.After(delay):
+			}
+		}
+
+		result, err := c.doAppraisalsRequest(ctx, apiURL, area, city)
+		if err == nil {
+			c.cache.setAppraisals(key, result)
+			return result, nil
+		}
+		lastErr = err
+		if isClientError(err) {
+			return nil, err
+		}
+	}
+	return nil, fmt.Errorf("land appraisals API request failed after %d attempts: %w", maxRetries, lastErr)
+}
+
+// doAppraisalsRequest は単一の XCT001 HTTPリクエストを実行してパースする。
+func (c *Client) doAppraisalsRequest(ctx context.Context, apiURL, area, city string) ([]domain.LandAppraisalItem, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("request build error: %w", err)
@@ -357,9 +384,7 @@ func (c *Client) FetchLandAppraisals(ctx context.Context, area, city string, yea
 		return nil, fmt.Errorf("land appraisals API status: %s", apiResp.Status)
 	}
 
-	result := parseLandAppraisals(apiResp.Data, area, city)
-	c.cache.setAppraisals(key, result)
-	return result, nil
+	return parseLandAppraisals(apiResp.Data, area, city), nil
 }
 
 // parseLandAppraisals は XCT001 レスポンスを domain.LandAppraisalItem スライスに変換する。

@@ -132,12 +132,13 @@ api-station-ridership:
 	  | jq .
 
 ## api-land-appraisals: ローカルの /api/land-appraisals を呼び出す
-##   使い方: make api-land-appraisals area=13 city=13101 year=2024
+##   使い方: make api-land-appraisals area=13 city=13101 year=2024 [division=00]
+##   division: 00=住宅地(デフォルト) 05=商業地 07=準工業地 09=工業地
 api-land-appraisals:
 	@test -n "$(area)" || (echo "ERROR: area は必須です (例: area=13)"; exit 1)
 	@test -n "$(year)" || (echo "ERROR: year は必須です (例: year=2024)"; exit 1)
 	curl -s \
-	  "$(API_BASE)/land-appraisals?area=$(area)$(if $(city),&city=$(city),)&year=$(year)" \
+	  "$(API_BASE)/land-appraisals?area=$(area)$(if $(city),&city=$(city),)&year=$(year)$(if $(division),&division=$(division),)" \
 	  | jq .
 
 ## api-population-forecast: ローカルの /api/population-forecast を呼び出す

@@ -666,3 +666,14 @@ func TestGetLandAppraisals_UpstreamError(t *testing.T) {
 		t.Fatalf("expected 502, got %d", w.Code)
 	}
 }
+
+func TestGetLandAppraisals_InvalidDivision(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?area=13&year=2024&division=99", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}

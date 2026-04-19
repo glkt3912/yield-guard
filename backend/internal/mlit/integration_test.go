@@ -159,13 +159,6 @@ func TestFetchLandAppraisals(t *testing.T) {
 	}
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // TestFetchLandAppraisals_CityFilter は市区町村コードによるフィルタリングの疎通テスト。
 func TestFetchLandAppraisals_CityFilter(t *testing.T) {
 	client := NewClient()
