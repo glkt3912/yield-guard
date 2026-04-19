@@ -236,4 +236,4 @@ make build
 
 ## ライセンス
 
-MIT
+Copyright (c) 2026 Keita Tashiro. All Rights Reserved.
