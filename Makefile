@@ -166,15 +166,15 @@ api-estimate-ridership:
 
 ## integration: 全統合テストを実行 (MLIT_API_KEY 必須)
 integration:
-	cd backend && source ../.env 2>/dev/null; \
+	cd backend && set -a; . ../.env 2>/dev/null; set +a; \
 	go test -tags=integration ./internal/mlit/... -v -timeout 120s
 
 ## integration-population: 将来推計人口 (XKT013) の統合テストのみ実行
 integration-population:
-	cd backend && source ../.env 2>/dev/null; \
+	cd backend && set -a; . ../.env 2>/dev/null; set +a; \
 	go test -tags=integration ./internal/mlit/... -v -timeout 60s -run TestFetchPopulationForecast
 
 ## integration-land-appraisals: 地価公示 (XCT001) の統合テストのみ実行
 integration-land-appraisals:
-	cd backend && source ../.env 2>/dev/null; \
+	cd backend && set -a; . ../.env 2>/dev/null; set +a; \
 	go test -tags=integration ./internal/mlit/... -v -timeout 60s -run TestFetchLandAppraisals
