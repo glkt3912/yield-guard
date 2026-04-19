@@ -17,6 +17,7 @@ type MLITClient interface {
 	FetchMunicipalities(ctx context.Context, area string) ([]mlit.Municipality, error)
 	FetchStationRidership(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error)
 	FetchPopulationForecast(ctx context.Context, z, x, y int) ([]domain.PopulationForecastItem, error)
+	FetchLandAppraisals(ctx context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error)
 }
 
 type Handler struct {
@@ -368,6 +369,46 @@ func (h *Handler) GetMunicipalities(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, municipalities)
+}
+
+// GetLandAppraisals は XCT001 から地価公示情報を取得して比較統計を返す
+// GET /api/land-appraisals?area=13&year=2024[&city=13101][&division=00]
+// division: 00=住宅地(デフォルト), 05=商業地, 07=準工業地, 09=工業地
+func (h *Handler) GetLandAppraisals(c *gin.Context) {
+	area := c.Query("area")
+	if area == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "area は必須パラメータです"})
+		return
+	}
+
+	yearStr := c.Query("year")
+	year, err := strconv.Atoi(yearStr)
+	if err != nil || year < 2022 || year > 2030 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "year は2022〜2030の整数で指定してください"})
+		return
+	}
+
+	city := c.Query("city")
+	division := c.DefaultQuery("division", "00")
+	validDivisions := map[string]bool{"00": true, "05": true, "07": true, "09": true}
+	if !validDivisions[division] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "division は 00/05/07/09 のいずれかを指定してください"})
+		return
+	}
+
+	items, err := h.mlitClient.FetchLandAppraisals(c.Request.Context(), area, city, year, division)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "地価公示APIからのデータ取得に失敗しました: " + err.Error()})
+		return
+	}
+
+	if len(items) == 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "指定エリアの地価公示データが見つかりませんでした"})
+		return
+	}
+
+	result := domain.CalcAppraisalComparison(items)
+	c.JSON(http.StatusOK, result)
 }
 
 // HealthCheck はサーバーの生存確認

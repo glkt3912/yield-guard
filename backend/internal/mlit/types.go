@@ -133,6 +133,24 @@ type PopulationForecastProperties struct {
 	PTN2050 float64 `json:"PTN_2050"`
 }
 
+// LandAppraisalResponse は XCT001 鑑定評価書情報APIのレスポンス
+type LandAppraisalResponse struct {
+	Status string             `json:"status"`
+	Data   []LandAppraisalRaw `json:"data"`
+}
+
+// LandAppraisalRaw は XCT001 の1レコード。フィールド名は国交省 XCT001 仕様に準拠（日本語キー）。
+type LandAppraisalRaw struct {
+	Year           string `json:"価格時点"`
+	PrefCode       string `json:"標準地番号 市区町村コード 県コード"`
+	CityCode       string `json:"標準地番号 市区町村コード 市区町村コード"`
+	DistrictName   string `json:"標準地番号 地域名"`
+	UsageType      string `json:"標準地番号 用途区分"`
+	PricePerSqm    string `json:"1㎡当たりの価格"`
+	AnnouncedPrice string `json:"公示価格"`
+	ChangeRate     string `json:"変動率"`
+}
+
 // Prefectures は都道府県コードマップ
 var Prefectures = map[string]string{
 	"01": "北海道", "02": "青森県", "03": "岩手県", "04": "宮城県",

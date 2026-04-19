@@ -1,7 +1,7 @@
 .PHONY: dev test lint build help \
-        mlit-land-prices mlit-municipalities mlit-station-ridership mlit-population-forecast \
-        api-station-ridership api-estimate-ridership api-population-forecast \
-        integration integration-population
+        mlit-land-prices mlit-municipalities mlit-station-ridership mlit-population-forecast mlit-land-appraisals \
+        api-station-ridership api-estimate-ridership api-population-forecast api-land-appraisals \
+        integration integration-population integration-land-appraisals
 
 ## dev: バックエンド・フロントエンドの開発サーバーを起動
 dev:
@@ -90,6 +90,19 @@ mlit-station-ridership:
 	   "$(MLIT_BASE)/XKT015?response_format=geojson&z=$(z)&x=$(x)&y=$(y)" \
 	   | jq .
 
+## mlit-land-appraisals: 地価公示情報を取得 (XCT001) ※国交省APIへ直接リクエスト
+##   使い方: make mlit-land-appraisals area=13 year=2024 [division=00]
+##   division: 00=住宅地(デフォルト) 05=商業地 07=準工業地 09=工業地
+mlit-land-appraisals:
+	@test -n "$(area)" || (echo "ERROR: area は必須です (例: area=13)"; exit 1)
+	@test -n "$(year)" || (echo "ERROR: year は必須です (例: year=2024)"; exit 1)
+	@source .env 2>/dev/null; \
+	 curl -s \
+	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
+	   --compressed \
+	   "$(MLIT_BASE)/XCT001?area=$(area)&year=$(year)&division=$(or $(division),00)" \
+	   | jq '{status: .status, count: (.data | length), sample: (.data[:3] | map({"地域名": .["標準地番号 地域名"], "価格時点": .["価格時点"], "公示価格": .["公示価格"], "1㎡当たりの価格": .["1㎡当たりの価格"], "変動率": .["変動率"], "用途区分": .["標準地番号 用途区分"]}))}'
+
 ## mlit-population-forecast: 将来推計人口を取得 (XKT013) ※国交省APIへ直接リクエスト
 ##   使い方: make mlit-population-forecast z=14 x=14547 y=6451
 ##   緯度経度→タイル変換例(z=14): 渋谷付近 → x=14547 y=6451 / 前橋付近 → x=14479 y=6412
@@ -118,6 +131,16 @@ api-station-ridership:
 	  "$(API_BASE)/station-ridership?lat=$(lat)&lng=$(lng)$(if $(z),&z=$(z),)" \
 	  | jq .
 
+## api-land-appraisals: ローカルの /api/land-appraisals を呼び出す
+##   使い方: make api-land-appraisals area=13 city=13101 year=2024 [division=00]
+##   division: 00=住宅地(デフォルト) 05=商業地 07=準工業地 09=工業地
+api-land-appraisals:
+	@test -n "$(area)" || (echo "ERROR: area は必須です (例: area=13)"; exit 1)
+	@test -n "$(year)" || (echo "ERROR: year は必須です (例: year=2024)"; exit 1)
+	curl -s \
+	  "$(API_BASE)/land-appraisals?area=$(area)$(if $(city),&city=$(city),)&year=$(year)$(if $(division),&division=$(division),)" \
+	  | jq .
+
 ## api-population-forecast: ローカルの /api/population-forecast を呼び出す
 ##   使い方: make api-population-forecast lat=35.6762 lng=139.6503 [z=14]
 api-population-forecast:
@@ -144,10 +167,15 @@ api-estimate-ridership:
 
 ## integration: 全統合テストを実行 (MLIT_API_KEY 必須)
 integration:
-	cd backend && source ../.env 2>/dev/null; \
+	cd backend && set -a; . ../.env 2>/dev/null; set +a; \
 	go test -tags=integration ./internal/mlit/... -v -timeout 120s
 
 ## integration-population: 将来推計人口 (XKT013) の統合テストのみ実行
 integration-population:
-	cd backend && source ../.env 2>/dev/null; \
+	cd backend && set -a; . ../.env 2>/dev/null; set +a; \
 	go test -tags=integration ./internal/mlit/... -v -timeout 60s -run TestFetchPopulationForecast
+
+## integration-land-appraisals: 地価公示 (XCT001) の統合テストのみ実行
+integration-land-appraisals:
+	cd backend && set -a; . ../.env 2>/dev/null; set +a; \
+	go test -tags=integration ./internal/mlit/... -v -timeout 60s -run TestFetchLandAppraisals

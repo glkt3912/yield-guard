@@ -7,6 +7,7 @@ import type {
   StationRidershipResult,
   RidershipDemandScore,
   PopulationForecastResult,
+  AppraisalComparisonResult,
 } from "@/types/investment";
 
 const BASE = "/api";
@@ -135,6 +136,23 @@ export async function fetchPopulationForecast(params: {
   if (params.z !== undefined) q.set("z", String(params.z));
   const res = await fetch(`${BASE}/population-forecast?${q}`);
   return handleResponse<PopulationForecastResult>(res);
+}
+
+/** 地価公示情報を取得して取引価格との2軸比較統計を返す（XCT001） */
+export async function fetchLandAppraisals(params: {
+  area: string;
+  year: number;
+  city?: string;
+  division?: string;
+}): Promise<AppraisalComparisonResult> {
+  const q = new URLSearchParams({
+    area: params.area,
+    year: String(params.year),
+    division: params.division ?? "00",
+  });
+  if (params.city) q.set("city", params.city);
+  const res = await fetch(`${BASE}/land-appraisals?${q}`);
+  return handleResponse<AppraisalComparisonResult>(res);
 }
 
 /** 投資シミュレーションを実行 */

@@ -570,6 +570,157 @@ func TestFetchMunicipalities_4xxNoRetry(t *testing.T) {
 	}
 }
 
+// ---- parseLandAppraisals ----
+
+func TestParseLandAppraisals_Basic(t *testing.T) {
+	raw := []LandAppraisalRaw{
+		{
+			Year:           "2024",
+			PrefCode:       "13",
+			CityCode:       "101",
+			DistrictName:   "千代田",
+			PricePerSqm:    "1200000",
+			AnnouncedPrice: "1200000",
+			ChangeRate:     "3.5",
+		},
+		{
+			Year:           "2024",
+			PrefCode:       "13",
+			CityCode:       "102",
+			DistrictName:   "中央",
+			PricePerSqm:    "800000",
+			AnnouncedPrice: "800000",
+			ChangeRate:     "2.0",
+		},
+	}
+	result := parseLandAppraisals(raw, "13", "")
+	if len(result) != 2 {
+		t.Fatalf("len = %d, want 2", len(result))
+	}
+	if result[0].PricePerSqm != 1_200_000 {
+		t.Errorf("PricePerSqm = %v, want 1200000", result[0].PricePerSqm)
+	}
+	// 変動率 "3.5" → 3.5% → 0.035
+	if math.Abs(result[0].ChangeRate-0.035) > 1e-9 {
+		t.Errorf("ChangeRate = %v, want 0.035", result[0].ChangeRate)
+	}
+}
+
+func TestParseLandAppraisals_CityFilter(t *testing.T) {
+	raw := []LandAppraisalRaw{
+		{Year: "2024", PrefCode: "13", CityCode: "101", PricePerSqm: "1000000", ChangeRate: "1.0"},
+		{Year: "2024", PrefCode: "13", CityCode: "102", PricePerSqm: "500000", ChangeRate: "0.5"},
+	}
+	result := parseLandAppraisals(raw, "13", "13101")
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1 (city filter)", len(result))
+	}
+	if result[0].PricePerSqm != 1_000_000 {
+		t.Errorf("PricePerSqm = %v, want 1000000", result[0].PricePerSqm)
+	}
+}
+
+func TestParseLandAppraisals_FallbackToAnnouncedPrice(t *testing.T) {
+	raw := []LandAppraisalRaw{
+		{Year: "2024", PrefCode: "13", CityCode: "101", PricePerSqm: "0", AnnouncedPrice: "900000", ChangeRate: "0"},
+	}
+	result := parseLandAppraisals(raw, "13", "")
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].PricePerSqm != 900_000 {
+		t.Errorf("PricePerSqm = %v, want 900000 (fallback to announced price)", result[0].PricePerSqm)
+	}
+}
+
+func TestParseLandAppraisals_SkipsZeroPrice(t *testing.T) {
+	raw := []LandAppraisalRaw{
+		{Year: "2024", PrefCode: "13", CityCode: "101", PricePerSqm: "0", AnnouncedPrice: "0", ChangeRate: "0"},
+	}
+	result := parseLandAppraisals(raw, "13", "")
+	if len(result) != 0 {
+		t.Errorf("len = %d, want 0 (zero price should be skipped)", len(result))
+	}
+}
+
+// ---- FetchLandAppraisals ----
+
+func TestFetchLandAppraisals_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointLandAppraisals {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		if got := r.URL.Query().Get("area"); got != "13" {
+			t.Errorf("area = %s, want 13", got)
+		}
+		if got := r.URL.Query().Get("year"); got != "2024" {
+			t.Errorf("year = %s, want 2024", got)
+		}
+		if got := r.URL.Query().Get("division"); got != "00" {
+			t.Errorf("division = %s, want 00", got)
+		}
+		resp := LandAppraisalResponse{
+			Status: "OK",
+			Data: []LandAppraisalRaw{
+				{Year: "2024", PrefCode: "13", CityCode: "101", DistrictName: "千代田", PricePerSqm: "1000000", AnnouncedPrice: "1000000", ChangeRate: "3.0"},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			panic(err)
+		}
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchLandAppraisals(context.Background(), "13", "", 2024, "00")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Errorf("len = %d, want 1", len(result))
+	}
+}
+
+func TestFetchLandAppraisals_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := LandAppraisalResponse{Status: "OK", Data: []LandAppraisalRaw{
+			{Year: "2024", PrefCode: "13", CityCode: "101", PricePerSqm: "500000", ChangeRate: "1.0"},
+		}}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			panic(err)
+		}
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchLandAppraisals(context.Background(), "13", "", 2024, "00"); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchLandAppraisals(context.Background(), "13", "", 2024, "00"); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
+
+func TestFetchLandAppraisals_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchLandAppraisals(context.Background(), "13", "", 2024, "00")
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
 func TestLatLngToTile(t *testing.T) {
 	tests := []struct {
 		name    string

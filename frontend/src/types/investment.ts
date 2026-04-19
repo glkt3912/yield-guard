@@ -167,6 +167,13 @@ export interface PopulationForecastResult {
   trend: "増加" | "現状維持" | "緩やかな減少" | "急激な減少";
 }
 
+export interface AppraisalComparisonResult {
+  appraisalMedianPerSqm: number; // 公示価格中央値（円/m²）
+  appraisalCount: number;         // 標準地点数
+  appraisalTrend: number;         // 平均変動率（小数: 0.05 = +5%）
+  trendLabel: "上昇" | "安定" | "下落";
+}
+
 export const DEFAULT_INPUT: InvestmentInput = {
   landPrice: 5_000_000,
   landArea: 100,

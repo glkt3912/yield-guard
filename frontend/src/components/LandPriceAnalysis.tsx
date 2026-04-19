@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { InvestmentInput, LandPriceComparison, UrbanRiskLevel, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult } from "@/types/investment";
+import type { InvestmentInput, LandPriceComparison, UrbanRiskLevel, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult } from "@/types/investment";
 import { formatMan, formatTsubo } from "@/lib/utils";
 import { MapPin, AlertTriangle, SearchX, Home, Building2, ShieldAlert, ShieldCheck, TrendingUp, Users } from "lucide-react";
 
@@ -39,6 +39,7 @@ interface Props {
   theoreticalPrice?: TheoreticalPriceResult | null;
   stationRidership?: StationRidershipResult[] | null;
   populationForecast?: PopulationForecastResult | null;
+  landAppraisal?: AppraisalComparisonResult | null;
 }
 
 const ASSESSMENT_BADGE: Record<string, "success" | "warning" | "danger"> = {
@@ -76,7 +77,7 @@ const RIDERSHIP_SCORE_LABEL: Record<string, { label: string; color: string }> = 
   E: { label: "E（極小駅）", color: "text-red-700" },
 };
 
-export function LandPriceAnalysis({ comparison, input, theoreticalPrice, stationRidership, populationForecast }: Props) {
+export function LandPriceAnalysis({ comparison, input, theoreticalPrice, stationRidership, populationForecast, landAppraisal }: Props) {
   const { stats, assessment, inputPricePerTsubo, diffFromMedian } = comparison;
 
   const landValueSection = (() => {
@@ -356,6 +357,59 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice, station
             </div>
           </div>
         )}
+
+        {/* 地価公示2軸比較（XCT001 vs XIT001） */}
+        {landAppraisal && landAppraisal.appraisalCount > 0 && (() => {
+          const transactionMedianPerSqm = stats.medianTsubo > 0 ? stats.medianTsubo / SQM_PER_TSUBO : 0;
+          const ratio = transactionMedianPerSqm > 0 && landAppraisal.appraisalMedianPerSqm > 0
+            ? transactionMedianPerSqm / landAppraisal.appraisalMedianPerSqm
+            : null;
+          const trendStyle: Record<string, { border: string; bg: string; text: string }> = {
+            "上昇": { border: "border-green-300",  bg: "bg-green-50",  text: "text-green-700" },
+            "安定": { border: "border-yellow-300", bg: "bg-yellow-50", text: "text-yellow-700" },
+            "下落": { border: "border-red-300",    bg: "bg-red-50",    text: "text-red-700" },
+          };
+          const style = trendStyle[landAppraisal.trendLabel] ?? trendStyle["安定"];
+          return (
+            <div className={`rounded-md border p-3 ${style.border} ${style.bg}`}>
+              <p className={`flex items-center gap-1 text-sm font-semibold mb-2 ${style.text}`}>
+                <Building2 className="h-4 w-4" />
+                地価公示 vs 取引価格 2軸比較（XCT001）
+              </p>
+              <dl className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">公示価格中央値（住宅地）</dt>
+                  <dd className="font-medium">{Math.round(landAppraisal.appraisalMedianPerSqm).toLocaleString()}円/m²</dd>
+                </div>
+                {transactionMedianPerSqm > 0 && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">取引価格中央値</dt>
+                    <dd className="font-medium">{Math.round(transactionMedianPerSqm).toLocaleString()}円/m²</dd>
+                  </div>
+                )}
+                {ratio !== null && (
+                  <div className="flex justify-between border-t pt-1">
+                    <dt className="text-muted-foreground">取引/公示 比率</dt>
+                    <dd className={`font-bold ${ratio > 1.1 ? "text-red-700" : ratio < 0.9 ? "text-green-700" : ""}`}>
+                      {ratio.toFixed(2)}倍{ratio > 1.1 ? "（取引が公示を上回る）" : ratio < 0.9 ? "（取引が公示を下回る）" : "（公示と概ね一致）"}
+                    </dd>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">前年比トレンド</dt>
+                  <dd className={`font-bold ${style.text}`}>
+                    {landAppraisal.trendLabel}（{landAppraisal.appraisalTrend >= 0 ? "+" : ""}{(landAppraisal.appraisalTrend * 100).toFixed(1)}%）
+                  </dd>
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <dt>標準地点数</dt>
+                  <dd>{landAppraisal.appraisalCount}地点</dd>
+                </div>
+              </dl>
+              <p className="mt-2 text-xs text-muted-foreground">出典：国土交通省 不動産情報ライブラリ（XCT001）</p>
+            </div>
+          );
+        })()}
 
         {/* 理論価格推定 */}
         {theoreticalPrice && (() => {

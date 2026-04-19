@@ -6,8 +6,8 @@ import { CashFlowChart } from "@/components/CashFlowChart";
 import { DeadCrossChart } from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
-import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult } from "@/types/investment";
-import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast } from "@/lib/api";
+import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult } from "@/types/investment";
+import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals } from "@/lib/api";
 import { ShieldAlert, XOctagon, AlertTriangle } from "lucide-react";
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
@@ -27,6 +27,7 @@ export function Dashboard() {
   const [lastInput, setLastInput] = useState<InvestmentInput | null>(null);
   const [stationRidership, setStationRidership] = useState<StationRidershipResult[] | null>(null);
   const [populationForecast, setPopulationForecast] = useState<PopulationForecastResult | null>(null);
+  const [landAppraisal, setLandAppraisal] = useState<AppraisalComparisonResult | null>(null);
 
   const handleAnalyze = async (input: InvestmentInput) => {
     setLoading(true);
@@ -47,6 +48,7 @@ export function Dashboard() {
     setError(null);
     setStationRidership(null);
     setPopulationForecast(null);
+    setLandAppraisal(null);
     const { year, quarter, toYear, toQuarter } = getCurrentPeriods();
     try {
       const baseParams = {
@@ -74,6 +76,11 @@ export function Dashboard() {
           setTheoreticalPrice(null);
         }
       }
+      const [appraisal] = await Promise.allSettled([
+        fetchLandAppraisals({ area, year: toYear, city: city || undefined }),
+      ]);
+      setLandAppraisal(appraisal.status === "fulfilled" ? appraisal.value : null);
+
       if (lat !== undefined && lng !== undefined) {
         const [ridership, population] = await Promise.allSettled([
           fetchStationRidership({ lat, lng }),
@@ -132,7 +139,7 @@ export function Dashboard() {
               </div>
             )}
 
-            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} />}
+            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} landAppraisal={landAppraisal} />}
 
             {result && lastInput && (
               <>

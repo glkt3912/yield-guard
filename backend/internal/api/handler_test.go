@@ -21,10 +21,11 @@ func init() {
 
 // mockMLITClient は MLITClient インターフェースのテスト用モック
 type mockMLITClient struct {
-	fetchFunc          func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
-	muniFunc           func(ctx context.Context, area string) ([]mlit.Municipality, error)
-	ridershipFunc      func(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error)
-	populationFunc     func(ctx context.Context, z, x, y int) ([]domain.PopulationForecastItem, error)
+	fetchFunc        func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
+	muniFunc         func(ctx context.Context, area string) ([]mlit.Municipality, error)
+	ridershipFunc    func(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error)
+	populationFunc   func(ctx context.Context, z, x, y int) ([]domain.PopulationForecastItem, error)
+	appraisalFunc    func(ctx context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error)
 }
 
 func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
@@ -53,6 +54,13 @@ func (m *mockMLITClient) FetchPopulationForecast(ctx context.Context, z, x, y in
 		return []domain.PopulationForecastItem{}, nil
 	}
 	return m.populationFunc(ctx, z, x, y)
+}
+
+func (m *mockMLITClient) FetchLandAppraisals(ctx context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error) {
+	if m.appraisalFunc == nil {
+		return []domain.LandAppraisalItem{}, nil
+	}
+	return m.appraisalFunc(ctx, area, city, year, division)
 }
 
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す
@@ -571,5 +579,101 @@ func TestGetPopulationForecast_UpstreamError(t *testing.T) {
 
 	if w.Code != http.StatusBadGateway {
 		t.Fatalf("expected 502, got %d", w.Code)
+	}
+}
+
+// ---- GetLandAppraisals ----
+
+func TestGetLandAppraisals_MissingArea(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?year=2024", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestGetLandAppraisals_InvalidYear(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?area=13&year=2010", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestGetLandAppraisals_Success(t *testing.T) {
+	client := &mockMLITClient{
+		appraisalFunc: func(_ context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error) {
+			return []domain.LandAppraisalItem{
+				{Year: 2024, PricePerSqm: 1_000_000, ChangeRate: 0.03, District: "千代田"},
+				{Year: 2024, PricePerSqm: 800_000, ChangeRate: 0.02, District: "中央"},
+			}, nil
+		},
+	}
+	r := newTestRouter(client)
+	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?area=13&year=2024", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.AppraisalComparisonResult
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if resp.AppraisalCount != 2 {
+		t.Errorf("AppraisalCount = %d, want 2", resp.AppraisalCount)
+	}
+	if resp.AppraisalMedianPerSqm != 900_000 {
+		t.Errorf("AppraisalMedianPerSqm = %v, want 900000", resp.AppraisalMedianPerSqm)
+	}
+}
+
+func TestGetLandAppraisals_NoData(t *testing.T) {
+	client := &mockMLITClient{
+		appraisalFunc: func(_ context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error) {
+			return []domain.LandAppraisalItem{}, nil
+		},
+	}
+	r := newTestRouter(client)
+	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?area=13&year=2024", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d", w.Code)
+	}
+}
+
+func TestGetLandAppraisals_UpstreamError(t *testing.T) {
+	client := &mockMLITClient{
+		appraisalFunc: func(_ context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error) {
+			return nil, errors.New("upstream error")
+		},
+	}
+	r := newTestRouter(client)
+	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?area=13&year=2024", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502, got %d", w.Code)
+	}
+}
+
+func TestGetLandAppraisals_InvalidDivision(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?area=13&year=2024&division=99", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
