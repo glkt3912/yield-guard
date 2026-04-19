@@ -132,6 +132,7 @@ go run cmd/server/main.go
 | `PORT` | リッスンポート | `8080` |
 | `ALLOW_ORIGINS` | CORS許可オリジン | `http://localhost:3000` |
 | `MLIT_API_KEY` | 不動産情報ライブラリ APIキー（必須） | — |
+| `APP_INTERNAL_API_KEY` | Vercel-Render 間の内部通信認証キー。設定時は `/api/*` に `X-Internal-Key` ヘッダーが必要 | 未設定（ローカル開発時はスキップ） |
 
 **フロントエンド**
 
@@ -140,6 +141,12 @@ cd frontend
 npm install
 npm run dev   # http://localhost:3000
 ```
+
+フロントエンド環境変数（`frontend/.env.local`）:
+
+| 変数名 | 説明 | デフォルト |
+|---|---|---|
+| `APP_INTERNAL_API_KEY` | バックエンドへの内部認証キー（バックエンドと同一値を設定） | 未設定（ローカル開発時はスキップ） |
 
 ---
 

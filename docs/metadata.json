@@ -1,16 +1,16 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-19T12:40:00",
+  "lastUpdated": "2026-04-19T22:05:00",
   "documents": [
     {
       "id": "overview",
       "path": "docs/overview.md",
       "title": "プロジェクト概要とアーキテクチャ",
-      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック・ディレクトリ構成・起動手順・計算の制約と免責事項",
-      "tags": ["概要", "アーキテクチャ", "セットアップ", "不動産投資"],
+      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック・ディレクトリ構成・起動手順・計算の制約と免責事項。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。",
+      "tags": ["概要", "アーキテクチャ", "セットアップ", "不動産投資", "環境変数", "APP_INTERNAL_API_KEY"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["Go", "Gin", "Next.js", "Tailwind CSS", "Recharts", "Clean Architecture", "国交省API", "起動手順", "テスト"],
-      "updatedAt": "2026-03-28"
+      "topics": ["Go", "Gin", "Next.js", "Tailwind CSS", "Recharts", "Clean Architecture", "国交省API", "起動手順", "テスト", "APP_INTERNAL_API_KEY", "MLIT_API_KEY", "ALLOW_ORIGINS"],
+      "updatedAt": "2026-04-19"
     },
     {
       "id": "domain-investment-calculation",
@@ -56,10 +56,20 @@
       "id": "api-reference",
       "path": "docs/api-reference.md",
       "title": "APIリファレンス",
-      "description": "全エンドポイント（/api/land-prices/stats、/api/land-prices/compare、/api/land-prices/estimate、/api/investment/analyze、/api/municipalities、/api/station-ridership、/api/population-forecast、/api/land-appraisals、/health）の入出力・バリデーション範囲・エラー仕様。CORS設定とALLOW_ORIGINS環境変数。/api/land-appraisals は XCT001 地価公示データを取得し公示価格中央値・変動率・トレンドラベルを返す（AppraisalComparisonResult型）。/api/population-forecast は lat/lng/z パラメータで XKT013 将来推計人口を取得し、30年後変化率・空室率増加推定（×0.5係数）・4段階トレンドを返す。",
-      "tags": ["API", "エンドポイント", "REST", "バリデーション", "CORS", "理論価格", "築年数補正", "駅距離補正", "需要スコア", "乗降客数", "XKT015", "XKT013", "XCT001", "地価公示", "将来推計人口", "人口減少", "ストレステスト", "タイル座標", "lat", "lng"],
+      "description": "全エンドポイント（/api/land-prices/stats、/api/land-prices/compare、/api/land-prices/estimate、/api/investment/analyze、/api/municipalities、/api/station-ridership、/api/population-forecast、/api/land-appraisals、/health）の入出力・バリデーション範囲・エラー仕様。CORS設定とALLOW_ORIGINS環境変数。APP_INTERNAL_API_KEY設定時は/api/*にX-Internal-Keyヘッダーが必要（/healthはスキップ）。/api/land-appraisals は XCT001 地価公示データを取得し公示価格中央値・変動率・トレンドラベルを返す（AppraisalComparisonResult型）。/api/population-forecast は lat/lng/z パラメータで XKT013 将来推計人口を取得し、30年後変化率・空室率増加推定（×0.5係数）・4段階トレンドを返す。",
+      "tags": ["API", "エンドポイント", "REST", "バリデーション", "CORS", "理論価格", "築年数補正", "駅距離補正", "需要スコア", "乗降客数", "XKT015", "XKT013", "XCT001", "地価公示", "将来推計人口", "人口減少", "ストレステスト", "タイル座標", "lat", "lng", "認証", "X-Internal-Key", "APP_INTERNAL_API_KEY"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["GET /api/land-prices/stats", "GET /api/land-prices/compare", "GET /api/land-prices/estimate", "GET /api/station-ridership", "GET /api/population-forecast", "GET /api/land-appraisals", "POST /api/investment/analyze", "GET /api/municipalities", "GET /health", "AppraisalComparisonResult", "appraisalMedianPerSqm", "appraisalCount", "appraisalTrend", "trendLabel", "InvestmentInput", "InvestmentResult", "LandPriceStats", "TheoreticalPriceResult", "PopulationForecastResult", "changeRate30yr", "vacancyRateDelta", "RidershipDemandScore", "lat", "lng", "z", "division", "エラーレスポンス", "Gin"],
+      "topics": ["GET /api/land-prices/stats", "GET /api/land-prices/compare", "GET /api/land-prices/estimate", "GET /api/station-ridership", "GET /api/population-forecast", "GET /api/land-appraisals", "POST /api/investment/analyze", "GET /api/municipalities", "GET /health", "AppraisalComparisonResult", "appraisalMedianPerSqm", "appraisalCount", "appraisalTrend", "trendLabel", "InvestmentInput", "InvestmentResult", "LandPriceStats", "TheoreticalPriceResult", "PopulationForecastResult", "changeRate30yr", "vacancyRateDelta", "RidershipDemandScore", "lat", "lng", "z", "division", "エラーレスポンス", "Gin", "internalKeyMiddleware", "X-Internal-Key", "APP_INTERNAL_API_KEY"],
+      "updatedAt": "2026-04-19"
+    },
+    {
+      "id": "security",
+      "path": "docs/security.md",
+      "title": "セキュリティ設計",
+      "description": "Vercel-Render 間の内部通信認証（APP_INTERNAL_API_KEY / X-Internal-Key ヘッダー）の設計意図・動作仕様・適用範囲・ローカル開発での挙動・本番キー設定手順。internalKeyMiddleware が /api/* グループに適用され、/health はスキップ。APP_INTERNAL_API_KEY 未設定時はミドルウェアをスキップし後方互換を維持。",
+      "tags": ["セキュリティ", "認証", "ミドルウェア", "X-Internal-Key", "APP_INTERNAL_API_KEY", "Vercel", "Render", "内部通信"],
+      "industry": ["不動産", "フィンテック"],
+      "topics": ["internalKeyMiddleware", "X-Internal-Key", "APP_INTERNAL_API_KEY", "middleware.ts", "router.go", "401 Unauthorized", "/health", "本番環境", "ローカル開発"],
       "updatedAt": "2026-04-19"
     },
     {

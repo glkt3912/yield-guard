@@ -46,6 +46,7 @@ cd yield-guard
 cp .env.example .env
 # .env を編集して MLIT_API_KEY を設定する
 # APIキー申請: https://www.reinfolib.mlit.go.jp/api/request/（審査5営業日）
+# APP_INTERNAL_API_KEY は本番環境（Vercel-Render 間認証）用。ローカルでは未設定でよい
 ```
 
 ### Docker（推奨）

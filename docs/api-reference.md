@@ -11,6 +11,18 @@
 | レスポンス形式 | `application/json` |
 | CORS 許可オリジン | 環境変数 `ALLOW_ORIGINS`（カンマ区切り）。未設定時は `http://localhost:3000` のみ |
 
+### 内部通信認証（`/api/*`）
+
+環境変数 `APP_INTERNAL_API_KEY` が設定されている場合、`/api/*` エンドポイントへのすべてのリクエストに `X-Internal-Key` ヘッダーが必要。
+
+| ヘッダー | 説明 |
+|----------|------|
+| `X-Internal-Key` | `APP_INTERNAL_API_KEY` と同一の値。不一致または未送信の場合は `401 Unauthorized` |
+
+- `/health` エンドポイントはこの認証をスキップする
+- `APP_INTERNAL_API_KEY` が未設定（ローカル開発）の場合はヘッダー検証をスキップし、従来通り動作する
+- Vercel フロントエンドは `frontend/src/middleware.ts` で自動的にヘッダーを付与するため、ブラウザからの通常利用では意識不要
+
 ### エラーレスポンス形式
 
 ```json

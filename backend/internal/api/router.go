@@ -9,6 +9,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func internalKeyMiddleware() gin.HandlerFunc {
+	key := os.Getenv("APP_INTERNAL_API_KEY")
+	return func(c *gin.Context) {
+		if key != "" && c.GetHeader("X-Internal-Key") != key {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+		c.Next()
+	}
+}
+
 // NewRouter は Gin ルーターを初期化して返す
 func NewRouter(h *Handler) *gin.Engine {
 	r := gin.Default()
@@ -35,6 +46,7 @@ func NewRouter(h *Handler) *gin.Engine {
 	r.GET("/health", h.HealthCheck)
 
 	api := r.Group("/api")
+	api.Use(internalKeyMiddleware())
 	{
 		api.GET("/land-prices/stats", h.GetLandPrices)
 		api.GET("/land-prices/compare", h.CompareLandPrice)

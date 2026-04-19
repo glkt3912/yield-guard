@@ -677,3 +677,60 @@ func TestGetLandAppraisals_InvalidDivision(t *testing.T) {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
+
+func TestInternalKeyMiddleware_NoKeySet(t *testing.T) {
+	t.Setenv("APP_INTERNAL_API_KEY", "")
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 when key not set, got %d", w.Code)
+	}
+}
+
+func TestInternalKeyMiddleware_HealthSkipped(t *testing.T) {
+	t.Setenv("APP_INTERNAL_API_KEY", "secret")
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for /health without key, got %d", w.Code)
+	}
+}
+
+func TestInternalKeyMiddleware_Unauthorized(t *testing.T) {
+	t.Setenv("APP_INTERNAL_API_KEY", "secret")
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/municipalities", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 without X-Internal-Key, got %d", w.Code)
+	}
+}
+
+func TestInternalKeyMiddleware_WrongKey(t *testing.T) {
+	t.Setenv("APP_INTERNAL_API_KEY", "secret")
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/municipalities", nil)
+	req.Header.Set("X-Internal-Key", "wrong")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 with wrong key, got %d", w.Code)
+	}
+}
+
+func TestInternalKeyMiddleware_CorrectKey(t *testing.T) {
+	t.Setenv("APP_INTERNAL_API_KEY", "secret")
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/municipalities?area=13", nil)
+	req.Header.Set("X-Internal-Key", "secret")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 with correct key, got %d", w.Code)
+	}
+}
