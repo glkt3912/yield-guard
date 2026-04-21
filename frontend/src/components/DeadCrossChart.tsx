@@ -28,7 +28,7 @@ export function DeadCrossChart({ result }: Props) {
 
   // デッドクロスゾーンの終了年（ローン完済またはデータ終端）
   const deadCrossEndYear = hasDeadCross
-    ? (yearlyResults.slice(0, 35).findLast((y) => y.isInDeadCrossZone)?.year ?? deadCrossYear)
+    ? ([...yearlyResults.slice(0, 35)].reverse().find((y) => y.isInDeadCrossZone)?.year ?? deadCrossYear)
     : null;
 
   return (

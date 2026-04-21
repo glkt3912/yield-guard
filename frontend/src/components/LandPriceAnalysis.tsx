@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { InvestmentInput, LandPriceComparison, UrbanRiskLevel, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult } from "@/types/investment";
+import type { InvestmentInput, LandPriceComparison, UrbanRisk, UrbanRiskLevel, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult } from "@/types/investment";
 import { formatMan, formatTsubo } from "@/lib/utils";
 import { MapPin, AlertTriangle, SearchX, Home, Building2, ShieldAlert, ShieldCheck, TrendingUp, Users } from "lucide-react";
 
@@ -40,6 +40,7 @@ interface Props {
   stationRidership?: StationRidershipResult[] | null;
   populationForecast?: PopulationForecastResult | null;
   landAppraisal?: AppraisalComparisonResult | null;
+  externalUrbanRisks?: UrbanRisk[] | null;
 }
 
 const ASSESSMENT_BADGE: Record<string, "success" | "warning" | "danger"> = {
@@ -77,8 +78,13 @@ const RIDERSHIP_SCORE_LABEL: Record<string, { label: string; color: string }> = 
   E: { label: "E（極小駅）", color: "text-red-700" },
 };
 
-export function LandPriceAnalysis({ comparison, input, theoreticalPrice, stationRidership, populationForecast, landAppraisal }: Props) {
+export function LandPriceAnalysis({ comparison, input, theoreticalPrice, stationRidership, populationForecast, landAppraisal, externalUrbanRisks }: Props) {
   const { stats, assessment, inputPricePerTsubo, diffFromMedian } = comparison;
+
+  const allUrbanRisks: UrbanRisk[] = [
+    ...(stats.urbanRisks ?? []),
+    ...(externalUrbanRisks ?? []).filter(r => !(stats.urbanRisks ?? []).some(e => e.code === r.code)),
+  ];
 
   const landValueSection = (() => {
     if (!input || stats.count === 0 || stats.medianTsubo === 0 || comparison.inputArea === 0) return null;
@@ -150,9 +156,9 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice, station
         )}
 
         {/* 都市計画リスク警告 */}
-        {stats.urbanRisks && stats.urbanRisks.length > 0 && (
+        {allUrbanRisks.length > 0 && (
           <div className="space-y-2">
-            {stats.urbanRisks.map((risk) => {
+            {allUrbanRisks.map((risk) => {
               const style = RISK_STYLE[risk.level];
               return (
                 <div

@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func internalKeyMiddleware() gin.HandlerFunc {
@@ -23,6 +24,8 @@ func internalKeyMiddleware() gin.HandlerFunc {
 // NewRouter は Gin ルーターを初期化して返す
 func NewRouter(h *Handler) *gin.Engine {
 	r := gin.Default()
+
+	r.Use(otelgin.Middleware("yield-guard-backend"))
 
 	// リクエストボディを 64KB に制限（大量 JSON による DoS を防止）
 	r.Use(func(c *gin.Context) {
@@ -56,6 +59,7 @@ func NewRouter(h *Handler) *gin.Engine {
 		api.GET("/station-ridership", h.GetStationRidership)
 		api.GET("/population-forecast", h.GetPopulationForecast)
 		api.GET("/land-appraisals", h.GetLandAppraisals)
+		api.GET("/urban-risks", h.GetUrbanRisks)
 	}
 
 	return r

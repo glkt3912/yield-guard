@@ -11,6 +11,7 @@ import (
 
 	"github.com/yield-guard/backend/internal/api"
 	"github.com/yield-guard/backend/internal/mlit"
+	"github.com/yield-guard/backend/internal/telemetry"
 )
 
 func main() {
@@ -21,6 +22,12 @@ func main() {
 
 	if os.Getenv("MLIT_API_KEY") == "" {
 		log.Fatal("MLIT_API_KEY is not set")
+	}
+
+	ctx := context.Background()
+	otelShutdown, err := telemetry.Setup(ctx, "yield-guard-backend", "0.1.0")
+	if err != nil {
+		log.Fatalf("failed to initialise OpenTelemetry: %v", err)
 	}
 
 	mlitClient := mlit.NewClient()
@@ -51,6 +58,9 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("forced shutdown: %v", err)
+	}
+	if err := otelShutdown(context.Background()); err != nil {
+		log.Printf("OTel shutdown error: %v", err)
 	}
 	log.Println("Server stopped")
 }

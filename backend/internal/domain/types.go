@@ -1,5 +1,7 @@
 package domain
 
+import "fmt"
+
 // BuildingType は建物構造種別を表す
 type BuildingType string
 
@@ -81,6 +83,21 @@ type InvestmentInput struct {
 
 	// 固定資産税・都市計画税（年間合計）。0 の場合は ExpenseRate に含まれる想定。
 	AnnualPropertyTax float64 `json:"annualPropertyTax"`
+
+	// 賃料下落率: 毎年この割合だけ実効賃料が低下する（例: 0.01 = 年1%下落）
+	RentDeclineRate float64 `json:"rentDeclineRate"`
+}
+
+// Validate は入力値のバリデーションを行い、不正な組み合わせはエラーを返す。
+// VacancyRate + VacancyRateDelta > 0.99 の場合、空室率オーバーフローとみなす。
+func (i *InvestmentInput) Validate() error {
+	if i.VacancyRate+i.VacancyRateDelta > 0.99 {
+		return fmt.Errorf(
+			"VacancyRate(%.2f) + VacancyRateDelta(%.2f) = %.2f exceeds maximum allowed vacancy of 0.99",
+			i.VacancyRate, i.VacancyRateDelta, i.VacancyRate+i.VacancyRateDelta,
+		)
+	}
+	return nil
 }
 
 // Defaults は構造的デフォルト（省略可能なフィールド）にのみ適用する。
@@ -221,6 +238,28 @@ type StationRidershipResult struct {
 	Passengers   int                  `json:"passengers"`   // 乗降客数/日
 	DemandScore  RidershipDemandScore `json:"demandScore"`  // 需要スコア A〜E
 	Correction   float64              `json:"correction"`   // 理論価格補正係数
+}
+
+// LocationOptimizationItem は XKT003 立地適正化計画のドメイン層受け渡し用軽量型
+type LocationOptimizationItem struct {
+	KubunNameJa string // 区域名（例: 居住誘導区域、都市機能誘導区域）
+}
+
+// EmbankmentItem は XKT020 大規模盛土造成地のドメイン層受け渡し用軽量型
+type EmbankmentItem struct {
+	Classification string // 盛土区分（例: 谷埋め型）
+}
+
+// UrbanRoadItem は XKT030 都市計画道路のドメイン層受け渡し用軽量型
+type UrbanRoadItem struct {
+	PlanningRoadJa string
+	KubunID        int // 3011=都市計画道路、3023=広場
+}
+
+// DisasterHistoryItem は XST001 災害履歴のドメイン層受け渡し用軽量型
+type DisasterHistoryItem struct {
+	Name string // 災害種別名（例: 浸水域）
+	Year int    // 発生年（不明時は0）
 }
 
 // ZoningSummary はエリア内の取引から抽出した代表的な用途地域情報

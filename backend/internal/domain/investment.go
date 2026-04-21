@@ -17,8 +17,8 @@ const (
 func Analyze(input InvestmentInput) InvestmentResult {
 	input.Defaults()
 
-	// ストレステスト値を適用
-	effectiveVacancy := input.VacancyRate + input.VacancyRateDelta
+	// ストレステスト値を適用（空室率は99%上限でキャップ）
+	effectiveVacancy := math.Min(input.VacancyRate+input.VacancyRateDelta, 0.99)
 	effectiveRate := input.AnnualLoanRate + input.LoanRateDelta
 
 	miscExpenses := (input.LandPrice + input.BuildingCost) * input.MiscExpenseRate
@@ -83,7 +83,8 @@ func Analyze(input InvestmentInput) InvestmentResult {
 			}
 		}
 
-		yearAnnualRent := annualRent
+		declineFactor := math.Pow(1-input.RentDeclineRate, float64(y))
+		yearAnnualRent := annualRent * declineFactor
 		yearExpenses := yearAnnualRent*input.ExpenseRate + input.AnnualPropertyTax
 
 		// 減価償却は耐用年数内のみ
@@ -553,6 +554,87 @@ func detectUrbanRisks(transactions []LandTransaction, zoning *ZoningSummary) []U
 				Description: fmt.Sprintf("エリア内取引の約%.0f%%が市街化調整区域です。対象物件の区域区分を必ず確認してください。", ratio),
 			})
 		}
+	}
+
+	return risks
+}
+
+// BuildUrbanRisksFromAPIs は MLIT 専用 API（XKT003/020/030/XST001）の結果からリスクを構築する。
+// detectUrbanRisks（XIT001テキスト検出）とは独立して使用し、結果を呼び出し元でマージする。
+func BuildUrbanRisksFromAPIs(
+	locationItems []LocationOptimizationItem,
+	embankmentItems []EmbankmentItem,
+	roadItems []UrbanRoadItem,
+	disasters []DisasterHistoryItem,
+) []UrbanRisk {
+	var risks []UrbanRisk
+
+	// XKT003: 立地適正化計画フィーチャが存在し、居住誘導区域が含まれない場合
+	if len(locationItems) > 0 {
+		hasResidential := false
+		for _, item := range locationItems {
+			if strings.Contains(item.KubunNameJa, "居住誘導区域") {
+				hasResidential = true
+				break
+			}
+		}
+		if !hasResidential {
+			risks = append(risks, UrbanRisk{
+				Code:        "OUTSIDE_RESIDENTIAL_GUIDANCE",
+				Level:       UrbanRiskLevelWarning,
+				Title:       "居住誘導区域外",
+				Description: "立地適正化計画の居住誘導区域外です。将来的に行政サービスの縮小・インフラ維持コスト増加の可能性があります（コンパクトシティ計画）。",
+			})
+		}
+	}
+
+	// XKT020: 大規模盛土造成地フィーチャが存在する場合
+	if len(embankmentItems) > 0 {
+		embDesc := "大規模盛土造成地に該当します。地震時の沈下・崩壊リスクがあります。"
+		if c := embankmentItems[0].Classification; c != "" {
+			embDesc = fmt.Sprintf("大規模盛土造成地（%s）に該当します。地震時の沈下・崩壊リスクがあります。", c)
+		}
+		risks = append(risks, UrbanRisk{
+			Code:        "LARGE_EMBANKMENT",
+			Level:       UrbanRiskLevelWarning,
+			Title:       "大規模盛土造成地",
+			Description: embDesc,
+		})
+	}
+
+	// XKT030: 都市計画道路（kubun_id=3011）フィーチャが存在する場合
+	for _, item := range roadItems {
+		if item.KubunID == 3011 {
+			risks = append(risks, UrbanRisk{
+				Code:        "URBAN_PLANNING_ROAD",
+				Level:       UrbanRiskLevelWarning,
+				Title:       "都市計画道路の予定地",
+				Description: "都市計画道路の予定地に一部かかっています。将来的に建物の一部または全部が収用対象となる可能性があります。",
+			})
+			break
+		}
+	}
+
+	// XST001: 災害履歴フィーチャが存在する場合
+	if len(disasters) > 0 {
+		names := make([]string, 0, len(disasters))
+		seen := make(map[string]bool)
+		for _, d := range disasters {
+			if d.Name != "" && !seen[d.Name] {
+				names = append(names, d.Name)
+				seen[d.Name] = true
+			}
+		}
+		desc := "このエリアで過去に災害が記録されています。"
+		if len(names) > 0 {
+			desc = fmt.Sprintf("このエリアで過去に災害が記録されています（%s）。", strings.Join(names, "・"))
+		}
+		risks = append(risks, UrbanRisk{
+			Code:        "DISASTER_HISTORY",
+			Level:       UrbanRiskLevelWarning,
+			Title:       "災害履歴あり",
+			Description: desc,
+		})
 	}
 
 	return risks

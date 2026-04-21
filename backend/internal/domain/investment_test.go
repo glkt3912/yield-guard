@@ -307,14 +307,15 @@ func TestAnalyze_ZeroExitYield(t *testing.T) {
 	t.Logf("ExitYieldTarget補完確認: ExitSalePrice=%.0f", result.ExitSalePrice)
 }
 
-// TestAnalyze_FullVacancy は空室率100%（VacancyRate=1）の場合を検証する
+// TestAnalyze_FullVacancy は空室率100%（VacancyRate=1）の場合を検証する。
+// effectiveVacancy は 0.99 にキャップされるため AnnualRent はわずかに正になる。
 func TestAnalyze_FullVacancy(t *testing.T) {
 	input := InvestmentInput{
 		LandPrice:       5_000_000,
 		BuildingCost:    10_000_000,
 		MiscExpenseRate: 0.07,
 		MonthlyRent:     120_000,
-		VacancyRate:     1.0, // 完全空室
+		VacancyRate:     1.0, // 完全空室 → effectiveVacancy=0.99 にキャップ
 		LoanAmount:      13_000_000,
 		AnnualLoanRate:  0.015,
 		LoanYears:       35,
@@ -330,9 +331,10 @@ func TestAnalyze_FullVacancy(t *testing.T) {
 	if len(result.YearlyResults) == 0 {
 		t.Fatal("YearlyResults is empty")
 	}
-	// 賃料収入はゼロ
-	if result.YearlyResults[0].AnnualRent != 0 {
-		t.Errorf("AnnualRent = %.0f, want 0 for full vacancy", result.YearlyResults[0].AnnualRent)
+	// effectiveVacancy=0.99 にキャップ → AnnualRent = 120000*12*(1-0.99) = 14400
+	wantRent := 120_000.0 * 12 * (1 - 0.99)
+	if !approxEqual(result.YearlyResults[0].AnnualRent, wantRent, 1) {
+		t.Errorf("AnnualRent = %.0f, want ≈ %.0f (capped at effectiveVacancy=0.99)", result.YearlyResults[0].AnnualRent, wantRent)
 	}
 	// 表面利回りは正 (空室率はNetYieldに影響するがGrossYieldには影響しない)
 	if result.GrossYield <= 0 {
@@ -426,6 +428,71 @@ func TestCalcCriticalErrors_LandValueGuard(t *testing.T) {
 	if !found {
 		t.Error("expected LAND_VALUE_GUARD REJECT when appraisal ratio is 34%")
 	}
+}
+
+// TestAnalyze_ExitNOI_UsesHoldingYearValues は出口NOIが保有年数時点の賃料下落を反映することを検証する
+func TestAnalyze_ExitNOI_UsesHoldingYearValues(t *testing.T) {
+	const (
+		monthlyRent     = 120_000.0
+		vacancyRate     = 0.05
+		expenseRate     = 0.20
+		rentDeclineRate = 0.01  // 年1%下落
+		holdingYears    = 10
+		exitYieldTarget = 0.06
+	)
+
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     monthlyRent,
+		VacancyRate:     vacancyRate,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeRC,
+		ExpenseRate:     expenseRate,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    holdingYears,
+		ExitYieldTarget: exitYieldTarget,
+		RentDeclineRate: rentDeclineRate,
+	}
+
+	result := Analyze(input)
+
+	// 保有10年目(インデックス9)の賃料下落係数: (1-0.01)^9 = 0.99^9
+	declineFactor := math.Pow(1-rentDeclineRate, float64(holdingYears-1))
+	baseAnnualRent := monthlyRent * 12 * (1 - vacancyRate)
+	expectedRent := baseAnnualRent * declineFactor
+	expectedNOI := expectedRent * (1 - expenseRate)
+	expectedSalePrice := expectedNOI / exitYieldTarget
+
+	if len(result.YearlyResults) < holdingYears {
+		t.Fatalf("YearlyResults too short: got %d, want >= %d", len(result.YearlyResults), holdingYears)
+	}
+
+	// 保有年次の賃料が下落を反映していること
+	yearRent := result.YearlyResults[holdingYears-1].AnnualRent
+	if !approxEqual(yearRent, expectedRent, 1.0) {
+		t.Errorf("YearlyResults[%d].AnnualRent = %.2f, want ≈ %.2f", holdingYears-1, yearRent, expectedRent)
+	}
+
+	// 売却価格が保有年次の下落後NOIから算出されること
+	if !approxEqual(result.ExitSalePrice, expectedSalePrice, 1000) {
+		t.Errorf("ExitSalePrice = %.0f, want ≈ %.0f (decline-adjusted NOI)", result.ExitSalePrice, expectedSalePrice)
+	}
+
+	// RentDeclineRate=0のケースより売却価格が低いことを確認
+	inputNoDecline := input
+	inputNoDecline.RentDeclineRate = 0
+	resultNoDecline := Analyze(inputNoDecline)
+	if result.ExitSalePrice >= resultNoDecline.ExitSalePrice {
+		t.Errorf("ExitSalePrice with decline (%.0f) should be < without decline (%.0f)",
+			result.ExitSalePrice, resultNoDecline.ExitSalePrice)
+	}
+
+	t.Logf("declineFactor=%.6f, expectedRent=%.0f, ExitSalePrice=%.0f (vs no-decline=%.0f)",
+		declineFactor, expectedRent, result.ExitSalePrice, resultNoDecline.ExitSalePrice)
 }
 
 func makeTx(cityPlanning string) LandTransaction {
@@ -707,6 +774,255 @@ func TestDetectUrbanRisks_NoRisks(t *testing.T) {
 	risks := detectUrbanRisks(txs, zoning)
 	if len(risks) != 0 {
 		t.Errorf("expected no risks for normal zoning, got %d", len(risks))
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_NoItems(t *testing.T) {
+	risks := BuildUrbanRisksFromAPIs(nil, nil, nil, nil)
+	if len(risks) != 0 {
+		t.Errorf("expected no risks for empty inputs, got %d", len(risks))
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_OutsideResidentialGuidance(t *testing.T) {
+	// 居住誘導区域なし → 警告
+	items := []LocationOptimizationItem{{KubunNameJa: "都市機能誘導区域"}}
+	risks := BuildUrbanRisksFromAPIs(items, nil, nil, nil)
+	if len(risks) != 1 || risks[0].Code != "OUTSIDE_RESIDENTIAL_GUIDANCE" {
+		t.Errorf("expected OUTSIDE_RESIDENTIAL_GUIDANCE, got %+v", risks)
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_InsideResidentialGuidance(t *testing.T) {
+	// 居住誘導区域あり → 警告なし
+	items := []LocationOptimizationItem{
+		{KubunNameJa: "都市機能誘導区域"},
+		{KubunNameJa: "居住誘導区域"},
+	}
+	risks := BuildUrbanRisksFromAPIs(items, nil, nil, nil)
+	for _, r := range risks {
+		if r.Code == "OUTSIDE_RESIDENTIAL_GUIDANCE" {
+			t.Error("should not raise OUTSIDE_RESIDENTIAL_GUIDANCE when 居住誘導区域 is present")
+		}
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_LargeEmbankment(t *testing.T) {
+	items := []EmbankmentItem{{Classification: "谷埋め型"}}
+	risks := BuildUrbanRisksFromAPIs(nil, items, nil, nil)
+	if len(risks) != 1 || risks[0].Code != "LARGE_EMBANKMENT" {
+		t.Errorf("expected LARGE_EMBANKMENT, got %+v", risks)
+	}
+	if risks[0].Description == "" {
+		t.Error("description should not be empty")
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_LargeEmbankment_EmptyClassification(t *testing.T) {
+	items := []EmbankmentItem{{Classification: ""}}
+	risks := BuildUrbanRisksFromAPIs(nil, items, nil, nil)
+	if len(risks) != 1 || risks[0].Code != "LARGE_EMBANKMENT" {
+		t.Errorf("expected LARGE_EMBANKMENT, got %+v", risks)
+	}
+	// 空文字でも説明文が壊れていないことを確認
+	if risks[0].Description == "" {
+		t.Error("description should not be empty even with empty classification")
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_UrbanPlanningRoad(t *testing.T) {
+	roads := []UrbanRoadItem{
+		{PlanningRoadJa: "環状8号線", KubunID: 3011},
+		{PlanningRoadJa: "広場A", KubunID: 3023}, // 都市計画道路でない
+	}
+	risks := BuildUrbanRisksFromAPIs(nil, nil, roads, nil)
+	if len(risks) != 1 || risks[0].Code != "URBAN_PLANNING_ROAD" {
+		t.Errorf("expected URBAN_PLANNING_ROAD only, got %+v", risks)
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_UrbanPlanningRoad_NoKubun3011(t *testing.T) {
+	roads := []UrbanRoadItem{{PlanningRoadJa: "広場A", KubunID: 3023}}
+	risks := BuildUrbanRisksFromAPIs(nil, nil, roads, nil)
+	if len(risks) != 0 {
+		t.Errorf("expected no risks for kubun_id != 3011, got %+v", risks)
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_DisasterHistory(t *testing.T) {
+	disasters := []DisasterHistoryItem{
+		{Name: "浸水域", Year: 2019},
+		{Name: "浸水域", Year: 2011}, // 同じ名前の重複
+		{Name: "がけ崩れ", Year: 2004},
+	}
+	risks := BuildUrbanRisksFromAPIs(nil, nil, nil, disasters)
+	if len(risks) != 1 || risks[0].Code != "DISASTER_HISTORY" {
+		t.Errorf("expected DISASTER_HISTORY, got %+v", risks)
+	}
+	// 重複排除されて2種類が含まれることを確認
+	desc := risks[0].Description
+	if desc == "" {
+		t.Error("description should not be empty")
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_MultipleRisks(t *testing.T) {
+	risks := BuildUrbanRisksFromAPIs(
+		[]LocationOptimizationItem{{KubunNameJa: "都市機能誘導区域"}},
+		[]EmbankmentItem{{Classification: "谷埋め型"}},
+		[]UrbanRoadItem{{KubunID: 3011}},
+		[]DisasterHistoryItem{{Name: "浸水域", Year: 2019}},
+	)
+	if len(risks) != 4 {
+		t.Errorf("expected 4 risks, got %d: %+v", len(risks), risks)
+	}
+	codes := make(map[string]bool)
+	for _, r := range risks {
+		codes[r.Code] = true
+	}
+	for _, want := range []string{
+		"OUTSIDE_RESIDENTIAL_GUIDANCE", "LARGE_EMBANKMENT",
+		"URBAN_PLANNING_ROAD", "DISASTER_HISTORY",
+	} {
+		if !codes[want] {
+			t.Errorf("missing expected risk code: %s", want)
+		}
+	}
+}
+
+// TestAnalyze_VacancyOverflow は空室率オーバーフロー（VacancyRate+VacancyRateDelta>0.99）時に
+// effectiveVacancy が 0.99 でキャップされ、AnnualRent が負にならないことを検証する。
+func TestAnalyze_VacancyOverflow(t *testing.T) {
+	tests := []struct {
+		name             string
+		vacancyRate      float64
+		vacancyRateDelta float64
+		wantCapped       bool // effectiveVacancy が 0.99 にキャップされるか
+	}{
+		{
+			name:             "合計が1.0 → 0.99にキャップ",
+			vacancyRate:      0.95,
+			vacancyRateDelta: 0.05,
+			wantCapped:       true,
+		},
+		{
+			name:             "合計が1.5 → 0.99にキャップ",
+			vacancyRate:      1.0,
+			vacancyRateDelta: 0.50,
+			wantCapped:       true,
+		},
+		{
+			name:             "合計が0.99 → キャップなし（境界値）",
+			vacancyRate:      0.90,
+			vacancyRateDelta: 0.09,
+			wantCapped:       false,
+		},
+		{
+			name:             "通常ケース（合計0.15） → キャップなし",
+			vacancyRate:      0.05,
+			vacancyRateDelta: 0.10,
+			wantCapped:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := InvestmentInput{
+				LandPrice:        5_000_000,
+				BuildingCost:     10_000_000,
+				MiscExpenseRate:  0.07,
+				MonthlyRent:      120_000,
+				VacancyRate:      tt.vacancyRate,
+				VacancyRateDelta: tt.vacancyRateDelta,
+				LoanAmount:       13_000_000,
+				AnnualLoanRate:   0.015,
+				LoanYears:        35,
+				BuildingType:     BuildingTypeWood,
+				ExpenseRate:      0.20,
+				IncomeTaxRate:    0.33,
+				HoldingYears:     10,
+				ExitYieldTarget:  0.06,
+			}
+
+			result := Analyze(input)
+
+			if len(result.YearlyResults) == 0 {
+				t.Fatal("YearlyResults is empty")
+			}
+
+			// AnnualRent は常に 0 以上でなければならない
+			for _, yr := range result.YearlyResults {
+				if yr.AnnualRent < 0 {
+					t.Errorf("year %d: AnnualRent = %.0f, want >= 0 (vacancy overflow must be capped)", yr.Year, yr.AnnualRent)
+				}
+			}
+
+			// キャップ時は effectiveVacancy=0.99 → AnnualRent = MonthlyRent*12*(1-0.99)
+			if tt.wantCapped {
+				expectedRent := 120_000.0 * 12 * (1 - 0.99)
+				if !approxEqual(result.YearlyResults[0].AnnualRent, expectedRent, 1) {
+					t.Errorf("AnnualRent = %.0f, want ≈ %.0f (capped at 0.99)", result.YearlyResults[0].AnnualRent, expectedRent)
+				}
+			}
+		})
+	}
+}
+
+// TestInvestmentInput_Validate は Validate() が空室率オーバーフロー時にエラーを返すことを検証する。
+func TestInvestmentInput_Validate(t *testing.T) {
+	tests := []struct {
+		name             string
+		vacancyRate      float64
+		vacancyRateDelta float64
+		wantErr          bool
+	}{
+		{
+			name:             "合計1.0 → エラー",
+			vacancyRate:      0.95,
+			vacancyRateDelta: 0.05,
+			wantErr:          true,
+		},
+		{
+			name:             "合計1.5 → エラー",
+			vacancyRate:      1.0,
+			vacancyRateDelta: 0.50,
+			wantErr:          true,
+		},
+		{
+			name:             "合計0.99 → エラーなし（境界値）",
+			vacancyRate:      0.90,
+			vacancyRateDelta: 0.09,
+			wantErr:          false,
+		},
+		{
+			name:             "合計0.15 → エラーなし",
+			vacancyRate:      0.05,
+			vacancyRateDelta: 0.10,
+			wantErr:          false,
+		},
+		{
+			name:             "Deltaなし → エラーなし",
+			vacancyRate:      0.05,
+			vacancyRateDelta: 0,
+			wantErr:          false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := InvestmentInput{
+				VacancyRate:      tt.vacancyRate,
+				VacancyRateDelta: tt.vacancyRateDelta,
+			}
+			err := input.Validate()
+			if tt.wantErr && err == nil {
+				t.Errorf("Validate() = nil, want error (vacancy=%.2f+%.2f=%.2f > 0.99)",
+					tt.vacancyRate, tt.vacancyRateDelta, tt.vacancyRate+tt.vacancyRateDelta)
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("Validate() = %v, want nil", err)
+			}
+		})
 	}
 }
 
