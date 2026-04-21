@@ -211,23 +211,30 @@ make mlit-land-prices area=13 year=2024 quarter=1 to_year=2024 to_quarter=4 city
 ## テスト実行
 
 ```bash
-# バックエンド（レースチェック付き・全パッケージ）
+# バックエンド（レースチェック付き・カバレッジ計測）
 cd backend
-go test -race ./... -v
+go test -race -coverprofile=coverage.out ./...
+
+# カバレッジ確認（テキスト形式）
+go tool cover -func=coverage.out
 
 # フロントエンド（Vitest）
 cd frontend
 npm test
 ```
 
+CI（GitHub Actions）では `go test -race -coverprofile=coverage.out` を実行し、カバレッジサマリーを GitHub Actions Job Summary に出力する。最新のカバレッジ率は README のバッジで確認できる。
+
 ### テスト構成
 
 | レイヤー | ファイル | ツール | テスト数 |
 |---|---|---|---|
-| ドメイン計算 | `backend/internal/domain/investment_test.go` | go test | 複数 |
+| ドメイン計算 | `backend/internal/domain/investment_test.go` | go test | 複数（境界値テスト含む） |
 | 理論価格推定 | `backend/internal/domain/theoretical_price_test.go` | go test | 9 |
 | MLIT クライアント | `backend/internal/mlit/client_test.go` | go test / httptest | 複数 |
 | フロントエンド UI | `frontend/src/components/__tests__/*.test.tsx` | Vitest + RTL | 複数 |
+
+境界値テストは `acquisition_costs`・`investment`・`property_tax` の各計算に追加されている。
 
 #### フロントエンドテストの方針
 
@@ -236,6 +243,8 @@ npm test
 - **JSX 変換**: vitest 内蔵の oxc で処理（v4 で esbuild から移行）
 - **モック**: `ResizeObserver`（Recharts が要求）、APIコールは `vi.fn()` で差し替え
 - **テスト対象コンポーネント**:
+  - `Dashboard`: 状態管理・API呼び出しフロー・コンポーネント統合
+  - `CostBreakdown`: 初期投資内訳・取得時諸経費・年間費用の表示検証
   - `YieldAnalysis`: 8%しきい値による分岐（バッジ・カード・色）
   - `DeadCrossChart`: デッドクロスゾーンのバッジ・警告テキスト
   - `CashFlowChart`: 自己資金回収年の表示、exitTotalEquity の色分け

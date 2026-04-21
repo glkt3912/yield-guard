@@ -709,3 +709,179 @@ func TestDetectUrbanRisks_NoRisks(t *testing.T) {
 		t.Errorf("expected no risks for normal zoning, got %d", len(risks))
 	}
 }
+
+// TestAnalyze_OldBuildingZeroDepreciation は木造38年超（減価償却ゼロ）のキャッシュフロー精度を検証する
+func TestAnalyze_OldBuildingZeroDepreciation(t *testing.T) {
+	// 木造の法定耐用年数は22年。築38年超 → 簡便法: 22×0.2=4年 → 4年後に減価償却=0
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    3_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     80_000,
+		VacancyRate:     0.05,
+		LoanAmount:      5_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       20,
+		BuildingType:    BuildingTypeWood,
+		BuildingAge:     38, // 法定耐用年数超過: 簡便法 22×0.2=4年
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	if len(result.YearlyResults) == 0 {
+		t.Fatal("YearlyResults is empty")
+	}
+
+	// CalcResidualUsefulLife(木造, 38) = 22×0.2 = 4年
+	usefulLife := CalcResidualUsefulLife(BuildingTypeWood, 38)
+	if usefulLife != 4 {
+		t.Errorf("usefulLife = %d, want 4", usefulLife)
+	}
+
+	// 1年目: 減価償却あり
+	y1 := result.YearlyResults[0]
+	expectedDepreciation := 3_000_000.0 / float64(usefulLife)
+	if math.Abs(y1.AnnualDepreciation-expectedDepreciation) > 1 {
+		t.Errorf("year1 AnnualDepreciation = %.0f, want %.0f", y1.AnnualDepreciation, expectedDepreciation)
+	}
+
+	// 5年目以降: 減価償却=0
+	y5 := result.YearlyResults[4]
+	if y5.AnnualDepreciation != 0 {
+		t.Errorf("year5 AnnualDepreciation = %.0f, want 0 (耐用年数4年超過)", y5.AnnualDepreciation)
+	}
+}
+
+// TestAnalyze_ZeroLoanYears は全額自己資金（ローン期間ゼロ）のケースを検証する
+func TestAnalyze_ZeroLoanYears(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      0,
+		AnnualLoanRate:  0,
+		LoanYears:       0, // Defaults() により 35 に補完されるが LoanAmount=0 なので実質影響なし
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	if len(result.YearlyResults) == 0 {
+		t.Fatal("YearlyResults is empty")
+	}
+
+	y1 := result.YearlyResults[0]
+
+	// ローン返済・利息・元金はすべてゼロ
+	if y1.AnnualLoanPayment != 0 {
+		t.Errorf("AnnualLoanPayment = %.0f, want 0", y1.AnnualLoanPayment)
+	}
+	if y1.AnnualInterest != 0 {
+		t.Errorf("AnnualInterest = %.0f, want 0", y1.AnnualInterest)
+	}
+	if y1.AnnualPrincipal != 0 {
+		t.Errorf("AnnualPrincipal = %.0f, want 0", y1.AnnualPrincipal)
+	}
+
+	// キャッシュフロー = 実効賃料 - 運営経費（正値になるはず）
+	effectiveRent := 120_000.0 * 12 * (1 - 0.05)
+	wantCF := effectiveRent - effectiveRent*0.20
+	if math.Abs(y1.CashFlow-wantCF) > 1 {
+		t.Errorf("CashFlow = %.0f, want %.0f", y1.CashFlow, wantCF)
+	}
+
+	// 表面利回り・実質利回りが計算されること
+	if result.GrossYield <= 0 {
+		t.Errorf("GrossYield = %.4f, want > 0", result.GrossYield)
+	}
+	if result.NetYield <= 0 {
+		t.Errorf("NetYield = %.4f, want > 0", result.NetYield)
+	}
+}
+
+// TestAnalyze_ShortTermCapitalGains は短期保有（5年以下）の譲渡所得税率39.63%を検証する
+func TestAnalyze_ShortTermCapitalGains(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeRC, // 47年 → 保有5年内でも減価償却継続
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    5, // 5年以下 → 短期譲渡所得税率39.63%
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	// 売却益が正値であることを確認（テストが空振りしないよう）
+	if result.ExitCapitalGain <= 0 {
+		t.Fatalf("expected positive capital gain, got %f", result.ExitCapitalGain)
+	}
+	// 短期税率（39.63%）が適用されること
+	impliedRate := result.ExitTransferTax / result.ExitCapitalGain
+	if math.Abs(impliedRate-shortTermTransferTaxRate) > 0.001 {
+		t.Errorf("短期譲渡税率 = %.5f, want %.5f", impliedRate, shortTermTransferTaxRate)
+	}
+	t.Logf("HoldingYears=5 (短期): SalePrice=%.0f, CapGain=%.0f, Tax=%.0f", result.ExitSalePrice, result.ExitCapitalGain, result.ExitTransferTax)
+}
+
+// TestAnalyze_UltraLowInterestRate は超低金利0.001%での浮動小数点精度を検証する
+func TestAnalyze_UltraLowInterestRate(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.00001, // 0.001% 超低金利
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	// パニックしないこと・結果が有限な数値であること
+	result := Analyze(input)
+
+	if len(result.YearlyResults) == 0 {
+		t.Fatal("YearlyResults is empty")
+	}
+
+	y1 := result.YearlyResults[0]
+
+	// 超低金利: 月次返済 ≈ 13,000,000/420ヶ月 ≈ 30,952円/月
+	wantMonthly := 13_000_000.0 / float64(35*12)
+	annualPayment := wantMonthly * 12
+	if math.Abs(y1.AnnualLoanPayment-annualPayment) > 1000 {
+		t.Errorf("AnnualLoanPayment = %.0f, want ≈ %.0f (超低金利はほぼ元金均等)", y1.AnnualLoanPayment, annualPayment)
+	}
+
+	// 利息はほぼゼロ（元金のみ）
+	if y1.AnnualInterest > 1000 {
+		t.Errorf("AnnualInterest = %.2f, expected < 1000 for 0.001%% rate", y1.AnnualInterest)
+	}
+
+	// NaN/Inf でないこと
+	if math.IsNaN(result.GrossYield) || math.IsInf(result.GrossYield, 0) {
+		t.Errorf("GrossYield is NaN or Inf: %v", result.GrossYield)
+	}
+}
