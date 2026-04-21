@@ -461,6 +461,83 @@ func detectUrbanRisks(transactions []LandTransaction, zoning *ZoningSummary) []U
 	return risks
 }
 
+// BuildUrbanRisksFromAPIs は MLIT 専用 API（XKT003/020/030/XST001）の結果からリスクを構築する。
+// detectUrbanRisks（XIT001テキスト検出）とは独立して使用し、結果を呼び出し元でマージする。
+func BuildUrbanRisksFromAPIs(
+	locationItems []LocationOptimizationItem,
+	embankmentItems []EmbankmentItem,
+	roadItems []UrbanRoadItem,
+	disasters []DisasterHistoryItem,
+) []UrbanRisk {
+	var risks []UrbanRisk
+
+	// XKT003: 立地適正化計画フィーチャが存在し、居住誘導区域が含まれない場合
+	if len(locationItems) > 0 {
+		hasResidential := false
+		for _, item := range locationItems {
+			if strings.Contains(item.KubunNameJa, "居住誘導区域") {
+				hasResidential = true
+				break
+			}
+		}
+		if !hasResidential {
+			risks = append(risks, UrbanRisk{
+				Code:        "OUTSIDE_RESIDENTIAL_GUIDANCE",
+				Level:       UrbanRiskLevelWarning,
+				Title:       "居住誘導区域外",
+				Description: "立地適正化計画の居住誘導区域外です。将来的に行政サービスの縮小・インフラ維持コスト増加の可能性があります（コンパクトシティ計画）。",
+			})
+		}
+	}
+
+	// XKT020: 大規模盛土造成地フィーチャが存在する場合
+	if len(embankmentItems) > 0 {
+		risks = append(risks, UrbanRisk{
+			Code:        "LARGE_EMBANKMENT",
+			Level:       UrbanRiskLevelWarning,
+			Title:       "大規模盛土造成地",
+			Description: fmt.Sprintf("大規模盛土造成地（%s）に該当します。地震時の沈下・崩壊リスクがあります。", embankmentItems[0].Classification),
+		})
+	}
+
+	// XKT030: 都市計画道路（kubun_id=3011）フィーチャが存在する場合
+	for _, item := range roadItems {
+		if item.KubunID == 3011 {
+			risks = append(risks, UrbanRisk{
+				Code:        "URBAN_PLANNING_ROAD",
+				Level:       UrbanRiskLevelWarning,
+				Title:       "都市計画道路の予定地",
+				Description: "都市計画道路の予定地に一部かかっています。将来的に建物の一部または全部が収用対象となる可能性があります。",
+			})
+			break
+		}
+	}
+
+	// XST001: 災害履歴フィーチャが存在する場合
+	if len(disasters) > 0 {
+		names := make([]string, 0, len(disasters))
+		seen := make(map[string]bool)
+		for _, d := range disasters {
+			if d.Name != "" && !seen[d.Name] {
+				names = append(names, d.Name)
+				seen[d.Name] = true
+			}
+		}
+		desc := "このエリアで過去に災害が記録されています。"
+		if len(names) > 0 {
+			desc = fmt.Sprintf("このエリアで過去に災害が記録されています（%s）。", strings.Join(names, "・"))
+		}
+		risks = append(risks, UrbanRisk{
+			Code:        "DISASTER_HISTORY",
+			Level:       UrbanRiskLevelWarning,
+			Title:       "災害履歴あり",
+			Description: desc,
+		})
+	}
+
+	return risks
+}
+
 // modalString は transactions から getter で取得した文字列の最頻値を返す（空文字は除外）
 func modalString(transactions []LandTransaction, getter func(LandTransaction) string) string {
 	counts := make(map[string]int, len(transactions))
