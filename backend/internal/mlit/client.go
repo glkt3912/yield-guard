@@ -20,11 +20,15 @@ const (
 	mlitBaseURL = "https://www.reinfolib.mlit.go.jp/ex-api/external"
 
 	// エンドポイントパス
-	endpointLandPrices         = "/XIT001"
-	endpointMunicipalities     = "/XIT002"
-	endpointStationRidership   = "/XKT015"
-	endpointPopulationForecast = "/XKT013"
-	endpointLandAppraisals     = "/XCT001"
+	endpointLandPrices             = "/XIT001"
+	endpointMunicipalities         = "/XIT002"
+	endpointStationRidership       = "/XKT015"
+	endpointPopulationForecast     = "/XKT013"
+	endpointLandAppraisals         = "/XCT001"
+	endpointLocationOptimization   = "/XKT003"
+	endpointEmbankment             = "/XKT020"
+	endpointUrbanRoad              = "/XKT030"
+	endpointDisasterHistory        = "/XST001"
 
 	requestTimeout = 30 * time.Second
 
@@ -569,6 +573,136 @@ func parseJapaneseYear(s string) int {
 		return 0
 	}
 	return n
+}
+
+// fetchTileGeoJSON は共通タイル GeoJSON 取得ヘルパー
+func (c *Client) fetchTileGeoJSON(ctx context.Context, endpoint string, z, x, y int, out interface{}) error {
+	params := url.Values{}
+	params.Set("response_format", "geojson")
+	params.Set("z", strconv.Itoa(z))
+	params.Set("x", strconv.Itoa(x))
+	params.Set("y", strconv.Itoa(y))
+	apiURL := c.baseURL + endpoint + "?" + params.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return fmt.Errorf("request build error: %w", err)
+	}
+	if c.apiKey != "" {
+		req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("%s API request failed: %w", endpoint, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		return &clientError{code: resp.StatusCode}
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%s API returned status %d", endpoint, resp.StatusCode)
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("%s GeoJSON decode error: %w", endpoint, err)
+	}
+	return nil
+}
+
+// FetchLocationOptimization はタイル座標で XKT003 を呼び出し立地適正化計画区域情報を取得する。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchLocationOptimization(ctx context.Context, z, x, y int) ([]domain.LocationOptimizationItem, error) {
+	key := fmt.Sprintf("location_optimization:%d:%d:%d", z, x, y)
+	if cached, ok := c.cache.getLocationOptimization(key); ok {
+		return cached, nil
+	}
+
+	var geoResp LocationOptimizationGeoJSON
+	if err := c.fetchTileGeoJSON(ctx, endpointLocationOptimization, z, x, y, &geoResp); err != nil {
+		return nil, err
+	}
+
+	result := make([]domain.LocationOptimizationItem, 0, len(geoResp.Features))
+	for _, f := range geoResp.Features {
+		result = append(result, domain.LocationOptimizationItem{KubunNameJa: f.Properties.KubunNameJa})
+	}
+	c.cache.setLocationOptimization(key, result)
+	return result, nil
+}
+
+// FetchEmbankment はタイル座標で XKT020 を呼び出し大規模盛土造成地情報を取得する。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.EmbankmentItem, error) {
+	key := fmt.Sprintf("embankment:%d:%d:%d", z, x, y)
+	if cached, ok := c.cache.getEmbankment(key); ok {
+		return cached, nil
+	}
+
+	var geoResp EmbankmentGeoJSON
+	if err := c.fetchTileGeoJSON(ctx, endpointEmbankment, z, x, y, &geoResp); err != nil {
+		return nil, err
+	}
+
+	result := make([]domain.EmbankmentItem, 0, len(geoResp.Features))
+	for _, f := range geoResp.Features {
+		result = append(result, domain.EmbankmentItem{Classification: f.Properties.EmbankmentClassification})
+	}
+	c.cache.setEmbankment(key, result)
+	return result, nil
+}
+
+// FetchUrbanRoad はタイル座標で XKT030 を呼び出し都市計画道路情報を取得する。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.UrbanRoadItem, error) {
+	key := fmt.Sprintf("urban_road:%d:%d:%d", z, x, y)
+	if cached, ok := c.cache.getUrbanRoad(key); ok {
+		return cached, nil
+	}
+
+	var geoResp UrbanRoadGeoJSON
+	if err := c.fetchTileGeoJSON(ctx, endpointUrbanRoad, z, x, y, &geoResp); err != nil {
+		return nil, err
+	}
+
+	result := make([]domain.UrbanRoadItem, 0, len(geoResp.Features))
+	for _, f := range geoResp.Features {
+		result = append(result, domain.UrbanRoadItem{
+			PlanningRoadJa: f.Properties.PlanningRoadJa,
+			KubunID:        f.Properties.KubunID,
+		})
+	}
+	c.cache.setUrbanRoad(key, result)
+	return result, nil
+}
+
+// FetchDisasterHistory はタイル座標で XST001 を呼び出し災害履歴情報を取得する。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domain.DisasterHistoryItem, error) {
+	key := fmt.Sprintf("disaster:%d:%d:%d", z, x, y)
+	if cached, ok := c.cache.getDisaster(key); ok {
+		return cached, nil
+	}
+
+	var geoResp DisasterHistoryGeoJSON
+	if err := c.fetchTileGeoJSON(ctx, endpointDisasterHistory, z, x, y, &geoResp); err != nil {
+		return nil, err
+	}
+
+	result := make([]domain.DisasterHistoryItem, 0, len(geoResp.Features))
+	for _, f := range geoResp.Features {
+		year := 0
+		if len(f.Properties.DisasterDate) >= 4 {
+			year, _ = strconv.Atoi(f.Properties.DisasterDate[:4])
+		}
+		result = append(result, domain.DisasterHistoryItem{
+			Name: f.Properties.DisasterNameJa,
+			Year: year,
+		})
+	}
+	c.cache.setDisaster(key, result)
+	return result, nil
 }
 
 // isLandType は取引種別が宅地(土地)かどうかを判定する
