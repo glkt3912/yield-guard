@@ -6,8 +6,8 @@ import { CashFlowChart } from "@/components/CashFlowChart";
 import { DeadCrossChart } from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
-import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult } from "@/types/investment";
-import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals } from "@/lib/api";
+import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk } from "@/types/investment";
+import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks } from "@/lib/api";
 import { ShieldAlert, XOctagon, AlertTriangle } from "lucide-react";
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
@@ -28,6 +28,7 @@ export function Dashboard() {
   const [stationRidership, setStationRidership] = useState<StationRidershipResult[] | null>(null);
   const [populationForecast, setPopulationForecast] = useState<PopulationForecastResult | null>(null);
   const [landAppraisal, setLandAppraisal] = useState<AppraisalComparisonResult | null>(null);
+  const [externalUrbanRisks, setExternalUrbanRisks] = useState<UrbanRisk[] | null>(null);
 
   const handleAnalyze = async (input: InvestmentInput) => {
     setLoading(true);
@@ -49,6 +50,7 @@ export function Dashboard() {
     setStationRidership(null);
     setPopulationForecast(null);
     setLandAppraisal(null);
+    setExternalUrbanRisks(null);
     const { year, quarter, toYear, toQuarter } = getCurrentPeriods();
     try {
       const baseParams = {
@@ -82,12 +84,14 @@ export function Dashboard() {
       setLandAppraisal(appraisal.status === "fulfilled" ? appraisal.value : null);
 
       if (lat !== undefined && lng !== undefined) {
-        const [ridership, population] = await Promise.allSettled([
+        const [ridership, population, urbanRisks] = await Promise.allSettled([
           fetchStationRidership({ lat, lng }),
           fetchPopulationForecast({ lat, lng }),
+          fetchUrbanRisks(lat, lng),
         ]);
         setStationRidership(ridership.status === "fulfilled" ? ridership.value : null);
         setPopulationForecast(population.status === "fulfilled" ? population.value : null);
+        setExternalUrbanRisks(urbanRisks.status === "fulfilled" ? urbanRisks.value : null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "相場データの取得に失敗しました");
@@ -139,7 +143,7 @@ export function Dashboard() {
               </div>
             )}
 
-            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} landAppraisal={landAppraisal} />}
+            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} landAppraisal={landAppraisal} externalUrbanRisks={externalUrbanRisks} />}
 
             {result && lastInput && (
               <>
