@@ -17,8 +17,8 @@ const (
 func Analyze(input InvestmentInput) InvestmentResult {
 	input.Defaults()
 
-	// ストレステスト値を適用
-	effectiveVacancy := input.VacancyRate + input.VacancyRateDelta
+	// ストレステスト値を適用（空室率は99%上限でキャップ）
+	effectiveVacancy := math.Min(input.VacancyRate+input.VacancyRateDelta, 0.99)
 	effectiveRate := input.AnnualLoanRate + input.LoanRateDelta
 
 	miscExpenses := (input.LandPrice + input.BuildingCost) * input.MiscExpenseRate
