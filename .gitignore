@@ -6,6 +6,8 @@ frontend/public/sw.js
 frontend/public/sw.js.map
 frontend/public/workbox-*.js
 frontend/public/workbox-*.js.map
+frontend/public/swe-worker-*.js
+frontend/public/swe-worker-*.js.map
 
 # 環境変数（APIキー等を含むためgit管理外）
 .env

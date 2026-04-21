@@ -10,7 +10,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Yield-Guard — 不動産投資リスク可視化",
   description:
-    "国交省APIの土地取引実績と表面利回り・デッドクロス・出口戦略でリスクを可視化するMVP",
+    "不動産投資のリスクを可視化するシミュレーター。利回り・デッドクロス・出口戦略を分析",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
