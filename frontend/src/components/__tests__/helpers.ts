@@ -104,6 +104,7 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
     exitTransferTax: 400_000,
     exitNetProceeds: 11_600_000,
     exitTotalEquity: 3_000_000,
+    stressScenarios: [],
     ...overrides,
   };
 }

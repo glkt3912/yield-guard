@@ -221,3 +221,53 @@ years := max(LoanYears, HoldingYears, 35)
 | `ExitTransferTax` | 譲渡所得税 |
 | `ExitNetProceeds` | 売却手取り（税・残債・売却費控除後） |
 | `ExitTotalEquity` | 最終手残り（売却手取り + 累積CF） |
+| `StressScenarios` | ストレスシナリオ結果配列（詳細は下記） |
+
+---
+
+## ストレスシナリオ自動生成（`StressScenarioResult`）
+
+`Analyze()` は呼び出し時に 6 つのデフォルトシナリオを自動生成し、`InvestmentResult.StressScenarios` に格納する。`VacancyRateDelta` または `LoanRateDelta` が 0 以外の場合はカスタムシナリオ（7 本目）も追加される。
+
+### StressScenarioResult フィールド
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `Label` | string | シナリオ名（例: `"金利+1%"`） |
+| `InterestRateDelta` | float64 | 金利上昇幅（率。例: 0.01 = +1%） |
+| `VacancyRateDelta` | float64 | 空室率上昇幅（率。例: 0.10 = +10%pt） |
+| `TotalCashFlow` | float64 | `HoldingYears` 期間の税引後累積キャッシュフロー（円） |
+| `DSCR` | float64 | 負債返済カバレッジ比率（= 年間NOI / 年間ローン返済額）。ローンなしの場合は 0 |
+| `BreakEvenYear` | int | 累積CFが初めてプラスに転じる年次（1-indexed）。期間内に達成できない場合は `-1` |
+| `IsSafe` | bool | 安全判定フラグ（判定ロジックは下記参照） |
+
+### 6 つのデフォルトシナリオ
+
+| # | Label | InterestRateDelta | VacancyRateDelta |
+|---|-------|-------------------|-----------------|
+| 1 | ベースライン | 0 | 0 |
+| 2 | 金利+1% | +0.01 | 0 |
+| 3 | 金利+2% | +0.02 | 0 |
+| 4 | 空室+10% | 0 | +0.10 |
+| 5 | 空室+20% | 0 | +0.20 |
+| 6 | 複合ストレス | +0.01 | +0.10 |
+
+### IsSafe 判定ロジック
+
+**ローンあり（`LoanAmount > 0`）の場合:**
+
+```
+IsSafe = DSCR >= 1.0 && BreakEvenYear != -1 && BreakEvenYear <= HoldingYears
+```
+
+- `DSCR >= 1.0`: 年間NOIがローン返済額を上回っている（債務返済能力あり）
+- `BreakEvenYear != -1`: 保有期間内に累積CFが黒字転換する
+- `BreakEvenYear <= HoldingYears`: 黒字転換が出口売却年以内に収まる
+
+**ローンなし（`LoanAmount == 0`）の場合:**
+
+```
+IsSafe = BreakEvenYear != -1 && BreakEvenYear <= HoldingYears
+```
+
+DSCR はローン返済額ゼロにより意味をなさないため、BreakEvenYear のみで判定する。
