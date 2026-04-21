@@ -2,9 +2,21 @@
 # terraform.tfvars is excluded from git (see .gitignore).
 #
 # After terraform apply, register the outputs as GitHub Secrets:
-#   WIF_PROVIDER  = terraform output -raw wif_provider
-#   SA_EMAIL      = terraform output -raw sa_email
+#   WIF_PROVIDER   = terraform output -raw wif_provider
+#   SA_EMAIL       = terraform output -raw sa_email
 #   GCP_PROJECT_ID = var.project_id
+#
+# --- Remote State (GCS backend) ---
+# Terraform state には mlit_api_key 等のシークレットが平文で保存されるため、
+# ローカル管理は避け GCS remote backend を使用すること。
+#
+# GCS bucket は Terraform 管理外（鶏と卵問題のため手動作成）:
+#   gcloud storage buckets create gs://<project_id>-tfstate \
+#     --location=asia-northeast1 \
+#     --uniform-bucket-level-access
+#
+# 作成後、main.tf の backend "gcs" ブロックのコメントを外して terraform init を実行する。
+#   terraform init  # "Do you want to copy existing state to the new backend?" → yes
 
 project_id           = "your-gcp-project-id"
 region               = "asia-northeast1"
