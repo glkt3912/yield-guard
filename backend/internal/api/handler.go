@@ -18,6 +18,10 @@ type MLITClient interface {
 	FetchStationRidership(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error)
 	FetchPopulationForecast(ctx context.Context, z, x, y int) ([]domain.PopulationForecastItem, error)
 	FetchLandAppraisals(ctx context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error)
+	FetchLocationOptimization(ctx context.Context, z, x, y int) ([]domain.LocationOptimizationItem, error)
+	FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.EmbankmentItem, error)
+	FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.UrbanRoadItem, error)
+	FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domain.DisasterHistoryItem, error)
 }
 
 type Handler struct {
@@ -409,6 +413,85 @@ func (h *Handler) GetLandAppraisals(c *gin.Context) {
 
 	result := domain.CalcAppraisalComparison(items)
 	c.JSON(http.StatusOK, result)
+}
+
+// GetUrbanRisks は緯度経度から都市計画リスクを一括取得する
+// GET /api/urban-risks?lat=35.68&lng=139.69
+func (h *Handler) GetUrbanRisks(c *gin.Context) {
+	latStr := c.Query("lat")
+	lngStr := c.Query("lng")
+	if latStr == "" || lngStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
+		return
+	}
+	lat, err := strconv.ParseFloat(latStr, 64)
+	if err != nil || lat < 20 || lat > 46 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は日本国内の緯度（20〜46）で指定してください"})
+		return
+	}
+	lng, err := strconv.ParseFloat(lngStr, 64)
+	if err != nil || lng < 122 || lng > 154 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は日本国内の経度（122〜154）で指定してください"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	z := 14
+	x, y := mlit.LatLngToTile(lat, lng, z)
+
+	type result struct {
+		location []domain.LocationOptimizationItem
+		embank   []domain.EmbankmentItem
+		road     []domain.UrbanRoadItem
+		disaster []domain.DisasterHistoryItem
+	}
+	var res result
+
+	// 4 API を並列取得。いずれか失敗してもログのみで他の結果は返す
+	type apiResult[T any] struct {
+		data []T
+		err  error
+	}
+	locCh := make(chan apiResult[domain.LocationOptimizationItem], 1)
+	embCh := make(chan apiResult[domain.EmbankmentItem], 1)
+	rdCh := make(chan apiResult[domain.UrbanRoadItem], 1)
+	disCh := make(chan apiResult[domain.DisasterHistoryItem], 1)
+
+	go func() {
+		d, e := h.mlitClient.FetchLocationOptimization(ctx, z, x, y)
+		locCh <- apiResult[domain.LocationOptimizationItem]{d, e}
+	}()
+	go func() {
+		d, e := h.mlitClient.FetchEmbankment(ctx, z, x, y)
+		embCh <- apiResult[domain.EmbankmentItem]{d, e}
+	}()
+	go func() {
+		d, e := h.mlitClient.FetchUrbanRoad(ctx, z, x, y)
+		rdCh <- apiResult[domain.UrbanRoadItem]{d, e}
+	}()
+	go func() {
+		d, e := h.mlitClient.FetchDisasterHistory(ctx, z, x, y)
+		disCh <- apiResult[domain.DisasterHistoryItem]{d, e}
+	}()
+
+	if r := <-locCh; r.err == nil {
+		res.location = r.data
+	}
+	if r := <-embCh; r.err == nil {
+		res.embank = r.data
+	}
+	if r := <-rdCh; r.err == nil {
+		res.road = r.data
+	}
+	if r := <-disCh; r.err == nil {
+		res.disaster = r.data
+	}
+
+	risks := domain.BuildUrbanRisksFromAPIs(res.location, res.embank, res.road, res.disaster)
+	if risks == nil {
+		risks = []domain.UrbanRisk{}
+	}
+	c.JSON(http.StatusOK, risks)
 }
 
 // HealthCheck はサーバーの生存確認

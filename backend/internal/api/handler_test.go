@@ -63,6 +63,22 @@ func (m *mockMLITClient) FetchLandAppraisals(ctx context.Context, area, city str
 	return m.appraisalFunc(ctx, area, city, year, division)
 }
 
+func (m *mockMLITClient) FetchLocationOptimization(_ context.Context, _, _, _ int) ([]domain.LocationOptimizationItem, error) {
+	return []domain.LocationOptimizationItem{}, nil
+}
+
+func (m *mockMLITClient) FetchEmbankment(_ context.Context, _, _, _ int) ([]domain.EmbankmentItem, error) {
+	return []domain.EmbankmentItem{}, nil
+}
+
+func (m *mockMLITClient) FetchUrbanRoad(_ context.Context, _, _, _ int) ([]domain.UrbanRoadItem, error) {
+	return []domain.UrbanRoadItem{}, nil
+}
+
+func (m *mockMLITClient) FetchDisasterHistory(_ context.Context, _, _, _ int) ([]domain.DisasterHistoryItem, error) {
+	return []domain.DisasterHistoryItem{}, nil
+}
+
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す
 func newTestRouter(client MLITClient) *gin.Engine {
 	h := NewHandler(client)
