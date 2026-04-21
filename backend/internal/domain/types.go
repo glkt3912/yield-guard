@@ -83,6 +83,9 @@ type InvestmentInput struct {
 
 	// 固定資産税・都市計画税（年間合計）。0 の場合は ExpenseRate に含まれる想定。
 	AnnualPropertyTax float64 `json:"annualPropertyTax"`
+
+	// 賃料下落率: 毎年この割合だけ実効賃料が低下する（例: 0.01 = 年1%下落）
+	RentDeclineRate float64 `json:"rentDeclineRate"`
 }
 
 // Validate は入力値のバリデーションを行い、不正な組み合わせはエラーを返す。
