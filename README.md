@@ -27,7 +27,7 @@
 flowchart TD
     Browser["ブラウザ\n(Browser)"]
     Next["Next.js\n(Vercel)"]
-    Go["Go / Gin API\n(Render)"]
+    Go["Go / Gin API\n(Cloud Run)"]
     Cache["インメモリキャッシュ\n(TTL = 24h)"]
     MLIT["国交省 不動産情報ライブラリ\n(MLIT API)"]
 

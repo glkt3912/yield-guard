@@ -48,17 +48,19 @@ graph TD
     Docker["Docker Build\n(マルチステージビルド)"]
     Compose["docker-compose up\n(backend :8080 + frontend :3000)"]
     Vercel["Vercel Deploy\n(Next.js フロントエンド)"]
-    Render["Render Deploy\n(Go/Gin バックエンド)"]
+    CloudRun["Cloud Run Deploy\n(Go/Gin バックエンド)"]
+    Terraform["Terraform CI\n(Cloud Run provisioning)"]
     Dependabot["Dependabot\n(毎週月曜 JST)"]
     DepPR["依存パッケージ更新 PR\n(Go modules / npm)"]
 
     PR --> CI_BE
     PR --> CI_FE
+    PR --> Terraform
     CI_BE --> Docker
     CI_FE --> Docker
     Docker --> Compose
-    Docker --> Vercel
-    Docker --> Render
+    CI_FE --> Vercel
+    Docker --> CloudRun
     Dependabot --> DepPR
     DepPR --> CI_BE
     DepPR --> CI_FE
