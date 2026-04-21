@@ -1,0 +1,33 @@
+# Copy this file to terraform.tfvars and fill in real values.
+# terraform.tfvars is excluded from git (see .gitignore).
+#
+# After terraform apply, register the following in GitHub:
+#
+# GitHub Secrets（Settings → Secrets and variables → Actions → Secrets）:
+#   WIF_PROVIDER              = terraform output -raw wif_provider
+#   SA_EMAIL                  = terraform output -raw sa_email
+#   GCP_PROJECT_ID            = var.project_id
+#   MLIT_API_KEY              = var.mlit_api_key
+#   APP_INTERNAL_API_KEY      = var.app_internal_api_key
+#
+# GitHub Variables（Settings → Secrets and variables → Actions → Variables）:
+#   VERCEL_FRONTEND_URL       = var.vercel_frontend_url
+#
+# --- Remote State (GCS backend) ---
+# Terraform state には mlit_api_key 等のシークレットが平文で保存されるため、
+# ローカル管理は避け GCS remote backend を使用すること。
+#
+# GCS bucket は Terraform 管理外（鶏と卵問題のため手動作成）:
+#   gcloud storage buckets create gs://<project_id>-tfstate \
+#     --location=asia-northeast1 \
+#     --uniform-bucket-level-access
+#
+# 作成後、main.tf の backend "gcs" ブロックのコメントを外して terraform init を実行する。
+#   terraform init  # "Do you want to copy existing state to the new backend?" → yes
+
+project_id           = "your-gcp-project-id"
+region               = "asia-northeast1"
+env                  = "prod"
+mlit_api_key         = "your-mlit-api-key"
+app_internal_api_key = "generate with: openssl rand -hex 32"
+vercel_frontend_url  = "https://your-app.vercel.app"

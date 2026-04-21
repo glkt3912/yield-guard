@@ -9,7 +9,8 @@ services:
       - .env
     environment:
       PORT: "8080"
-      ALLOW_ORIGINS: "http://localhost:3000"
+      ALLOW_ORIGINS: "${ALLOW_ORIGINS:-http://localhost:3000}"
+      MLIT_API_KEY: "${MLIT_API_KEY}"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 10s

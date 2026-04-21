@@ -19,6 +19,10 @@ func main() {
 		port = "8080"
 	}
 
+	if os.Getenv("MLIT_API_KEY") == "" {
+		log.Fatal("MLIT_API_KEY is not set")
+	}
+
 	mlitClient := mlit.NewClient()
 	handler := api.NewHandler(mlitClient)
 	router := api.NewRouter(handler)
