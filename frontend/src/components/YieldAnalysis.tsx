@@ -22,7 +22,6 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
 
   // 人口シナリオ用（populationForecast表示のために残す）
   const actualV = input.actualVacancyRate > 0 ? input.actualVacancyRate : input.vacancyRate;
-  const factor = (v: number) => (1 - v) * (1 - input.expenseRate);
 
   const stressScenarios: StressScenarioResult[] = result.stressScenarios ?? [];
 
@@ -139,7 +138,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
           {/* 人口減少シナリオ */}
           {populationForecast && populationForecast.snapshots.length > 0 && (() => {
             const popV = Math.min(actualV + populationForecast.vacancyRateDelta, 0.99);
-            const popNetYield = result.grossYield * factor(popV);
+            const popNetYield = result.grossYield * (1 - popV) * (1 - input.expenseRate);
             const popAnnualRent = result.grossYield * result.totalInvestment * (1 - popV);
             const popCF = popAnnualRent - (result.yearlyResults[0]?.annualLoanPayment ?? 0) - (result.yearlyResults[0]?.annualExpenses ?? 0);
             const isDeficit = popCF < 0;
