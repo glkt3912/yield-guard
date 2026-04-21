@@ -515,6 +515,141 @@ func TestDetectUrbanRisks_MixedZoneBelow30Pct(t *testing.T) {
 	}
 }
 
+// TestAnalyze_StressScenarios はストレスシナリオの自動計算を検証する
+func TestAnalyze_StressScenarios(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	// カスタムデルタが0なので6シナリオのみ生成される
+	if len(result.StressScenarios) != 6 {
+		t.Errorf("StressScenarios count = %d, want 6", len(result.StressScenarios))
+	}
+
+	// 1番目はベースライン
+	if result.StressScenarios[0].Label != "ベースライン" {
+		t.Errorf("StressScenarios[0].Label = %q, want 'ベースライン'", result.StressScenarios[0].Label)
+	}
+
+	// 複合ストレス（金利+2%, 空室+10%）はDSCR < 1.0 or 安全でない可能性が高い
+	// ベースライン時より複合ストレス時のDSCRは悪化するはず
+	baseline := result.StressScenarios[0]
+	compound := result.StressScenarios[5]
+	if compound.Label != "複合ストレス" {
+		t.Errorf("StressScenarios[5].Label = %q, want '複合ストレス'", compound.Label)
+	}
+	if compound.DSCR >= baseline.DSCR {
+		t.Errorf("複合ストレスDSCR(%.4f) >= ベースラインDSCR(%.4f), expected worse", compound.DSCR, baseline.DSCR)
+	}
+	t.Logf("baseline DSCR=%.4f, compound DSCR=%.4f, compound IsSafe=%v", baseline.DSCR, compound.DSCR, compound.IsSafe)
+}
+
+// TestAnalyze_StressScenarios_IsSafe はDSCR < 1.0時のIsSafe=falseを検証する
+func TestAnalyze_StressScenarios_IsSafe(t *testing.T) {
+	// 高ローン・低賃料でDSCR < 1.0となるケース
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     80_000, // 低賃料
+		VacancyRate:     0.05,
+		LoanAmount:      20_000_000, // 高ローン
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	// 複合ストレス（金利+2%, 空室+10%）ではIsSafe=falseになるはず
+	compound := result.StressScenarios[5]
+	if compound.IsSafe {
+		t.Errorf("複合ストレスでIsSafe=true, expected false (DSCR=%.4f)", compound.DSCR)
+	}
+	t.Logf("compound DSCR=%.4f, IsSafe=%v", compound.DSCR, compound.IsSafe)
+}
+
+// TestAnalyze_StressScenarios_BreakEvenNever はCFが黒転しない場合のBreakEvenYear=-1を検証する
+func TestAnalyze_StressScenarios_BreakEvenNever(t *testing.T) {
+	// 極端に高いローン・低賃料でCFが常にマイナスになるケース
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     50_000,    // 非常に低い賃料
+		VacancyRate:     0.05,
+		LoanAmount:      30_000_000, // 非常に高いローン
+		AnnualLoanRate:  0.03,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	// いずれかのシナリオでBreakEvenYear=-1となることを確認
+	foundNever := false
+	for _, sc := range result.StressScenarios {
+		if sc.BreakEvenYear == -1 {
+			foundNever = true
+			t.Logf("BreakEvenYear=-1 in scenario %q (DSCR=%.4f)", sc.Label, sc.DSCR)
+		}
+	}
+	if !foundNever {
+		t.Error("expected at least one scenario with BreakEvenYear=-1 for high-loan/low-rent case")
+	}
+}
+
+// TestAnalyze_StressScenarios_CustomSeventh はカスタムデルタが非ゼロのとき第7シナリオが追加されることを検証する
+func TestAnalyze_StressScenarios_CustomSeventh(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+		LoanRateDelta:   0.005, // カスタム金利上昇
+	}
+
+	result := Analyze(input)
+
+	if len(result.StressScenarios) != 7 {
+		t.Errorf("StressScenarios count = %d, want 7 (6 default + 1 custom)", len(result.StressScenarios))
+	}
+	if result.StressScenarios[6].Label != "カスタム" {
+		t.Errorf("StressScenarios[6].Label = %q, want 'カスタム'", result.StressScenarios[6].Label)
+	}
+}
+
 func TestDetectUrbanRisks_NilZoning(t *testing.T) {
 	risks := detectUrbanRisks(nil, nil)
 	if len(risks) != 0 {

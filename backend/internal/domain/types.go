@@ -137,6 +137,17 @@ type CriticalError struct {
 	Message string              `json:"message"`
 }
 
+// StressScenarioResult はストレステストの1シナリオ結果
+type StressScenarioResult struct {
+	Label             string  `json:"label"`
+	InterestRateDelta float64 `json:"interestRateDelta"`
+	VacancyRateDelta  float64 `json:"vacancyRateDelta"`
+	TotalCashFlow     float64 `json:"totalCashFlow"`
+	DSCR              float64 `json:"dscr"`
+	BreakEvenYear     int     `json:"breakEvenYear"` // 累積CFが正転する年（-1=なし）
+	IsSafe            bool    `json:"isSafe"`        // DSCR >= 1.0 && BreakEvenYear <= HoldingYears
+}
+
 // InvestmentResult は収支シミュレーションの結果
 type InvestmentResult struct {
 	TotalInvestment float64 `json:"totalInvestment"` // 総投資額（土地+建物+諸経費）
@@ -159,6 +170,8 @@ type InvestmentResult struct {
 	ExitTransferTax float64 `json:"exitTransferTax"` // 譲渡所得税
 	ExitNetProceeds float64 `json:"exitNetProceeds"` // 売却手取り（税・残債控除後）
 	ExitTotalEquity float64 `json:"exitTotalEquity"` // 最終手残り（売却手取り+累積CF）
+
+	StressScenarios []StressScenarioResult `json:"stressScenarios"`
 }
 
 // AcquisitionCostBreakdown は物件取得時の諸経費内訳
