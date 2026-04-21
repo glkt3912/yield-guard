@@ -1,7 +1,8 @@
 resource "google_cloud_run_v2_service" "backend" {
-  name     = local.service_name
-  location = var.region
-  ingress  = "INGRESS_TRAFFIC_ALL"
+  name                = local.service_name
+  location            = var.region
+  ingress             = "INGRESS_TRAFFIC_ALL"
+  deletion_protection = false
 
   template {
     service_account = google_service_account.backend.email
@@ -12,9 +13,9 @@ resource "google_cloud_run_v2_service" "backend" {
     }
 
     containers {
-      # Placeholder image; GitHub Actions updates this on each deploy.
-      # lifecycle.ignore_changes prevents Terraform from reverting it.
-      image = "${local.image_repo}:latest"
+      # Placeholder image for initial provisioning; GitHub Actions replaces this on first deploy.
+      # lifecycle.ignore_changes prevents Terraform from reverting it afterwards.
+      image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 
       resources {
         limits = {
@@ -27,11 +28,6 @@ resource "google_cloud_run_v2_service" "backend" {
 
       ports {
         container_port = 8080
-      }
-
-      env {
-        name  = "PORT"
-        value = "8080"
       }
 
       env {
