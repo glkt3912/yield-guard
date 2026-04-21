@@ -189,7 +189,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
     const payload: InvestmentInput = isQuick
-      ? { ...QUICK_MODE_DEFAULTS, ...input } as InvestmentInput
+      ? { ...input, ...QUICK_MODE_DEFAULTS } as InvestmentInput
       : input;
     onAnalyze(payload);
   };
