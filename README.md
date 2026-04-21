@@ -23,17 +23,47 @@
 
 ## アーキテクチャ
 
+```mermaid
+flowchart TD
+    Browser["ブラウザ\n(Browser)"]
+    Next["Next.js\n(Vercel)"]
+    Go["Go / Gin API\n(Render)"]
+    Cache["インメモリキャッシュ\n(TTL = 24h)"]
+    MLIT["国交省 不動産情報ライブラリ\n(MLIT API)"]
+
+    Browser -->|HTTP/HTTPS| Next
+    Next -->|REST API| Go
+    Go -->|キャッシュ HIT| Cache
+    Go -->|キャッシュ MISS| MLIT
+    MLIT -->|レスポンス| Cache
+    Cache -->|キャッシュ結果| Go
 ```
-┌─────────────────────────────┐     HTTP      ┌─────────────────────────────┐
-│  Frontend (Next.js)         │ ◄──────────► │  Backend (Go / Gin)         │
-│  localhost:3000             │              │  localhost:8080              │
-└─────────────────────────────┘              └──────────────┬──────────────┘
-                                                            │  HTTPS + APIキー認証
-                                                            ▼
-                                              ┌─────────────────────────────┐
-                                              │  国交省 不動産情報ライブラリ  │
-                                              │  reinfolib.mlit.go.jp       │
-                                              └─────────────────────────────┘
+
+### `/api/investment/analyze` リクエストフロー
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant N as Next.js (Vercel)
+    participant G as Go/Gin API
+    participant C as In-Memory Cache (TTL=24h)
+    participant M as MLIT API
+
+    B->>N: フォーム送信（物件情報）
+    N->>G: POST /api/investment/analyze
+    G->>C: キャッシュ確認（都道府県・期間キー）
+
+    alt キャッシュ HIT
+        C-->>G: キャッシュ済み土地データ返却
+    else キャッシュ MISS
+        G->>M: GET 土地取引価格（HTTPS + APIキー）
+        M-->>G: 取引データJSON
+        G->>C: 結果をキャッシュ保存（TTL=24h）
+    end
+
+    G->>G: 投資試算計算（利回り・デッドクロス・出口戦略）
+    G-->>N: 分析結果JSON
+    N-->>B: グラフ・数値レンダリング
 ```
 
 **技術スタック**
