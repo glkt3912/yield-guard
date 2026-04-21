@@ -1,5 +1,12 @@
 # Yield-Guard
 
+> **はじめてお使いになる方へ（銀行員・不動産会社の方向け）**
+>
+> Yield-Guard は、不動産投資を検討しているお客様や担当者が「この物件は買っても大丈夫か？」を数字で確認できる無料のWebツールです。
+> 土地の相場価格・表面利回り・ローン返済とのバランス・将来の売却益を自動で計算します。
+> 専門的な知識がなくても、物件の金額と賃料を入力するだけで結果が表示されます。
+> （インターネットブラウザから利用でき、インストール不要です）
+
 不動産投資の意思決定をデータで支援するMVPツール。国土交通省の公式APIから土地取引価格を取得し、表面利回り・デッドクロス・出口戦略をリアルタイムで可視化する。
 
 ## 概要
@@ -16,17 +23,47 @@
 
 ## アーキテクチャ
 
+```mermaid
+flowchart TD
+    Browser["ブラウザ\n(Browser)"]
+    Next["Next.js\n(Vercel)"]
+    Go["Go / Gin API\n(Cloud Run)"]
+    Cache["インメモリキャッシュ\n(TTL = 24h)"]
+    MLIT["国交省 不動産情報ライブラリ\n(MLIT API)"]
+
+    Browser -->|HTTP/HTTPS| Next
+    Next -->|REST API| Go
+    Go -->|キャッシュ HIT| Cache
+    Go -->|キャッシュ MISS| MLIT
+    MLIT -->|レスポンス| Cache
+    Cache -->|キャッシュ結果| Go
 ```
-┌─────────────────────────────┐     HTTP      ┌─────────────────────────────┐
-│  Frontend (Next.js)         │ ◄──────────► │  Backend (Go / Gin)         │
-│  localhost:3000             │              │  localhost:8080              │
-└─────────────────────────────┘              └──────────────┬──────────────┘
-                                                            │  HTTPS + APIキー認証
-                                                            ▼
-                                              ┌─────────────────────────────┐
-                                              │  国交省 不動産情報ライブラリ  │
-                                              │  reinfolib.mlit.go.jp       │
-                                              └─────────────────────────────┘
+
+### `/api/investment/analyze` リクエストフロー
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant N as Next.js (Vercel)
+    participant G as Go/Gin API
+    participant C as In-Memory Cache (TTL=24h)
+    participant M as MLIT API
+
+    B->>N: フォーム送信（物件情報）
+    N->>G: POST /api/investment/analyze
+    G->>C: キャッシュ確認（都道府県・期間キー）
+
+    alt キャッシュ HIT
+        C-->>G: キャッシュ済み土地データ返却
+    else キャッシュ MISS
+        G->>M: GET 土地取引価格（HTTPS + APIキー）
+        M-->>G: 取引データJSON
+        G->>C: 結果をキャッシュ保存（TTL=24h）
+    end
+
+    G->>G: 投資試算計算（利回り・デッドクロス・出口戦略）
+    G-->>N: 分析結果JSON
+    N-->>B: グラフ・数値レンダリング
 ```
 
 **技術スタック**
