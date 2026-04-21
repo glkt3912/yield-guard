@@ -7,8 +7,8 @@
 #   WIF_PROVIDER              = terraform output -raw wif_provider
 #   SA_EMAIL                  = terraform output -raw sa_email
 #   GCP_PROJECT_ID            = var.project_id
-#   TF_VAR_MLIT_API_KEY       = var.mlit_api_key
-#   TF_VAR_APP_INTERNAL_API_KEY = var.app_internal_api_key
+#   MLIT_API_KEY              = var.mlit_api_key
+#   APP_INTERNAL_API_KEY      = var.app_internal_api_key
 #
 # GitHub Variables（Settings → Secrets and variables → Actions → Variables）:
 #   VERCEL_FRONTEND_URL       = var.vercel_frontend_url

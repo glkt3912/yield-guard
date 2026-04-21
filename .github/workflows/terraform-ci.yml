@@ -32,8 +32,8 @@ jobs:
       TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
       TF_VAR_env: "prod"
       TF_VAR_region: "asia-northeast1"
-      TF_VAR_mlit_api_key: ${{ secrets.TF_VAR_MLIT_API_KEY }}
-      TF_VAR_app_internal_api_key: ${{ secrets.TF_VAR_APP_INTERNAL_API_KEY }}
+      TF_VAR_mlit_api_key: ${{ secrets.MLIT_API_KEY }}
+      TF_VAR_app_internal_api_key: ${{ secrets.APP_INTERNAL_API_KEY }}
       TF_VAR_vercel_frontend_url: ${{ vars.VERCEL_FRONTEND_URL }}
 
     steps:
