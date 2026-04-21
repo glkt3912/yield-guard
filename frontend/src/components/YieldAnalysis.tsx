@@ -2,7 +2,7 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { InvestmentInput, InvestmentResult, PopulationForecastResult } from "@/types/investment";
+import type { InvestmentInput, InvestmentResult, PopulationForecastResult, StressScenarioResult } from "@/types/investment";
 import { formatMan, formatPct, formatYen } from "@/lib/utils";
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Users } from "lucide-react";
 
@@ -20,18 +20,11 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
   const netYieldPct = result.netYield * 100;
   const isGood = result.isAbove8Percent;
 
-  // 3シナリオ利回り計算: netYield(v) = grossYield * (1 - v) * (1 - expenseRate)
+  // 人口シナリオ用（populationForecast表示のために残す）
   const actualV = input.actualVacancyRate > 0 ? input.actualVacancyRate : input.vacancyRate;
-  const stressV = Math.min(actualV + input.vacancyRateDelta, 0.99);
   const factor = (v: number) => (1 - v) * (1 - input.expenseRate);
-  const fullNetYield = result.grossYield * (1 - input.expenseRate);
-  const actualNetYield = result.grossYield * factor(actualV);
-  const stressNetYield = result.grossYield * factor(stressV);
-  const scenarios = [
-    { label: "満室想定", vacancy: "0%", yield: result.grossYield, net: fullNetYield, note: "広告表面利回り基準" },
-    { label: "現況", vacancy: `${(actualV * 100).toFixed(0)}%`, yield: result.grossYield * (1 - actualV), net: actualNetYield, note: "実態に即した収益" },
-    { label: "ストレス", vacancy: `${(stressV * 100).toFixed(0)}%`, yield: result.grossYield * (1 - stressV), net: stressNetYield, note: "最悪ケース" },
-  ];
+
+  const stressScenarios: StressScenarioResult[] = result.stressScenarios ?? [];
 
   const gaugePosition = Math.min(yieldPct / MAX_YIELD_PCT, 1) * 100;
   const targetPosition = (TARGET_PCT / MAX_YIELD_PCT) * 100; // = 50%
@@ -89,39 +82,59 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
         </CardContent>
       </Card>
 
-      {/* 3シナリオ比較 */}
+      {/* ストレステストシナリオ比較 */}
       <Card>
-        <CardHeader><CardTitle className="text-base">空室率シナリオ比較</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">ストレステストシナリオ（銀行融資審査用）</CardTitle></CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-muted-foreground">
                   <th className="pb-2 text-left font-medium">シナリオ</th>
-                  <th className="pb-2 text-right font-medium">空室率</th>
-                  <th className="pb-2 text-right font-medium">表面利回り</th>
-                  <th className="pb-2 text-right font-medium">実質利回り</th>
+                  <th className="pb-2 text-right font-medium">金利△</th>
+                  <th className="pb-2 text-right font-medium">空室△</th>
+                  <th className="pb-2 text-right font-medium">DSCR</th>
+                  <th className="pb-2 text-right font-medium">黒転年</th>
+                  <th className="pb-2 text-right font-medium">判定</th>
                 </tr>
               </thead>
               <tbody>
-                {scenarios.map((s) => (
-                  <tr key={s.label} className="border-b last:border-0">
-                    <td className="py-2">
-                      <span className="font-medium">{s.label}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">{s.note}</span>
-                    </td>
-                    <td className="py-2 text-right">{s.vacancy}</td>
-                    <td className={`py-2 text-right font-medium ${s.yield * 100 >= 8 ? "text-green-600" : "text-red-600"}`}>
-                      {(s.yield * 100).toFixed(2)}%
-                    </td>
-                    <td className="py-2 text-right text-muted-foreground">
-                      {(s.net * 100).toFixed(2)}%
-                    </td>
-                  </tr>
-                ))}
+                {stressScenarios.map((s) => {
+                  const isCompound = s.label === "複合ストレス";
+                  const rowBg = isCompound ? "bg-orange-50" : "";
+                  const safeBadge = s.isSafe
+                    ? <Badge variant="success">安全</Badge>
+                    : s.dscr >= 1.0
+                      ? <Badge variant="warning">注意</Badge>
+                      : <Badge variant="danger">危険</Badge>;
+                  return (
+                    <tr key={s.label} className={`border-b last:border-0 ${rowBg}`}>
+                      <td className="py-2 font-medium">
+                        {s.label}
+                        {isCompound && <span className="ml-1 text-xs text-orange-600">★</span>}
+                      </td>
+                      <td className="py-2 text-right">
+                        {s.interestRateDelta !== 0 ? `+${(s.interestRateDelta * 100).toFixed(1)}%` : "±0"}
+                      </td>
+                      <td className="py-2 text-right">
+                        {s.vacancyRateDelta !== 0 ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%` : "±0"}
+                      </td>
+                      <td className={`py-2 text-right font-medium ${s.dscr >= 1.0 ? "text-green-600" : "text-red-600"}`}>
+                        {s.dscr.toFixed(2)}
+                      </td>
+                      <td className="py-2 text-right text-muted-foreground">
+                        {s.breakEvenYear === -1 ? "なし" : `${s.breakEvenYear}年目`}
+                      </td>
+                      <td className="py-2 text-right">{safeBadge}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            ※ DSCR（借債返済カバー率）= NOI / 年間ローン返済額。1.0以上が銀行審査の目安。黒転年は保有期間内での累積CF黒転年度。
+          </p>
 
           {/* 人口減少シナリオ */}
           {populationForecast && populationForecast.snapshots.length > 0 && (() => {

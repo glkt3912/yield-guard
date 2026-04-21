@@ -86,6 +86,16 @@ export interface YearlyResult {
   isInDeadCrossZone: boolean;   // デッドクロス継続ゾーン
 }
 
+export interface StressScenarioResult {
+  label: string;
+  interestRateDelta: number;
+  vacancyRateDelta: number;
+  totalCashFlow: number;
+  dscr: number;
+  breakEvenYear: number; // 累積CFが正転する年（-1=なし）
+  isSafe: boolean;       // DSCR >= 1.0 && breakEvenYear <= holdingYears
+}
+
 export interface InvestmentResult {
   totalInvestment: number;
   miscExpenses: number;
@@ -103,6 +113,7 @@ export interface InvestmentResult {
   exitTransferTax: number;
   exitNetProceeds: number;
   exitTotalEquity: number;
+  stressScenarios: StressScenarioResult[];
 }
 
 export interface LandTransaction {
