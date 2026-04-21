@@ -23,6 +23,5 @@ provider "google" {
 locals {
   service_name = "yield-guard-${var.env}-backend"
   sa_name      = "sa-yield-guard-${var.env}"
-  sa_email     = "${local.sa_name}@${var.project_id}.iam.gserviceaccount.com"
   image_repo   = "${var.region}-docker.pkg.dev/${var.project_id}/yield-guard/backend"
 }
