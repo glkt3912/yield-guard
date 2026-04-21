@@ -1,11 +1,6 @@
 name: Terraform CI
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "terraform/**"
-      - ".github/workflows/terraform-ci.yml"
   pull_request:
     branches: [main]
     paths:
@@ -14,15 +9,25 @@ on:
 
 permissions:
   contents: read
+  id-token: write
+  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  validate:
-    name: Format, Validate & Lint
+  plan:
+    name: Format, Validate, Lint & Plan
     runs-on: ubuntu-24.04
+
+    env:
+      TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+      TF_VAR_env: "prod"
+      TF_VAR_region: "asia-northeast1"
+      TF_VAR_mlit_api_key: ${{ secrets.TF_VAR_MLIT_API_KEY }}
+      TF_VAR_app_internal_api_key: ${{ secrets.TF_VAR_APP_INTERNAL_API_KEY }}
+      TF_VAR_vercel_frontend_url: ${{ vars.VERCEL_FRONTEND_URL }}
 
     steps:
       - name: Checkout
@@ -37,8 +42,14 @@ jobs:
         run: terraform fmt -check -recursive
         working-directory: terraform
 
-      - name: Terraform Init (no backend)
-        run: terraform init -backend=false
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f  # v2.1.7
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.SA_EMAIL }}
+
+      - name: Terraform Init
+        run: terraform init
         working-directory: terraform
 
       - name: Terraform Validate
@@ -55,3 +66,24 @@ jobs:
       - name: tflint
         run: tflint --format compact
         working-directory: terraform
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color 2>&1 | tee /tmp/plan.txt
+        working-directory: terraform
+
+      - name: Post Plan to PR
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('/tmp/plan.txt', 'utf8');
+            const truncated = plan.length > 60000 ? plan.slice(0, 60000) + '\n...(truncated)' : plan;
+            const status = '${{ steps.plan.outcome }}' === 'success' ? '✅' : '❌';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ${status} Terraform Plan\n<details><summary>詳細を表示</summary>\n\n\`\`\`\n${truncated}\n\`\`\`\n</details>`
+            });

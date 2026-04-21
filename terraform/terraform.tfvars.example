@@ -1,10 +1,17 @@
 # Copy this file to terraform.tfvars and fill in real values.
 # terraform.tfvars is excluded from git (see .gitignore).
 #
-# After terraform apply, register the outputs as GitHub Secrets:
-#   WIF_PROVIDER   = terraform output -raw wif_provider
-#   SA_EMAIL       = terraform output -raw sa_email
-#   GCP_PROJECT_ID = var.project_id
+# After terraform apply, register the following in GitHub:
+#
+# GitHub Secrets（Settings → Secrets and variables → Actions → Secrets）:
+#   WIF_PROVIDER              = terraform output -raw wif_provider
+#   SA_EMAIL                  = terraform output -raw sa_email
+#   GCP_PROJECT_ID            = var.project_id
+#   TF_VAR_MLIT_API_KEY       = var.mlit_api_key
+#   TF_VAR_APP_INTERNAL_API_KEY = var.app_internal_api_key
+#
+# GitHub Variables（Settings → Secrets and variables → Actions → Variables）:
+#   VERCEL_FRONTEND_URL       = var.vercel_frontend_url
 #
 # --- Remote State (GCS backend) ---
 # Terraform state には mlit_api_key 等のシークレットが平文で保存されるため、
