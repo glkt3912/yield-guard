@@ -829,12 +829,14 @@ func TestAnalyze_ShortTermCapitalGains(t *testing.T) {
 
 	result := Analyze(input)
 
-	// 売却益がある場合に短期税率が適用されること
-	if result.ExitCapitalGain > 0 {
-		impliedRate := result.ExitTransferTax / result.ExitCapitalGain
-		if math.Abs(impliedRate-shortTermTransferTaxRate) > 0.001 {
-			t.Errorf("短期譲渡税率 = %.5f, want %.5f", impliedRate, shortTermTransferTaxRate)
-		}
+	// 売却益が正値であることを確認（テストが空振りしないよう）
+	if result.ExitCapitalGain <= 0 {
+		t.Fatalf("expected positive capital gain, got %f", result.ExitCapitalGain)
+	}
+	// 短期税率（39.63%）が適用されること
+	impliedRate := result.ExitTransferTax / result.ExitCapitalGain
+	if math.Abs(impliedRate-shortTermTransferTaxRate) > 0.001 {
+		t.Errorf("短期譲渡税率 = %.5f, want %.5f", impliedRate, shortTermTransferTaxRate)
 	}
 	t.Logf("HoldingYears=5 (短期): SalePrice=%.0f, CapGain=%.0f, Tax=%.0f", result.ExitSalePrice, result.ExitCapitalGain, result.ExitTransferTax)
 }
