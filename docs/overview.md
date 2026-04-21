@@ -152,6 +152,41 @@ npm run dev   # http://localhost:3000
 
 ---
 
+## デプロイフロー
+
+### フロントエンド（Vercel）
+
+```
+main ブランチへの push
+    ↓
+[GitHub Actions: frontend-ci.yml]
+    ci ジョブ: Lint → 型チェック → テスト → ビルド（next build --webpack）
+    ↓ 成功時のみ
+    deploy ジョブ: vercel deploy --prod
+    ↓
+https://yield-guard-alpha.vercel.app
+```
+
+- CI が失敗した場合はデプロイしない（`needs: ci`）
+- PR 時はデプロイしない（main push 時のみ）
+- Vercel 環境変数: `BACKEND_URL`・`APP_INTERNAL_API_KEY`（Vercel ダッシュボードで設定済み）
+- GitHub Secrets: `VERCEL_TOKEN`・`VERCEL_ORG_ID`・`VERCEL_PROJECT_ID`
+
+### バックエンド（Cloud Run）
+
+```
+main ブランチへの push（backend/** 変更時）
+    ↓
+[GitHub Actions: deploy-backend.yml]
+    OIDC 認証（Workload Identity Federation）
+    ↓
+    Docker ビルド → Artifact Registry push → Cloud Run デプロイ
+```
+
+詳細は `docs/security.md` を参照。
+
+---
+
 ## 国交省API 開発用リクエスト（Makefile）
 
 `.env` の `MLIT_API_KEY` を使って国交省APIへ直接リクエストできる開発者向けターゲット。`jq` が必要。

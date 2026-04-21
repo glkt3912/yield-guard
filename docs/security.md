@@ -113,6 +113,28 @@ Artifact Registry の無料枠（0.5 GB/月）を超えないよう、最新 5 �
 
 ---
 
+## フロントエンド GitHub Actions デプロイ
+
+`.github/workflows/frontend-ci.yml` の `deploy` ジョブは以下のセキュリティ設計を採用している。
+
+| 項目 | 設計 |
+|---|---|
+| トークン渡し方 | `VERCEL_TOKEN` を `env:` 経由で渡す（`--token=` 引数は使用しない。プロセス一覧への露出を防ぐため） |
+| Vercel CLI バージョン | `vercel@51.8.0` に固定（`latest` 不使用） |
+| 実行条件 | `needs: ci` により CI 全通過後のみ実行 |
+| 実行タイミング | `github.ref == 'refs/heads/main' && github.event_name == 'push'` により main マージ時のみ |
+| 権限 | `permissions: contents: read`（最小権限） |
+
+### GitHub Secrets
+
+| Secret 名 | 用途 |
+|---|---|
+| `VERCEL_TOKEN` | Vercel API 認証トークン（Vercel ダッシュボードで発行） |
+| `VERCEL_ORG_ID` | Vercel 組織 ID（`.vercel/project.json` の `orgId`） |
+| `VERCEL_PROJECT_ID` | Vercel プロジェクト ID（`.vercel/project.json` の `projectId`） |
+
+---
+
 ## 関連ファイル
 
 - `backend/internal/api/router.go` — `internalKeyMiddleware()`
@@ -121,4 +143,5 @@ Artifact Registry の無料枠（0.5 GB/月）を超えないよう、最新 5 �
 - `terraform/iam.tf` — Workload Identity Federation + SA 最小権限
 - `terraform/secret_manager.tf` — Secret Manager リソース
 - `terraform/cloud_run.tf` — Cloud Run v2 サービス定義
-- `.github/workflows/deploy-backend.yml` — デプロイワークフロー（SHA 固定）
+- `.github/workflows/deploy-backend.yml` — バックエンドデプロイワークフロー（SHA 固定）
+- `.github/workflows/frontend-ci.yml` — フロントエンド CI + Vercel デプロイワークフロー
