@@ -8,6 +8,7 @@ import type {
   RidershipDemandScore,
   PopulationForecastResult,
   AppraisalComparisonResult,
+  UrbanRisk,
 } from "@/types/investment";
 
 const BASE = "/api";
@@ -153,6 +154,13 @@ export async function fetchLandAppraisals(params: {
   if (params.city) q.set("city", params.city);
   const res = await fetch(`${BASE}/land-appraisals?${q}`);
   return handleResponse<AppraisalComparisonResult>(res);
+}
+
+/** 緯度経度から都市計画リスクを一括取得 */
+export async function fetchUrbanRisks(lat: number, lng: number): Promise<UrbanRisk[]> {
+  const q = new URLSearchParams({ lat: String(lat), lng: String(lng) });
+  const res = await fetch(`${BASE}/urban-risks?${q}`);
+  return handleResponse<UrbanRisk[]>(res);
 }
 
 /** 投資シミュレーションを実行 */

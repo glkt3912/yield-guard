@@ -32,11 +32,12 @@ page.tsx
 - `comparison`: `LandPriceComparison | null`
 - `stationRidership`: `StationRidershipResult[] | null` — 緯度・経度が指定された場合に `GET /api/station-ridership` から取得
 - `populationForecast`: `PopulationForecastResult | null` — 緯度・経度が指定された場合に `GET /api/population-forecast` から取得
+- `externalUrbanRisks`: `UrbanRisk[] | null` — 緯度・経度が指定された場合に `GET /api/urban-risks` から取得（XKT003/020/030/XST001）
 - `loading`, `error`: ローディング・エラー状態
 
 **`handleFetchLandPrices(area, city, lat?, lng?)`**:
 
-lat/lng が両方渡された場合、`fetchStationRidership` と `fetchPopulationForecast` を `Promise.allSettled` で並行実行する。どちらか一方が失敗しても他方の結果は利用する。呼び出し開始時に両ステートを `null` でリセットする。
+lat/lng が両方渡された場合、`fetchStationRidership`・`fetchPopulationForecast`・`fetchUrbanRisks` を `Promise.allSettled` で並行実行する。いずれか一方が失敗しても他の結果は利用する。呼び出し開始時に全ステートを `null` でリセットする。
 
 **`equityInvested` の計算**:
 ```typescript
@@ -149,6 +150,8 @@ const equityInvested = result.totalInvestment - input.loanAmount
 - `theoreticalPrice?: TheoreticalPriceResult | null`
 - `stationRidership?: StationRidershipResult[] | null`
 - `populationForecast?: PopulationForecastResult | null`
+- `landAppraisal?: AppraisalComparisonResult | null`
+- `externalUrbanRisks?: UrbanRisk[] | null` — `GET /api/urban-risks` 由来（XKT003/020/030/XST001）
 
 **表示の3状態**:
 
@@ -186,6 +189,19 @@ const equityInvested = result.totalInvestment - input.loanAmount
 | `demandScore` | A〜E のカラーラベル |
 
 需要スコアのカラー: A=紫・B=青・C=緑・D=黄・E=赤
+
+**都市計画リスク警告パネル**:
+
+`stats.urbanRisks`（XIT001 テキスト検出）と `externalUrbanRisks`（XKT003/020/030/XST001 API 検出）を `allUrbanRisks` としてマージして表示する。
+
+```typescript
+const allUrbanRisks: UrbanRisk[] = [
+  ...(stats.urbanRisks ?? []),
+  ...(externalUrbanRisks ?? []).filter(r => !(stats.urbanRisks ?? []).some(e => e.code === r.code)),
+];
+```
+
+`allUrbanRisks.length > 0` の場合のみ表示。`RISK_STYLE` テーブル（ERROR=赤・WARNING=黄・INFO=青）でスタイルを決定。
 
 **用途地域情報パネル（`stats.zoning`）**:
 

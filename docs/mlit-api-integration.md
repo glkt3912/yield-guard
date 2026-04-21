@@ -86,11 +86,11 @@ APIを使用するサービスには以下の文言を表示すること：
 |--------|------|------------|-------|
 | **XKT001** | 都市計画区域/区域区分 | 市街化調整区域の警告表示 | #63 |
 | **XKT002** | 用途地域 | 建ぺい率・容積率の自動入力、用途不整合警告 | #61 |
-| **XKT003** | 立地適正化計画 | 居住誘導区域外の将来リスク警告 | #63 |
+| **XKT003** | 立地適正化計画 | 居住誘導区域外の将来リスク警告 | ✅ #66 |
 | XKT014 | 防火・準防火地域 | 建築制限の参考情報 | 未定 |
 | XKT023 | 地区計画 | 建築制限の詳細確認 | 未定 |
 | XKT024 | 高度利用地区 | 容積率ボーナスエリアの判定 | 未定 |
-| XKT030 | 都市計画道路 | 道路収用リスク・開発ポテンシャルの表示 | #63 |
+| **XKT030** | 都市計画道路 | 道路収用リスク・開発ポテンシャルの表示 | ✅ #66 |
 
 ### 周辺施設情報
 
@@ -119,7 +119,7 @@ APIを使用するサービスには以下の文言を表示すること：
 | API ID | 名称 | 本PJ活用方針 | issue |
 |--------|------|------------|-------|
 | **XKT016** | 災害危険区域 | 投資適地スコアのリスク要素 | #60 |
-| **XKT020** | 大規模盛土造成地マップ | 地盤リスク（地震時の沈下・崩壊） | #63 |
+| **XKT020** | 大規模盛土造成地マップ | 地盤リスク（地震時の沈下・崩壊） | ✅ #66 |
 | **XKT021** | 地すべり防止地区 | 地盤リスク | #60 |
 | **XKT022** | 急傾斜地崩壊危険区域 | 地盤リスク | #60 |
 | **XKT025** | 液状化発生傾向図 | 地盤リスク（#60のハザード警告に統合） | #60 |
@@ -128,7 +128,7 @@ APIを使用するサービスには以下の文言を表示すること：
 | **XKT028** | 津波浸水想定 | 同上 | #60 |
 | **XKT029** | 土砂災害警戒区域 | 同上 | #60 |
 | **XGT001** | 指定緊急避難場所 | 防災スコアの参考情報 | 未定 |
-| **XST001** | 災害履歴 | 過去の実被害記録（ハザードマップと組み合わせ） | #63 |
+| **XST001** | 災害履歴 | 過去の実被害記録（ハザードマップと組み合わせ） | ✅ #66 |
 
 ### 投資適地スコア（複数API統合）
 
@@ -780,4 +780,210 @@ go test -race ./internal/mlit/... -v
 
 # 統合テスト（実API疎通・APIキー必要）
 MLIT_API_KEY=your_key go test -tags=integration ./internal/mlit/... -v -timeout 60s
+```
+
+---
+
+## XKT003 立地適正化計画API
+
+### エンドポイント（タイル座標形式）
+
+```
+GET /ex-api/external/XKT003?response_format=geojson&z={z}&x={x}&y={y}
+```
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `response_format` | ○ | `"geojson"` 固定 |
+| `z` | ○ | ズームレベル 11〜15。z=14 推奨（約1.7km×1.7km） |
+| `x` / `y` | ○ | WebMercator タイル座標 |
+
+### GeoJSONレスポンス フィールド
+
+| フィールド名 | 型 | 説明 |
+|------------|-----|------|
+| `prefecture` | string | 都道府県名 |
+| `city_code` | string | 行政区域コード（5桁） |
+| `city_name` | string | 市区町村名 |
+| `decision_date` | string | 区域設定年月日 |
+| `kubun_name_ja` | string | 区域名（例: 居住誘導区域、都市機能誘導区域） |
+| `area_classification_ja` | string | 区域区分 |
+| `notice_number` | string | 告示番号 |
+
+### リスク判定方針
+
+- タイル内フィーチャに `kubun_name_ja` が含まれる場合 → 立地適正化計画エリア内
+- `kubun_name_ja` に「居住誘導区域」が含まれない、かつフィーチャが存在しない場合 → 居住誘導区域外（WARNING）
+- フィーチャが0件 = 立地適正化計画未策定自治体（警告なし）
+
+### 型定義
+
+```go
+type LocationOptimizationFeatureProps struct {
+    Prefecture           string `json:"prefecture"`
+    CityCode             string `json:"city_code"`
+    CityName             string `json:"city_name"`
+    DecisionDate         string `json:"decision_date"`
+    KubunNameJa          string `json:"kubun_name_ja"`
+    AreaClassificationJa string `json:"area_classification_ja"`
+    NoticeNumber         string `json:"notice_number"`
+}
+```
+
+---
+
+## XKT020 大規模盛土造成地マップAPI
+
+### エンドポイント（タイル座標形式）
+
+```
+GET /ex-api/external/XKT020?response_format=geojson&z={z}&x={x}&y={y}
+```
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `response_format` | ○ | `"geojson"` 固定 |
+| `z` | ○ | ズームレベル 11〜15 |
+| `x` / `y` | ○ | WebMercator タイル座標 |
+
+### GeoJSONレスポンス フィールド
+
+| フィールド名 | 型 | 説明 |
+|------------|-----|------|
+| `embankment_classification` | string | 盛土区分（例: 谷埋め型、腹付け型） |
+| `prefecture_code` | string | 都道府県コード（例: 28） |
+| `prefecture_name` | string | 都道府県名（例: 兵庫県） |
+| `city_code` | string | 市区町村コード（例: 28215） |
+| `city_name` | string | 市区町村名（例: 三木市） |
+| `embankment_number` | string | 盛土番号（例: 三木08-03） |
+
+### リスク判定方針
+
+- タイル内フィーチャが1件以上 → 大規模盛土造成地エリア（WARNING）
+
+### 型定義
+
+```go
+type EmbankmentFeatureProps struct {
+    EmbankmentClassification string `json:"embankment_classification"`
+    PrefectureCode           string `json:"prefecture_code"`
+    PrefectureName           string `json:"prefecture_name"`
+    CityCode                 string `json:"city_code"`
+    CityName                 string `json:"city_name"`
+    EmbankmentNumber         string `json:"embankment_number"`
+}
+```
+
+---
+
+## XKT030 都市計画道路API
+
+### エンドポイント（タイル座標形式）
+
+```
+GET /ex-api/external/XKT030?response_format=geojson&z={z}&x={x}&y={y}
+```
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `response_format` | ○ | `"geojson"` 固定 |
+| `z` | ○ | ズームレベル 11〜15 |
+| `x` / `y` | ○ | WebMercator タイル座標 |
+
+### GeoJSONレスポンス フィールド
+
+| フィールド名 | 型 | 説明 |
+|------------|-----|------|
+| `planning_road_ja` | string | 都市計画道路種類名 |
+| `kubun_id` | int | 区分コード（3011=都市計画道路、3023=広場） |
+| `prefecture` | string | 都道府県名 |
+| `city_code` | string | 市区町村コード |
+| `city_name` | string | 市区町村名 |
+| `first_decision_date` | string | 当初決定日 |
+| `decision_date` | string | 設定年月日 |
+| `decision_type_ja` | string | 設定区分名 |
+| `decision_maker` | string | 設定者名 |
+| `notice_number_s` | string | 告示番号（当初） |
+| `notice_number` | string | 告示番号（最終） |
+
+### リスク判定方針
+
+- タイル内に `kubun_id == 3011`（都市計画道路）のフィーチャが1件以上 → 道路収用リスク（WARNING）
+
+### 型定義
+
+```go
+type UrbanRoadFeatureProps struct {
+    PlanningRoadJa    string `json:"planning_road_ja"`
+    KubunID           int    `json:"kubun_id"`
+    Prefecture        string `json:"prefecture"`
+    CityCode          string `json:"city_code"`
+    CityName          string `json:"city_name"`
+    FirstDecisionDate string `json:"first_decision_date"`
+    DecisionDate      string `json:"decision_date"`
+    DecisionTypeJa    string `json:"decision_type_ja"`
+    DecisionMaker     string `json:"decision_maker"`
+    NoticeNumberS     string `json:"notice_number_s"`
+    NoticeNumber      string `json:"notice_number"`
+}
+```
+
+---
+
+## XST001 国土調査（災害履歴）API
+
+### エンドポイント（タイル座標形式）
+
+```
+GET /ex-api/external/XST001?response_format=geojson&z={z}&x={x}&y={y}[&disastertype_code={codes}]
+```
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `response_format` | ○ | `"geojson"` 固定 |
+| `z` | ○ | ズームレベル 9〜15 |
+| `x` / `y` | ○ | WebMercator タイル座標 |
+| `disastertype_code` | 任意 | 災害分類コード（カンマ区切りで複数指定可） |
+
+### 災害分類コード一覧
+
+| コード | 説明 |
+|--------|------|
+| 11 | 浸水域等 |
+| 12 | 堤防決壊箇所等 |
+| 13 | 高潮浸水域等 |
+| 14 | 高潮破堤箇所等 |
+| 21 | がけ崩れ等 |
+| 22 | 地すべり等 |
+| 23 | 河道閉塞箇所等 |
+| 24 | 土石流等 |
+| 33 | 液状化 |
+| 34 | 地震土砂災害 |
+| 37 | 津波高 |
+| 38 | 津波浸水域 |
+
+### GeoJSONレスポンス フィールド
+
+| フィールド名 | 型 | 説明 |
+|------------|-----|------|
+| `disastertype_code` | string | 災害分類コード（上表参照） |
+| `disaster_name_ja` | string | 分類の呼称（例: 浸水域） |
+| `disaster_date` | string | 西暦年月日（8桁）。不明部分は `0`（例: `19591100`） |
+| `disaster_source` | string | 資料名（発行者） |
+
+### リスク判定方針
+
+- タイル内フィーチャが1件以上 → 災害履歴あり（WARNING）
+- `disaster_name_ja` を列挙してリスク説明に含める
+- `disaster_date` の上4桁（年）を取り出して表示
+
+### 型定義
+
+```go
+type DisasterHistoryFeatureProps struct {
+    DisastertypeCode string `json:"disastertype_code"`
+    DisasterNameJa   string `json:"disaster_name_ja"`
+    DisasterDate     string `json:"disaster_date"`
+    DisasterSource   string `json:"disaster_source"`
+}
 ```

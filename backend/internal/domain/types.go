@@ -240,6 +240,28 @@ type StationRidershipResult struct {
 	Correction   float64              `json:"correction"`   // 理論価格補正係数
 }
 
+// LocationOptimizationItem は XKT003 立地適正化計画のドメイン層受け渡し用軽量型
+type LocationOptimizationItem struct {
+	KubunNameJa string // 区域名（例: 居住誘導区域、都市機能誘導区域）
+}
+
+// EmbankmentItem は XKT020 大規模盛土造成地のドメイン層受け渡し用軽量型
+type EmbankmentItem struct {
+	Classification string // 盛土区分（例: 谷埋め型）
+}
+
+// UrbanRoadItem は XKT030 都市計画道路のドメイン層受け渡し用軽量型
+type UrbanRoadItem struct {
+	PlanningRoadJa string
+	KubunID        int // 3011=都市計画道路、3023=広場
+}
+
+// DisasterHistoryItem は XST001 災害履歴のドメイン層受け渡し用軽量型
+type DisasterHistoryItem struct {
+	Name string // 災害種別名（例: 浸水域）
+	Year int    // 発生年（不明時は0）
+}
+
 // ZoningSummary はエリア内の取引から抽出した代表的な用途地域情報
 type ZoningSummary struct {
 	CityPlanning     string `json:"cityPlanning"`     // 最頻の都市計画区域（例: 第一種住居地域）
