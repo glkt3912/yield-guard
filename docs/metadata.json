@@ -6,10 +6,10 @@
       "id": "overview",
       "path": "docs/overview.md",
       "title": "プロジェクト概要とアーキテクチャ",
-      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック・ディレクトリ構成・起動手順・計算の制約と免責事項。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。PWA対応（@ducanh2912/next-pwa・manifest.ts）を含む。",
-      "tags": ["概要", "アーキテクチャ", "セットアップ", "不動産投資", "環境変数", "APP_INTERNAL_API_KEY", "PWA"],
+      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック・ディレクトリ構成・起動手順・計算の制約と免責事項。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。PWA対応（@ducanh2912/next-pwa・manifest.ts）を含む。フロントエンド（Vercel）・バックエンド（Cloud Run）のデプロイフローも記載。",
+      "tags": ["概要", "アーキテクチャ", "セットアップ", "不動産投資", "環境変数", "APP_INTERNAL_API_KEY", "PWA", "デプロイ", "Vercel", "Cloud Run"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["Go", "Gin", "Next.js", "Tailwind CSS", "Recharts", "Clean Architecture", "国交省API", "起動手順", "テスト", "APP_INTERNAL_API_KEY", "MLIT_API_KEY", "ALLOW_ORIGINS", "@ducanh2912/next-pwa", "manifest.ts", "PWA", "Service Worker"],
+      "topics": ["Go", "Gin", "Next.js", "Tailwind CSS", "Recharts", "Clean Architecture", "国交省API", "起動手順", "テスト", "APP_INTERNAL_API_KEY", "MLIT_API_KEY", "ALLOW_ORIGINS", "@ducanh2912/next-pwa", "manifest.ts", "PWA", "Service Worker", "Vercel", "vercel deploy", "VERCEL_TOKEN", "frontend-ci.yml", "deploy-backend.yml"],
       "updatedAt": "2026-04-21"
     },
     {
@@ -66,10 +66,10 @@
       "id": "security",
       "path": "docs/security.md",
       "title": "セキュリティ設計",
-      "description": "Vercel-Cloud Run 間の内部通信認証（APP_INTERNAL_API_KEY / X-Internal-Key ヘッダー）の設計意図・動作仕様・適用範囲・ローカル開発での挙動・本番キー設定手順。internalKeyMiddleware が /api/* グループに適用され、/health はスキップ。APP_INTERNAL_API_KEY 未設定時はミドルウェアをスキップし後方互換を維持。Workload Identity Federation（OIDC パスワードレスデプロイ）・SHA固定 GitHub Actions・Secret Manager・Artifact Registry クリーンアップポリシーを含む。",
-      "tags": ["セキュリティ", "認証", "ミドルウェア", "X-Internal-Key", "APP_INTERNAL_API_KEY", "Vercel", "Cloud Run", "内部通信", "WIF", "OIDC", "Secret Manager", "SHA固定"],
+      "description": "Vercel-Cloud Run 間の内部通信認証（APP_INTERNAL_API_KEY / X-Internal-Key ヘッダー）の設計意図・動作仕様・適用範囲・ローカル開発での挙動・本番キー設定手順。internalKeyMiddleware が /api/* グループに適用され、/health はスキップ。APP_INTERNAL_API_KEY 未設定時はミドルウェアをスキップし後方互換を維持。Workload Identity Federation（OIDC パスワードレスデプロイ）・SHA固定 GitHub Actions・Secret Manager・Artifact Registry クリーンアップポリシーを含む。フロントエンド GitHub Actions デプロイ（VERCEL_TOKEN env渡し・vercel CLI バージョン固定・最小権限）も記載。",
+      "tags": ["セキュリティ", "認証", "ミドルウェア", "X-Internal-Key", "APP_INTERNAL_API_KEY", "Vercel", "Cloud Run", "内部通信", "WIF", "OIDC", "Secret Manager", "SHA固定", "VERCEL_TOKEN", "GitHub Actions"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["internalKeyMiddleware", "X-Internal-Key", "APP_INTERNAL_API_KEY", "middleware.ts", "router.go", "401 Unauthorized", "/health", "本番環境", "ローカル開発", "Workload Identity Federation", "WIF_PROVIDER", "SA_EMAIL", "deploy-cloudrun", "SHA固定", "Secret Manager", "Artifact Registry", "クリーンアップポリシー"],
+      "topics": ["internalKeyMiddleware", "X-Internal-Key", "APP_INTERNAL_API_KEY", "middleware.ts", "router.go", "401 Unauthorized", "/health", "本番環境", "ローカル開発", "Workload Identity Federation", "WIF_PROVIDER", "SA_EMAIL", "deploy-cloudrun", "SHA固定", "Secret Manager", "Artifact Registry", "クリーンアップポリシー", "VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID", "frontend-ci.yml", "vercel deploy"],
       "updatedAt": "2026-04-21"
     },
     {
