@@ -196,9 +196,6 @@ func Analyze(input InvestmentInput) InvestmentResult {
 // calcStressScenario は指定の金利・空室率オフセットでシナリオ計算を行い結果を返す
 func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta float64) StressScenarioResult {
 	in := base
-	// ベース入力のデルタをリセットし、このシナリオ用のデルタを設定
-	in.LoanRateDelta = rateDelta
-	in.VacancyRateDelta = vacDelta
 
 	effectiveVacancy := in.VacancyRate + vacDelta
 	if effectiveVacancy > 1 {
@@ -207,7 +204,7 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 	effectiveRate := in.AnnualLoanRate + rateDelta
 
 	annualRent := in.MonthlyRent * 12 * (1 - effectiveVacancy)
-	annualExpenses := annualRent * in.ExpenseRate
+	annualExpenses := annualRent*in.ExpenseRate + in.AnnualPropertyTax
 	noi := annualRent - annualExpenses
 
 	monthlyPayment := calcMonthlyPayment(in.LoanAmount, effectiveRate, in.LoanYears)
@@ -250,7 +247,13 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 		}
 	}
 
-	isSafe := dscr >= 1.0 && breakEvenYear != -1 && breakEvenYear <= holdingYears
+	isSafe := false
+	if annualLoanPayment == 0 {
+		// 無借金物件はDSCRによる返済リスクがないため、ブレークイーン達成のみで安全と判定
+		isSafe = breakEvenYear != -1 && breakEvenYear <= holdingYears
+	} else {
+		isSafe = dscr >= 1.0 && breakEvenYear != -1 && breakEvenYear <= holdingYears
+	}
 
 	return StressScenarioResult{
 		Label:             label,
