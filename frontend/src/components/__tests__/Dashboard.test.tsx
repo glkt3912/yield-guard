@@ -39,8 +39,8 @@ describe("Dashboard", () => {
       expect(screen.getByText("9.00")).toBeInTheDocument();
     });
 
-    // CashFlowChart が表示される（出口戦略セクション）
-    expect(screen.getByText(/出口戦略/)).toBeInTheDocument();
+    // CashFlowChart が表示される（CardTitle のテキスト）
+    expect(screen.getByText(/キャッシュフロー推移/)).toBeInTheDocument();
   });
 
   it("API呼び出し中はローディング状態でボタンが無効化される", async () => {
