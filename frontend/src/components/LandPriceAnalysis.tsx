@@ -295,6 +295,7 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice, station
                 <YAxis
                   dataKey="tsubo"
                   name="坪単価"
+                  tickFormatter={(v) => `${v}万`}
                   tick={{ fontSize: 10 }}
                   width={50}
                 />
