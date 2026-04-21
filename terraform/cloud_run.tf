@@ -86,6 +86,7 @@ resource "google_cloud_run_v2_service" "backend" {
   }
 
   depends_on = [
+    google_project_service.apis,
     google_secret_manager_secret_iam_member.mlit_accessor,
     google_secret_manager_secret_iam_member.internal_key_accessor,
   ]
