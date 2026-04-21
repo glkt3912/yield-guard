@@ -1,0 +1,86 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { Dashboard } from "@/components/Dashboard";
+import { makeResult } from "./helpers";
+
+// Mock API module
+vi.mock("@/lib/api", () => ({
+  analyze: vi.fn(),
+  compareLandPrice: vi.fn(),
+  estimateLandPrice: vi.fn(),
+  fetchStationRidership: vi.fn(),
+  fetchPopulationForecast: vi.fn(),
+  fetchLandAppraisals: vi.fn(),
+}));
+
+import * as api from "@/lib/api";
+
+describe("Dashboard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("初期状態でプレースホルダーが表示される", () => {
+    render(<Dashboard />);
+    expect(screen.getByText(/左のフォームから条件を入力して/)).toBeInTheDocument();
+  });
+
+  it("analyzeAPIの応答後にYieldAnalysisとCashFlowChartが表示される", async () => {
+    const mockResult = makeResult({ grossYield: 0.09, isAbove8Percent: true });
+    vi.mocked(api.analyze).mockResolvedValue(mockResult);
+
+    render(<Dashboard />);
+
+    await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
+
+    await waitFor(() => {
+      // YieldAnalysis が表示される（表面利回り数値）
+      expect(screen.getByText("9.00")).toBeInTheDocument();
+    });
+
+    // CashFlowChart が表示される（出口戦略セクション）
+    expect(screen.getByText(/出口戦略/)).toBeInTheDocument();
+  });
+
+  it("API呼び出し中はローディング状態でボタンが無効化される", async () => {
+    // analyzeが解決されない promise を返す
+    let resolve: (v: ReturnType<typeof makeResult>) => void;
+    const pending = new Promise<ReturnType<typeof makeResult>>((r) => { resolve = r; });
+    vi.mocked(api.analyze).mockReturnValue(pending);
+
+    render(<Dashboard />);
+
+    await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
+
+    // ボタンが無効化されていること
+    expect(screen.getByRole("button", { name: /シミュレーション実行/ })).toBeDisabled();
+
+    // 後始末
+    resolve!(makeResult());
+  });
+
+  it("APIエラー時にエラーメッセージが表示される", async () => {
+    vi.mocked(api.analyze).mockRejectedValue(new Error("サーバーエラー"));
+
+    render(<Dashboard />);
+
+    await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/サーバーエラー/)).toBeInTheDocument();
+    });
+  });
+
+  it("APIエラーがError以外の場合はフォールバックメッセージが表示される", async () => {
+    vi.mocked(api.analyze).mockRejectedValue("unknown error");
+
+    render(<Dashboard />);
+
+    await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/シミュレーションに失敗しました/)).toBeInTheDocument();
+    });
+  });
+});
