@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
+	"github.com/yield-guard/backend/internal/telemetry"
 )
 
 // MLITClient は国交省APIクライアントのインターフェース（テスト時にモック注入可能）
@@ -135,6 +136,7 @@ func (h *Handler) Analyze(c *gin.Context) {
 	}
 
 	result := domain.Analyze(input)
+	telemetry.AnalyzeRequestsTotal.Add(c.Request.Context(), 1)
 	c.JSON(http.StatusOK, result)
 }
 
