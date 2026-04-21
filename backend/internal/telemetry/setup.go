@@ -36,10 +36,10 @@ func initInstruments(mp metric.MeterProvider) {
 		metric.WithDescription("Number of investment analysis requests"),
 		metric.WithUnit("{request}"),
 	)
-	MLITAPILatencyHistogram, _ = meter.Float64Histogram("mlit.api.latency",
-		metric.WithDescription("MLIT API request latency per attempt"),
-		metric.WithUnit("ms"),
-		metric.WithExplicitBucketBoundaries(50, 100, 250, 500, 1000, 2500, 5000, 30000),
+	MLITAPILatencyHistogram, _ = meter.Float64Histogram("mlit.api.request.duration",
+		metric.WithDescription("MLIT API request duration per attempt"),
+		metric.WithUnit("s"),
+		metric.WithExplicitBucketBoundaries(0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 30),
 	)
 	MLITCacheHits, _ = meter.Int64Counter("mlit.cache.hits",
 		metric.WithDescription("MLIT API cache hits"),
@@ -109,7 +109,7 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (func(contex
 	initInstruments(mp)
 
 	shutdown := func(ctx context.Context) error {
-		return errors.Join(mp.Shutdown(ctx), tp.Shutdown(ctx))
+		return errors.Join(tp.Shutdown(ctx), mp.Shutdown(ctx))
 	}
 	return shutdown, nil
 }

@@ -109,8 +109,8 @@ func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domai
 
 		start := time.Now()
 		result, err := c.doRequest(ctx, apiURL)
-		latencyMs := float64(time.Since(start).Milliseconds())
-		telemetry.MLITAPILatencyHistogram.Record(ctx, latencyMs,
+		latencySec := time.Since(start).Seconds()
+		telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
 			metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001")))
 
 		if err == nil {
@@ -177,8 +177,8 @@ func (c *Client) FetchMunicipalities(ctx context.Context, area string) ([]Munici
 
 	start := time.Now()
 	resp, err := c.httpClient.Do(req)
-	latencyMs := float64(time.Since(start).Milliseconds())
-	telemetry.MLITAPILatencyHistogram.Record(ctx, latencyMs,
+	latencySec := time.Since(start).Seconds()
+	telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
 		metric.WithAttributes(attribute.String("mlit.endpoint", "XIT002")))
 	if err != nil {
 		span.RecordError(err)
@@ -271,8 +271,8 @@ func (c *Client) FetchStationRidership(ctx context.Context, z, x, y int) ([]Stat
 
 	start := time.Now()
 	resp, err := c.httpClient.Do(req)
-	latencyMs := float64(time.Since(start).Milliseconds())
-	telemetry.MLITAPILatencyHistogram.Record(ctx, latencyMs,
+	latencySec := time.Since(start).Seconds()
+	telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
 		metric.WithAttributes(attribute.String("mlit.endpoint", "XKT015")))
 	if err != nil {
 		span.RecordError(err)
@@ -391,8 +391,8 @@ func (c *Client) FetchPopulationForecast(ctx context.Context, z, x, y int) ([]do
 
 	start := time.Now()
 	resp, err := c.httpClient.Do(req)
-	latencyMs := float64(time.Since(start).Milliseconds())
-	telemetry.MLITAPILatencyHistogram.Record(ctx, latencyMs,
+	latencySec := time.Since(start).Seconds()
+	telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
 		metric.WithAttributes(attribute.String("mlit.endpoint", "XKT013")))
 	if err != nil {
 		span.RecordError(err)
@@ -503,8 +503,8 @@ func (c *Client) FetchLandAppraisals(ctx context.Context, area, city string, yea
 
 		start := time.Now()
 		result, err := c.doAppraisalsRequest(ctx, apiURL, area, city)
-		latencyMs := float64(time.Since(start).Milliseconds())
-		telemetry.MLITAPILatencyHistogram.Record(ctx, latencyMs,
+		latencySec := time.Since(start).Seconds()
+		telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
 			metric.WithAttributes(attribute.String("mlit.endpoint", "XCT001")))
 
 		if err == nil {

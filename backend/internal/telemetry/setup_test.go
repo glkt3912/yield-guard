@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"go.opentelemetry.io/otel"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 func TestSetup_StdoutExporter(t *testing.T) {
@@ -20,14 +22,12 @@ func TestSetup_StdoutExporter(t *testing.T) {
 		t.Fatal("Setup() returned nil shutdown function")
 	}
 
-	// Global providers should be registered after Setup.
-	tp := otel.GetTracerProvider()
-	if tp == nil {
-		t.Error("TracerProvider is nil after Setup")
+	// Global providers should be the real SDK providers after Setup.
+	if _, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider); !ok {
+		t.Error("global TracerProvider is not *sdktrace.TracerProvider after Setup")
 	}
-	mp := otel.GetMeterProvider()
-	if mp == nil {
-		t.Error("MeterProvider is nil after Setup")
+	if _, ok := otel.GetMeterProvider().(*sdkmetric.MeterProvider); !ok {
+		t.Error("global MeterProvider is not *sdkmetric.MeterProvider after Setup")
 	}
 
 	// First shutdown should succeed.
@@ -54,20 +54,7 @@ func TestSetup_InstrumentsInitialised(t *testing.T) {
 	}
 	defer func() { _ = shutdown(ctx) }()
 
-	if AnalyzeRequestsTotal == nil {
-		t.Error("AnalyzeRequestsTotal is nil after Setup")
-	}
-	if MLITAPILatencyHistogram == nil {
-		t.Error("MLITAPILatencyHistogram is nil after Setup")
-	}
-	if MLITCacheHits == nil {
-		t.Error("MLITCacheHits is nil after Setup")
-	}
-	if MLITCacheMisses == nil {
-		t.Error("MLITCacheMisses is nil after Setup")
-	}
-
-	// Instruments should be callable without panic.
+	// Instruments should be callable without panic after Setup.
 	AnalyzeRequestsTotal.Add(ctx, 1)
 	MLITAPILatencyHistogram.Record(ctx, 42.5)
 	MLITCacheHits.Add(ctx, 1)
