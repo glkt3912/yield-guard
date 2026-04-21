@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import CostBreakdown from "@/components/CostBreakdown";
 import { makeInput, makeResult, makeYearlyResult } from "./helpers";
 import type { AcquisitionCostBreakdown } from "@/types/investment";
@@ -22,13 +22,16 @@ describe("CostBreakdown", () => {
     const costs = makeAcquisitionCosts();
     const yearlyResults = [makeYearlyResult(1)];
 
-    render(<CostBreakdown input={input} acquisitionCosts={costs} yearlyResults={yearlyResults} />);
+    const { container } = render(<CostBreakdown input={input} acquisitionCosts={costs} yearlyResults={yearlyResults} />);
 
-    expect(screen.getByText("仲介手数料（税込）")).toBeInTheDocument();
-    expect(screen.getByText("印紙税")).toBeInTheDocument();
-    expect(screen.getByText("登録免許税")).toBeInTheDocument();
-    expect(screen.getByText("不動産取得税（概算）")).toBeInTheDocument();
-    expect(screen.getByText("合計")).toBeInTheDocument();
+    // Labels appear in both the pie chart legend and the detail table;
+    // scope assertions to the table to avoid "multiple elements found" errors.
+    const table = container.querySelector("table")!;
+    expect(within(table).getByText("仲介手数料（税込）")).toBeInTheDocument();
+    expect(within(table).getByText("印紙税")).toBeInTheDocument();
+    expect(within(table).getByText("登録免許税")).toBeInTheDocument();
+    expect(within(table).getByText("不動産取得税（概算）")).toBeInTheDocument();
+    expect(within(table).getByText("合計")).toBeInTheDocument();
   });
 
   it("コスト内訳セクションタイトルが表示される", () => {
