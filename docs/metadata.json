@@ -6,11 +6,11 @@
       "id": "overview",
       "path": "docs/overview.md",
       "title": "プロジェクト概要とアーキテクチャ",
-      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック・ディレクトリ構成・起動手順・計算の制約と免責事項。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。",
-      "tags": ["概要", "アーキテクチャ", "セットアップ", "不動産投資", "環境変数", "APP_INTERNAL_API_KEY"],
+      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック・ディレクトリ構成・起動手順・計算の制約と免責事項。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。PWA対応（@ducanh2912/next-pwa・manifest.ts）を含む。",
+      "tags": ["概要", "アーキテクチャ", "セットアップ", "不動産投資", "環境変数", "APP_INTERNAL_API_KEY", "PWA"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["Go", "Gin", "Next.js", "Tailwind CSS", "Recharts", "Clean Architecture", "国交省API", "起動手順", "テスト", "APP_INTERNAL_API_KEY", "MLIT_API_KEY", "ALLOW_ORIGINS"],
-      "updatedAt": "2026-04-19"
+      "topics": ["Go", "Gin", "Next.js", "Tailwind CSS", "Recharts", "Clean Architecture", "国交省API", "起動手順", "テスト", "APP_INTERNAL_API_KEY", "MLIT_API_KEY", "ALLOW_ORIGINS", "@ducanh2912/next-pwa", "manifest.ts", "PWA", "Service Worker"],
+      "updatedAt": "2026-04-21"
     },
     {
       "id": "domain-investment-calculation",
@@ -66,11 +66,11 @@
       "id": "security",
       "path": "docs/security.md",
       "title": "セキュリティ設計",
-      "description": "Vercel-Render 間の内部通信認証（APP_INTERNAL_API_KEY / X-Internal-Key ヘッダー）の設計意図・動作仕様・適用範囲・ローカル開発での挙動・本番キー設定手順。internalKeyMiddleware が /api/* グループに適用され、/health はスキップ。APP_INTERNAL_API_KEY 未設定時はミドルウェアをスキップし後方互換を維持。",
-      "tags": ["セキュリティ", "認証", "ミドルウェア", "X-Internal-Key", "APP_INTERNAL_API_KEY", "Vercel", "Render", "内部通信"],
+      "description": "Vercel-Cloud Run 間の内部通信認証（APP_INTERNAL_API_KEY / X-Internal-Key ヘッダー）の設計意図・動作仕様・適用範囲・ローカル開発での挙動・本番キー設定手順。internalKeyMiddleware が /api/* グループに適用され、/health はスキップ。APP_INTERNAL_API_KEY 未設定時はミドルウェアをスキップし後方互換を維持。Workload Identity Federation（OIDC パスワードレスデプロイ）・SHA固定 GitHub Actions・Secret Manager・Artifact Registry クリーンアップポリシーを含む。",
+      "tags": ["セキュリティ", "認証", "ミドルウェア", "X-Internal-Key", "APP_INTERNAL_API_KEY", "Vercel", "Cloud Run", "内部通信", "WIF", "OIDC", "Secret Manager", "SHA固定"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["internalKeyMiddleware", "X-Internal-Key", "APP_INTERNAL_API_KEY", "middleware.ts", "router.go", "401 Unauthorized", "/health", "本番環境", "ローカル開発"],
-      "updatedAt": "2026-04-19"
+      "topics": ["internalKeyMiddleware", "X-Internal-Key", "APP_INTERNAL_API_KEY", "middleware.ts", "router.go", "401 Unauthorized", "/health", "本番環境", "ローカル開発", "Workload Identity Federation", "WIF_PROVIDER", "SA_EMAIL", "deploy-cloudrun", "SHA固定", "Secret Manager", "Artifact Registry", "クリーンアップポリシー"],
+      "updatedAt": "2026-04-21"
     },
     {
       "id": "mlit-api-integration",
@@ -96,11 +96,11 @@
       "id": "frontend-components",
       "path": "docs/frontend-components.md",
       "title": "フロントエンドコンポーネント仕様",
-      "description": "Dashboard・InvestmentForm・YieldAnalysis・CostBreakdown・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック。LandPriceAnalysis に地価公示2軸比較セクション追加（XCT001）: 公示価格中央値・取引価格中央値・取引/公示比率・前年比トレンドバッジ（上昇/安定/下落）。Dashboard に landAppraisal ステートを追加し fetchLandAppraisals を呼び出す。YieldAnalysisに人口減少シナリオ（4シナリオ目）追加。Dashboard の populationForecast・stationRidership を Promise.allSettled で並行呼び出し。",
-      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ", "空室率", "シナリオ", "人口減少", "ストレステスト", "XKT013", "XCT001", "地価公示", "2軸比較", "将来推計人口", "諸経費", "コスト内訳", "用途地域", "都市計画リスク", "理論価格", "乖離率", "駅距離", "需要スコア", "乗降客数"],
+      "description": "Dashboard・InvestmentForm・YieldAnalysis・CostBreakdown・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック。LandPriceAnalysis に地価公示2軸比較セクション追加（XCT001）: 公示価格中央値・取引価格中央値・取引/公示比率・前年比トレンドバッジ（上昇/安定/下落）。Dashboard に landAppraisal ステートを追加し fetchLandAppraisals を呼び出す。YieldAnalysisに人口減少シナリオ（4シナリオ目）追加。Dashboard の populationForecast・stationRidership を Promise.allSettled で並行呼び出し。InvestmentForm のグリッドは grid-cols-1 sm:grid-cols-2/3 でモバイルレスポンシブ対応。",
+      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ", "空室率", "シナリオ", "人口減少", "ストレステスト", "XKT013", "XCT001", "地価公示", "2軸比較", "将来推計人口", "諸経費", "コスト内訳", "用途地域", "都市計画リスク", "理論価格", "乖離率", "駅距離", "需要スコア", "乗降客数", "レスポンシブ", "モバイル対応"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CostBreakdown", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "landAppraisal", "AppraisalComparisonResult", "fetchLandAppraisals", "appraisalMedianPerSqm", "appraisalTrend", "trendLabel", "取引/公示比率", "populationForecast", "fetchPopulationForecast", "Promise.allSettled", "stationRidership", "POPULATION_TREND_STYLE", "RISK_STYLE", "StationRidershipResult", "RidershipDemandScore", "RIDERSHIP_SCORE_LABEL", "TheoreticalPriceResult", "handleFetchLandPrices"],
-      "updatedAt": "2026-04-19"
+      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CostBreakdown", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "landAppraisal", "AppraisalComparisonResult", "fetchLandAppraisals", "appraisalMedianPerSqm", "appraisalTrend", "trendLabel", "取引/公示比率", "populationForecast", "fetchPopulationForecast", "Promise.allSettled", "stationRidership", "POPULATION_TREND_STYLE", "RISK_STYLE", "StationRidershipResult", "RidershipDemandScore", "RIDERSHIP_SCORE_LABEL", "TheoreticalPriceResult", "handleFetchLandPrices", "grid-cols-1", "sm:grid-cols-2", "sm:grid-cols-3", "レスポンシブグリッド"],
+      "updatedAt": "2026-04-21"
     }
   ]
 }

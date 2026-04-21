@@ -1,6 +1,6 @@
 # フロントエンドコンポーネント仕様
 
-`frontend/src/components/` 配下。フレームワーク: Next.js 14 (App Router)
+`frontend/src/components/` 配下。フレームワーク: Next.js 16 (App Router)
 
 ---
 
@@ -95,6 +95,10 @@ const equityInvested = result.totalInvestment - input.loanAmount
 **詳細設定トグル（showAdvanced）**:
 `expenseRate`, `incomeTaxRate`, `buildingAge`, `buildingType`, `exitYieldTarget` は
 詳細設定パネルに格納されており、デフォルトでは非表示。
+
+**レスポンシブグリッド**:
+
+すべての入力グリッドは `grid-cols-1 sm:grid-cols-2`（または `sm:grid-cols-3`）で実装されており、モバイル（`sm` ブレークポイント未満）では縦1列に、タブレット以上では2〜3列に切り替わる。
 
 **クライアントサイドバリデーション（`validate`）**:
 「シミュレーション実行」押下時に `validate()` を実行し、エラーがあれば API を呼ばずフィールド直下にエラーメッセージを表示する。
