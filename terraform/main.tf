@@ -7,12 +7,10 @@ terraform {
     }
   }
 
-  # GCS remote backend でシークレットを含む state をローカル管理から保護する。
-  # bucket は手動作成（terraform.tfvars.example 参照）してからコメントを外す。
-  # backend "gcs" {
-  #   bucket = "<project_id>-tfstate"
-  #   prefix = "yield-guard/prod"
-  # }
+  backend "gcs" {
+    bucket = "yield-guard-tfstate"
+    prefix = "yield-guard/prod"
+  }
 }
 
 provider "google" {
