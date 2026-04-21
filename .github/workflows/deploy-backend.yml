@@ -50,7 +50,7 @@ jobs:
           docker push "${{ env.IMAGE }}:latest"
 
       - name: Deploy to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@a11ef4f5885a9bd9d21e05cae0ccb96a49db94f4  # v2.9.0
+        uses: google-github-actions/deploy-cloudrun@251330ba9a8a34bfbc1622895f42e1d53fd14522  # v2.7.6
         with:
           # このワークフローは main ブランチ → prod 環境専用。
           # stg 環境用には deploy-backend-stg.yml を別途作成し service 名を変更する。
