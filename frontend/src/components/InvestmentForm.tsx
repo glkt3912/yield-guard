@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import type { InvestmentInput, BuildingType } from "@/types/investment";
-import { DEFAULT_INPUT } from "@/types/investment";
+import type { InvestmentInput, BuildingType, SimulationMode } from "@/types/investment";
+import { DEFAULT_INPUT, QUICK_MODE_DEFAULTS } from "@/types/investment";
 import { formatPct } from "@/lib/utils";
 import { fetchMunicipalities, type Municipality } from "@/lib/api";
-import { Search, Calculator, Info, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Search, Calculator, Info, AlertTriangle, ShieldCheck, Zap, SlidersHorizontal } from "lucide-react";
 import { ZONING_TYPES, ZONING_META, type ZoningType } from "@/lib/zoning";
 
 // 全47都道府県（法的に変容しない静的データ）
@@ -53,6 +53,8 @@ interface Props {
   onAnalyze: (input: InvestmentInput) => Promise<void>;
   onFetchLandPrices: (area: string, city: string, lat?: number, lng?: number) => Promise<void>;
   loading: boolean;
+  simulationMode: SimulationMode;
+  onModeChange: (mode: SimulationMode) => void;
 }
 
 /** 現在の直近2年分の期間ラベルを生成 */
@@ -63,7 +65,7 @@ function getPeriodLabel(): string {
 
 type FormErrors = Partial<Record<keyof InvestmentInput, string>>;
 
-function validate(input: InvestmentInput): FormErrors {
+function validateFull(input: InvestmentInput): FormErrors {
   const e: FormErrors = {};
   if (input.landPrice <= 0 || input.landPrice > 10_000_000_000)
     e.landPrice = "1〜100億円の範囲で入力してください";
@@ -92,7 +94,24 @@ function validate(input: InvestmentInput): FormErrors {
   return e;
 }
 
-export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props) {
+function validateQuick(input: InvestmentInput): FormErrors {
+  const e: FormErrors = {};
+  if (input.landPrice <= 0 || input.landPrice > 10_000_000_000)
+    e.landPrice = "1〜100億円の範囲で入力してください";
+  if (input.buildingCost <= 0 || input.buildingCost > 10_000_000_000)
+    e.buildingCost = "1〜100億円の範囲で入力してください";
+  if (input.monthlyRent <= 0)
+    e.monthlyRent = "正の値を入力してください";
+  if (input.loanAmount < 0)
+    e.loanAmount = "0以上の値を入力してください";
+  if (input.loanYears < 0 || input.loanYears > 50)
+    e.loanYears = "0〜50年の範囲で入力してください";
+  if (input.holdingYears < 0 || input.holdingYears > 50)
+    e.holdingYears = "0〜50年の範囲で入力してください";
+  return e;
+}
+
+export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulationMode, onModeChange }: Props) {
   const [input, setInput] = useState<InvestmentInput>(DEFAULT_INPUT);
   const [area, setArea] = useState("10");
   const [city, setCity] = useState("");
@@ -104,6 +123,8 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [zoningType, setZoningType] = useState<ZoningType>("");
+
+  const isQuick = simulationMode === "quick";
 
   const filteredMunicipalities = useMemo(
     () => muniFilter.trim()
@@ -164,14 +185,56 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
   const fromPct = (s: string) => (parseFloat(s) || 0) / 100;
 
   const handleAnalyze = () => {
-    const errs = validate(input);
+    const errs = isQuick ? validateQuick(input) : validateFull(input);
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
-    onAnalyze(input);
+    const payload: InvestmentInput = isQuick
+      ? { ...input, ...QUICK_MODE_DEFAULTS } as InvestmentInput
+      : input;
+    onAnalyze(payload);
   };
 
   return (
     <div className="space-y-4">
+      {/* モード切替 */}
+      <div className="flex rounded-lg border bg-muted p-1 gap-1" role="group" aria-label="シミュレーションモード">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={simulationMode === "quick"}
+          onClick={() => onModeChange("quick")}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            simulationMode === "quick"
+              ? "bg-primary text-white shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Zap className="h-3.5 w-3.5" />
+          クイック
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={simulationMode === "full"}
+          onClick={() => onModeChange("full")}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            simulationMode === "full"
+              ? "bg-primary text-white shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          詳細
+        </button>
+      </div>
+
+      {isQuick && (
+        <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+          <span className="font-semibold">クイックモード:</span>{" "}
+          6項目のみ入力してください。空室率5%・運営経費率20%・建物構造:木造 をデフォルトとして計算します。
+        </div>
+      )}
+
       {/* 相場データ取得 */}
       <Card>
         <CardHeader>
@@ -273,44 +336,54 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
               value={toMan(input.landPrice)}
               onChange={(e) => setNum("landPrice", fromMan(e.target.value))}
               error={errors.landPrice} />
-            <Input label="土地面積" type="number" suffix="m²"
-              value={String(input.landArea)}
-              onChange={(e) => setNum("landArea", parseFloat(e.target.value) || 0)} />
+            {!isQuick && (
+              <Input label="土地面積" type="number" suffix="m²"
+                value={String(input.landArea)}
+                onChange={(e) => setNum("landArea", parseFloat(e.target.value) || 0)} />
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="建築費" type="number" suffix="万円"
               value={toMan(input.buildingCost)}
               onChange={(e) => setNum("buildingCost", fromMan(e.target.value))}
               error={errors.buildingCost} />
-            <Input label="築年数" type="number" suffix="年（0=新築）"
-              value={String(input.buildingAge)}
-              onChange={(e) => setNum("buildingAge", parseInt(e.target.value) || 0)} />
-            <Input label="最寄り駅徒歩" type="number" suffix="分（0=未入力）"
-              value={String(input.stationMinutes)}
-              onChange={(e) => setNum("stationMinutes", parseInt(e.target.value) || 0)} />
+            {!isQuick && (
+              <Input label="築年数" type="number" suffix="年（0=新築）"
+                value={String(input.buildingAge)}
+                onChange={(e) => setNum("buildingAge", parseInt(e.target.value) || 0)} />
+            )}
+            {!isQuick && (
+              <Input label="最寄り駅徒歩" type="number" suffix="分（0=未入力）"
+                value={String(input.stationMinutes)}
+                onChange={(e) => setNum("stationMinutes", parseInt(e.target.value) || 0)} />
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="想定月額賃料" type="number" suffix="円"
               value={String(input.monthlyRent)}
               onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
               error={errors.monthlyRent} />
-            <Select label="建物構造" value={input.buildingType}
-              onChange={(e) => setStr("buildingType", e.target.value as BuildingType)}
-              options={BUILDING_TYPES} />
+            {!isQuick && (
+              <Select label="建物構造" value={input.buildingType}
+                onChange={(e) => setStr("buildingType", e.target.value as BuildingType)}
+                options={BUILDING_TYPES} />
+            )}
           </div>
 
           {/* ローン条件 */}
           <div className="border-t pt-3">
             <p className="mb-3 text-sm font-medium text-muted-foreground">ローン条件</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className={`grid grid-cols-1 ${isQuick ? "sm:grid-cols-2" : "sm:grid-cols-3"} gap-3`}>
               <Input label="ローン金額" type="number" suffix="万円"
                 value={toMan(input.loanAmount)}
                 onChange={(e) => setNum("loanAmount", fromMan(e.target.value))}
                 error={errors.loanAmount} />
-              <Input label="年利" type="number" suffix="%" step="0.01"
-                value={toPct(input.annualLoanRate)}
-                onChange={(e) => setNum("annualLoanRate", fromPct(e.target.value))}
-                error={errors.annualLoanRate} />
+              {!isQuick && (
+                <Input label="年利" type="number" suffix="%" step="0.01"
+                  value={toPct(input.annualLoanRate)}
+                  onChange={(e) => setNum("annualLoanRate", fromPct(e.target.value))}
+                  error={errors.annualLoanRate} />
+              )}
               <Input label="返済期間" type="number" suffix="年"
                 value={String(input.loanYears)}
                 onChange={(e) => setNum("loanYears", parseInt(e.target.value) || 35)}
@@ -326,98 +399,108 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
                 value={String(input.holdingYears)}
                 onChange={(e) => setNum("holdingYears", parseInt(e.target.value) || 10)}
                 error={errors.holdingYears} />
-              <Input label="売却時目標利回り（実質）" type="number" suffix="%" step="0.5"
-                value={toPct(input.exitYieldTarget, 1)}
-                onChange={(e) => setNum("exitYieldTarget", fromPct(e.target.value))}
-                error={errors.exitYieldTarget} />
+              {!isQuick && (
+                <Input label="売却時目標利回り（実質）" type="number" suffix="%" step="0.5"
+                  value={toPct(input.exitYieldTarget, 1)}
+                  onChange={(e) => setNum("exitYieldTarget", fromPct(e.target.value))}
+                  error={errors.exitYieldTarget} />
+              )}
             </div>
           </div>
 
           {/* 用途地域 */}
-          <div className="border-t pt-3 space-y-2">
-            <Select
-              label="用途地域（任意）"
-              value={zoningType}
-              onChange={(e) => setZoningType(e.target.value as ZoningType)}
-              options={[
-                { value: "", label: "（未選択）" },
-                ...ZONING_TYPES.map((z) => ({ value: z, label: z })),
-              ]}
-            />
-            {zoningType && (() => {
-              const meta = ZONING_META[zoningType];
-              if (!meta) return null;
-              if (meta.riskLevel === 0) return (
-                <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 p-2 text-green-800 text-xs">
-                  <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span>良好な住環境です</span>
-                </div>
-              );
-              const styles: Record<number, string> = {
-                1: "border-blue-200 bg-blue-50 text-blue-800",
-                2: "border-yellow-300 bg-yellow-50 text-yellow-800",
-                3: "border-red-300 bg-red-50 text-red-800",
-              };
-              const labels: Record<number, string> = { 1: "低リスク", 2: "中リスク", 3: "高リスク" };
-              return (
-                <div className={`flex items-start gap-2 rounded-md border p-2 text-xs ${styles[meta.riskLevel]}`}>
-                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold">{labels[meta.riskLevel]}: </span>
-                    <span>{meta.riskMessage}</span>
+          {!isQuick && (
+            <div className="border-t pt-3 space-y-2">
+              <Select
+                label="用途地域（任意）"
+                value={zoningType}
+                onChange={(e) => setZoningType(e.target.value as ZoningType)}
+                options={[
+                  { value: "", label: "（未選択）" },
+                  ...ZONING_TYPES.map((z) => ({ value: z, label: z })),
+                ]}
+              />
+              {zoningType && (() => {
+                const meta = ZONING_META[zoningType];
+                if (!meta) return null;
+                if (meta.riskLevel === 0) return (
+                  <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 p-2 text-green-800 text-xs">
+                    <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>良好な住環境です</span>
                   </div>
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* 詳細設定 */}
-          <button className="text-xs text-primary underline-offset-2 hover:underline"
-            onClick={() => setShowAdvanced((p) => !p)}>
-            {showAdvanced ? "▲ 詳細設定を閉じる" : "▼ 詳細設定（諸経費率・空室率など）"}
-          </button>
-
-          {showAdvanced && (
-            <div className="space-y-3 rounded-md bg-muted/50 p-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Input label="諸経費率" type="number" suffix="%" step="0.5"
-                  value={toPct(input.miscExpenseRate, 1)}
-                  onChange={(e) => setNum("miscExpenseRate", fromPct(e.target.value))}
-                  error={errors.miscExpenseRate} />
-                <Input label="現況空室率" type="number" suffix="%" step="1"
-                  value={toPct(input.actualVacancyRate, 0)}
-                  onChange={(e) => setNum("actualVacancyRate", fromPct(e.target.value))} />
-                <Input label="想定空室率（長期）" type="number" suffix="%" step="1"
-                  value={toPct(input.vacancyRate, 0)}
-                  onChange={(e) => setNum("vacancyRate", fromPct(e.target.value))}
-                  error={errors.vacancyRate} />
-                <Input label="運営経費率※" type="number" suffix="%" step="1"
-                  value={toPct(input.expenseRate, 0)}
-                  onChange={(e) => setNum("expenseRate", fromPct(e.target.value))}
-                  error={errors.expenseRate} />
-                <Input label="所得税率（実効）" type="number" suffix="%" step="1"
-                  value={toPct(input.incomeTaxRate, 0)}
-                  onChange={(e) => setNum("incomeTaxRate", fromPct(e.target.value))}
-                  error={errors.incomeTaxRate} />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                ※運営経費率はローン利息を含みません（管理費・修繕費・固定資産税・保険等）
-              </p>
+                );
+                const styles: Record<number, string> = {
+                  1: "border-blue-200 bg-blue-50 text-blue-800",
+                  2: "border-yellow-300 bg-yellow-50 text-yellow-800",
+                  3: "border-red-300 bg-red-50 text-red-800",
+                };
+                const labels: Record<number, string> = { 1: "低リスク", 2: "中リスク", 3: "高リスク" };
+                return (
+                  <div className={`flex items-start gap-2 rounded-md border p-2 text-xs ${styles[meta.riskLevel]}`}>
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold">{labels[meta.riskLevel]}: </span>
+                      <span>{meta.riskMessage}</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
+          {/* 詳細設定 */}
+          {!isQuick && (
+            <>
+              <button className="text-xs text-primary underline-offset-2 hover:underline"
+                onClick={() => setShowAdvanced((p) => !p)}>
+                {showAdvanced ? "▲ 詳細設定を閉じる" : "▼ 詳細設定（諸経費率・空室率など）"}
+              </button>
+
+              {showAdvanced && (
+                <div className="space-y-3 rounded-md bg-muted/50 p-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Input label="諸経費率" type="number" suffix="%" step="0.5"
+                      value={toPct(input.miscExpenseRate, 1)}
+                      onChange={(e) => setNum("miscExpenseRate", fromPct(e.target.value))}
+                      error={errors.miscExpenseRate} />
+                    <Input label="現況空室率" type="number" suffix="%" step="1"
+                      value={toPct(input.actualVacancyRate, 0)}
+                      onChange={(e) => setNum("actualVacancyRate", fromPct(e.target.value))} />
+                    <Input label="想定空室率（長期）" type="number" suffix="%" step="1"
+                      value={toPct(input.vacancyRate, 0)}
+                      onChange={(e) => setNum("vacancyRate", fromPct(e.target.value))}
+                      error={errors.vacancyRate} />
+                    <Input label="運営経費率※" type="number" suffix="%" step="1"
+                      value={toPct(input.expenseRate, 0)}
+                      onChange={(e) => setNum("expenseRate", fromPct(e.target.value))}
+                      error={errors.expenseRate} />
+                    <Input label="所得税率（実効）" type="number" suffix="%" step="1"
+                      value={toPct(input.incomeTaxRate, 0)}
+                      onChange={(e) => setNum("incomeTaxRate", fromPct(e.target.value))}
+                      error={errors.incomeTaxRate} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    ※運営経費率はローン利息を含みません（管理費・修繕費・固定資産税・保険等）
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
           {/* ストレステスト */}
-          <div className="border-t pt-3 space-y-4">
-            <p className="text-sm font-medium text-muted-foreground">ストレステスト</p>
-            <Slider label="空室率の上昇" value={input.vacancyRateDelta}
-              min={0} max={0.3} step={0.01}
-              onChange={(v) => setNum("vacancyRateDelta", v)}
-              formatValue={(v) => `+${formatPct(v)}`} />
-            <Slider label="金利の上昇" value={input.loanRateDelta}
-              min={0} max={0.03} step={0.001}
-              onChange={(v) => setNum("loanRateDelta", v)}
-              formatValue={(v) => `+${formatPct(v)}`} />
-          </div>
+          {!isQuick && (
+            <div className="border-t pt-3 space-y-4">
+              <p className="text-sm font-medium text-muted-foreground">ストレステスト</p>
+              <Slider label="空室率の上昇" value={input.vacancyRateDelta}
+                min={0} max={0.3} step={0.01}
+                onChange={(v) => setNum("vacancyRateDelta", v)}
+                formatValue={(v) => `+${formatPct(v)}`} />
+              <Slider label="金利の上昇" value={input.loanRateDelta}
+                min={0} max={0.03} step={0.001}
+                onChange={(v) => setNum("loanRateDelta", v)}
+                formatValue={(v) => `+${formatPct(v)}`} />
+            </div>
+          )}
 
           <Button className="w-full" size="lg" loading={loading}
             onClick={handleAnalyze}>

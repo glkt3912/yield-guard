@@ -26,7 +26,7 @@ describe("Dashboard", () => {
     expect(screen.getByText(/左のフォームから条件を入力して/)).toBeInTheDocument();
   });
 
-  it("analyzeAPIの応答後にYieldAnalysisとCashFlowChartが表示される", async () => {
+  it("analyzeAPIの応答後にYieldAnalysisが表示される（クイックモード）", async () => {
     const mockResult = makeResult({ grossYield: 0.09, isAbove8Percent: true });
     vi.mocked(api.analyze).mockResolvedValue(mockResult);
 
@@ -36,6 +36,25 @@ describe("Dashboard", () => {
 
     await waitFor(() => {
       // YieldAnalysis が表示される（表面利回り数値）
+      expect(screen.getByText("9.00")).toBeInTheDocument();
+    });
+
+    // クイックモードではCashFlowChartは非表示
+    expect(screen.queryByText(/キャッシュフロー推移/)).not.toBeInTheDocument();
+  });
+
+  it("詳細モードでanalyzeAPIの応答後にCashFlowChartが表示される", async () => {
+    const mockResult = makeResult({ grossYield: 0.09, isAbove8Percent: true });
+    vi.mocked(api.analyze).mockResolvedValue(mockResult);
+
+    render(<Dashboard />);
+
+    // 詳細モードに切り替え
+    await userEvent.click(screen.getByRole("radio", { name: /詳細/ }));
+
+    await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
+
+    await waitFor(() => {
       expect(screen.getByText("9.00")).toBeInTheDocument();
     });
 

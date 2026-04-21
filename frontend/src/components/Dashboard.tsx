@@ -6,7 +6,7 @@ import { CashFlowChart } from "@/components/CashFlowChart";
 import { DeadCrossChart } from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
-import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk } from "@/types/investment";
+import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode } from "@/types/investment";
 import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks } from "@/lib/api";
 import { ShieldAlert, XOctagon, AlertTriangle } from "lucide-react";
 
@@ -29,6 +29,12 @@ export function Dashboard() {
   const [populationForecast, setPopulationForecast] = useState<PopulationForecastResult | null>(null);
   const [landAppraisal, setLandAppraisal] = useState<AppraisalComparisonResult | null>(null);
   const [externalUrbanRisks, setExternalUrbanRisks] = useState<UrbanRisk[] | null>(null);
+  const [simulationMode, setSimulationMode] = useState<SimulationMode>("quick");
+
+  const handleModeChange = (mode: SimulationMode) => {
+    setSimulationMode(mode);
+    setResult(null);
+  };
 
   const handleAnalyze = async (input: InvestmentInput) => {
     setLoading(true);
@@ -129,6 +135,8 @@ export function Dashboard() {
               onAnalyze={handleAnalyze}
               onFetchLandPrices={handleFetchLandPrices}
               loading={loading}
+              simulationMode={simulationMode}
+              onModeChange={handleModeChange}
             />
           </aside>
 
@@ -173,18 +181,22 @@ export function Dashboard() {
                   </div>
                 )}
                 <YieldAnalysis result={result} input={lastInput} populationForecast={populationForecast} />
-                {result.acquisitionCosts && (
-                  <div className="rounded-xl border bg-white p-5 shadow-sm">
-                    <CostBreakdown
-                      input={lastInput}
-                      acquisitionCosts={result.acquisitionCosts}
-                      yearlyResults={result.yearlyResults}
-                    />
-                  </div>
+                {simulationMode === "full" && (
+                  <>
+                    {result.acquisitionCosts && (
+                      <div className="rounded-xl border bg-white p-5 shadow-sm">
+                        <CostBreakdown
+                          input={lastInput}
+                          acquisitionCosts={result.acquisitionCosts}
+                          yearlyResults={result.yearlyResults}
+                        />
+                      </div>
+                    )}
+                    {/* 自己資金 = 総投資額 - ローン金額（ISSUE-22: 投資回収年の正確な計算に使用） */}
+                    <CashFlowChart result={result} equityInvested={result.totalInvestment - lastInput.loanAmount} />
+                    <DeadCrossChart result={result} />
+                  </>
                 )}
-                {/* 自己資金 = 総投資額 - ローン金額（ISSUE-22: 投資回収年の正確な計算に使用） */}
-                <CashFlowChart result={result} equityInvested={result.totalInvestment - lastInput.loanAmount} />
-                <DeadCrossChart result={result} />
               </>
             )}
           </section>

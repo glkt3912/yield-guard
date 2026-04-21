@@ -216,3 +216,22 @@ export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
   "RC造": 47,
   "SRC造": 47,
 };
+
+export type SimulationMode = "quick" | "full";
+
+export const QUICK_MODE_DEFAULTS: Partial<InvestmentInput> = {
+  landArea:          100,
+  buildingAge:       0,
+  stationMinutes:    0,
+  miscExpenseRate:   0.07,
+  vacancyRate:       0.05,
+  actualVacancyRate: 0,
+  expenseRate:       0.20,
+  incomeTaxRate:     0.33,
+  exitYieldTarget:   0.06,
+  vacancyRateDelta:  0,
+  loanRateDelta:     0,
+  annualPropertyTax: 0,
+  buildingType:      "木造" as BuildingType,
+  annualLoanRate:    0.015,
+};
