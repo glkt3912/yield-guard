@@ -56,6 +56,47 @@ func TestCalcPropertyTax(t *testing.T) {
 	}
 }
 
+// TestCalcPropertyTax_200SqmBoundary はちょうど200㎡の境界値（小規模1/6 vs 一般1/3）を検証する
+func TestCalcPropertyTax_200SqmBoundary(t *testing.T) {
+	assessedLand := 20_000_000.0
+	assessedBuilding := 10_000_000.0
+
+	// ちょうど200㎡: 小規模住宅用地特例（1/6, 1/3）が適用されるべき
+	gotAt200 := CalcPropertyTax(assessedLand, assessedBuilding, PropertyTaxOptions{LandAreaSqm: 200})
+	// 土地固定: 20,000,000×0.014/6=46,667
+	// 土地都市: 20,000,000×0.003/3=20,000
+	// 建物固定: 140,000, 建物都市: 30,000
+	wantAt200 := 236_667.0
+	if math.Abs(gotAt200.AnnualTotal-wantAt200) > 1 {
+		t.Errorf("200㎡(小規模): AnnualTotal = %.0f, want %.0f", gotAt200.AnnualTotal, wantAt200)
+	}
+
+	// 200㎡超（201㎡）: 一般住宅用地特例（1/3, 2/3）が適用されるべき
+	gotAt201 := CalcPropertyTax(assessedLand, assessedBuilding, PropertyTaxOptions{LandAreaSqm: 201})
+	// 土地固定: 20,000,000×0.014/3=93,333
+	// 土地都市: 20,000,000×0.003×2/3=40,000
+	// 建物: 170,000
+	wantAt201 := 303_333.0
+	if math.Abs(gotAt201.AnnualTotal-wantAt201) > 1 {
+		t.Errorf("201㎡(一般): AnnualTotal = %.0f, want %.0f", gotAt201.AnnualTotal, wantAt201)
+	}
+
+	// 200㎡は小規模（低税額）、201㎡は一般（高税額）になること
+	if gotAt200.AnnualTotal >= gotAt201.AnnualTotal {
+		t.Errorf("200㎡(%.0f) >= 201㎡(%.0f): 小規模特例が一般より税額が低いはず", gotAt200.AnnualTotal, gotAt201.AnnualTotal)
+	}
+
+	// 土地の内訳が正しく切り替わること
+	// 200㎡: 小規模 landFixed=46,667
+	if math.Abs(gotAt200.LandFixedAssetTax-46_667) > 1 {
+		t.Errorf("200㎡ LandFixedAssetTax = %.0f, want 46667", gotAt200.LandFixedAssetTax)
+	}
+	// 201㎡: 一般 landFixed=93,333
+	if math.Abs(gotAt201.LandFixedAssetTax-93_333) > 1 {
+		t.Errorf("201㎡ LandFixedAssetTax = %.0f, want 93333", gotAt201.LandFixedAssetTax)
+	}
+}
+
 func TestCalcPropertyTaxProration(t *testing.T) {
 	tests := []struct {
 		name      string

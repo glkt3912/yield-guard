@@ -295,14 +295,13 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice, station
                 <XAxis
                   dataKey="area"
                   name="面積"
-                  unit="m²"
                   tick={{ fontSize: 10 }}
                   label={{ value: "面積(m²)", position: "insideBottom", offset: -4, fontSize: 10 }}
                 />
                 <YAxis
                   dataKey="tsubo"
                   name="坪単価"
-                  unit="万円"
+                  tickFormatter={(v) => `${v}万`}
                   tick={{ fontSize: 10 }}
                   width={50}
                 />

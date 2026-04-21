@@ -17,8 +17,8 @@ const (
 func Analyze(input InvestmentInput) InvestmentResult {
 	input.Defaults()
 
-	// ストレステスト値を適用
-	effectiveVacancy := input.VacancyRate + input.VacancyRateDelta
+	// ストレステスト値を適用（空室率は99%上限でキャップ）
+	effectiveVacancy := math.Min(input.VacancyRate+input.VacancyRateDelta, 0.99)
 	effectiveRate := input.AnnualLoanRate + input.LoanRateDelta
 
 	miscExpenses := (input.LandPrice + input.BuildingCost) * input.MiscExpenseRate
@@ -83,7 +83,8 @@ func Analyze(input InvestmentInput) InvestmentResult {
 			}
 		}
 
-		yearAnnualRent := annualRent
+		declineFactor := math.Pow(1-input.RentDeclineRate, float64(y))
+		yearAnnualRent := annualRent * declineFactor
 		yearExpenses := yearAnnualRent*input.ExpenseRate + input.AnnualPropertyTax
 
 		// 減価償却は耐用年数内のみ
@@ -140,6 +141,29 @@ func Analyze(input InvestmentInput) InvestmentResult {
 
 	criticalErrors := calcCriticalErrors(input, deadCrossYear, usefulLife)
 
+	// ストレスシナリオ自動計算（6つのデフォルト + 入力値が非ゼロなら第7シナリオ）
+	defaultScenarios := []struct {
+		label    string
+		rateDelta float64
+		vacDelta  float64
+	}{
+		{"ベースライン", 0, 0},
+		{"金利+1%", 0.01, 0},
+		{"金利+2%", 0.02, 0},
+		{"空室+10%", 0, 0.10},
+		{"空室+20%", 0, 0.20},
+		{"複合ストレス", 0.02, 0.10},
+	}
+	stressScenarios := make([]StressScenarioResult, 0, 7)
+	for _, sc := range defaultScenarios {
+		stressScenarios = append(stressScenarios, calcStressScenario(input, sc.label, sc.rateDelta, sc.vacDelta))
+	}
+	if input.LoanRateDelta != 0 || input.VacancyRateDelta != 0 {
+		stressScenarios = append(stressScenarios, calcStressScenario(
+			input, "カスタム", input.LoanRateDelta, input.VacancyRateDelta,
+		))
+	}
+
 	acquisitionCosts := CalcAcquisitionCosts(
 		input.LandPrice,
 		input.BuildingCost,
@@ -166,6 +190,80 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		ExitTransferTax:       exitTax,
 		ExitNetProceeds:       exitNet,
 		ExitTotalEquity:       exitEquity,
+		StressScenarios:       stressScenarios,
+	}
+}
+
+// calcStressScenario は指定の金利・空室率オフセットでシナリオ計算を行い結果を返す
+func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta float64) StressScenarioResult {
+	in := base
+
+	effectiveVacancy := in.VacancyRate + vacDelta
+	if effectiveVacancy > 1 {
+		effectiveVacancy = 1
+	}
+	effectiveRate := in.AnnualLoanRate + rateDelta
+
+	annualRent := in.MonthlyRent * 12 * (1 - effectiveVacancy)
+	annualExpenses := annualRent*in.ExpenseRate + in.AnnualPropertyTax
+	noi := annualRent - annualExpenses
+
+	monthlyPayment := calcMonthlyPayment(in.LoanAmount, effectiveRate, in.LoanYears)
+	annualLoanPayment := monthlyPayment * 12
+
+	// DSCR = NOI / 年間ローン返済額
+	dscr := 0.0
+	if annualLoanPayment > 0 {
+		dscr = noi / annualLoanPayment
+	}
+
+	// HoldingYears年間の累積CF（税引前）とブレークイーン年を算出
+	holdingYears := in.HoldingYears
+	if holdingYears <= 0 {
+		holdingYears = 10
+	}
+	totalCF := 0.0
+	breakEvenYear := -1
+	cumCF := 0.0
+	remainingBalance := in.LoanAmount
+	for y := 1; y <= holdingYears; y++ {
+		yearLoan := annualLoanPayment
+		if remainingBalance <= 0 || y > in.LoanYears {
+			yearLoan = 0
+		}
+		cf := annualRent - yearLoan - annualExpenses
+		totalCF += cf
+		cumCF += cf
+		if breakEvenYear == -1 && cumCF > 0 {
+			breakEvenYear = y
+		}
+		// 残高更新（簡略: 元金返済=返済額-利息）
+		if remainingBalance > 0 && y <= in.LoanYears {
+			annInterest, annPrincipal := calcYearlyLoanComponents(remainingBalance, effectiveRate, monthlyPayment)
+			_ = annInterest
+			remainingBalance -= annPrincipal
+			if remainingBalance < 0 {
+				remainingBalance = 0
+			}
+		}
+	}
+
+	isSafe := false
+	if annualLoanPayment == 0 {
+		// 無借金物件はDSCRによる返済リスクがないため、ブレークイーン達成のみで安全と判定
+		isSafe = breakEvenYear != -1 && breakEvenYear <= holdingYears
+	} else {
+		isSafe = dscr >= 1.0 && breakEvenYear != -1 && breakEvenYear <= holdingYears
+	}
+
+	return StressScenarioResult{
+		Label:             label,
+		InterestRateDelta: rateDelta,
+		VacancyRateDelta:  vacDelta,
+		TotalCashFlow:     totalCF,
+		DSCR:              dscr,
+		BreakEvenYear:     breakEvenYear,
+		IsSafe:            isSafe,
 	}
 }
 

@@ -25,6 +25,8 @@ page.tsx
 
 `frontend/src/components/Dashboard.tsx`
 
+> テストカバレッジ: `Dashboard.test.tsx`（Vitest + RTL）— 状態管理・API呼び出しフロー・子コンポーネントへの props 伝達を検証。
+
 **状態管理**:
 - `result`: `InvestmentResult | null`
 - `comparison`: `LandPriceComparison | null`
@@ -298,6 +300,8 @@ CF がマイナスの場合は「赤字転落 ⚠️」バッジを表示。フ�
 ## CostBreakdown
 
 `frontend/src/components/CostBreakdown.tsx`
+
+> テストカバレッジ: `CostBreakdown.test.tsx`（Vitest + RTL）— 初期投資内訳・取得時諸経費明細・年間費用（1年目）の表示を検証。
 
 **props**:
 - `input: InvestmentInput`

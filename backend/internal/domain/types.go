@@ -1,5 +1,7 @@
 package domain
 
+import "fmt"
+
 // BuildingType は建物構造種別を表す
 type BuildingType string
 
@@ -81,6 +83,21 @@ type InvestmentInput struct {
 
 	// 固定資産税・都市計画税（年間合計）。0 の場合は ExpenseRate に含まれる想定。
 	AnnualPropertyTax float64 `json:"annualPropertyTax"`
+
+	// 賃料下落率: 毎年この割合だけ実効賃料が低下する（例: 0.01 = 年1%下落）
+	RentDeclineRate float64 `json:"rentDeclineRate"`
+}
+
+// Validate は入力値のバリデーションを行い、不正な組み合わせはエラーを返す。
+// VacancyRate + VacancyRateDelta > 0.99 の場合、空室率オーバーフローとみなす。
+func (i *InvestmentInput) Validate() error {
+	if i.VacancyRate+i.VacancyRateDelta > 0.99 {
+		return fmt.Errorf(
+			"VacancyRate(%.2f) + VacancyRateDelta(%.2f) = %.2f exceeds maximum allowed vacancy of 0.99",
+			i.VacancyRate, i.VacancyRateDelta, i.VacancyRate+i.VacancyRateDelta,
+		)
+	}
+	return nil
 }
 
 // Defaults は構造的デフォルト（省略可能なフィールド）にのみ適用する。
@@ -137,6 +154,17 @@ type CriticalError struct {
 	Message string              `json:"message"`
 }
 
+// StressScenarioResult はストレステストの1シナリオ結果
+type StressScenarioResult struct {
+	Label             string  `json:"label"`
+	InterestRateDelta float64 `json:"interestRateDelta"`
+	VacancyRateDelta  float64 `json:"vacancyRateDelta"`
+	TotalCashFlow     float64 `json:"totalCashFlow"`
+	DSCR              float64 `json:"dscr"`
+	BreakEvenYear     int     `json:"breakEvenYear"` // 累積CFが正転する年（-1=なし）
+	IsSafe            bool    `json:"isSafe"`        // DSCR >= 1.0 && BreakEvenYear <= HoldingYears
+}
+
 // InvestmentResult は収支シミュレーションの結果
 type InvestmentResult struct {
 	TotalInvestment float64 `json:"totalInvestment"` // 総投資額（土地+建物+諸経費）
@@ -159,6 +187,8 @@ type InvestmentResult struct {
 	ExitTransferTax float64 `json:"exitTransferTax"` // 譲渡所得税
 	ExitNetProceeds float64 `json:"exitNetProceeds"` // 売却手取り（税・残債控除後）
 	ExitTotalEquity float64 `json:"exitTotalEquity"` // 最終手残り（売却手取り+累積CF）
+
+	StressScenarios []StressScenarioResult `json:"stressScenarios"`
 }
 
 // AcquisitionCostBreakdown は物件取得時の諸経費内訳

@@ -77,7 +77,11 @@ func (h *Handler) CompareLandPrice(c *gin.Context) {
 
 	areaSqm := 0.0
 	if areaSqmStr != "" {
-		areaSqm, _ = strconv.ParseFloat(areaSqmStr, 64)
+		areaSqm, err = strconv.ParseFloat(areaSqmStr, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "area_sqm は数値で指定してください"})
+			return
+		}
 	}
 
 	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
@@ -209,7 +213,11 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 
 	areaSqm := 0.0
 	if areaSqmStr != "" {
-		areaSqm, _ = strconv.ParseFloat(areaSqmStr, 64)
+		areaSqm, err = strconv.ParseFloat(areaSqmStr, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "area_sqm は数値で指定してください"})
+			return
+		}
 	}
 	if areaSqm <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "area_sqm は正の数値で指定してください"})
@@ -218,12 +226,20 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 
 	buildingAge := 0
 	if buildingAgeStr != "" {
-		buildingAge, _ = strconv.Atoi(buildingAgeStr)
+		buildingAge, err = strconv.Atoi(buildingAgeStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "building_age は整数で指定してください"})
+			return
+		}
 	}
 
 	stationMinutes := 0
 	if sm := c.Query("station_minutes"); sm != "" {
-		stationMinutes, _ = strconv.Atoi(sm)
+		stationMinutes, err = strconv.Atoi(sm)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "station_minutes は整数で指定してください"})
+			return
+		}
 	}
 
 	var ridershipScore domain.RidershipDemandScore
