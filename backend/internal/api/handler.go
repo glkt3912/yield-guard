@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -474,16 +475,24 @@ func (h *Handler) GetUrbanRisks(c *gin.Context) {
 		disCh <- apiResult[domain.DisasterHistoryItem]{d, e}
 	}()
 
-	if r := <-locCh; r.err == nil {
+	if r := <-locCh; r.err != nil {
+		log.Printf("WARN: FetchLocationOptimization failed (z=%d x=%d y=%d): %v", z, x, y, r.err)
+	} else {
 		res.location = r.data
 	}
-	if r := <-embCh; r.err == nil {
+	if r := <-embCh; r.err != nil {
+		log.Printf("WARN: FetchEmbankment failed (z=%d x=%d y=%d): %v", z, x, y, r.err)
+	} else {
 		res.embank = r.data
 	}
-	if r := <-rdCh; r.err == nil {
+	if r := <-rdCh; r.err != nil {
+		log.Printf("WARN: FetchUrbanRoad failed (z=%d x=%d y=%d): %v", z, x, y, r.err)
+	} else {
 		res.road = r.data
 	}
-	if r := <-disCh; r.err == nil {
+	if r := <-disCh; r.err != nil {
+		log.Printf("WARN: FetchDisasterHistory failed (z=%d x=%d y=%d): %v", z, x, y, r.err)
+	} else {
 		res.disaster = r.data
 	}
 

@@ -21,11 +21,15 @@ func init() {
 
 // mockMLITClient は MLITClient インターフェースのテスト用モック
 type mockMLITClient struct {
-	fetchFunc        func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
-	muniFunc         func(ctx context.Context, area string) ([]mlit.Municipality, error)
-	ridershipFunc    func(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error)
-	populationFunc   func(ctx context.Context, z, x, y int) ([]domain.PopulationForecastItem, error)
-	appraisalFunc    func(ctx context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error)
+	fetchFunc            func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
+	muniFunc             func(ctx context.Context, area string) ([]mlit.Municipality, error)
+	ridershipFunc        func(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error)
+	populationFunc       func(ctx context.Context, z, x, y int) ([]domain.PopulationForecastItem, error)
+	appraisalFunc        func(ctx context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error)
+	locationOptFunc      func(ctx context.Context, z, x, y int) ([]domain.LocationOptimizationItem, error)
+	embankmentFunc       func(ctx context.Context, z, x, y int) ([]domain.EmbankmentItem, error)
+	urbanRoadFunc        func(ctx context.Context, z, x, y int) ([]domain.UrbanRoadItem, error)
+	disasterHistoryFunc  func(ctx context.Context, z, x, y int) ([]domain.DisasterHistoryItem, error)
 }
 
 func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
@@ -63,19 +67,31 @@ func (m *mockMLITClient) FetchLandAppraisals(ctx context.Context, area, city str
 	return m.appraisalFunc(ctx, area, city, year, division)
 }
 
-func (m *mockMLITClient) FetchLocationOptimization(_ context.Context, _, _, _ int) ([]domain.LocationOptimizationItem, error) {
+func (m *mockMLITClient) FetchLocationOptimization(ctx context.Context, z, x, y int) ([]domain.LocationOptimizationItem, error) {
+	if m.locationOptFunc != nil {
+		return m.locationOptFunc(ctx, z, x, y)
+	}
 	return []domain.LocationOptimizationItem{}, nil
 }
 
-func (m *mockMLITClient) FetchEmbankment(_ context.Context, _, _, _ int) ([]domain.EmbankmentItem, error) {
+func (m *mockMLITClient) FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.EmbankmentItem, error) {
+	if m.embankmentFunc != nil {
+		return m.embankmentFunc(ctx, z, x, y)
+	}
 	return []domain.EmbankmentItem{}, nil
 }
 
-func (m *mockMLITClient) FetchUrbanRoad(_ context.Context, _, _, _ int) ([]domain.UrbanRoadItem, error) {
+func (m *mockMLITClient) FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.UrbanRoadItem, error) {
+	if m.urbanRoadFunc != nil {
+		return m.urbanRoadFunc(ctx, z, x, y)
+	}
 	return []domain.UrbanRoadItem{}, nil
 }
 
-func (m *mockMLITClient) FetchDisasterHistory(_ context.Context, _, _, _ int) ([]domain.DisasterHistoryItem, error) {
+func (m *mockMLITClient) FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domain.DisasterHistoryItem, error) {
+	if m.disasterHistoryFunc != nil {
+		return m.disasterHistoryFunc(ctx, z, x, y)
+	}
 	return []domain.DisasterHistoryItem{}, nil
 }
 
@@ -748,5 +764,117 @@ func TestInternalKeyMiddleware_CorrectKey(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200 with correct key, got %d", w.Code)
+	}
+}
+
+func TestGetUrbanRisks_MissingParams(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	for _, url := range []string{
+		"/api/urban-risks",
+		"/api/urban-risks?lat=35.68",
+		"/api/urban-risks?lng=139.69",
+	} {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, url, nil))
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("url=%s: expected 400, got %d", url, w.Code)
+		}
+	}
+}
+
+func TestGetUrbanRisks_InvalidRange(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	for _, url := range []string{
+		"/api/urban-risks?lat=10&lng=139.69",  // lat 範囲外（< 20）
+		"/api/urban-risks?lat=35.68&lng=200",  // lng 範囲外（> 154）
+		"/api/urban-risks?lat=abc&lng=139.69", // 数値でない
+	} {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, url, nil))
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("url=%s: expected 400, got %d", url, w.Code)
+		}
+	}
+}
+
+func TestGetUrbanRisks_EmptyResult(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/urban-risks?lat=35.68&lng=139.69", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var risks []domain.UrbanRisk
+	if err := json.NewDecoder(w.Body).Decode(&risks); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if len(risks) != 0 {
+		t.Errorf("expected empty array, got %d risks", len(risks))
+	}
+}
+
+func TestGetUrbanRisks_WithRisks(t *testing.T) {
+	mock := &mockMLITClient{
+		embankmentFunc: func(_ context.Context, _, _, _ int) ([]domain.EmbankmentItem, error) {
+			return []domain.EmbankmentItem{{Classification: "谷埋め型"}}, nil
+		},
+		urbanRoadFunc: func(_ context.Context, _, _, _ int) ([]domain.UrbanRoadItem, error) {
+			return []domain.UrbanRoadItem{{PlanningRoadJa: "都市計画道路A", KubunID: 3011}}, nil
+		},
+		disasterHistoryFunc: func(_ context.Context, _, _, _ int) ([]domain.DisasterHistoryItem, error) {
+			return []domain.DisasterHistoryItem{{Name: "浸水域", Year: 2019}}, nil
+		},
+	}
+	r := newTestRouter(mock)
+	req := httptest.NewRequest(http.MethodGet, "/api/urban-risks?lat=35.68&lng=139.69", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var risks []domain.UrbanRisk
+	if err := json.NewDecoder(w.Body).Decode(&risks); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	codes := make(map[string]bool)
+	for _, r := range risks {
+		codes[r.Code] = true
+	}
+	for _, want := range []string{"LARGE_EMBANKMENT", "URBAN_PLANNING_ROAD", "DISASTER_HISTORY"} {
+		if !codes[want] {
+			t.Errorf("expected risk code %s in response", want)
+		}
+	}
+}
+
+func TestGetUrbanRisks_PartialAPIFailure(t *testing.T) {
+	mock := &mockMLITClient{
+		embankmentFunc: func(_ context.Context, _, _, _ int) ([]domain.EmbankmentItem, error) {
+			return nil, errors.New("API timeout")
+		},
+		disasterHistoryFunc: func(_ context.Context, _, _, _ int) ([]domain.DisasterHistoryItem, error) {
+			return []domain.DisasterHistoryItem{{Name: "がけ崩れ", Year: 2011}}, nil
+		},
+	}
+	r := newTestRouter(mock)
+	req := httptest.NewRequest(http.MethodGet, "/api/urban-risks?lat=35.68&lng=139.69", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 even with partial failure, got %d", w.Code)
+	}
+	var risks []domain.UrbanRisk
+	if err := json.NewDecoder(w.Body).Decode(&risks); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	found := false
+	for _, r := range risks {
+		if r.Code == "DISASTER_HISTORY" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected DISASTER_HISTORY in response despite embankment API failure")
 	}
 }

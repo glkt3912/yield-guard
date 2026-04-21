@@ -530,3 +530,116 @@ func TestDetectUrbanRisks_NoRisks(t *testing.T) {
 		t.Errorf("expected no risks for normal zoning, got %d", len(risks))
 	}
 }
+
+func TestBuildUrbanRisksFromAPIs_NoItems(t *testing.T) {
+	risks := BuildUrbanRisksFromAPIs(nil, nil, nil, nil)
+	if len(risks) != 0 {
+		t.Errorf("expected no risks for empty inputs, got %d", len(risks))
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_OutsideResidentialGuidance(t *testing.T) {
+	// 居住誘導区域なし → 警告
+	items := []LocationOptimizationItem{{KubunNameJa: "都市機能誘導区域"}}
+	risks := BuildUrbanRisksFromAPIs(items, nil, nil, nil)
+	if len(risks) != 1 || risks[0].Code != "OUTSIDE_RESIDENTIAL_GUIDANCE" {
+		t.Errorf("expected OUTSIDE_RESIDENTIAL_GUIDANCE, got %+v", risks)
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_InsideResidentialGuidance(t *testing.T) {
+	// 居住誘導区域あり → 警告なし
+	items := []LocationOptimizationItem{
+		{KubunNameJa: "都市機能誘導区域"},
+		{KubunNameJa: "居住誘導区域"},
+	}
+	risks := BuildUrbanRisksFromAPIs(items, nil, nil, nil)
+	for _, r := range risks {
+		if r.Code == "OUTSIDE_RESIDENTIAL_GUIDANCE" {
+			t.Error("should not raise OUTSIDE_RESIDENTIAL_GUIDANCE when 居住誘導区域 is present")
+		}
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_LargeEmbankment(t *testing.T) {
+	items := []EmbankmentItem{{Classification: "谷埋め型"}}
+	risks := BuildUrbanRisksFromAPIs(nil, items, nil, nil)
+	if len(risks) != 1 || risks[0].Code != "LARGE_EMBANKMENT" {
+		t.Errorf("expected LARGE_EMBANKMENT, got %+v", risks)
+	}
+	if risks[0].Description == "" {
+		t.Error("description should not be empty")
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_LargeEmbankment_EmptyClassification(t *testing.T) {
+	items := []EmbankmentItem{{Classification: ""}}
+	risks := BuildUrbanRisksFromAPIs(nil, items, nil, nil)
+	if len(risks) != 1 || risks[0].Code != "LARGE_EMBANKMENT" {
+		t.Errorf("expected LARGE_EMBANKMENT, got %+v", risks)
+	}
+	// 空文字でも説明文が壊れていないことを確認
+	if risks[0].Description == "" {
+		t.Error("description should not be empty even with empty classification")
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_UrbanPlanningRoad(t *testing.T) {
+	roads := []UrbanRoadItem{
+		{PlanningRoadJa: "環状8号線", KubunID: 3011},
+		{PlanningRoadJa: "広場A", KubunID: 3023}, // 都市計画道路でない
+	}
+	risks := BuildUrbanRisksFromAPIs(nil, nil, roads, nil)
+	if len(risks) != 1 || risks[0].Code != "URBAN_PLANNING_ROAD" {
+		t.Errorf("expected URBAN_PLANNING_ROAD only, got %+v", risks)
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_UrbanPlanningRoad_NoKubun3011(t *testing.T) {
+	roads := []UrbanRoadItem{{PlanningRoadJa: "広場A", KubunID: 3023}}
+	risks := BuildUrbanRisksFromAPIs(nil, nil, roads, nil)
+	if len(risks) != 0 {
+		t.Errorf("expected no risks for kubun_id != 3011, got %+v", risks)
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_DisasterHistory(t *testing.T) {
+	disasters := []DisasterHistoryItem{
+		{Name: "浸水域", Year: 2019},
+		{Name: "浸水域", Year: 2011}, // 同じ名前の重複
+		{Name: "がけ崩れ", Year: 2004},
+	}
+	risks := BuildUrbanRisksFromAPIs(nil, nil, nil, disasters)
+	if len(risks) != 1 || risks[0].Code != "DISASTER_HISTORY" {
+		t.Errorf("expected DISASTER_HISTORY, got %+v", risks)
+	}
+	// 重複排除されて2種類が含まれることを確認
+	desc := risks[0].Description
+	if desc == "" {
+		t.Error("description should not be empty")
+	}
+}
+
+func TestBuildUrbanRisksFromAPIs_MultipleRisks(t *testing.T) {
+	risks := BuildUrbanRisksFromAPIs(
+		[]LocationOptimizationItem{{KubunNameJa: "都市機能誘導区域"}},
+		[]EmbankmentItem{{Classification: "谷埋め型"}},
+		[]UrbanRoadItem{{KubunID: 3011}},
+		[]DisasterHistoryItem{{Name: "浸水域", Year: 2019}},
+	)
+	if len(risks) != 4 {
+		t.Errorf("expected 4 risks, got %d: %+v", len(risks), risks)
+	}
+	codes := make(map[string]bool)
+	for _, r := range risks {
+		codes[r.Code] = true
+	}
+	for _, want := range []string{
+		"OUTSIDE_RESIDENTIAL_GUIDANCE", "LARGE_EMBANKMENT",
+		"URBAN_PLANNING_ROAD", "DISASTER_HISTORY",
+	} {
+		if !codes[want] {
+			t.Errorf("missing expected risk code: %s", want)
+		}
+	}
+}

@@ -173,7 +173,6 @@ type LocationOptimizationProperties struct {
 	NoticeNumber         string `json:"notice_number"`
 }
 
-
 // EmbankmentGeoJSON は XKT020 大規模盛土造成地マップAPIのGeoJSONレスポンス
 type EmbankmentGeoJSON struct {
 	Type     string             `json:"type"`
@@ -194,7 +193,6 @@ type EmbankmentProperties struct {
 	CityName                 string `json:"city_name"`
 	EmbankmentNumber         string `json:"embankment_number"`
 }
-
 
 // UrbanRoadGeoJSON は XKT030 都市計画道路APIのGeoJSONレスポンス
 type UrbanRoadGeoJSON struct {
@@ -222,7 +220,6 @@ type UrbanRoadProperties struct {
 	NoticeNumber      string `json:"notice_number"`
 }
 
-
 // DisasterHistoryGeoJSON は XST001 国土調査（災害履歴）APIのGeoJSONレスポンス
 type DisasterHistoryGeoJSON struct {
 	Type     string                 `json:"type"`
@@ -241,7 +238,6 @@ type DisasterHistoryProperties struct {
 	DisasterDate     string `json:"disaster_date"`     // 8桁 YYYYMMDD。不明部分は0
 	DisasterSource   string `json:"disaster_source"`
 }
-
 
 // Prefectures は都道府県コードマップ
 var Prefectures = map[string]string{

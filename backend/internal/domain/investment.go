@@ -492,11 +492,15 @@ func BuildUrbanRisksFromAPIs(
 
 	// XKT020: 大規模盛土造成地フィーチャが存在する場合
 	if len(embankmentItems) > 0 {
+		embDesc := "大規模盛土造成地に該当します。地震時の沈下・崩壊リスクがあります。"
+		if c := embankmentItems[0].Classification; c != "" {
+			embDesc = fmt.Sprintf("大規模盛土造成地（%s）に該当します。地震時の沈下・崩壊リスクがあります。", c)
+		}
 		risks = append(risks, UrbanRisk{
 			Code:        "LARGE_EMBANKMENT",
 			Level:       UrbanRiskLevelWarning,
 			Title:       "大規模盛土造成地",
-			Description: fmt.Sprintf("大規模盛土造成地（%s）に該当します。地震時の沈下・崩壊リスクがあります。", embankmentItems[0].Classification),
+			Description: embDesc,
 		})
 	}
 
