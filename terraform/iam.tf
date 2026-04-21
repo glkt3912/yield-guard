@@ -55,6 +55,9 @@ resource "google_project_iam_member" "sa_run_developer" {
 }
 
 resource "google_service_account_iam_member" "sa_act_as" {
+  # deploy-cloudrun Action が SA impersonation に必要。
+  # GitHub Actions SA と Cloud Run ランタイム SA を統一しているための自己参照。
+  # SA を分離する場合は GitHub Actions 側 SA → Cloud Run SA への付与に変更する。
   service_account_id = google_service_account.backend.name
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${google_service_account.backend.email}"
