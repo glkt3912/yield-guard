@@ -1,0 +1,14 @@
+# Copy this file to terraform.tfvars and fill in real values.
+# terraform.tfvars is excluded from git (see .gitignore).
+#
+# After terraform apply, register the outputs as GitHub Secrets:
+#   WIF_PROVIDER  = terraform output -raw wif_provider
+#   SA_EMAIL      = terraform output -raw sa_email
+#   GCP_PROJECT_ID = var.project_id
+
+project_id           = "your-gcp-project-id"
+region               = "asia-northeast1"
+env                  = "prod"
+mlit_api_key         = "your-mlit-api-key"
+app_internal_api_key = "generate with: openssl rand -hex 32"
+vercel_frontend_url  = "https://your-app.vercel.app"
