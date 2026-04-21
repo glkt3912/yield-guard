@@ -517,6 +517,185 @@ func TestDetectUrbanRisks_MixedZoneBelow30Pct(t *testing.T) {
 	}
 }
 
+// TestAnalyze_StressScenarios はストレスシナリオの自動計算を検証する
+func TestAnalyze_StressScenarios(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	// カスタムデルタが0なので6シナリオのみ生成される
+	if len(result.StressScenarios) != 6 {
+		t.Errorf("StressScenarios count = %d, want 6", len(result.StressScenarios))
+	}
+
+	// 1番目はベースライン
+	if result.StressScenarios[0].Label != "ベースライン" {
+		t.Errorf("StressScenarios[0].Label = %q, want 'ベースライン'", result.StressScenarios[0].Label)
+	}
+
+	// 複合ストレス（金利+2%, 空室+10%）はDSCR < 1.0 or 安全でない可能性が高い
+	// ベースライン時より複合ストレス時のDSCRは悪化するはず
+	baseline := result.StressScenarios[0]
+	compound := result.StressScenarios[5]
+	if compound.Label != "複合ストレス" {
+		t.Errorf("StressScenarios[5].Label = %q, want '複合ストレス'", compound.Label)
+	}
+	if compound.DSCR >= baseline.DSCR {
+		t.Errorf("複合ストレスDSCR(%.4f) >= ベースラインDSCR(%.4f), expected worse", compound.DSCR, baseline.DSCR)
+	}
+	t.Logf("baseline DSCR=%.4f, compound DSCR=%.4f, compound IsSafe=%v", baseline.DSCR, compound.DSCR, compound.IsSafe)
+}
+
+// TestAnalyze_StressScenarios_IsSafe はDSCR < 1.0時のIsSafe=falseを検証する
+func TestAnalyze_StressScenarios_IsSafe(t *testing.T) {
+	// 高ローン・低賃料でDSCR < 1.0となるケース
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     80_000, // 低賃料
+		VacancyRate:     0.05,
+		LoanAmount:      20_000_000, // 高ローン
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	// 複合ストレス（金利+2%, 空室+10%）ではIsSafe=falseになるはず
+	compound := result.StressScenarios[5]
+	if compound.IsSafe {
+		t.Errorf("複合ストレスでIsSafe=true, expected false (DSCR=%.4f)", compound.DSCR)
+	}
+	t.Logf("compound DSCR=%.4f, IsSafe=%v", compound.DSCR, compound.IsSafe)
+}
+
+// TestAnalyze_StressScenarios_BreakEvenNever はCFが黒転しない場合のBreakEvenYear=-1を検証する
+func TestAnalyze_StressScenarios_BreakEvenNever(t *testing.T) {
+	// 極端に高いローン・低賃料でCFが常にマイナスになるケース
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     50_000,    // 非常に低い賃料
+		VacancyRate:     0.05,
+		LoanAmount:      30_000_000, // 非常に高いローン
+		AnnualLoanRate:  0.03,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	// いずれかのシナリオでBreakEvenYear=-1となることを確認
+	foundNever := false
+	for _, sc := range result.StressScenarios {
+		if sc.BreakEvenYear == -1 {
+			foundNever = true
+			t.Logf("BreakEvenYear=-1 in scenario %q (DSCR=%.4f)", sc.Label, sc.DSCR)
+		}
+	}
+	if !foundNever {
+		t.Error("expected at least one scenario with BreakEvenYear=-1 for high-loan/low-rent case")
+	}
+}
+
+// TestAnalyze_StressScenarios_CustomSeventh はカスタムデルタが非ゼロのとき第7シナリオが追加されることを検証する
+func TestAnalyze_StressScenarios_CustomSeventh(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+		LoanRateDelta:   0.005, // カスタム金利上昇
+	}
+
+	result := Analyze(input)
+
+	if len(result.StressScenarios) != 7 {
+		t.Errorf("StressScenarios count = %d, want 7 (6 default + 1 custom)", len(result.StressScenarios))
+	}
+	if result.StressScenarios[6].Label != "カスタム" {
+		t.Errorf("StressScenarios[6].Label = %q, want 'カスタム'", result.StressScenarios[6].Label)
+	}
+}
+
+// TestCalcStressScenario_DSCRAbove1ButBreakEvenExceedsHolding は、
+// DSCR >= 1.0 だが保有期間内にブレークイーンしない場合のIsSafe=falseを検証する。
+//
+// 設計: 金利ゼロ・経費ゼロで年間賃料 == 年間ローン返済額となるよう設定する。
+//   - annualRent       = 100,000 × 12 = 1,200,000
+//   - annualExpenses   = 0（expenseRate=0, AnnualPropertyTax=0）
+//   - noi              = 1,200,000
+//   - annualLoanPayment = 100,000 × 12 = 1,200,000（金利ゼロ: 元金42,000,000 / 420ヶ月）
+//   - DSCR             = 1,200,000 / 1,200,000 = 1.0
+//   - cf per year      = 0 → cumCF は一切増えず breakEvenYear = -1
+// → IsSafe は false であるべき（累積CFが黒転しないため投資回収できない）
+func TestCalcStressScenario_DSCRAbove1ButBreakEvenExceedsHolding(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:    5_000_000,
+		BuildingCost: 10_000_000,
+		MonthlyRent:  100_000,
+		VacancyRate:  0,
+		LoanAmount:   42_000_000, // 金利ゼロで月10万円 × 420ヶ月
+		AnnualLoanRate: 0,        // 金利ゼロ → 月次返済額 = 元金 / 期間
+		LoanYears:    35,
+		ExpenseRate:  0,          // 経費なし
+		HoldingYears: 10,
+		BuildingType: BuildingTypeWood,
+	}
+
+	result := calcStressScenario(input, "テスト", 0, 0)
+
+	// 前提確認: DSCR が 1.0 以上
+	if result.DSCR < 1.0 {
+		t.Fatalf("前提条件未充足: DSCR=%.4f < 1.0", result.DSCR)
+	}
+	// 前提確認: 保有期間内にブレークイーンしない
+	if result.BreakEvenYear != -1 {
+		t.Fatalf("前提条件未充足: BreakEvenYear=%d, want -1 (cumCF==0は黒転非達成)", result.BreakEvenYear)
+	}
+
+	// DSCR >= 1.0 かつ BreakEvenYear == -1 → IsSafe は false であるべき
+	if result.IsSafe {
+		t.Errorf("IsSafe = true, want false: DSCR=%.4f >= 1.0 だが保有期間内にブレークイーンしない (BreakEvenYear=%d)",
+			result.DSCR, result.BreakEvenYear)
+	}
+	t.Logf("DSCR=%.4f, BreakEvenYear=%d, IsSafe=%v", result.DSCR, result.BreakEvenYear, result.IsSafe)
+}
+
 func TestDetectUrbanRisks_NilZoning(t *testing.T) {
 	risks := detectUrbanRisks(nil, nil)
 	if len(risks) != 0 {
@@ -666,5 +845,181 @@ func TestInvestmentInput_Validate(t *testing.T) {
 				t.Errorf("Validate() = %v, want nil", err)
 			}
 		})
+	}
+}
+
+// TestAnalyze_OldBuildingZeroDepreciation は木造38年超（減価償却ゼロ）のキャッシュフロー精度を検証する
+func TestAnalyze_OldBuildingZeroDepreciation(t *testing.T) {
+	// 木造の法定耐用年数は22年。築38年超 → 簡便法: 22×0.2=4年 → 4年後に減価償却=0
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    3_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     80_000,
+		VacancyRate:     0.05,
+		LoanAmount:      5_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       20,
+		BuildingType:    BuildingTypeWood,
+		BuildingAge:     38, // 法定耐用年数超過: 簡便法 22×0.2=4年
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	if len(result.YearlyResults) == 0 {
+		t.Fatal("YearlyResults is empty")
+	}
+
+	// CalcResidualUsefulLife(木造, 38) = 22×0.2 = 4年
+	usefulLife := CalcResidualUsefulLife(BuildingTypeWood, 38)
+	if usefulLife != 4 {
+		t.Errorf("usefulLife = %d, want 4", usefulLife)
+	}
+
+	// 1年目: 減価償却あり
+	y1 := result.YearlyResults[0]
+	expectedDepreciation := 3_000_000.0 / float64(usefulLife)
+	if math.Abs(y1.AnnualDepreciation-expectedDepreciation) > 1 {
+		t.Errorf("year1 AnnualDepreciation = %.0f, want %.0f", y1.AnnualDepreciation, expectedDepreciation)
+	}
+
+	// 5年目以降: 減価償却=0
+	y5 := result.YearlyResults[4]
+	if y5.AnnualDepreciation != 0 {
+		t.Errorf("year5 AnnualDepreciation = %.0f, want 0 (耐用年数4年超過)", y5.AnnualDepreciation)
+	}
+}
+
+// TestAnalyze_ZeroLoanYears は全額自己資金（ローン期間ゼロ）のケースを検証する
+func TestAnalyze_ZeroLoanYears(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      0,
+		AnnualLoanRate:  0,
+		LoanYears:       0, // Defaults() により 35 に補完されるが LoanAmount=0 なので実質影響なし
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	if len(result.YearlyResults) == 0 {
+		t.Fatal("YearlyResults is empty")
+	}
+
+	y1 := result.YearlyResults[0]
+
+	// ローン返済・利息・元金はすべてゼロ
+	if y1.AnnualLoanPayment != 0 {
+		t.Errorf("AnnualLoanPayment = %.0f, want 0", y1.AnnualLoanPayment)
+	}
+	if y1.AnnualInterest != 0 {
+		t.Errorf("AnnualInterest = %.0f, want 0", y1.AnnualInterest)
+	}
+	if y1.AnnualPrincipal != 0 {
+		t.Errorf("AnnualPrincipal = %.0f, want 0", y1.AnnualPrincipal)
+	}
+
+	// キャッシュフロー = 実効賃料 - 運営経費（正値になるはず）
+	effectiveRent := 120_000.0 * 12 * (1 - 0.05)
+	wantCF := effectiveRent - effectiveRent*0.20
+	if math.Abs(y1.CashFlow-wantCF) > 1 {
+		t.Errorf("CashFlow = %.0f, want %.0f", y1.CashFlow, wantCF)
+	}
+
+	// 表面利回り・実質利回りが計算されること
+	if result.GrossYield <= 0 {
+		t.Errorf("GrossYield = %.4f, want > 0", result.GrossYield)
+	}
+	if result.NetYield <= 0 {
+		t.Errorf("NetYield = %.4f, want > 0", result.NetYield)
+	}
+}
+
+// TestAnalyze_ShortTermCapitalGains は短期保有（5年以下）の譲渡所得税率39.63%を検証する
+func TestAnalyze_ShortTermCapitalGains(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeRC, // 47年 → 保有5年内でも減価償却継続
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    5, // 5年以下 → 短期譲渡所得税率39.63%
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+
+	// 売却益が正値であることを確認（テストが空振りしないよう）
+	if result.ExitCapitalGain <= 0 {
+		t.Fatalf("expected positive capital gain, got %f", result.ExitCapitalGain)
+	}
+	// 短期税率（39.63%）が適用されること
+	impliedRate := result.ExitTransferTax / result.ExitCapitalGain
+	if math.Abs(impliedRate-shortTermTransferTaxRate) > 0.001 {
+		t.Errorf("短期譲渡税率 = %.5f, want %.5f", impliedRate, shortTermTransferTaxRate)
+	}
+	t.Logf("HoldingYears=5 (短期): SalePrice=%.0f, CapGain=%.0f, Tax=%.0f", result.ExitSalePrice, result.ExitCapitalGain, result.ExitTransferTax)
+}
+
+// TestAnalyze_UltraLowInterestRate は超低金利0.001%での浮動小数点精度を検証する
+func TestAnalyze_UltraLowInterestRate(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.00001, // 0.001% 超低金利
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	// パニックしないこと・結果が有限な数値であること
+	result := Analyze(input)
+
+	if len(result.YearlyResults) == 0 {
+		t.Fatal("YearlyResults is empty")
+	}
+
+	y1 := result.YearlyResults[0]
+
+	// 超低金利: 月次返済 ≈ 13,000,000/420ヶ月 ≈ 30,952円/月
+	wantMonthly := 13_000_000.0 / float64(35*12)
+	annualPayment := wantMonthly * 12
+	if math.Abs(y1.AnnualLoanPayment-annualPayment) > 1000 {
+		t.Errorf("AnnualLoanPayment = %.0f, want ≈ %.0f (超低金利はほぼ元金均等)", y1.AnnualLoanPayment, annualPayment)
+	}
+
+	// 利息はほぼゼロ（元金のみ）
+	if y1.AnnualInterest > 1000 {
+		t.Errorf("AnnualInterest = %.2f, expected < 1000 for 0.001%% rate", y1.AnnualInterest)
+	}
+
+	// NaN/Inf でないこと
+	if math.IsNaN(result.GrossYield) || math.IsInf(result.GrossYield, 0) {
+		t.Errorf("GrossYield is NaN or Inf: %v", result.GrossYield)
 	}
 }

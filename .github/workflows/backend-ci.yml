@@ -43,7 +43,13 @@ jobs:
           version: v2.11.4
 
       - name: go test
-        run: go test -race ./... -timeout 120s
+        run: |
+          go test -race -coverprofile=coverage.out ./... -timeout 120s
+          go tool cover -func=coverage.out | tee coverage.txt
+          echo "## Go Test Coverage" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat coverage.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: go build
         run: go build ./cmd/server

@@ -329,9 +329,34 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
   "exitCapitalGain": 3500000,
   "exitTransferTax": 711025,
   "exitNetProceeds": 9750000,
-  "exitTotalEquity": 12500000
+  "exitTotalEquity": 12500000,
+  "stressScenarios": [
+    {
+      "label": "ベースライン",
+      "interestRateDelta": 0,
+      "vacancyRateDelta": 0,
+      "totalCashFlow": 3200000,
+      "dscr": 1.25,
+      "breakEvenYear": 4,
+      "isSafe": true
+    }
+  ]
 }
 ```
+
+#### `stressScenarios: StressScenarioResult[]`
+
+`Analyze()` が自動生成する 6 つのデフォルトシナリオ（ベースライン / 金利+1% / 金利+2% / 空室+10% / 空室+20% / 複合ストレス）の結果配列。入力に `vacancyRateDelta` または `loanRateDelta` が指定されている場合はカスタムシナリオが 7 本目として追加される。
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `label` | string | シナリオ名 |
+| `interestRateDelta` | float64 | 金利上昇幅（率） |
+| `vacancyRateDelta` | float64 | 空室率上昇幅（率） |
+| `totalCashFlow` | float64 | 保有期間の税引後累積キャッシュフロー（円） |
+| `dscr` | float64 | 負債返済カバレッジ比率（ローンなしの場合は 0） |
+| `breakEvenYear` | int | 累積CF黒字転換年（期間内未達なら `-1`） |
+| `isSafe` | bool | 安全判定（`DSCR >= 1.0 && BreakEvenYear` が保有期間以内。ローンなしは BreakEvenYear のみ） |
 
 ### エラー
 
