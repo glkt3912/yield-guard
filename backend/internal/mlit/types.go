@@ -151,6 +151,98 @@ type LandAppraisalRaw struct {
 	ChangeRate     string `json:"変動率"`
 }
 
+// LocationOptimizationGeoJSON は XKT003 立地適正化計画APIのGeoJSONレスポンス
+type LocationOptimizationGeoJSON struct {
+	Type     string                          `json:"type"`
+	Features []LocationOptimizationFeature   `json:"features"`
+}
+
+// LocationOptimizationFeature は GeoJSON の1フィーチャ
+type LocationOptimizationFeature struct {
+	Properties LocationOptimizationProperties `json:"properties"`
+}
+
+// LocationOptimizationProperties は立地適正化計画の属性。フィールド名は国交省 XKT003 仕様に準拠。
+type LocationOptimizationProperties struct {
+	Prefecture           string `json:"prefecture"`
+	CityCode             string `json:"city_code"`
+	CityName             string `json:"city_name"`
+	DecisionDate         string `json:"decision_date"`
+	KubunNameJa          string `json:"kubun_name_ja"`           // 区域名（例: 居住誘導区域、都市機能誘導区域）
+	AreaClassificationJa string `json:"area_classification_ja"`
+	NoticeNumber         string `json:"notice_number"`
+}
+
+
+// EmbankmentGeoJSON は XKT020 大規模盛土造成地マップAPIのGeoJSONレスポンス
+type EmbankmentGeoJSON struct {
+	Type     string             `json:"type"`
+	Features []EmbankmentFeature `json:"features"`
+}
+
+// EmbankmentFeature は GeoJSON の1フィーチャ
+type EmbankmentFeature struct {
+	Properties EmbankmentProperties `json:"properties"`
+}
+
+// EmbankmentProperties は大規模盛土造成地の属性。フィールド名は国交省 XKT020 仕様に準拠。
+type EmbankmentProperties struct {
+	EmbankmentClassification string `json:"embankment_classification"` // 盛土区分（例: 谷埋め型）
+	PrefectureCode           string `json:"prefecture_code"`
+	PrefectureName           string `json:"prefecture_name"`
+	CityCode                 string `json:"city_code"`
+	CityName                 string `json:"city_name"`
+	EmbankmentNumber         string `json:"embankment_number"`
+}
+
+
+// UrbanRoadGeoJSON は XKT030 都市計画道路APIのGeoJSONレスポンス
+type UrbanRoadGeoJSON struct {
+	Type     string            `json:"type"`
+	Features []UrbanRoadFeature `json:"features"`
+}
+
+// UrbanRoadFeature は GeoJSON の1フィーチャ
+type UrbanRoadFeature struct {
+	Properties UrbanRoadProperties `json:"properties"`
+}
+
+// UrbanRoadProperties は都市計画道路の属性。フィールド名は国交省 XKT030 仕様に準拠。
+type UrbanRoadProperties struct {
+	PlanningRoadJa    string `json:"planning_road_ja"`
+	KubunID           int    `json:"kubun_id"`              // 3011=都市計画道路、3023=広場
+	Prefecture        string `json:"prefecture"`
+	CityCode          string `json:"city_code"`
+	CityName          string `json:"city_name"`
+	FirstDecisionDate string `json:"first_decision_date"`
+	DecisionDate      string `json:"decision_date"`
+	DecisionTypeJa    string `json:"decision_type_ja"`
+	DecisionMaker     string `json:"decision_maker"`
+	NoticeNumberS     string `json:"notice_number_s"`
+	NoticeNumber      string `json:"notice_number"`
+}
+
+
+// DisasterHistoryGeoJSON は XST001 国土調査（災害履歴）APIのGeoJSONレスポンス
+type DisasterHistoryGeoJSON struct {
+	Type     string                 `json:"type"`
+	Features []DisasterHistoryFeature `json:"features"`
+}
+
+// DisasterHistoryFeature は GeoJSON の1フィーチャ
+type DisasterHistoryFeature struct {
+	Properties DisasterHistoryProperties `json:"properties"`
+}
+
+// DisasterHistoryProperties は災害履歴の属性。フィールド名は国交省 XST001 仕様に準拠。
+type DisasterHistoryProperties struct {
+	DisastertypeCode string `json:"disastertype_code"` // 11=浸水域, 21=がけ崩れ 等
+	DisasterNameJa   string `json:"disaster_name_ja"`
+	DisasterDate     string `json:"disaster_date"`     // 8桁 YYYYMMDD。不明部分は0
+	DisasterSource   string `json:"disaster_source"`
+}
+
+
 // Prefectures は都道府県コードマップ
 var Prefectures = map[string]string{
 	"01": "北海道", "02": "青森県", "03": "岩手県", "04": "宮城県",

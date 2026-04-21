@@ -18,21 +18,29 @@ type cacheEntry struct {
 
 // cache は TTL 付きインメモリキャッシュ
 type cache struct {
-	mu                 sync.RWMutex
-	entries            map[string]cacheEntry
-	muniEntries        map[string]muniCacheEntry
-	ridershipEntries   map[string]ridershipCacheEntry
-	populationEntries  map[string]populationCacheEntry
-	appraisalEntries   map[string]appraisalCacheEntry
+	mu                         sync.RWMutex
+	entries                    map[string]cacheEntry
+	muniEntries                map[string]muniCacheEntry
+	ridershipEntries           map[string]ridershipCacheEntry
+	populationEntries          map[string]populationCacheEntry
+	appraisalEntries           map[string]appraisalCacheEntry
+	locationOptimizationEntries map[string]locationOptimizationCacheEntry
+	embankmentEntries          map[string]embankmentCacheEntry
+	urbanRoadEntries           map[string]urbanRoadCacheEntry
+	disasterEntries            map[string]disasterCacheEntry
 }
 
 func newCache() *cache {
 	return &cache{
-		entries:          make(map[string]cacheEntry),
-		muniEntries:      make(map[string]muniCacheEntry),
-		ridershipEntries: make(map[string]ridershipCacheEntry),
-		populationEntries: make(map[string]populationCacheEntry),
-		appraisalEntries: make(map[string]appraisalCacheEntry),
+		entries:                    make(map[string]cacheEntry),
+		muniEntries:                make(map[string]muniCacheEntry),
+		ridershipEntries:           make(map[string]ridershipCacheEntry),
+		populationEntries:          make(map[string]populationCacheEntry),
+		appraisalEntries:           make(map[string]appraisalCacheEntry),
+		locationOptimizationEntries: make(map[string]locationOptimizationCacheEntry),
+		embankmentEntries:          make(map[string]embankmentCacheEntry),
+		urbanRoadEntries:           make(map[string]urbanRoadCacheEntry),
+		disasterEntries:            make(map[string]disasterCacheEntry),
 	}
 }
 
@@ -222,6 +230,126 @@ func (c *cache) setAppraisals(key string, data []domain.LandAppraisalItem) {
 		data:      data,
 		expiresAt: time.Now().Add(cacheTTL),
 	}
+}
+
+// locationOptimizationCacheEntry は立地適正化計画キャッシュの1エントリ
+type locationOptimizationCacheEntry struct {
+	data      []domain.LocationOptimizationItem
+	expiresAt time.Time
+}
+
+func (c *cache) getLocationOptimization(key string) ([]domain.LocationOptimizationItem, bool) {
+	c.mu.RLock()
+	entry, ok := c.locationOptimizationEntries[key]
+	c.mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.locationOptimizationEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+	copied := make([]domain.LocationOptimizationItem, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+func (c *cache) setLocationOptimization(key string, data []domain.LocationOptimizationItem) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.locationOptimizationEntries[key] = locationOptimizationCacheEntry{data: data, expiresAt: time.Now().Add(cacheTTL)}
+}
+
+// embankmentCacheEntry は大規模盛土造成地キャッシュの1エントリ
+type embankmentCacheEntry struct {
+	data      []domain.EmbankmentItem
+	expiresAt time.Time
+}
+
+func (c *cache) getEmbankment(key string) ([]domain.EmbankmentItem, bool) {
+	c.mu.RLock()
+	entry, ok := c.embankmentEntries[key]
+	c.mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.embankmentEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+	copied := make([]domain.EmbankmentItem, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+func (c *cache) setEmbankment(key string, data []domain.EmbankmentItem) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.embankmentEntries[key] = embankmentCacheEntry{data: data, expiresAt: time.Now().Add(cacheTTL)}
+}
+
+// urbanRoadCacheEntry は都市計画道路キャッシュの1エントリ
+type urbanRoadCacheEntry struct {
+	data      []domain.UrbanRoadItem
+	expiresAt time.Time
+}
+
+func (c *cache) getUrbanRoad(key string) ([]domain.UrbanRoadItem, bool) {
+	c.mu.RLock()
+	entry, ok := c.urbanRoadEntries[key]
+	c.mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.urbanRoadEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+	copied := make([]domain.UrbanRoadItem, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+func (c *cache) setUrbanRoad(key string, data []domain.UrbanRoadItem) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.urbanRoadEntries[key] = urbanRoadCacheEntry{data: data, expiresAt: time.Now().Add(cacheTTL)}
+}
+
+// disasterCacheEntry は災害履歴キャッシュの1エントリ
+type disasterCacheEntry struct {
+	data      []domain.DisasterHistoryItem
+	expiresAt time.Time
+}
+
+func (c *cache) getDisaster(key string) ([]domain.DisasterHistoryItem, bool) {
+	c.mu.RLock()
+	entry, ok := c.disasterEntries[key]
+	c.mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.disasterEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+	copied := make([]domain.DisasterHistoryItem, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+func (c *cache) setDisaster(key string, data []domain.DisasterHistoryItem) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.disasterEntries[key] = disasterCacheEntry{data: data, expiresAt: time.Now().Add(cacheTTL)}
 }
 
 // cacheKey は LandPriceQuery からキャッシュキーを生成する。
