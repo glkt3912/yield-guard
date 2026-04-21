@@ -650,6 +650,50 @@ func TestAnalyze_StressScenarios_CustomSeventh(t *testing.T) {
 	}
 }
 
+// TestCalcStressScenario_DSCRAbove1ButBreakEvenExceedsHolding は、
+// DSCR >= 1.0 だが保有期間内にブレークイーンしない場合のIsSafe=falseを検証する。
+//
+// 設計: 金利ゼロ・経費ゼロで年間賃料 == 年間ローン返済額となるよう設定する。
+//   - annualRent       = 100,000 × 12 = 1,200,000
+//   - annualExpenses   = 0（expenseRate=0, AnnualPropertyTax=0）
+//   - noi              = 1,200,000
+//   - annualLoanPayment = 100,000 × 12 = 1,200,000（金利ゼロ: 元金42,000,000 / 420ヶ月）
+//   - DSCR             = 1,200,000 / 1,200,000 = 1.0
+//   - cf per year      = 0 → cumCF は一切増えず breakEvenYear = -1
+// → IsSafe は false であるべき（累積CFが黒転しないため投資回収できない）
+func TestCalcStressScenario_DSCRAbove1ButBreakEvenExceedsHolding(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:    5_000_000,
+		BuildingCost: 10_000_000,
+		MonthlyRent:  100_000,
+		VacancyRate:  0,
+		LoanAmount:   42_000_000, // 金利ゼロで月10万円 × 420ヶ月
+		AnnualLoanRate: 0,        // 金利ゼロ → 月次返済額 = 元金 / 期間
+		LoanYears:    35,
+		ExpenseRate:  0,          // 経費なし
+		HoldingYears: 10,
+		BuildingType: BuildingTypeWood,
+	}
+
+	result := calcStressScenario(input, "テスト", 0, 0)
+
+	// 前提確認: DSCR が 1.0 以上
+	if result.DSCR < 1.0 {
+		t.Fatalf("前提条件未充足: DSCR=%.4f < 1.0", result.DSCR)
+	}
+	// 前提確認: 保有期間内にブレークイーンしない
+	if result.BreakEvenYear != -1 {
+		t.Fatalf("前提条件未充足: BreakEvenYear=%d, want -1 (cumCF==0は黒転非達成)", result.BreakEvenYear)
+	}
+
+	// DSCR >= 1.0 かつ BreakEvenYear == -1 → IsSafe は false であるべき
+	if result.IsSafe {
+		t.Errorf("IsSafe = true, want false: DSCR=%.4f >= 1.0 だが保有期間内にブレークイーンしない (BreakEvenYear=%d)",
+			result.DSCR, result.BreakEvenYear)
+	}
+	t.Logf("DSCR=%.4f, BreakEvenYear=%d, IsSafe=%v", result.DSCR, result.BreakEvenYear, result.IsSafe)
+}
+
 func TestDetectUrbanRisks_NilZoning(t *testing.T) {
 	risks := detectUrbanRisks(nil, nil)
 	if len(risks) != 0 {
