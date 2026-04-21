@@ -83,7 +83,8 @@ func Analyze(input InvestmentInput) InvestmentResult {
 			}
 		}
 
-		yearAnnualRent := annualRent
+		declineFactor := math.Pow(1-input.RentDeclineRate, float64(y))
+		yearAnnualRent := annualRent * declineFactor
 		yearExpenses := yearAnnualRent*input.ExpenseRate + input.AnnualPropertyTax
 
 		// 減価償却は耐用年数内のみ

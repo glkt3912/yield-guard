@@ -428,6 +428,71 @@ func TestCalcCriticalErrors_LandValueGuard(t *testing.T) {
 	}
 }
 
+// TestAnalyze_ExitNOI_UsesHoldingYearValues は出口NOIが保有年数時点の賃料下落を反映することを検証する
+func TestAnalyze_ExitNOI_UsesHoldingYearValues(t *testing.T) {
+	const (
+		monthlyRent     = 120_000.0
+		vacancyRate     = 0.05
+		expenseRate     = 0.20
+		rentDeclineRate = 0.01  // 年1%下落
+		holdingYears    = 10
+		exitYieldTarget = 0.06
+	)
+
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     monthlyRent,
+		VacancyRate:     vacancyRate,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeRC,
+		ExpenseRate:     expenseRate,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    holdingYears,
+		ExitYieldTarget: exitYieldTarget,
+		RentDeclineRate: rentDeclineRate,
+	}
+
+	result := Analyze(input)
+
+	// 保有10年目(インデックス9)の賃料下落係数: (1-0.01)^9 = 0.99^9
+	declineFactor := math.Pow(1-rentDeclineRate, float64(holdingYears-1))
+	baseAnnualRent := monthlyRent * 12 * (1 - vacancyRate)
+	expectedRent := baseAnnualRent * declineFactor
+	expectedNOI := expectedRent * (1 - expenseRate)
+	expectedSalePrice := expectedNOI / exitYieldTarget
+
+	if len(result.YearlyResults) < holdingYears {
+		t.Fatalf("YearlyResults too short: got %d, want >= %d", len(result.YearlyResults), holdingYears)
+	}
+
+	// 保有年次の賃料が下落を反映していること
+	yearRent := result.YearlyResults[holdingYears-1].AnnualRent
+	if !approxEqual(yearRent, expectedRent, 1.0) {
+		t.Errorf("YearlyResults[%d].AnnualRent = %.2f, want ≈ %.2f", holdingYears-1, yearRent, expectedRent)
+	}
+
+	// 売却価格が保有年次の下落後NOIから算出されること
+	if !approxEqual(result.ExitSalePrice, expectedSalePrice, 1000) {
+		t.Errorf("ExitSalePrice = %.0f, want ≈ %.0f (decline-adjusted NOI)", result.ExitSalePrice, expectedSalePrice)
+	}
+
+	// RentDeclineRate=0のケースより売却価格が低いことを確認
+	inputNoDecline := input
+	inputNoDecline.RentDeclineRate = 0
+	resultNoDecline := Analyze(inputNoDecline)
+	if result.ExitSalePrice >= resultNoDecline.ExitSalePrice {
+		t.Errorf("ExitSalePrice with decline (%.0f) should be < without decline (%.0f)",
+			result.ExitSalePrice, resultNoDecline.ExitSalePrice)
+	}
+
+	t.Logf("declineFactor=%.6f, expectedRent=%.0f, ExitSalePrice=%.0f (vs no-decline=%.0f)",
+		declineFactor, expectedRent, result.ExitSalePrice, resultNoDecline.ExitSalePrice)
+}
+
 func makeTx(cityPlanning string) LandTransaction {
 	return LandTransaction{
 		CityPlanning:     cityPlanning,
