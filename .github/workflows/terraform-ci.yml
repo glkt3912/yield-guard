@@ -88,12 +88,38 @@ jobs:
             const plan = fs.readFileSync('/tmp/plan.txt', 'utf8');
             const truncated = plan.length > 60000 ? plan.slice(0, 60000) + '\n...(truncated)' : plan;
             const status = '${{ steps.plan.outcome }}' === 'success' ? '✅' : '❌';
-            github.rest.issues.createComment({
+            const summaryMatch = plan.match(/^(Plan: .+|No changes\..+)$/m);
+            const summary = summaryMatch ? summaryMatch[0] : '';
+            const body = [
+              `## ${status} Terraform Plan`,
+              summary,
+              `<details><summary>詳細を表示</summary>\n\n\`\`\`\n${truncated}\n\`\`\`\n</details>`,
+            ].filter(Boolean).join('\n');
+
+            const comments = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## ${status} Terraform Plan\n<details><summary>詳細を表示</summary>\n\n\`\`\`\n${truncated}\n\`\`\`\n</details>`
             });
+            const existing = comments.data.find(c =>
+              c.user.login === 'github-actions[bot]' &&
+              (c.body.includes('## ✅ Terraform Plan') || c.body.includes('## ❌ Terraform Plan'))
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            }
 
       - name: Terraform Apply
         if: github.event_name == 'workflow_dispatch' && inputs.apply
