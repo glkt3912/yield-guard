@@ -50,6 +50,7 @@ Yield-Guard は不動産投資判断を支援するシミュレーションツ�
 | Shadcn/UI | コンポーネントライブラリ |
 | Recharts 2.12 | グラフ描画 |
 | Lucide React | アイコン |
+| @ducanh2912/next-pwa | PWA（Service Worker / Web App Manifest） |
 
 ---
 
@@ -81,6 +82,7 @@ yield-guard/
 │   └── src/
 │       ├── app/
 │       │   ├── layout.tsx
+│       │   ├── manifest.ts        # Web App Manifest（PWA）
 │       │   └── page.tsx           # Dashboard をレンダリング
 │       ├── components/
 │       │   ├── Dashboard.tsx      # メインUI・状態管理
@@ -132,7 +134,7 @@ go run cmd/server/main.go
 | `PORT` | リッスンポート | `8080` |
 | `ALLOW_ORIGINS` | CORS許可オリジン | `http://localhost:3000` |
 | `MLIT_API_KEY` | 不動産情報ライブラリ APIキー（必須） | — |
-| `APP_INTERNAL_API_KEY` | Vercel-Render 間の内部通信認証キー。設定時は `/api/*` に `X-Internal-Key` ヘッダーが必要 | 未設定（ローカル開発時はスキップ） |
+| `APP_INTERNAL_API_KEY` | Vercel-Cloud Run 間の内部通信認証キー。設定時は `/api/*` に `X-Internal-Key` ヘッダーが必要 | 未設定（ローカル開発時はスキップ） |
 
 **フロントエンド**
 

@@ -85,7 +85,7 @@ GitHub Actions
 | `actions/checkout` | `11bd71901bbe5b1630ceea73d27597364c9af683` | v4.2.2 |
 | `google-github-actions/auth` | `6fc4af4b145ae7821d527454aa9bd537d1f2dc5f` | v2.1.7 |
 | `google-github-actions/setup-gcloud` | `6189d56e4096ee891640bb02ac264be376592d6a` | v2.1.4 |
-| `google-github-actions/deploy-cloudrun` | `a11ef4f5885a9bd9d21e05cae0ccb96a49db94f4` | v2.9.0 |
+| `google-github-actions/deploy-cloudrun` | `251330ba9a8a34bfbc1622895f42e1d53fd14522` | v2.7.6 |
 
 ---
 

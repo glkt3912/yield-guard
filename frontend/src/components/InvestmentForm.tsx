@@ -181,7 +181,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select
               label="都道府県"
               value={area}
@@ -218,7 +218,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
               )}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-foreground">緯度（任意）</label>
               <input
@@ -268,7 +268,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="土地取得価格" type="number" suffix="万円"
               value={toMan(input.landPrice)}
               onChange={(e) => setNum("landPrice", fromMan(e.target.value))}
@@ -277,7 +277,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
               value={String(input.landArea)}
               onChange={(e) => setNum("landArea", parseFloat(e.target.value) || 0)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="建築費" type="number" suffix="万円"
               value={toMan(input.buildingCost)}
               onChange={(e) => setNum("buildingCost", fromMan(e.target.value))}
@@ -289,7 +289,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
               value={String(input.stationMinutes)}
               onChange={(e) => setNum("stationMinutes", parseInt(e.target.value) || 0)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="想定月額賃料" type="number" suffix="円"
               value={String(input.monthlyRent)}
               onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
@@ -302,7 +302,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
           {/* ローン条件 */}
           <div className="border-t pt-3">
             <p className="mb-3 text-sm font-medium text-muted-foreground">ローン条件</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Input label="ローン金額" type="number" suffix="万円"
                 value={toMan(input.loanAmount)}
                 onChange={(e) => setNum("loanAmount", fromMan(e.target.value))}
@@ -321,7 +321,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
           {/* 出口戦略 */}
           <div className="border-t pt-3">
             <p className="mb-3 text-sm font-medium text-muted-foreground">出口戦略</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="売却予定年数" type="number" suffix="年後"
                 value={String(input.holdingYears)}
                 onChange={(e) => setNum("holdingYears", parseInt(e.target.value) || 10)}
@@ -379,7 +379,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading }: Props)
 
           {showAdvanced && (
             <div className="space-y-3 rounded-md bg-muted/50 p-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input label="諸経費率" type="number" suffix="%" step="0.5"
                   value={toPct(input.miscExpenseRate, 1)}
                   onChange={(e) => setNum("miscExpenseRate", fromPct(e.target.value))}
