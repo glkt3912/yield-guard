@@ -93,13 +93,17 @@ npm run dev
 
 | メソッド | パス | 説明 |
 |----------|------|------|
-| `GET` | `/api/land-prices` | 土地取引価格一覧・統計 |
-| `GET` | `/api/land-prices/compare` | 検討地と相場の比較 |
-| `POST` | `/api/analyze` | 投資シミュレーション実行 |
-| `GET` | `/api/prefectures` | 都道府県一覧 |
 | `GET` | `/health` | ヘルスチェック |
+| `GET` | `/api/land-prices/stats` | 土地取引価格の統計情報 |
+| `GET` | `/api/land-prices/compare` | 検討地と相場の比較 |
+| `GET` | `/api/land-prices/estimate` | 土地価格の推定 |
+| `POST` | `/api/investment/analyze` | 投資シミュレーション実行 |
+| `GET` | `/api/municipalities` | 市区町村一覧 |
+| `GET` | `/api/station-ridership` | 駅乗降者数データ |
+| `GET` | `/api/population-forecast` | 人口予測データ |
+| `GET` | `/api/land-appraisals` | 地価公示データ |
 
-**`POST /api/analyze` リクエスト例:**
+**`POST /api/investment/analyze` リクエスト例:**
 
 ```json
 {
