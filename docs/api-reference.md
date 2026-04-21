@@ -258,6 +258,61 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 
 ---
 
+## GET /api/urban-risks
+
+物件の緯度経度から都市計画リスクを一括取得する。XKT003（立地適正化計画）・XKT020（大規模盛土造成地）・XKT030（都市計画道路）・XST001（災害履歴）の 4 API を並列実行し、`UrbanRisk[]` を返す。
+
+### クエリパラメータ
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `lat` | 必須 | 緯度（20〜46: 日本国内） |
+| `lng` | 必須 | 経度（122〜154: 日本国内） |
+
+### レスポンス: `UrbanRisk[]`
+
+```json
+[
+  {
+    "code": "OUTSIDE_RESIDENTIAL_GUIDANCE",
+    "level": "WARNING",
+    "title": "居住誘導区域外の可能性",
+    "description": "立地適正化計画上、居住誘導区域外である可能性があります。将来的なインフラ縮退リスクを確認してください。"
+  },
+  {
+    "code": "URBAN_PLANNING_ROAD",
+    "level": "WARNING",
+    "title": "都市計画道路の区域内",
+    "description": "都市計画道路の区域内に含まれる可能性があります。将来の道路拡幅で建物が移転対象になる場合があります。"
+  }
+]
+```
+
+### 検出リスクコード
+
+| コード | API | 条件 | レベル |
+|--------|-----|------|--------|
+| `OUTSIDE_RESIDENTIAL_GUIDANCE` | XKT003 | 立地適正化計画データあり かつ 居住誘導区域外 | WARNING |
+| `LARGE_EMBANKMENT` | XKT020 | 大規模盛土造成地データあり | WARNING |
+| `URBAN_PLANNING_ROAD` | XKT030 | 都市計画道路（kubun_id=3011）データあり | WARNING |
+| `DISASTER_HISTORY` | XST001 | 災害履歴データあり | WARNING |
+
+### 実装詳細
+
+- バックエンドで lat/lng を WebMercator タイル座標（z=14）に変換
+- 4 API を goroutine で並列実行。個別 API の失敗はログのみ（他 API 結果は返す）
+- 各タイルデータは TTL 24時間でインメモリキャッシュ（キー: `"{endpoint}:{z}:{x}:{y}"`）
+- `detectUrbanRisks()`（XIT001 取引テキストから検出）とは独立したエンドポイント。フロントエンドで code 重複排除してマージする
+
+### エラー
+
+| コード | 条件 |
+|--------|------|
+| 400 | `lat` または `lng` が未指定・日本国外（20-46 / 122-154 範囲外） |
+| 502 | 国交省 API へのリクエスト失敗 |
+
+---
+
 ## POST /api/investment/analyze
 
 投資シミュレーションを実行する。
