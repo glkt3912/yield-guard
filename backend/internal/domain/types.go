@@ -1,5 +1,7 @@
 package domain
 
+import "fmt"
+
 // BuildingType は建物構造種別を表す
 type BuildingType string
 
@@ -81,6 +83,18 @@ type InvestmentInput struct {
 
 	// 固定資産税・都市計画税（年間合計）。0 の場合は ExpenseRate に含まれる想定。
 	AnnualPropertyTax float64 `json:"annualPropertyTax"`
+}
+
+// Validate は入力値のバリデーションを行い、不正な組み合わせはエラーを返す。
+// VacancyRate + VacancyRateDelta > 0.99 の場合、空室率オーバーフローとみなす。
+func (i *InvestmentInput) Validate() error {
+	if i.VacancyRate+i.VacancyRateDelta > 0.99 {
+		return fmt.Errorf(
+			"VacancyRate(%.2f) + VacancyRateDelta(%.2f) = %.2f exceeds maximum allowed vacancy of 0.99",
+			i.VacancyRate, i.VacancyRateDelta, i.VacancyRate+i.VacancyRateDelta,
+		)
+	}
+	return nil
 }
 
 // Defaults は構造的デフォルト（省略可能なフィールド）にのみ適用する。

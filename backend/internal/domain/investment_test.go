@@ -307,14 +307,15 @@ func TestAnalyze_ZeroExitYield(t *testing.T) {
 	t.Logf("ExitYieldTarget補完確認: ExitSalePrice=%.0f", result.ExitSalePrice)
 }
 
-// TestAnalyze_FullVacancy は空室率100%（VacancyRate=1）の場合を検証する
+// TestAnalyze_FullVacancy は空室率100%（VacancyRate=1）の場合を検証する。
+// effectiveVacancy は 0.99 にキャップされるため AnnualRent はわずかに正になる。
 func TestAnalyze_FullVacancy(t *testing.T) {
 	input := InvestmentInput{
 		LandPrice:       5_000_000,
 		BuildingCost:    10_000_000,
 		MiscExpenseRate: 0.07,
 		MonthlyRent:     120_000,
-		VacancyRate:     1.0, // 完全空室
+		VacancyRate:     1.0, // 完全空室 → effectiveVacancy=0.99 にキャップ
 		LoanAmount:      13_000_000,
 		AnnualLoanRate:  0.015,
 		LoanYears:       35,
@@ -330,9 +331,10 @@ func TestAnalyze_FullVacancy(t *testing.T) {
 	if len(result.YearlyResults) == 0 {
 		t.Fatal("YearlyResults is empty")
 	}
-	// 賃料収入はゼロ
-	if result.YearlyResults[0].AnnualRent != 0 {
-		t.Errorf("AnnualRent = %.0f, want 0 for full vacancy", result.YearlyResults[0].AnnualRent)
+	// effectiveVacancy=0.99 にキャップ → AnnualRent = 120000*12*(1-0.99) = 14400
+	wantRent := 120_000.0 * 12 * (1 - 0.99)
+	if !approxEqual(result.YearlyResults[0].AnnualRent, wantRent, 1) {
+		t.Errorf("AnnualRent = %.0f, want ≈ %.0f (capped at effectiveVacancy=0.99)", result.YearlyResults[0].AnnualRent, wantRent)
 	}
 	// 表面利回りは正 (空室率はNetYieldに影響するがGrossYieldには影響しない)
 	if result.GrossYield <= 0 {
@@ -528,5 +530,141 @@ func TestDetectUrbanRisks_NoRisks(t *testing.T) {
 	risks := detectUrbanRisks(txs, zoning)
 	if len(risks) != 0 {
 		t.Errorf("expected no risks for normal zoning, got %d", len(risks))
+	}
+}
+
+// TestAnalyze_VacancyOverflow は空室率オーバーフロー（VacancyRate+VacancyRateDelta>0.99）時に
+// effectiveVacancy が 0.99 でキャップされ、AnnualRent が負にならないことを検証する。
+func TestAnalyze_VacancyOverflow(t *testing.T) {
+	tests := []struct {
+		name             string
+		vacancyRate      float64
+		vacancyRateDelta float64
+		wantCapped       bool // effectiveVacancy が 0.99 にキャップされるか
+	}{
+		{
+			name:             "合計が1.0 → 0.99にキャップ",
+			vacancyRate:      0.95,
+			vacancyRateDelta: 0.05,
+			wantCapped:       true,
+		},
+		{
+			name:             "合計が1.5 → 0.99にキャップ",
+			vacancyRate:      1.0,
+			vacancyRateDelta: 0.50,
+			wantCapped:       true,
+		},
+		{
+			name:             "合計が0.99 → キャップなし（境界値）",
+			vacancyRate:      0.90,
+			vacancyRateDelta: 0.09,
+			wantCapped:       false,
+		},
+		{
+			name:             "通常ケース（合計0.15） → キャップなし",
+			vacancyRate:      0.05,
+			vacancyRateDelta: 0.10,
+			wantCapped:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := InvestmentInput{
+				LandPrice:        5_000_000,
+				BuildingCost:     10_000_000,
+				MiscExpenseRate:  0.07,
+				MonthlyRent:      120_000,
+				VacancyRate:      tt.vacancyRate,
+				VacancyRateDelta: tt.vacancyRateDelta,
+				LoanAmount:       13_000_000,
+				AnnualLoanRate:   0.015,
+				LoanYears:        35,
+				BuildingType:     BuildingTypeWood,
+				ExpenseRate:      0.20,
+				IncomeTaxRate:    0.33,
+				HoldingYears:     10,
+				ExitYieldTarget:  0.06,
+			}
+
+			result := Analyze(input)
+
+			if len(result.YearlyResults) == 0 {
+				t.Fatal("YearlyResults is empty")
+			}
+
+			// AnnualRent は常に 0 以上でなければならない
+			for _, yr := range result.YearlyResults {
+				if yr.AnnualRent < 0 {
+					t.Errorf("year %d: AnnualRent = %.0f, want >= 0 (vacancy overflow must be capped)", yr.Year, yr.AnnualRent)
+				}
+			}
+
+			// キャップ時は effectiveVacancy=0.99 → AnnualRent = MonthlyRent*12*(1-0.99)
+			if tt.wantCapped {
+				expectedRent := 120_000.0 * 12 * (1 - 0.99)
+				if !approxEqual(result.YearlyResults[0].AnnualRent, expectedRent, 1) {
+					t.Errorf("AnnualRent = %.0f, want ≈ %.0f (capped at 0.99)", result.YearlyResults[0].AnnualRent, expectedRent)
+				}
+			}
+		})
+	}
+}
+
+// TestInvestmentInput_Validate は Validate() が空室率オーバーフロー時にエラーを返すことを検証する。
+func TestInvestmentInput_Validate(t *testing.T) {
+	tests := []struct {
+		name             string
+		vacancyRate      float64
+		vacancyRateDelta float64
+		wantErr          bool
+	}{
+		{
+			name:             "合計1.0 → エラー",
+			vacancyRate:      0.95,
+			vacancyRateDelta: 0.05,
+			wantErr:          true,
+		},
+		{
+			name:             "合計1.5 → エラー",
+			vacancyRate:      1.0,
+			vacancyRateDelta: 0.50,
+			wantErr:          true,
+		},
+		{
+			name:             "合計0.99 → エラーなし（境界値）",
+			vacancyRate:      0.90,
+			vacancyRateDelta: 0.09,
+			wantErr:          false,
+		},
+		{
+			name:             "合計0.15 → エラーなし",
+			vacancyRate:      0.05,
+			vacancyRateDelta: 0.10,
+			wantErr:          false,
+		},
+		{
+			name:             "Deltaなし → エラーなし",
+			vacancyRate:      0.05,
+			vacancyRateDelta: 0,
+			wantErr:          false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := InvestmentInput{
+				VacancyRate:      tt.vacancyRate,
+				VacancyRateDelta: tt.vacancyRateDelta,
+			}
+			err := input.Validate()
+			if tt.wantErr && err == nil {
+				t.Errorf("Validate() = nil, want error (vacancy=%.2f+%.2f=%.2f > 0.99)",
+					tt.vacancyRate, tt.vacancyRateDelta, tt.vacancyRate+tt.vacancyRateDelta)
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("Validate() = %v, want nil", err)
+			}
+		})
 	}
 }
