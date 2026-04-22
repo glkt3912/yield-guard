@@ -91,11 +91,13 @@ const RENT_DECLINE_DEFAULTS: Record<BuildingType, number> = {
 };
 
 interface Props {
-  onAnalyze: (input: InvestmentInput) => Promise<void>;
+  onAnalyze: (input: InvestmentInput, quickTotalMan?: string) => Promise<void>;
   onFetchLandPrices: (area: string, city: string, lat?: number, lng?: number) => Promise<void>;
   loading: boolean;
   simulationMode: SimulationMode;
   onModeChange: (mode: SimulationMode) => void;
+  initialInput?: Partial<InvestmentInput>;
+  initialQuickTotalPriceMan?: string;
 }
 
 function getPeriodLabel(): string {
@@ -148,8 +150,8 @@ function validateQuick(quickTotalPriceMan: string, input: InvestmentInput): Form
   return e;
 }
 
-export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulationMode, onModeChange }: Props) {
-  const [input, setInput] = useState<InvestmentInput>(DEFAULT_INPUT);
+export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulationMode, onModeChange, initialInput, initialQuickTotalPriceMan }: Props) {
+  const [input, setInput] = useState<InvestmentInput>({ ...DEFAULT_INPUT, ...initialInput });
   const [area, setArea] = useState("10");
   const [city, setCity] = useState("");
   const [propertyLat, setPropertyLat] = useState("");
@@ -161,7 +163,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   const [zoningType, setZoningType] = useState<ZoningType>("");
 
   // クイックモード専用: 物件価格（総額）
-  const [quickTotalPriceMan, setQuickTotalPriceMan] = useState("");
+  const [quickTotalPriceMan, setQuickTotalPriceMan] = useState(initialQuickTotalPriceMan ?? "");
   // クイックモード: 相場データ取得セクションの開閉
   const [showLandSection, setShowLandSection] = useState(false);
   // 現金購入フラグ（クイック・詳細モード共用）
@@ -356,7 +358,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
         ts: Date.now(),
       };
       setQuickHistory(saveQuickHistory(entry));
-      onAnalyze(payload);
+      onAnalyze(payload, quickTotalPriceMan);
     } else {
       onAnalyze(sortedInput(input));
     }
