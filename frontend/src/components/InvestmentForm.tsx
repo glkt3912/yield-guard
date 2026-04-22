@@ -49,6 +49,15 @@ const BUILDING_TYPES: { value: BuildingType; label: string }[] = [
   { value: "SRC造", label: "SRC造（耐用47年）" },
 ];
 
+const RENT_DECLINE_DEFAULTS: Record<BuildingType, number> = {
+  "木造": 0.01,
+  "軽量鉄骨(3mm以下)": 0.008,
+  "軽量鉄骨(4mm以下)": 0.008,
+  "重量鉄骨": 0.008,
+  "RC造": 0.005,
+  "SRC造": 0.005,
+};
+
 interface Props {
   onAnalyze: (input: InvestmentInput) => Promise<void>;
   onFetchLandPrices: (area: string, city: string, lat?: number, lng?: number) => Promise<void>;
@@ -368,7 +377,11 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
               error={errors.monthlyRent} />
             {!isQuick && (
               <Select label="建物構造" value={input.buildingType}
-                onChange={(e) => setStr("buildingType", e.target.value as BuildingType)}
+                onChange={(e) => {
+                  const bt = e.target.value as BuildingType;
+                  setStr("buildingType", bt);
+                  setNum("rentDeclineRate", RENT_DECLINE_DEFAULTS[bt]);
+                }}
                 options={BUILDING_TYPES} />
             )}
           </div>
@@ -481,6 +494,14 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                       value={toPct(input.incomeTaxRate, 0)}
                       onChange={(e) => setNum("incomeTaxRate", fromPct(e.target.value))}
                       error={errors.incomeTaxRate} />
+                    <div>
+                      <Input label="年間賃料下落率" type="number" suffix="%" step="0.1"
+                        value={toPct(input.rentDeclineRate, 1)}
+                        onChange={(e) => setNum("rentDeclineRate", fromPct(e.target.value))} />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        建物構造から自動設定。経年による賃料低下を考慮する場合に使用（例: 木造1%/年）
+                      </p>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     ※運営経費率はローン利息を含みません（管理費・修繕費・固定資産税・保険等）
