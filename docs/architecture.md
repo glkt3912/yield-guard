@@ -74,3 +74,98 @@ graph TD
 | Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `vitest run` / `build` |
 
 Dependabot により Go modules・npm の依存パッケージが毎週月曜（JST）に自動更新される（エコシステムごとに1PR）。
+
+---
+
+## 観測基盤（OpenTelemetry + 構造化ロギング）
+
+### スタック概要
+
+| レイヤー | 実装 | パッケージ |
+|---|---|---|
+| トレース / メトリクス | OpenTelemetry Go SDK | `backend/internal/telemetry/setup.go` |
+| HTTP スパン自動計装 | `otelgin` ミドルウェア | `go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin` |
+| 構造化ログ | `slog` JSON ハンドラー（Cloud Logging 準拠） | `backend/internal/logger/logger.go` |
+| ログ ↔ トレース相関 | slog ハンドラーが OTel SpanContext からトレースフィールドを注入 | 同上 |
+
+### OTel シグナルフロー
+
+```mermaid
+flowchart LR
+    subgraph Request
+        Gin["Gin ルーター"]
+        OtelGin["otelgin ミドルウェア\n（スパン開始・Context注入）"]
+        Handler["ハンドラー\n（MLITクライアント等）"]
+    end
+
+    subgraph Telemetry["internal/telemetry"]
+        TP["TracerProvider\n（sdktrace）"]
+        MP["MeterProvider\n（sdkmetric）"]
+    end
+
+    subgraph Export["エクスポーター"]
+        Stdout["stdout\n（ローカル開発）"]
+        OTLP["OTLP gRPC\n（本番: Cloud Trace / Monitoring）"]
+    end
+
+    subgraph Logging["internal/logger"]
+        SlogHandler["cloudHandler\n（slog.NewJSONHandler ラップ）"]
+        CloudLog["Cloud Logging\n（stderr JSON）"]
+    end
+
+    Gin --> OtelGin --> Handler
+    Handler --> TP
+    Handler --> MP
+    TP --> Stdout
+    TP --> OTLP
+    MP --> Stdout
+    MP --> OTLP
+    OtelGin -.-> |SpanContext| SlogHandler
+    SlogHandler --> CloudLog
+```
+
+### エクスポーター切り替え
+
+`OTEL_EXPORTER_OTLP_ENDPOINT` 環境変数の有無で自動切り替えする。
+
+| 環境 | `OTEL_EXPORTER_OTLP_ENDPOINT` | トレース出力先 | メトリクス出力先 |
+|---|---|---|---|
+| ローカル開発 | 未設定 | stdout（整形JSON） | stdout |
+| Cloud Run 本番 | `https://...` (OTLP エンドポイント) | Cloud Trace（OTLP gRPC） | Cloud Monitoring（OTLP gRPC） |
+
+### 構造化ログフォーマット（Cloud Logging 準拠）
+
+`logger.Init(os.Stderr)` を `main()` 先頭で呼ぶことでグローバル `slog` デフォルトロガーを設定する。
+
+```json
+{
+  "severity": "INFO",
+  "message": "access",
+  "method": "GET",
+  "path": "/api/land-prices/stats",
+  "status": 200,
+  "latency_ms": 42,
+  "logging.googleapis.com/trace": "projects/my-project/traces/abc123...",
+  "logging.googleapis.com/spanId": "def456...",
+  "logging.googleapis.com/trace_sampled": true
+}
+```
+
+- `severity` / `message` フィールド名は Cloud Logging が自動パースする予約名
+- `logging.googleapis.com/trace` を付与することで Cloud Logging UI でトレースと相関表示できる
+- `GOOGLE_CLOUD_PROJECT` が未設定（ローカル）の場合、トレースフィールドはスキップされる
+
+### メトリクス計装
+
+`telemetry.Setup()` 後、以下のグローバル計測器が有効になる。
+
+| 計測器名 | 種別 | 説明 |
+|---|---|---|
+| `analyze.requests.total` | Counter | 投資分析リクエスト数 |
+| `mlit.api.request.duration` | Histogram | MLIT API リクエストレイテンシ（秒） |
+| `mlit.cache.hits` | Counter | MLIT インメモリキャッシュ ヒット数 |
+| `mlit.cache.misses` | Counter | MLIT インメモリキャッシュ ミス数 |
+
+### ログレベル制御
+
+`LOG_LEVEL` 環境変数（`DEBUG` / `INFO` / `WARN` / `ERROR`、デフォルト `INFO`）で動的に変更できる。`LevelCritical`（`slog.LevelError + 4`）は Cloud Logging の `CRITICAL` 重大度に対応するカスタムレベルとして `logger` パッケージで公開している。
