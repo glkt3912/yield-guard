@@ -9,8 +9,7 @@ import (
 
 const (
 	// SqmPerTsubo は 1坪あたりの平方メートル数（mlit パッケージからも参照）
-	SqmPerTsubo     = 3.30578
-	targetYield8pct = 0.08 // 8%境界線
+	SqmPerTsubo = 3.30578
 )
 
 // Analyze は投資入力値から収支シミュレーション結果を算出する
@@ -36,8 +35,8 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		netYield = (annualRent - annualExpenses) / totalInvestment
 	}
 
-	// 8%逆算
-	requiredRent, landDrop := calcRequired8pct(input, totalInvestment)
+	// 目標利回り逆算
+	requiredRent, landDrop := calcRequiredForTarget(input, totalInvestment)
 
 	// ローン月次計算
 	monthlyPayment := calcMonthlyPayment(input.LoanAmount, effectiveRate, input.LoanYears)
@@ -178,7 +177,8 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		MiscExpenses:          miscExpenses,
 		GrossYield:            grossYield,
 		NetYield:              netYield,
-		IsAbove8Percent:       grossYield >= targetYield8pct,
+		IsAboveYieldTarget:    grossYield >= input.YieldTarget,
+		YieldTarget:           input.YieldTarget,
 		RequiredCostReduction: landDrop,
 		RequiredMonthlyRent:   requiredRent,
 		DeadCrossYear:         deadCrossYear,
@@ -349,18 +349,16 @@ func calcYearlyLoanComponents(balance, annualRate, monthlyPayment float64) (inte
 	return interest, principal
 }
 
-// calcRequired8pct は表面利回り8%達成に必要な値を逆算する
+// calcRequiredForTarget は目標利回り達成に必要な値を逆算する
 // costReduction は「土地価格または建築費のいずれか一方」を削減すべき金額を表す
-func calcRequired8pct(input InvestmentInput, totalInvestment float64) (requiredRent, costReduction float64) {
-	// 目標利回り8%達成に必要な月額賃料
-	requiredAnnualRent := totalInvestment * targetYield8pct
+func calcRequiredForTarget(input InvestmentInput, totalInvestment float64) (requiredRent, costReduction float64) {
+	target := input.YieldTarget
+	requiredAnnualRent := totalInvestment * target
 	requiredRent = requiredAnnualRent / 12
 
-	// 現在の賃料で8%達成に必要な総投資額
 	currentAnnualRent := input.MonthlyRent * 12
-	requiredTotalInvestment := currentAnnualRent / targetYield8pct
+	requiredTotalInvestment := currentAnnualRent / target
 
-	// 過剰投資額 = 土地 or 建築費いずれかを削減すべき額
 	excess := totalInvestment - requiredTotalInvestment
 	if excess > 0 {
 		costReduction = excess

@@ -27,7 +27,7 @@ describe("Dashboard", () => {
   });
 
   it("analyzeAPIの応答後にYieldAnalysisが表示される（クイックモード）", async () => {
-    const mockResult = makeResult({ grossYield: 0.09, isAbove8Percent: true });
+    const mockResult = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
     vi.mocked(api.analyze).mockResolvedValue(mockResult);
 
     render(<Dashboard />);
@@ -45,7 +45,7 @@ describe("Dashboard", () => {
   });
 
   it("詳細モードでanalyzeAPIの応答後にCashFlowChartが表示される", async () => {
-    const mockResult = makeResult({ grossYield: 0.09, isAbove8Percent: true });
+    const mockResult = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
     vi.mocked(api.analyze).mockResolvedValue(mockResult);
 
     render(<Dashboard />);
