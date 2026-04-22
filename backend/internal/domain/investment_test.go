@@ -1333,3 +1333,210 @@ func TestAnalyze_UltraLowInterestRate(t *testing.T) {
 		t.Errorf("GrossYield is NaN or Inf: %v", result.GrossYield)
 	}
 }
+
+// ── 変動金利テスト ────────────────────────────────────────────────
+
+// TestResolveRateForYear はスケジュールに基づく年別金利解決を検証する
+func TestResolveRateForYear(t *testing.T) {
+	schedule := []RateAdjustment{
+		{AfterYear: 6, Rate: 0.02},
+		{AfterYear: 11, Rate: 0.03},
+	}
+
+	cases := []struct {
+		year int
+		want float64
+	}{
+		{1, 0.015},  // スケジュール前: baseRate
+		{5, 0.015},  // スケジュール前: baseRate
+		{6, 0.02},   // 第1ステップ適用
+		{10, 0.02},  // 第1ステップ継続
+		{11, 0.03},  // 第2ステップ適用
+		{35, 0.03},  // 第2ステップ継続
+	}
+
+	for _, c := range cases {
+		got := resolveRateForYear(0.015, 0, schedule, c.year)
+		if math.Abs(got-c.want) > 1e-9 {
+			t.Errorf("year=%d: got %.4f, want %.4f", c.year, got, c.want)
+		}
+	}
+
+	// rateDelta が全ステップに上乗せされること
+	got := resolveRateForYear(0.015, 0.01, schedule, 6)
+	if math.Abs(got-0.03) > 1e-9 {
+		t.Errorf("rateDelta: got %.4f, want 0.03", got)
+	}
+
+	// 空スケジュールは baseRate + rateDelta を返す
+	got = resolveRateForYear(0.015, 0.005, nil, 10)
+	if math.Abs(got-0.02) > 1e-9 {
+		t.Errorf("empty schedule: got %.4f, want 0.02", got)
+	}
+}
+
+// TestValidateRateAdjustmentSchedule はスケジュールのバリデーションを検証する
+func TestValidateRateAdjustmentSchedule(t *testing.T) {
+	base := InvestmentInput{
+		VacancyRate:  0.05,
+		LoanYears:    35,
+		RentDeclineRate: 0,
+	}
+
+	t.Run("valid single step", func(t *testing.T) {
+		in := base
+		in.RateAdjustmentSchedule = []RateAdjustment{{AfterYear: 6, Rate: 0.02}}
+		if err := in.Validate(); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("valid multi step ascending", func(t *testing.T) {
+		in := base
+		in.RateAdjustmentSchedule = []RateAdjustment{
+			{AfterYear: 6, Rate: 0.02},
+			{AfterYear: 11, Rate: 0.025},
+		}
+		if err := in.Validate(); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("AfterYear < 2", func(t *testing.T) {
+		in := base
+		in.RateAdjustmentSchedule = []RateAdjustment{{AfterYear: 1, Rate: 0.02}}
+		if err := in.Validate(); err == nil {
+			t.Error("expected error for AfterYear < 2")
+		}
+	})
+
+	t.Run("AfterYear > LoanYears", func(t *testing.T) {
+		in := base
+		in.RateAdjustmentSchedule = []RateAdjustment{{AfterYear: 36, Rate: 0.02}}
+		if err := in.Validate(); err == nil {
+			t.Error("expected error for AfterYear > LoanYears")
+		}
+	})
+
+	t.Run("Rate out of range", func(t *testing.T) {
+		in := base
+		in.RateAdjustmentSchedule = []RateAdjustment{{AfterYear: 6, Rate: 0.35}}
+		if err := in.Validate(); err == nil {
+			t.Error("expected error for Rate > 0.3")
+		}
+	})
+
+	t.Run("unsorted AfterYear", func(t *testing.T) {
+		in := base
+		in.RateAdjustmentSchedule = []RateAdjustment{
+			{AfterYear: 11, Rate: 0.02},
+			{AfterYear: 6, Rate: 0.025},
+		}
+		if err := in.Validate(); err == nil {
+			t.Error("expected error for unsorted schedule")
+		}
+	})
+
+	t.Run("duplicate AfterYear", func(t *testing.T) {
+		in := base
+		in.RateAdjustmentSchedule = []RateAdjustment{
+			{AfterYear: 6, Rate: 0.02},
+			{AfterYear: 6, Rate: 0.025},
+		}
+		if err := in.Validate(); err == nil {
+			t.Error("expected error for duplicate AfterYear")
+		}
+	})
+}
+
+// TestAnalyzeWithRateSchedule は変動金利スケジュール適用後の動作を検証する
+func TestAnalyzeWithRateSchedule(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:    5_000_000,
+		BuildingCost: 10_000_000,
+		MonthlyRent:  120_000,
+		VacancyRate:  0.05,
+		LoanAmount:   13_000_000,
+		AnnualLoanRate: 0.015,
+		LoanYears:    35,
+		BuildingType: BuildingTypeWood,
+		ExpenseRate:  0.20,
+		IncomeTaxRate: 0.33,
+		HoldingYears: 15,
+		ExitYieldTarget: 0.06,
+		YieldTarget:  0.08,
+	}
+
+	t.Run("fixed rate: all years same EffectiveRate", func(t *testing.T) {
+		result := Analyze(base)
+		for _, y := range result.YearlyResults {
+			if math.Abs(y.EffectiveRate-0.015) > 1e-9 {
+				t.Errorf("year=%d: EffectiveRate=%.4f, want 0.015", y.Year, y.EffectiveRate)
+			}
+		}
+	})
+
+	t.Run("rate steps up at year 6 and 11", func(t *testing.T) {
+		in := base
+		in.RateAdjustmentSchedule = []RateAdjustment{
+			{AfterYear: 6, Rate: 0.02},
+			{AfterYear: 11, Rate: 0.03},
+		}
+		result := Analyze(in)
+
+		for _, y := range result.YearlyResults {
+			var wantRate float64
+			switch {
+			case y.Year >= 11:
+				wantRate = 0.03
+			case y.Year >= 6:
+				wantRate = 0.02
+			default:
+				wantRate = 0.015
+			}
+			if math.Abs(y.EffectiveRate-wantRate) > 1e-9 {
+				t.Errorf("year=%d: EffectiveRate=%.4f, want %.4f", y.Year, y.EffectiveRate, wantRate)
+			}
+		}
+
+		// 金利変化年に月次返済額が増加することを確認
+		// 年5→年6: 金利0.015→0.02なので返済額が増えるはず
+		y5 := result.YearlyResults[4]
+		y6 := result.YearlyResults[5]
+		if y6.AnnualLoanPayment <= y5.AnnualLoanPayment {
+			t.Errorf("year6 payment(%.0f) should be > year5 payment(%.0f) after rate increase",
+				y6.AnnualLoanPayment, y5.AnnualLoanPayment)
+		}
+	})
+
+	t.Run("variable rate total interest > fixed rate total interest", func(t *testing.T) {
+		// 金利が途中から上がれば総支払利息は増える
+		fixed := Analyze(base)
+		variable := base
+		variable.RateAdjustmentSchedule = []RateAdjustment{{AfterYear: 6, Rate: 0.03}}
+		varResult := Analyze(variable)
+
+		fixedInterest := 0.0
+		varInterest := 0.0
+		for i := range fixed.YearlyResults {
+			fixedInterest += fixed.YearlyResults[i].AnnualInterest
+			varInterest += varResult.YearlyResults[i].AnnualInterest
+		}
+		if varInterest <= fixedInterest {
+			t.Errorf("variable rate total interest(%.0f) should be > fixed(%.0f)", varInterest, fixedInterest)
+		}
+	})
+
+	t.Run("LoanRateDelta stacks on top of schedule", func(t *testing.T) {
+		in := base
+		in.RateAdjustmentSchedule = []RateAdjustment{{AfterYear: 6, Rate: 0.02}}
+		in.LoanRateDelta = 0.005
+		result := Analyze(in)
+
+		// 年6以降: 0.02 + 0.005 = 0.025
+		y6 := result.YearlyResults[5]
+		if math.Abs(y6.EffectiveRate-0.025) > 1e-9 {
+			t.Errorf("year6 EffectiveRate=%.4f, want 0.025 (schedule+delta)", y6.EffectiveRate)
+		}
+	})
+}

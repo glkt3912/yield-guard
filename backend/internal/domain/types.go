@@ -118,6 +118,10 @@ func (i *InvestmentInput) Validate() error {
 			i.RentDeclineRate,
 		)
 	}
+	loanYears := i.LoanYears
+	if loanYears == 0 {
+		loanYears = 35 // Defaults() 適用前に呼ばれる場合の保護
+	}
 	for idx, adj := range i.RateAdjustmentSchedule {
 		if adj.AfterYear < 2 {
 			return fmt.Errorf(
@@ -125,10 +129,22 @@ func (i *InvestmentInput) Validate() error {
 				idx, adj.AfterYear,
 			)
 		}
+		if adj.AfterYear > loanYears {
+			return fmt.Errorf(
+				"RateAdjustmentSchedule[%d].AfterYear(%d) exceeds LoanYears(%d)",
+				idx, adj.AfterYear, loanYears,
+			)
+		}
 		if adj.Rate <= 0 || adj.Rate > 0.3 {
 			return fmt.Errorf(
 				"RateAdjustmentSchedule[%d].Rate(%.4f) must be between 0 and 0.3",
 				idx, adj.Rate,
+			)
+		}
+		if idx > 0 && adj.AfterYear <= i.RateAdjustmentSchedule[idx-1].AfterYear {
+			return fmt.Errorf(
+				"RateAdjustmentSchedule must be sorted in ascending order by afterYear: [%d].AfterYear(%d) <= [%d].AfterYear(%d)",
+				idx, adj.AfterYear, idx-1, i.RateAdjustmentSchedule[idx-1].AfterYear,
 			)
 		}
 	}
