@@ -243,5 +243,34 @@ describe("InvestmentForm", () => {
       await userEvent.click(checkbox);
       expect(screen.getAllByText(/現金購入（ローンなし）/).length).toBeGreaterThan(0);
     });
+
+    it("現金購入チェックオン時に showCustomLoan がリセットされる", async () => {
+      renderForm("quick");
+      await userEvent.click(screen.getByText(/カスタム設定/));
+      expect(screen.getByLabelText(/ローン金額/)).toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText(/現金購入（ローンなし）/));
+      await userEvent.click(screen.getByLabelText(/現金購入（ローンなし）/));
+      expect(screen.queryByLabelText(/ローン金額/)).not.toBeInTheDocument();
+      expect(screen.getByText(/ローン 80% 自動適用中/)).toBeInTheDocument();
+    });
+
+    it("前回の入力から開始ボタンで直前の入力が復元される", async () => {
+      const store: Record<string, string> = {
+        "yield-guard:quick-history": JSON.stringify([
+          { totalPriceMan: "3000", monthlyRentYen: "150000", ts: Date.now() },
+        ]),
+      };
+      vi.stubGlobal("localStorage", {
+        getItem: (key: string) => store[key] ?? null,
+        setItem: (key: string, value: string) => { store[key] = value; },
+        removeItem: (key: string) => { delete store[key]; },
+        clear: () => { Object.keys(store).forEach((k) => delete store[k]); },
+      });
+      renderForm("quick");
+      await userEvent.click(screen.getByText(/前回の入力から開始/));
+      expect(screen.getByLabelText(/物件価格（土地＋建物の総額）/)).toHaveValue(3000);
+      expect(screen.getByLabelText(/想定月額賃料/)).toHaveValue(150000);
+      vi.unstubAllGlobals();
+    });
   });
 });
