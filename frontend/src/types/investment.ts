@@ -67,6 +67,7 @@ export interface InvestmentInput {
   loanRateDelta: number;
   annualPropertyTax: number;  // 固定資産税・都市計画税（年間）。0 = ExpenseRateに含む。
   rentDeclineRate: number;    // 年間賃料下落率（例: 0.01 = 1%/年）
+  yieldTarget: number;        // 目標表面利回り（例: 0.08 = 8%）
 }
 
 export interface YearlyResult {
@@ -102,7 +103,8 @@ export interface InvestmentResult {
   miscExpenses: number;
   grossYield: number;
   netYield: number;
-  isAbove8Percent: boolean;
+  isAboveYieldTarget: boolean;
+  yieldTarget: number;
   requiredCostReduction: number;
   requiredMonthlyRent: number;
   deadCrossYear: number;
@@ -208,6 +210,7 @@ export const DEFAULT_INPUT: InvestmentInput = {
   loanRateDelta: 0,
   annualPropertyTax: 0,
   rentDeclineRate: 0,
+  yieldTarget: 0.08,
 };
 
 export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
@@ -237,4 +240,5 @@ export const QUICK_MODE_DEFAULTS: Partial<InvestmentInput> = {
   buildingType:      "木造" as BuildingType,
   annualLoanRate:    0.015,
   rentDeclineRate:   0.01,
+  yieldTarget:       0.08,
 };

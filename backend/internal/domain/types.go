@@ -86,6 +86,9 @@ type InvestmentInput struct {
 
 	// 賃料下落率: 毎年この割合だけ実効賃料が低下する（例: 0.01 = 年1%下落）
 	RentDeclineRate float64 `json:"rentDeclineRate"`
+
+	// 目標表面利回り（例: 0.08 = 8%）。0 の場合は Defaults() で 0.08 にセットされる。
+	YieldTarget float64 `json:"yieldTarget"`
 }
 
 // Validate は入力値のバリデーションを行い、不正な組み合わせはエラーを返す。
@@ -117,6 +120,9 @@ func (i *InvestmentInput) Defaults() {
 	}
 	if i.ExitYieldTarget == 0 {
 		i.ExitYieldTarget = 0.06
+	}
+	if i.YieldTarget == 0 {
+		i.YieldTarget = 0.08
 	}
 	if i.LoanYears == 0 {
 		i.LoanYears = 35
@@ -177,9 +183,10 @@ type InvestmentResult struct {
 	MiscExpenses    float64 `json:"miscExpenses"`
 	GrossYield      float64 `json:"grossYield"`      // 表面利回り（満室想定年収/総投資額）
 	NetYield        float64 `json:"netYield"`        // 実質利回り（実効収入-経費)/総投資額）
-	IsAbove8Percent bool    `json:"isAbove8Percent"`
+	IsAboveYieldTarget bool    `json:"isAboveYieldTarget"`
+	YieldTarget        float64 `json:"yieldTarget"` // 目標表面利回り（例: 0.08）
 
-	// 8%達成に必要な改善額（土地・建築費いずれか一方を削減する額）
+	// 目標利回り達成に必要な改善額（土地・建築費いずれか一方を削減する額）
 	RequiredCostReduction float64 `json:"requiredCostReduction"`
 	RequiredMonthlyRent   float64 `json:"requiredMonthlyRent"` // または必要月額賃料
 

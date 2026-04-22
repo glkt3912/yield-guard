@@ -97,8 +97,8 @@ func TestAnalyze_Above8Percent(t *testing.T) {
 	}
 	highRent.Defaults()
 	r1 := Analyze(highRent)
-	if !r1.IsAbove8Percent {
-		t.Errorf("高賃料ケース: IsAbove8Percent = false, want true (yield=%.2f%%)", r1.GrossYield*100)
+	if !r1.IsAboveYieldTarget {
+		t.Errorf("高賃料ケース: IsAboveYieldTarget = false, want true (yield=%.2f%%)", r1.GrossYield*100)
 	}
 
 	// 低賃料 → 8%未満
@@ -109,8 +109,8 @@ func TestAnalyze_Above8Percent(t *testing.T) {
 	}
 	lowRent.Defaults()
 	r2 := Analyze(lowRent)
-	if r2.IsAbove8Percent {
-		t.Errorf("低賃料ケース: IsAbove8Percent = true, want false (yield=%.2f%%)", r2.GrossYield*100)
+	if r2.IsAboveYieldTarget {
+		t.Errorf("低賃料ケース: IsAboveYieldTarget = true, want false (yield=%.2f%%)", r2.GrossYield*100)
 	}
 }
 
