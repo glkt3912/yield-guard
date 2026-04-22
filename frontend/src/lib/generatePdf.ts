@@ -36,21 +36,26 @@ function today(): string {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
 }
 
-// Font is hardcoded server-side — user cannot supply paths or URLs
-const FONT_URL =
-  "https://fonts.gstatic.com/s/notosansjp/v53/nKKF-GM_FYFRJvXzVXaAPe97P1K9CtBL.otf";
-let fontCache: string | null = null;
+// Fonts are served from our own domain (public/fonts/) — no CDN dependency
+const FONT_REGULAR = "/fonts/NotoSansJP-Regular.woff2";
+const FONT_BOLD = "/fonts/NotoSansJP-Bold.woff2";
 
-async function getNotoSansJPBase64(): Promise<string> {
-  if (fontCache) return fontCache;
-  const res = await fetch(FONT_URL);
+const fontCache: Record<string, string> = {};
+
+async function toBase64(url: string): Promise<string> {
+  if (fontCache[url]) return fontCache[url];
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`);
   const buf = await res.arrayBuffer();
   const bytes = new Uint8Array(buf);
+  // Chunk-based btoa to avoid call-stack overflow on large font files
+  const CHUNK = 8192;
   let binary = "";
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  fontCache = btoa(binary);
-  return fontCache;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  fontCache[url] = btoa(binary);
+  return fontCache[url];
 }
 
 function infoRow(label: string, value: string) {
@@ -108,9 +113,10 @@ export async function downloadReportPDF(
   input: InvestmentInput,
   result: InvestmentResult
 ): Promise<void> {
-  const [pdfMakeModule, fontB64] = await Promise.all([
+  const [pdfMakeModule, regularB64, boldB64] = await Promise.all([
     import("pdfmake/build/pdfmake"),
-    getNotoSansJPBase64(),
+    toBase64(FONT_REGULAR),
+    toBase64(FONT_BOLD),
   ]);
 
   const pdfMake = ((pdfMakeModule as Record<string, unknown>).default ?? pdfMakeModule) as {
@@ -120,13 +126,16 @@ export async function downloadReportPDF(
   };
 
   // Font registration is hardcoded; user input never reaches vfs paths
-  pdfMake.vfs = { "NotoSansJP.otf": fontB64 };
+  pdfMake.vfs = {
+    "NotoSansJP-Regular.woff2": regularB64,
+    "NotoSansJP-Bold.woff2": boldB64,
+  };
   pdfMake.fonts = {
     NotoSansJP: {
-      normal: "NotoSansJP.otf",
-      bold: "NotoSansJP.otf",
-      italics: "NotoSansJP.otf",
-      bolditalics: "NotoSansJP.otf",
+      normal: "NotoSansJP-Regular.woff2",
+      bold: "NotoSansJP-Bold.woff2",
+      italics: "NotoSansJP-Regular.woff2",
+      bolditalics: "NotoSansJP-Bold.woff2",
     },
   };
 
