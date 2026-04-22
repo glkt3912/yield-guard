@@ -41,9 +41,13 @@ func (h *cloudHandler) WithGroup(name string) slog.Handler {
 	return &cloudHandler{inner: h.inner.WithGroup(name), projectID: h.projectID}
 }
 
+// LevelCritical は slog にない Cloud Logging の CRITICAL 重大度に対応するカスタムレベル。
+// 使用例: slog.Log(ctx, LevelCritical, "unrecoverable error")
+const LevelCritical = slog.LevelError + 4
+
 func levelToSeverity(l slog.Level) string {
 	switch {
-	case l >= slog.LevelError+4:
+	case l >= LevelCritical:
 		return "CRITICAL"
 	case l >= slog.LevelError:
 		return "ERROR"
@@ -97,7 +101,8 @@ func Init(w io.Writer) {
 }
 
 // New returns a logger writing to w, using the same Cloud Logging format as Init.
-// Intended for tests and non-global usage.
+// Reads GOOGLE_CLOUD_PROJECT from the environment for trace field formatting.
+// Intended for tests and non-global usage; for test isolation pass projectID via newJSONHandler directly.
 func New(w io.Writer) *slog.Logger {
 	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
 	return slog.New(newJSONHandler(w, slog.LevelDebug, projectID))

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -43,6 +44,9 @@ func accessLogMiddleware() gin.HandlerFunc {
 			"latency_ms", latencyMS,
 			"client_ip", c.ClientIP(),
 		}
+		if q := c.Request.URL.RawQuery; q != "" {
+			args = append(args, "query", q)
+		}
 		switch {
 		case status >= 500:
 			slog.ErrorContext(ctx, "access", args...)
@@ -59,6 +63,7 @@ func recoveryMiddleware() gin.HandlerFunc {
 		slog.ErrorContext(c.Request.Context(), "panic recovered",
 			"error", fmt.Sprintf("%v", err),
 			"path", c.Request.URL.Path,
+			"stack", string(debug.Stack()),
 		)
 		c.AbortWithStatus(http.StatusInternalServerError)
 	})
