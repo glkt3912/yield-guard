@@ -121,3 +121,52 @@ func TestRateLimiter_IsolatesPerIP(t *testing.T) {
 		t.Fatalf("IP B first request: want 200, got %d", got)
 	}
 }
+
+func TestRealIP(t *testing.T) {
+	cases := []struct {
+		name       string
+		remoteAddr string
+		xff        string
+		want       string
+	}{
+		{
+			name:       "no XFF — use RemoteAddr",
+			remoteAddr: "1.2.3.4:5678",
+			xff:        "",
+			want:       "1.2.3.4",
+		},
+		{
+			name:       "single XFF entry",
+			remoteAddr: "10.0.0.1:1234",
+			xff:        "203.0.113.1",
+			want:       "203.0.113.1",
+		},
+		{
+			name:       "Cloud Run: client spoofs XFF, LB appends real IP at end",
+			remoteAddr: "10.0.0.1:1234",
+			xff:        "spoofed-ip, 203.0.113.99",
+			want:       "203.0.113.99",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			var got string
+			r := gin.New()
+			r.GET("/", func(c *gin.Context) {
+				got = realIP(c)
+				c.Status(http.StatusOK)
+			})
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.RemoteAddr = tc.remoteAddr
+			if tc.xff != "" {
+				req.Header.Set("X-Forwarded-For", tc.xff)
+			}
+			r.ServeHTTP(httptest.NewRecorder(), req)
+			if got != tc.want {
+				t.Errorf("realIP = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

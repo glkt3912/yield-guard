@@ -76,11 +76,6 @@ func recoveryMiddleware() gin.HandlerFunc {
 // NewRouter は Gin ルーターを初期化して返す
 func NewRouter(h *Handler) *gin.Engine {
 	r := gin.New()
-	// X-Forwarded-For を信頼しない: TCP 接続元 IP のみを ClientIP() として使用し
-	// ヘッダー偽装によるレートリミット回避を防ぐ。
-	if err := r.SetTrustedProxies(nil); err != nil {
-		panic(err)
-	}
 
 	r.Use(otelgin.Middleware("yield-guard-backend"))
 	r.Use(accessLogMiddleware())

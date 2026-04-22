@@ -1,8 +1,10 @@
 package api
 
 import (
+	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -72,9 +74,26 @@ func (rl *rateLimiter) purge() {
 	}
 }
 
+// realIP は Cloud Run (Google LB) 環境でも実クライアント IP を返す。
+// Google LB は X-Forwarded-For の末尾に実 IP を追記するため、最後のエントリが信頼できる。
+// ヘッダー未設定時（ローカル開発）は RemoteAddr を使用する。
+func realIP(c *gin.Context) string {
+	if xff := c.GetHeader("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		if ip := strings.TrimSpace(parts[len(parts)-1]); ip != "" {
+			return ip
+		}
+	}
+	ip, _, err := net.SplitHostPort(c.Request.RemoteAddr)
+	if err != nil {
+		return c.Request.RemoteAddr
+	}
+	return ip
+}
+
 func (rl *rateLimiter) middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		res := rl.get(c.ClientIP()).Reserve()
+		res := rl.get(realIP(c)).Reserve()
 		if d := res.Delay(); d > 0 {
 			res.Cancel()
 			waitSec := int(d.Seconds()) + 1
