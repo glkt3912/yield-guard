@@ -32,6 +32,7 @@ describe("Dashboard", () => {
 
     render(<Dashboard />);
 
+    await userEvent.type(screen.getByLabelText(/物件価格（土地＋建物の総額）/), "1500");
     await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
 
     await waitFor(() => {
@@ -70,6 +71,7 @@ describe("Dashboard", () => {
 
     render(<Dashboard />);
 
+    await userEvent.type(screen.getByLabelText(/物件価格（土地＋建物の総額）/), "1500");
     await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
 
     // ボタンが無効化されていること
@@ -84,6 +86,7 @@ describe("Dashboard", () => {
 
     render(<Dashboard />);
 
+    await userEvent.type(screen.getByLabelText(/物件価格（土地＋建物の総額）/), "1500");
     await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
 
     await waitFor(() => {
@@ -96,6 +99,7 @@ describe("Dashboard", () => {
 
     render(<Dashboard />);
 
+    await userEvent.type(screen.getByLabelText(/物件価格（土地＋建物の総額）/), "1500");
     await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
 
     await waitFor(() => {

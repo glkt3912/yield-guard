@@ -112,15 +112,11 @@ describe("InvestmentForm", () => {
     });
   });
 
-  it("詳細設定を開く/閉じるトグルが機能する", async () => {
+  it("詳細モードでは諸経費率フィールドが常時表示される", () => {
     render(
       <InvestmentForm onAnalyze={vi.fn()} onFetchLandPrices={vi.fn()} loading={false} simulationMode="full" onModeChange={vi.fn()} />
     );
-    expect(screen.queryByText("諸経費率")).not.toBeInTheDocument();
-    await userEvent.click(screen.getByText(/詳細設定（諸経費率・空室率など）/));
-    expect(screen.getByText(/諸経費率/)).toBeInTheDocument();
-    await userEvent.click(screen.getByText(/詳細設定を閉じる/));
-    expect(screen.queryByText("諸経費率")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/諸経費率/)).toBeInTheDocument();
   });
 
   describe("クイックシミュレーションモード", () => {
@@ -156,6 +152,7 @@ describe("InvestmentForm", () => {
 
     it("クイックモードでシミュレーション実行すると QUICK_MODE_DEFAULTS がマージされる", async () => {
       const { onAnalyze } = renderForm("quick");
+      await userEvent.type(screen.getByLabelText(/物件価格（土地＋建物の総額）/), "1500");
       await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
       expect(onAnalyze).toHaveBeenCalledTimes(1);
       expect(onAnalyze).toHaveBeenCalledWith(expect.objectContaining({
@@ -178,7 +175,7 @@ describe("InvestmentForm", () => {
 
     it("クイックモードではインフォバナーが表示される", () => {
       renderForm("quick");
-      expect(screen.getByText(/クイックモード:/)).toBeInTheDocument();
+      expect(screen.getByText(/自動設定されるデフォルト値/)).toBeInTheDocument();
     });
 
     it("詳細モードではクイックモードのインフォバナーが非表示", () => {

@@ -95,17 +95,33 @@ const equityInvested = result.totalInvestment - input.loanAmount
 
 `propertyLat`, `propertyLng`（コンポーネント内ローカル状態、`InvestmentInput` には含まれない）。都道府県・市区町村セレクトの下に2カラムグリッドで配置。「相場データを取得」押下時に有効な数値が入力されていれば `Dashboard.handleFetchLandPrices` に渡され、`GET /api/station-ridership?lat=&lng=` の呼び出しに使用される。未入力または不正値（`parseFloat` → `NaN`）の場合は undefined として渡され、駅別乗降客数の取得はスキップされる。
 
-**詳細設定トグル（showAdvanced）**:
-`expenseRate`, `incomeTaxRate`, `buildingAge`, `buildingType`, `exitYieldTarget` は
-詳細設定パネルに格納されており、デフォルトでは非表示。
+**クイック / 詳細モード（`simulationMode`）**:
+
+`SimulationMode = "quick" | "full"` で切り替える2モード設計。モード切替ボタンにサブタイトル（「内覧でサッと試す」／「じっくり分析する」）を表示。
+
+| | クイックモード | 詳細モード |
+|---|---|---|
+| 入力項目 | 3項目（物件価格総額・月額賃料・ローン金額） | 全フィールド（16項目+） |
+| 土地相場データ | 折りたたみ（初期非表示・任意） | 常時展開 |
+| フォーム構造 | フラット | 4セクション（物件情報/収益条件/ローン条件/出口戦略） |
+| ストレステスト | 非表示 | 常時表示 |
+| デフォルト値バナー | 表示（空室率5%・経費率20%等を明示） | なし |
+
+クイックモード送信時は「物件価格総額」（`quickTotalPriceMan`）を `landPrice = total × 0.7`・`buildingCost = total × 0.3` に自動分割し、`QUICK_MODE_DEFAULTS` とマージして API へ送信する。
+
+旧来の「詳細設定トグル（`showAdvanced`）」は廃止済み。`expenseRate`・`incomeTaxRate`・`buildingAge`・`buildingType`・`exitYieldTarget`・`rentDeclineRate` は詳細モードの各セクションにフラット配置。
 
 **レスポンシブグリッド**:
 
 すべての入力グリッドは `grid-cols-1 sm:grid-cols-2`（または `sm:grid-cols-3`）で実装されており、モバイル（`sm` ブレークポイント未満）では縦1列に、タブレット以上では2〜3列に切り替わる。
 
-**クライアントサイドバリデーション（`validate`）**:
-「シミュレーション実行」押下時に `validate()` を実行し、エラーがあれば API を呼ばずフィールド直下にエラーメッセージを表示する。
-検証ルールはバックエンドの `validateInvestmentInput()` と同一。フィールドの値を変更するとそのフィールドのエラーをクリアする。
+**クライアントサイドバリデーション**:
+「シミュレーション実行」押下時に `validateQuick` または `validateFull` を実行し、エラーがあれば API を呼ばずフィールド直下にエラーメッセージを表示する。フィールドの値を変更するとそのフィールドのエラーをクリアする。
+
+| モード | バリデーション対象 |
+|---|---|
+| クイック | 物件価格総額・月額賃料・ローン金額（3項目） |
+| 詳細 | 全フィールド（バックエンドの `validateInvestmentInput()` と同一） |
 
 | フィールド | 条件 |
 |-----------|------|
