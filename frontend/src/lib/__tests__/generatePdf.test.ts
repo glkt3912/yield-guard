@@ -9,7 +9,7 @@ const mockCreatePdf = vi.fn(() => ({ download: mockDownload }));
 vi.mock("pdfmake/build/pdfmake", () => ({
   default: {
     createPdf: mockCreatePdf,
-    vfs: {},
+    virtualfs: { writeFileSync: vi.fn() },
     fonts: {},
   },
 }));

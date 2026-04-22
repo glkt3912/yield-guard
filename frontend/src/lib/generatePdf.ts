@@ -124,16 +124,14 @@ export async function downloadReportPDF(
   ]);
 
   const pdfMake = ((pdfMakeModule as Record<string, unknown>).default ?? pdfMakeModule) as {
-    vfs: Record<string, string>;
+    virtualfs: { writeFileSync: (name: string, data: string) => void };
     fonts: Record<string, unknown>;
     createPdf: (def: unknown) => { download: (name: string) => void };
   };
 
-  // Font registration is hardcoded; user input never reaches vfs paths
-  pdfMake.vfs = {
-    "NotoSansJP-Regular.woff2": regularB64,
-    "NotoSansJP-Bold.woff2": boldB64,
-  };
+  // pdfmake 0.3.x uses virtualfs.writeFileSync (not pdfMake.vfs)
+  pdfMake.virtualfs.writeFileSync("NotoSansJP-Regular.woff2", regularB64);
+  pdfMake.virtualfs.writeFileSync("NotoSansJP-Bold.woff2", boldB64);
   pdfMake.fonts = {
     NotoSansJP: {
       normal: "NotoSansJP-Regular.woff2",
