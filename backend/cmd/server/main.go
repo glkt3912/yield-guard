@@ -66,8 +66,13 @@ func main() {
 		slog.Error("forced shutdown", "error", err)
 		os.Exit(1)
 	}
-	if err := otelShutdown(context.Background()); err != nil {
-		slog.Error("OTel shutdown error", "error", err)
+	// OTel フラッシュに 5s のタイムアウトを設定。
+	// ローリングデプロイ時に新旧インスタンスのメトリクス時系列が重複し
+	// "Points must be written in order" エラーが発生するのは既知の挙動のため WARN に留める。
+	otelCtx, otelCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer otelCancel()
+	if err := otelShutdown(otelCtx); err != nil {
+		slog.Warn("OTel shutdown error", "error", err)
 	}
 	slog.Info("server stopped")
 }
