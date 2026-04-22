@@ -113,6 +113,8 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
       standard:    { annualRent: 1_296_000, grossYield: 0.09 },
       pessimistic: { annualRent: 1_224_000, grossYield: 0.09 },
     },
+    dscr: 1.2,
+    ltvSensitivity: [],
     ...overrides,
   };
 }
