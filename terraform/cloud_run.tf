@@ -36,6 +36,11 @@ resource "google_cloud_run_v2_service" "backend" {
       }
 
       env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
+
+      env {
         name = "MLIT_API_KEY"
         value_source {
           secret_key_ref {
