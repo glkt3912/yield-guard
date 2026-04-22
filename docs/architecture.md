@@ -74,3 +74,40 @@ graph TD
 | Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `vitest run` / `build` |
 
 Dependabot により Go modules・npm の依存パッケージが毎週月曜（JST）に自動更新される（エコシステムごとに1PR）。
+
+---
+
+## Observability（可観測性）
+
+### 概要
+
+バックエンドは OpenTelemetry SDK で計装済み。`GOOGLE_CLOUD_PROJECT` 環境変数の有無でエクスポーター先が切り替わる。
+
+| 環境 | エクスポーター | 送信先 |
+|------|--------------|--------|
+| ローカル開発（未設定） | `stdouttrace` / `stdoutmetric` | コンソール標準出力 |
+| 本番（Cloud Run） | `cloudtrace` / `googlemonitoring` | Cloud Trace / Cloud Monitoring |
+
+### 計装ポイント
+
+| 計装 | 実装箇所 | 収集内容 |
+|------|---------|---------|
+| HTTP リクエストスパン | `otelgin` ミドルウェア（自動） | 全エンドポイントのトレース |
+| 投資分析リクエスト数 | `telemetry.AnalyzeRequestsTotal` | `POST /api/investment/analyze` のカウント |
+| MLIT API レイテンシ | `telemetry.MLITAPILatencyHistogram` | 国交省 API への呼び出し時間（秒） |
+| MLIT キャッシュヒット/ミス | `telemetry.MLITCacheHits` / `MLITCacheMisses` | TTL キャッシュの効果測定 |
+
+### Cloud Run 設定（Terraform 管理）
+
+```
+GOOGLE_CLOUD_PROJECT = <project_id>   # cloud_run.tf
+```
+
+Cloud Run SA に付与する IAM ロール（`iam.tf`）:
+
+| ロール | 用途 |
+|--------|------|
+| `roles/cloudtrace.agent` | Cloud Trace へのスパン書き込み |
+| `roles/monitoring.metricWriter` | Cloud Monitoring へのメトリクス書き込み |
+
+認証は ADC（Application Default Credentials）が Cloud Run 上で自動処理するため、コード内での認証設定は不要。

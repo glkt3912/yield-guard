@@ -38,6 +38,8 @@ Yield-Guard は不動産投資判断を支援するシミュレーションツ�
 | Go 1.25 | 言語 |
 | Gin v1.9.1 | HTTPルーティング |
 | gin-contrib/cors | CORS ミドルウェア |
+| OpenTelemetry SDK | 分散トレーシング・メトリクス計装 |
+| opentelemetry-operations-go | Cloud Trace / Cloud Monitoring へのエクスポート（本番） |
 
 ### フロントエンド
 
@@ -135,6 +137,7 @@ go run cmd/server/main.go
 | `ALLOW_ORIGINS` | CORS許可オリジン | `http://localhost:3000` |
 | `MLIT_API_KEY` | 不動産情報ライブラリ APIキー（必須） | — |
 | `APP_INTERNAL_API_KEY` | Vercel-Cloud Run 間の内部通信認証キー。設定時は `/api/*` に `X-Internal-Key` ヘッダーが必要 | 未設定（ローカル開発時はスキップ） |
+| `GOOGLE_CLOUD_PROJECT` | GCP プロジェクト ID。設定時は Cloud Trace / Cloud Monitoring へ OTel データを送信。未設定時は stdout 出力 | 未設定（ローカル開発時は stdout） |
 
 **フロントエンド**
 
