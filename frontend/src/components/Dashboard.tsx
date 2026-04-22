@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { InvestmentForm } from "@/components/InvestmentForm";
 import { YieldAnalysis } from "@/components/YieldAnalysis";
 import { CashFlowChart } from "@/components/CashFlowChart";
@@ -8,7 +8,7 @@ import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
 import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode } from "@/types/investment";
 import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks } from "@/lib/api";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, Info } from "lucide-react";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
@@ -33,6 +33,12 @@ export function Dashboard() {
   const [simulationMode, setSimulationMode] = useState<SimulationMode>("quick");
   const [modeNotice, setModeNotice] = useState(false);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    };
+  }, []);
 
   const handleModeChange = (mode: SimulationMode) => {
     if (result) {
@@ -138,8 +144,9 @@ export function Dashboard() {
         )}
 
         {modeNotice && (
-          <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-            ℹ モードを切り替えたため、結果をクリアしました。再度シミュレーションを実行してください。
+          <div className="mb-4 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            <Info className="h-4 w-4 shrink-0" />
+            モードを切り替えたため、結果をクリアしました。再度シミュレーションを実行してください。
           </div>
         )}
 
