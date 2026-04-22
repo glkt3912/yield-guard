@@ -1157,6 +1157,138 @@ func TestAnalyze_ShortTermCapitalGains(t *testing.T) {
 	t.Logf("HoldingYears=5 (短期): SalePrice=%.0f, CapGain=%.0f, Tax=%.0f", result.ExitSalePrice, result.ExitCapitalGain, result.ExitTransferTax)
 }
 
+// TestAnalyze_YieldScenarios は空室シナリオ（楽観・標準・悲観）の計算を検証する
+func TestAnalyze_YieldScenarios(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.10, // 10%空室率
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+	sc := result.YieldScenarios
+
+	totalInvestment := 5_000_000.0 + 10_000_000.0 + 15_000_000.0*0.07 // 16,050,000
+	annualGross := 120_000.0 * 12                                        // 1,440,000
+	expectedGrossYield := annualGross / totalInvestment
+
+	// 楽観: 空室率 × 0.5 = 5%
+	wantOptRent := annualGross * (1 - 0.10*0.5)
+	if !approxEqual(sc.Optimistic.AnnualRent, wantOptRent, 1) {
+		t.Errorf("Optimistic.AnnualRent = %.0f, want %.0f", sc.Optimistic.AnnualRent, wantOptRent)
+	}
+	if !approxEqual(sc.Optimistic.GrossYield, expectedGrossYield, 0.0001) {
+		t.Errorf("Optimistic.GrossYield = %.4f, want %.4f", sc.Optimistic.GrossYield, expectedGrossYield)
+	}
+
+	// 標準: 空室率 × 1.0 = 10%
+	wantStdRent := annualGross * (1 - 0.10)
+	if !approxEqual(sc.Standard.AnnualRent, wantStdRent, 1) {
+		t.Errorf("Standard.AnnualRent = %.0f, want %.0f", sc.Standard.AnnualRent, wantStdRent)
+	}
+	if !approxEqual(sc.Standard.GrossYield, expectedGrossYield, 0.0001) {
+		t.Errorf("Standard.GrossYield = %.4f, want %.4f", sc.Standard.GrossYield, expectedGrossYield)
+	}
+
+	// 悲観: 空室率 × 1.5 = 15%
+	wantPesRent := annualGross * (1 - 0.10*1.5)
+	if !approxEqual(sc.Pessimistic.AnnualRent, wantPesRent, 1) {
+		t.Errorf("Pessimistic.AnnualRent = %.0f, want %.0f", sc.Pessimistic.AnnualRent, wantPesRent)
+	}
+	if !approxEqual(sc.Pessimistic.GrossYield, expectedGrossYield, 0.0001) {
+		t.Errorf("Pessimistic.GrossYield = %.4f, want %.4f", sc.Pessimistic.GrossYield, expectedGrossYield)
+	}
+
+	// 楽観 > 標準 > 悲観 の順序確認
+	if sc.Optimistic.AnnualRent <= sc.Standard.AnnualRent {
+		t.Errorf("Optimistic.AnnualRent (%.0f) should be > Standard.AnnualRent (%.0f)", sc.Optimistic.AnnualRent, sc.Standard.AnnualRent)
+	}
+	if sc.Standard.AnnualRent <= sc.Pessimistic.AnnualRent {
+		t.Errorf("Standard.AnnualRent (%.0f) should be > Pessimistic.AnnualRent (%.0f)", sc.Standard.AnnualRent, sc.Pessimistic.AnnualRent)
+	}
+
+	t.Logf("YieldScenarios: Optimistic=%.0f, Standard=%.0f, Pessimistic=%.0f (GrossYield=%.4f)",
+		sc.Optimistic.AnnualRent, sc.Standard.AnnualRent, sc.Pessimistic.AnnualRent, sc.Standard.GrossYield)
+}
+
+// TestAnalyze_YieldScenarios_HighVacancy は高空室率での悲観シナリオのキャップ（0.99）を検証する
+func TestAnalyze_YieldScenarios_HighVacancy(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.80, // 80%空室率: 悲観で1.5倍=120%→0.99にキャップ
+		LoanAmount:      0,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+	sc := result.YieldScenarios
+
+	// 悲観: 0.80 × 1.5 = 1.20 → 0.99 にキャップ
+	wantPesRent := 120_000.0 * 12 * (1 - 0.99)
+	if !approxEqual(sc.Pessimistic.AnnualRent, wantPesRent, 1) {
+		t.Errorf("Pessimistic.AnnualRent (capped) = %.0f, want %.0f", sc.Pessimistic.AnnualRent, wantPesRent)
+	}
+
+	// AnnualRent は 0 以上でなければならない
+	if sc.Pessimistic.AnnualRent < 0 {
+		t.Errorf("Pessimistic.AnnualRent = %.0f, must be >= 0", sc.Pessimistic.AnnualRent)
+	}
+}
+
+// TestAnalyze_YieldScenarios_ZeroVacancy はゼロ空室率でのシナリオを検証する
+func TestAnalyze_YieldScenarios_ZeroVacancy(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0, // ゼロ空室率: 全シナリオで満室想定
+		LoanAmount:      0,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(input)
+	sc := result.YieldScenarios
+
+	fullAnnualRent := 120_000.0 * 12
+
+	// 空室率0%: 楽観・標準・悲観いずれも満室賃料
+	if !approxEqual(sc.Optimistic.AnnualRent, fullAnnualRent, 1) {
+		t.Errorf("Optimistic.AnnualRent = %.0f, want %.0f (zero vacancy)", sc.Optimistic.AnnualRent, fullAnnualRent)
+	}
+	if !approxEqual(sc.Standard.AnnualRent, fullAnnualRent, 1) {
+		t.Errorf("Standard.AnnualRent = %.0f, want %.0f (zero vacancy)", sc.Standard.AnnualRent, fullAnnualRent)
+	}
+	if !approxEqual(sc.Pessimistic.AnnualRent, fullAnnualRent, 1) {
+		t.Errorf("Pessimistic.AnnualRent = %.0f, want %.0f (zero vacancy)", sc.Pessimistic.AnnualRent, fullAnnualRent)
+	}
+}
+
 // TestAnalyze_UltraLowInterestRate は超低金利0.001%での浮動小数点精度を検証する
 func TestAnalyze_UltraLowInterestRate(t *testing.T) {
 	input := InvestmentInput{
