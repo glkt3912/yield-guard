@@ -6,9 +6,9 @@
 ## dev: バックエンド・フロントエンドの開発サーバーを起動
 dev:
 	@echo "==> Starting backend..."
-	cd backend && go run ./cmd/server &
+	cd backend && set -a; . ../.env 2>/dev/null; set +a; go run ./cmd/server &
 	@echo "==> Starting frontend..."
-	cd frontend && npm run dev
+	cd frontend && npm run dev -- --webpack
 
 ## test: 全テストを実行
 test:
