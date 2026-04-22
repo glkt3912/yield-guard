@@ -77,37 +77,97 @@ Dependabot により Go modules・npm の依存パッケージが毎週月曜（
 
 ---
 
-## Observability（可観測性）
+## 観測基盤（OpenTelemetry + 構造化ロギング）
 
-### 概要
+### スタック概要
 
-バックエンドは OpenTelemetry SDK で計装済み。`GOOGLE_CLOUD_PROJECT` 環境変数の有無でエクスポーター先が切り替わる。
+| レイヤー | 実装 | パッケージ |
+|---|---|---|
+| トレース / メトリクス | OpenTelemetry Go SDK | `backend/internal/telemetry/setup.go` |
+| HTTP スパン自動計装 | `otelgin` ミドルウェア | `go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin` |
+| 構造化ログ | `slog` JSON ハンドラー（Cloud Logging 準拠） | `backend/internal/logger/logger.go` |
+| ログ ↔ トレース相関 | slog ハンドラーが OTel SpanContext からトレースフィールドを注入 | 同上 |
 
-| 環境 | エクスポーター | 送信先 |
-|------|--------------|--------|
-| ローカル開発（未設定） | `stdouttrace` / `stdoutmetric` | コンソール標準出力 |
-| 本番（Cloud Run） | `cloudtrace` / `monitoring` | Cloud Trace / Cloud Monitoring |
+### OTel シグナルフロー
 
-### 計装ポイント
+```mermaid
+flowchart LR
+    subgraph Request
+        Gin["Gin ルーター"]
+        OtelGin["otelgin ミドルウェア\n（スパン開始・Context注入）"]
+        Handler["ハンドラー\n（MLITクライアント等）"]
+    end
 
-| 計装 | 実装箇所 | 収集内容 |
-|------|---------|---------|
-| HTTP リクエストスパン | `otelgin` ミドルウェア（自動） | 全エンドポイントのトレース |
-| 投資分析リクエスト数 | `telemetry.AnalyzeRequestsTotal` | `POST /api/investment/analyze` のカウント |
-| MLIT API レイテンシ | `telemetry.MLITAPILatencyHistogram` | 国交省 API への呼び出し時間（秒） |
-| MLIT キャッシュヒット/ミス | `telemetry.MLITCacheHits` / `MLITCacheMisses` | TTL キャッシュの効果測定 |
+    subgraph Telemetry["internal/telemetry"]
+        TP["TracerProvider\n（sdktrace）"]
+        MP["MeterProvider\n（sdkmetric）"]
+    end
 
-### Cloud Run 設定（Terraform 管理）
+    subgraph Export["エクスポーター"]
+        Stdout["stdout\n（ローカル開発）"]
+        GCloud["Cloud Trace / Monitoring\n（本番: ADC 認証）"]
+    end
 
+    subgraph Logging["internal/logger"]
+        SlogHandler["cloudHandler\n（slog.NewJSONHandler ラップ）"]
+        CloudLog["Cloud Logging\n（stderr JSON）"]
+    end
+
+    Gin --> OtelGin --> Handler
+    Handler --> TP
+    Handler --> MP
+    TP --> Stdout
+    TP --> GCloud
+    MP --> Stdout
+    MP --> GCloud
+    OtelGin -.-> |SpanContext| SlogHandler
+    SlogHandler --> CloudLog
 ```
-GOOGLE_CLOUD_PROJECT = <project_id>   # cloud_run.tf
+
+### エクスポーター切り替え
+
+`GOOGLE_CLOUD_PROJECT` 環境変数の有無で自動切り替えする。
+
+| 環境 | `GOOGLE_CLOUD_PROJECT` | トレース出力先 | メトリクス出力先 |
+|---|---|---|---|
+| ローカル開発 | 未設定 | stdout（整形JSON） | stdout |
+| Cloud Run 本番 | GCP プロジェクト ID | Cloud Trace（ADC 認証） | Cloud Monitoring（ADC 認証） |
+
+Cloud Run SA には `roles/cloudtrace.agent` と `roles/monitoring.metricWriter` が必要（`terraform/iam.tf` で管理）。認証は ADC（Application Default Credentials）が自動処理するため、コード内での認証設定は不要。
+
+### 構造化ログフォーマット（Cloud Logging 準拠）
+
+`logger.Init(os.Stderr)` を `main()` 先頭で呼ぶことでグローバル `slog` デフォルトロガーを設定する。
+
+```json
+{
+  "severity": "INFO",
+  "message": "access",
+  "method": "GET",
+  "path": "/api/land-prices/stats",
+  "status": 200,
+  "latency_ms": 42,
+  "logging.googleapis.com/trace": "projects/my-project/traces/abc123...",
+  "logging.googleapis.com/spanId": "def456...",
+  "logging.googleapis.com/trace_sampled": true
+}
 ```
 
-Cloud Run SA に付与する IAM ロール（`iam.tf`）:
+- `severity` / `message` フィールド名は Cloud Logging が自動パースする予約名
+- `logging.googleapis.com/trace` を付与することで Cloud Logging UI でトレースと相関表示できる
+- `GOOGLE_CLOUD_PROJECT` が未設定（ローカル）の場合、トレースフィールドはスキップされる
 
-| ロール | 用途 |
-|--------|------|
-| `roles/cloudtrace.agent` | Cloud Trace へのスパン書き込み |
-| `roles/monitoring.metricWriter` | Cloud Monitoring へのメトリクス書き込み |
+### メトリクス計装
 
-認証は ADC（Application Default Credentials）が Cloud Run 上で自動処理するため、コード内での認証設定は不要。
+`telemetry.Setup()` 後、以下のグローバル計測器が有効になる。
+
+| 計測器名 | 種別 | 説明 |
+|---|---|---|
+| `analyze.requests.total` | Counter | 投資分析リクエスト数 |
+| `mlit.api.request.duration` | Histogram | MLIT API リクエストレイテンシ（秒） |
+| `mlit.cache.hits` | Counter | MLIT インメモリキャッシュ ヒット数 |
+| `mlit.cache.misses` | Counter | MLIT インメモリキャッシュ ミス数 |
+
+### ログレベル制御
+
+`LOG_LEVEL` 環境変数（`DEBUG` / `INFO` / `WARN` / `ERROR`、デフォルト `INFO`）で動的に変更できる。`LevelCritical`（`slog.LevelError + 4`）は Cloud Logging の `CRITICAL` 重大度に対応するカスタムレベルとして `logger` パッケージで公開している。

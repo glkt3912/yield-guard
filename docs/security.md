@@ -135,6 +135,47 @@ Artifact Registry の無料枠（0.5 GB/月）を超えないよう、最新 5 �
 
 ---
 
+## OpenTelemetry 観測基盤のセキュリティ考慮
+
+### OTEL_EXPORTER_OTLP_ENDPOINT
+
+`OTEL_EXPORTER_OTLP_ENDPOINT` はシークレットではなく、通常の環境変数として Cloud Run に設定する（Secret Manager 管理不要）。ただし、エンドポイント URL 自体がインフラ構成情報を含む場合は適宜アクセス制御を検討すること。
+
+| 環境 | 値 | 管理方法 |
+|---|---|---|
+| ローカル開発 | 未設定（stdout 出力） | 不要 |
+| Cloud Run 本番 | OTLP gRPC エンドポイント | Cloud Run 環境変数（Terraform） |
+
+### stdout エクスポーターのデータスコープ（ローカル開発）
+
+`OTEL_EXPORTER_OTLP_ENDPOINT` が未設定の場合、トレース・メトリクスは **stdout（コンソール）** に出力される。出力される情報は以下の通り。
+
+- スパン名・開始/終了時刻・ステータス
+- スパン属性（下記「スパン属性ポリシー」参照）
+- メトリクス計測値（カウンター・ヒストグラム）
+
+ログイン資格情報・APIキー・個人情報はスパン属性に含まれない設計としている。
+
+### スパン属性ポリシー（mlit.query.* 属性）
+
+MLIT API クライアント（`backend/internal/mlit/client.go`）は以下の属性をスパンに付与する。
+
+| 属性名 | 例 | 分類 |
+|---|---|---|
+| `mlit.endpoint` | `"XIT001"` | API エンドポイント識別子（非機密） |
+| `mlit.query.area` | `"13"` | 都道府県コード（非機密） |
+| `mlit.cache.hit` | `true` / `false` | キャッシュ状態（非機密） |
+| `mlit.retry.count` | `1` | リトライ回数（非機密） |
+| `server.address` | `"www.reinfolib.mlit.go.jp"` | OTel セマンティクス準拠 |
+
+**注意:** クエリパラメータに含まれる値（都道府県コード・タイル座標等）は公開情報のみであり、個人を特定できる情報（PII）はスパン属性として記録しない。
+
+### GOOGLE_CLOUD_PROJECT と Cloud Logging トレース相関
+
+`GOOGLE_CLOUD_PROJECT` はシークレットではなく、GCP プロジェクト ID（公開情報）を設定する。この値は Cloud Logging のトレースリンク URL 生成（`projects/<id>/traces/<traceId>`）にのみ使用される。未設定の場合、トレースフィールドは JSON ログに含まれず、Cloud Logging との相関表示が無効になる（ローカル開発では意図的に未設定とする）。
+
+---
+
 ## 関連ファイル
 
 - `backend/internal/api/router.go` — `internalKeyMiddleware()`
@@ -145,3 +186,5 @@ Artifact Registry の無料枠（0.5 GB/月）を超えないよう、最新 5 �
 - `terraform/cloud_run.tf` — Cloud Run v2 サービス定義
 - `.github/workflows/deploy-backend.yml` — バックエンドデプロイワークフロー（SHA 固定）
 - `.github/workflows/frontend-ci.yml` — フロントエンド CI + Vercel デプロイワークフロー
+- `backend/internal/telemetry/setup.go` — OTel TracerProvider / MeterProvider 初期化
+- `backend/internal/logger/logger.go` — Cloud Logging 準拠 slog ハンドラー

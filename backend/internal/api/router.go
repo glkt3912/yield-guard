@@ -1,9 +1,14 @@
 package api
 
 import (
+	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -21,11 +26,59 @@ func internalKeyMiddleware() gin.HandlerFunc {
 	}
 }
 
+func accessLogMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		method := c.Request.Method
+		path := c.Request.URL.Path
+
+		c.Next()
+
+		status := c.Writer.Status()
+		latencyMS := time.Since(start).Milliseconds()
+		ctx := c.Request.Context()
+		args := []any{
+			"method", method,
+			"path", path,
+			"status", status,
+			"latency_ms", latencyMS,
+			"client_ip", c.ClientIP(),
+		}
+		// NOTE: クエリ文字列を丸ごとログに記録する。現状のエンドポイントは
+		// 都道府県コード・タイル座標等の公開情報のみだが、将来 PII を含む
+		// パラメータが追加される場合はこのフィールドを除外すること。
+		if q := c.Request.URL.RawQuery; q != "" {
+			args = append(args, "query", q)
+		}
+		switch {
+		case status >= 500:
+			slog.ErrorContext(ctx, "access", args...)
+		case status >= 400:
+			slog.WarnContext(ctx, "access", args...)
+		default:
+			slog.InfoContext(ctx, "access", args...)
+		}
+	}
+}
+
+func recoveryMiddleware() gin.HandlerFunc {
+	return gin.CustomRecoveryWithWriter(io.Discard, func(c *gin.Context, err any) {
+		slog.ErrorContext(c.Request.Context(), "panic recovered",
+			"error", fmt.Sprintf("%v", err),
+			"path", c.Request.URL.Path,
+			"stack", string(debug.Stack()),
+		)
+		c.AbortWithStatus(http.StatusInternalServerError)
+	})
+}
+
 // NewRouter は Gin ルーターを初期化して返す
 func NewRouter(h *Handler) *gin.Engine {
-	r := gin.Default()
+	r := gin.New()
 
 	r.Use(otelgin.Middleware("yield-guard-backend"))
+	r.Use(accessLogMiddleware())
+	r.Use(recoveryMiddleware())
 
 	// リクエストボディを 64KB に制限（大量 JSON による DoS を防止）
 	r.Use(func(c *gin.Context) {

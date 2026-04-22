@@ -23,6 +23,7 @@ export function makeInput(overrides: Partial<InvestmentInput> = {}): InvestmentI
     loanRateDelta: 0,
     annualPropertyTax: 0,
     rentDeclineRate: 0,
+    yieldTarget: 0.08,
     ...overrides,
   };
 }
@@ -86,7 +87,8 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
     miscExpenses: 1_050_000,
     grossYield: 0.09,
     netYield: 0.065,
-    isAbove8Percent: true,
+    isAboveYieldTarget: true,
+    yieldTarget: 0.08,
     requiredCostReduction: 0,
     requiredMonthlyRent: 120_000,
     deadCrossYear: 0,

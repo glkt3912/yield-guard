@@ -9,11 +9,11 @@ export function CriticalErrorBanner({ errors }: CriticalErrorBannerProps) {
   if (!errors || errors.length === 0) return null;
 
   return (
-    <div className="space-y-2">
+    <div role="alert" aria-label="重大なリスク" className="space-y-2">
       {errors.map((err) => (
         <div
           key={err.code}
-          role="alert"
+          role="listitem"
           className={`flex items-start gap-3 rounded-md border-2 p-4 ${
             err.status === "REJECT"
               ? "border-red-500 bg-red-50 text-red-900"
