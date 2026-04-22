@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -503,22 +503,22 @@ func (h *Handler) GetUrbanRisks(c *gin.Context) {
 	}()
 
 	if r := <-locCh; r.err != nil {
-		log.Printf("WARN: FetchLocationOptimization failed (z=%d x=%d y=%d): %v", z, x, y, r.err)
+		slog.WarnContext(ctx, "FetchLocationOptimization failed", "z", z, "x", x, "y", y, "error", r.err)
 	} else {
 		res.location = r.data
 	}
 	if r := <-embCh; r.err != nil {
-		log.Printf("WARN: FetchEmbankment failed (z=%d x=%d y=%d): %v", z, x, y, r.err)
+		slog.WarnContext(ctx, "FetchEmbankment failed", "z", z, "x", x, "y", y, "error", r.err)
 	} else {
 		res.embank = r.data
 	}
 	if r := <-rdCh; r.err != nil {
-		log.Printf("WARN: FetchUrbanRoad failed (z=%d x=%d y=%d): %v", z, x, y, r.err)
+		slog.WarnContext(ctx, "FetchUrbanRoad failed", "z", z, "x", x, "y", y, "error", r.err)
 	} else {
 		res.road = r.data
 	}
 	if r := <-disCh; r.err != nil {
-		log.Printf("WARN: FetchDisasterHistory failed (z=%d x=%d y=%d): %v", z, x, y, r.err)
+		slog.WarnContext(ctx, "FetchDisasterHistory failed", "z", z, "x", x, "y", y, "error", r.err)
 	} else {
 		res.disaster = r.data
 	}
