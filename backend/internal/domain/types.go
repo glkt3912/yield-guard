@@ -97,6 +97,12 @@ func (i *InvestmentInput) Validate() error {
 			i.VacancyRate, i.VacancyRateDelta, i.VacancyRate+i.VacancyRateDelta,
 		)
 	}
+	if i.RentDeclineRate < 0 || i.RentDeclineRate > 0.2 {
+		return fmt.Errorf(
+			"RentDeclineRate(%.3f) must be between 0.0 and 0.2",
+			i.RentDeclineRate,
+		)
+	}
 	return nil
 }
 
