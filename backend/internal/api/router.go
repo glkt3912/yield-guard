@@ -44,6 +44,9 @@ func accessLogMiddleware() gin.HandlerFunc {
 			"latency_ms", latencyMS,
 			"client_ip", c.ClientIP(),
 		}
+		// NOTE: クエリ文字列を丸ごとログに記録する。現状のエンドポイントは
+		// 都道府県コード・タイル座標等の公開情報のみだが、将来 PII を含む
+		// パラメータが追加される場合はこのフィールドを除外すること。
 		if q := c.Request.URL.RawQuery; q != "" {
 			args = append(args, "query", q)
 		}

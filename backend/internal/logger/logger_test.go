@@ -43,6 +43,16 @@ func TestSeverityField_Error(t *testing.T) {
 	}
 }
 
+func TestSeverityField_Critical(t *testing.T) {
+	var buf bytes.Buffer
+	l := newTestLogger(&buf, "")
+	l.Log(context.Background(), LevelCritical, "test critical")
+	m := logToMap(t, &buf)
+	if got := m["severity"]; got != "CRITICAL" {
+		t.Errorf("severity = %q, want %q", got, "CRITICAL")
+	}
+}
+
 func TestSeverityField_Info(t *testing.T) {
 	var buf bytes.Buffer
 	l := newTestLogger(&buf, "")

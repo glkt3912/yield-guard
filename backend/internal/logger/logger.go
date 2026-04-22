@@ -101,10 +101,14 @@ func Init(w io.Writer) {
 	slog.SetDefault(slog.New(newJSONHandler(w, level, projectID)))
 }
 
-// New returns a logger writing to w, using the same Cloud Logging format as Init.
-// Reads GOOGLE_CLOUD_PROJECT from the environment for trace field formatting.
-// Intended for tests and non-global usage; for test isolation pass projectID via newJSONHandler directly.
-func New(w io.Writer) *slog.Logger {
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
+// NewWithProject returns a logger writing to w with an explicit projectID for trace field formatting.
+// Use this instead of New when the caller controls the projectID (e.g. tests, multi-project setups).
+func NewWithProject(w io.Writer, projectID string) *slog.Logger {
 	return slog.New(newJSONHandler(w, slog.LevelDebug, projectID))
+}
+
+// New returns a logger writing to w, reading projectID from GOOGLE_CLOUD_PROJECT env var.
+// For explicit projectID control use NewWithProject.
+func New(w io.Writer) *slog.Logger {
+	return NewWithProject(w, os.Getenv("GOOGLE_CLOUD_PROJECT"))
 }
