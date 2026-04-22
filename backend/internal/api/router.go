@@ -13,6 +13,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"golang.org/x/time/rate"
 )
 
 func internalKeyMiddleware() gin.HandlerFunc {
@@ -99,15 +100,21 @@ func NewRouter(h *Handler) *gin.Engine {
 		AllowCredentials: false,
 	}))
 
+	// IP ベースレートリミッター: 一般 API 60 req/min (1 token/s)、analyze 10 req/min (1 token/6s)
+	generalRL := newRateLimiter(rate.Every(time.Second), 20)
+	analyzeRL := newRateLimiter(rate.Every(6*time.Second), 5)
+
 	r.GET("/health", h.HealthCheck)
 
 	api := r.Group("/api")
 	api.Use(internalKeyMiddleware())
+	api.Use(generalRL.middleware())
 	{
 		api.GET("/land-prices/stats", h.GetLandPrices)
 		api.GET("/land-prices/compare", h.CompareLandPrice)
 		api.GET("/land-prices/estimate", h.EstimateLandPrice)
-		api.POST("/investment/analyze", h.Analyze)
+		// analyze は generalRL + analyzeRL の両方でトークンを消費する（意図的な二重制限）
+		api.POST("/investment/analyze", analyzeRL.middleware(), h.Analyze)
 		api.GET("/municipalities", h.GetMunicipalities)
 		api.GET("/station-ridership", h.GetStationRidership)
 		api.GET("/population-forecast", h.GetPopulationForecast)
