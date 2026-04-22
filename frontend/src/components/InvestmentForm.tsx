@@ -131,6 +131,11 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   const [quickTotalPriceMan, setQuickTotalPriceMan] = useState("");
   // クイックモード: 相場データ取得セクションの開閉
   const [showLandSection, setShowLandSection] = useState(false);
+  // 現金購入フラグ（クイック・詳細モード共用）
+  const [isCashPurchase, setIsCashPurchase] = useState(false);
+  // 現金購入前のローン値を保存（チェックを外したときに復元）
+  const [savedLoanAmount, setSavedLoanAmount] = useState(DEFAULT_INPUT.loanAmount);
+  const [savedLoanYears, setSavedLoanYears] = useState(DEFAULT_INPUT.loanYears);
 
   // 按分ヘルパーの状態
   const [showBuildingHelper, setShowBuildingHelper] = useState(false);
@@ -184,6 +189,15 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
     loadMunicipalities("10");
   }, [loadMunicipalities]);
 
+  // モード切替時に現金購入フラグをリセットし、ローン値を復元する
+  useEffect(() => {
+    if (isCashPurchase) {
+      setIsCashPurchase(false);
+      setInput((prev) => ({ ...prev, loanAmount: savedLoanAmount, loanYears: savedLoanYears }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isQuick]);
+
   useEffect(() => {
     if (filteredMunicipalities.length === 1) {
       setCity(filteredMunicipalities[0].id);
@@ -202,6 +216,17 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   };
   const setStr = (key: keyof InvestmentInput, value: string) =>
     setInput((prev) => ({ ...prev, [key]: value }));
+
+  const handleCashPurchaseToggle = (checked: boolean) => {
+    setIsCashPurchase(checked);
+    if (checked) {
+      setSavedLoanAmount(input.loanAmount);
+      setSavedLoanYears(input.loanYears);
+      setInput((prev) => ({ ...prev, loanAmount: 0, loanYears: 0 }));
+    } else {
+      setInput((prev) => ({ ...prev, loanAmount: savedLoanAmount, loanYears: savedLoanYears }));
+    }
+  };
 
   const toMan = (yen: number) => String(Math.round(yen / 10_000));
   const fromMan = (s: string) => (parseFloat(s) || 0) * 10_000;
@@ -353,10 +378,23 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   value={String(input.monthlyRent)}
                   onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
                   error={fieldError("monthlyRent")} />
-                <Input label="ローン金額" type="number" suffix="万円"
-                  value={toMan(input.loanAmount)}
-                  onChange={(e) => setNum("loanAmount", fromMan(e.target.value))}
-                  error={fieldError("loanAmount")} />
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isCashPurchase}
+                      onChange={(e) => handleCashPurchaseToggle(e.target.checked)}
+                      className="h-4 w-4 rounded border-input accent-primary"
+                      aria-label="現金購入（ローンなし）"
+                    />
+                    <span className="text-sm font-medium">現金購入（ローンなし）</span>
+                  </label>
+                  <Input label="ローン金額" type="number" suffix="万円"
+                    value={toMan(input.loanAmount)}
+                    onChange={(e) => { if (!isCashPurchase) setNum("loanAmount", fromMan(e.target.value)); }}
+                    error={fieldError("loanAmount")}
+                    disabled={isCashPurchase} />
+                </div>
                 <Input label="目標利回り" type="number" suffix="%" step="0.5"
                   value={toPct(input.yieldTarget, 1)}
                   onChange={(e) => setNum("yieldTarget", fromPct(e.target.value))}
@@ -365,7 +403,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
 
               <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 space-y-0.5">
                 <p className="font-semibold">自動設定されるデフォルト値</p>
-                <p>空室率 5%・運営経費率 20%・建物構造: 木造・年利 1.5%・返済期間 35年・10年後売却・所得税率 33%</p>
+                <p>空室率 5%・運営経費率 20%・建物構造: 木造・{isCashPurchase ? "現金購入（ローンなし）" : "年利 1.5%・返済期間 35年"}・10年後売却・所得税率 33%</p>
               </div>
 
               <Button className="w-full" size="lg" loading={loading} disabled={hasErrors || loading} onClick={handleAnalyze}>
@@ -645,20 +683,35 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
 
               {/* ローン条件 */}
               <div className="border-t pt-4">
-                <p className="text-sm font-semibold text-foreground mb-3">ローン条件</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-foreground">ローン条件</p>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isCashPurchase}
+                      onChange={(e) => handleCashPurchaseToggle(e.target.checked)}
+                      className="h-4 w-4 rounded border-input accent-primary"
+                      aria-label="現金購入（ローンなし）"
+                    />
+                    <span className="text-sm font-medium">現金購入（ローンなし）</span>
+                  </label>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <Input label="ローン金額" type="number" suffix="万円"
                     value={toMan(input.loanAmount)}
-                    onChange={(e) => setNum("loanAmount", fromMan(e.target.value))}
-                    error={fieldError("loanAmount")} />
+                    onChange={(e) => { if (!isCashPurchase) setNum("loanAmount", fromMan(e.target.value)); }}
+                    error={fieldError("loanAmount")}
+                    disabled={isCashPurchase} />
                   <Input label="年利" type="number" suffix="%" step="0.01"
                     value={toPct(input.annualLoanRate)}
-                    onChange={(e) => setNum("annualLoanRate", fromPct(e.target.value))}
-                    error={fieldError("annualLoanRate")} />
+                    onChange={(e) => { if (!isCashPurchase) setNum("annualLoanRate", fromPct(e.target.value)); }}
+                    error={fieldError("annualLoanRate")}
+                    disabled={isCashPurchase} />
                   <Input label="返済期間" type="number" suffix="年"
                     value={String(input.loanYears)}
-                    onChange={(e) => setNum("loanYears", parseInt(e.target.value) || 35)}
-                    error={fieldError("loanYears")} />
+                    onChange={(e) => { if (!isCashPurchase) setNum("loanYears", parseInt(e.target.value) || 0); }}
+                    error={fieldError("loanYears")}
+                    disabled={isCashPurchase} />
                 </div>
               </div>
 
