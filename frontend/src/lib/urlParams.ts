@@ -24,8 +24,6 @@ export interface UrlShareParams {
   expenseRate?: number; // % (e.g. 20 for 20%)
 }
 
-const DEFAULT_QUICK_TOTAL = 0; // no default for quick total price
-
 function roundTo(n: number, decimals: number): number {
   const factor = Math.pow(10, decimals);
   return Math.round(n * factor) / factor;
@@ -120,7 +118,7 @@ export interface DecodedParams {
 export function decodeUrlParams(params: URLSearchParams): DecodedParams {
   const rawMode = params.get("mode");
   const mode: SimulationMode =
-    rawMode === "full" ? "full" : rawMode === "quick" ? "quick" : "quick";
+    rawMode === "full" ? "full" : "quick";
 
   const input: Partial<InvestmentInput> = {};
   let quickTotalPriceMan = "";
