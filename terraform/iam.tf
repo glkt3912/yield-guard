@@ -61,6 +61,13 @@ resource "google_project_iam_member" "sa_viewer" {
   member  = "serviceAccount:${google_service_account.backend.email}"
 }
 
+resource "google_project_iam_member" "sa_project_iam_admin" {
+  # terraform apply sets project-level IAM bindings; requires setIamPolicy.
+  project = var.project_id
+  role    = "roles/resourcemanager.projectIamAdmin"
+  member  = "serviceAccount:${google_service_account.backend.email}"
+}
+
 resource "google_service_account_iam_member" "sa_act_as" {
   # deploy-cloudrun Action が SA impersonation に必要。
   # GitHub Actions SA と Cloud Run ランタイム SA を統一しているための自己参照。
@@ -99,8 +106,8 @@ resource "google_project_iam_member" "sa_metric_writer" {
 # --- Terraform state backend permissions ---
 
 resource "google_storage_bucket_iam_member" "sa_tfstate_admin" {
-  # terraform plan/apply writes a lock file; objectAdmin is required.
+  # storage.admin includes getIamPolicy/setIamPolicy needed for terraform apply.
   bucket = "yield-guard-tfstate"
-  role   = "roles/storage.objectAdmin"
+  role   = "roles/storage.admin"
   member = "serviceAccount:${google_service_account.backend.email}"
 }
