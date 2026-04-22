@@ -97,6 +97,17 @@ export interface StressScenarioResult {
   isSafe: boolean;       // DSCR >= 1.0 && breakEvenYear <= holdingYears
 }
 
+export interface YieldScenario {
+  annualRent: number; // 年間実効賃料収入（空室控除後）
+  grossYield: number; // 表面利回り（満室想定年収/総投資額）
+}
+
+export interface YieldScenarios {
+  optimistic: YieldScenario;  // 楽観: 空室率 × 0.5
+  standard: YieldScenario;    // 標準: 空室率 × 1.0
+  pessimistic: YieldScenario; // 悲観: 空室率 × 1.5
+}
+
 export interface InvestmentResult {
   totalInvestment: number;
   miscExpenses: number;
@@ -115,6 +126,7 @@ export interface InvestmentResult {
   exitNetProceeds: number;
   exitTotalEquity: number;
   stressScenarios: StressScenarioResult[];
+  yieldScenarios: YieldScenarios;
 }
 
 export interface LandTransaction {
