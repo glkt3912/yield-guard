@@ -174,7 +174,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
 
       {/* 空室シナリオ比較 */}
       {result.yieldScenarios && (
-        <VacancyScenarioCard yieldScenarios={result.yieldScenarios} vacancyRate={input.vacancyRate} />
+        <VacancyScenarioCard yieldScenarios={result.yieldScenarios} vacancyRate={input.vacancyRate} totalInvestment={result.totalInvestment} />
       )}
 
       {/* 総投資額サマリー */}
@@ -255,29 +255,30 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
 interface VacancyScenarioCardProps {
   yieldScenarios: YieldScenarios;
   vacancyRate: number;
+  totalInvestment: number;
 }
 
-function VacancyScenarioCard({ yieldScenarios, vacancyRate }: VacancyScenarioCardProps) {
+function VacancyScenarioCard({ yieldScenarios, vacancyRate, totalInvestment }: VacancyScenarioCardProps) {
   const scenarios = [
     {
       label: "楽観",
-      vacancyPct: (vacancyRate * 0.5 * 100).toFixed(0),
+      vacancyPct: (Math.min(vacancyRate * 0.5, 0.99) * 100).toFixed(0),
       annualRent: yieldScenarios.optimistic.annualRent,
-      grossYield: yieldScenarios.optimistic.grossYield,
+      effectiveYield: yieldScenarios.optimistic.annualRent / totalInvestment,
       colorClass: "text-green-600",
     },
     {
       label: "標準",
-      vacancyPct: (vacancyRate * 1.0 * 100).toFixed(0),
+      vacancyPct: (Math.min(vacancyRate * 1.0, 0.99) * 100).toFixed(0),
       annualRent: yieldScenarios.standard.annualRent,
-      grossYield: yieldScenarios.standard.grossYield,
+      effectiveYield: yieldScenarios.standard.annualRent / totalInvestment,
       colorClass: "text-blue-600",
     },
     {
       label: "悲観",
-      vacancyPct: (vacancyRate * 1.5 * 100).toFixed(0),
+      vacancyPct: (Math.min(vacancyRate * 1.5, 0.99) * 100).toFixed(0),
       annualRent: yieldScenarios.pessimistic.annualRent,
-      grossYield: yieldScenarios.pessimistic.grossYield,
+      effectiveYield: yieldScenarios.pessimistic.annualRent / totalInvestment,
       colorClass: "text-red-600",
     },
   ];
@@ -293,7 +294,7 @@ function VacancyScenarioCard({ yieldScenarios, vacancyRate }: VacancyScenarioCar
                 <th className="pb-2 text-left font-medium">シナリオ</th>
                 <th className="pb-2 text-right font-medium">想定空室率</th>
                 <th className="pb-2 text-right font-medium">年間実効賃料</th>
-                <th className="pb-2 text-right font-medium">表面利回り</th>
+                <th className="pb-2 text-right font-medium">実効利回り</th>
               </tr>
             </thead>
             <tbody>
@@ -303,7 +304,7 @@ function VacancyScenarioCard({ yieldScenarios, vacancyRate }: VacancyScenarioCar
                   <td className="py-2 text-right text-muted-foreground">{s.vacancyPct}%</td>
                   <td className="py-2 text-right font-medium">{formatYen(s.annualRent)}</td>
                   <td className={`py-2 text-right font-medium ${s.colorClass}`}>
-                    {(s.grossYield * 100).toFixed(2)}%
+                    {(s.effectiveYield * 100).toFixed(2)}%
                   </td>
                 </tr>
               ))}
@@ -311,7 +312,7 @@ function VacancyScenarioCard({ yieldScenarios, vacancyRate }: VacancyScenarioCar
           </table>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          ※ 楽観: 想定空室率×0.5、標準: 想定空室率×1.0、悲観: 想定空室率×1.5。表面利回りは満室想定年収/総投資額。
+          ※ 楽観: 想定空室率×0.5、標準: 想定空室率×1.0、悲観: 想定空室率×1.5。実効利回りは空室控除後年間賃料/総投資額。
         </p>
       </CardContent>
     </Card>
