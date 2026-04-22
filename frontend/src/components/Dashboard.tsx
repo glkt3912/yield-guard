@@ -268,6 +268,7 @@ export function Dashboard() {
                   result={result}
                   loanMethod={loanMethod}
                   onLoanMethodChange={handleLoanMethodChange}
+                  loanAmount={lastInput.loanAmount}
                 />
                 {simulationMode === "full" && (
                   <>

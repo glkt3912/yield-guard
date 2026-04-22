@@ -10,10 +10,12 @@ interface Props {
   result: InvestmentResult;
   loanMethod: LoanMethod;
   onLoanMethodChange: (method: LoanMethod) => void;
+  loanAmount?: number;
 }
 
-export function LoanOptimizationPanel({ result, loanMethod, onLoanMethodChange }: Props) {
+export function LoanOptimizationPanel({ result, loanMethod, onLoanMethodChange, loanAmount }: Props) {
   const dscr = result.dscr ?? 0;
+  const hasLoan = (loanAmount ?? 0) > 0;
   const dscrSafe = dscr >= 1.0;
 
   return (
@@ -39,7 +41,11 @@ export function LoanOptimizationPanel({ result, loanMethod, onLoanMethodChange }
             <p className="text-2xl font-bold tabular-nums">{dscr.toFixed(2)}</p>
             <p className="text-xs text-muted-foreground mt-0.5">NOI ÷ 年間返済額（1年目）</p>
           </div>
-          {dscrSafe ? (
+          {!hasLoan ? (
+            <Badge className="flex items-center gap-1 bg-gray-100 text-gray-500 border-gray-200 ml-auto">
+              非適用（ローンなし）
+            </Badge>
+          ) : dscrSafe ? (
             <Badge className="flex items-center gap-1 bg-green-100 text-green-700 border-green-200 ml-auto">
               <CheckCircle className="h-3.5 w-3.5" />
               安全（≥ 1.0）

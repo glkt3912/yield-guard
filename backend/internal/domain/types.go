@@ -112,8 +112,8 @@ func (i *InvestmentInput) Validate() error {
 	}
 	if i.LoanMethod != "" && i.LoanMethod != LoanMethodEqualPayment && i.LoanMethod != LoanMethodEqualPrincipal {
 		return fmt.Errorf(
-			"LoanMethod(%q) must be %q or %q",
-			i.LoanMethod, LoanMethodEqualPayment, LoanMethodEqualPrincipal,
+			"loanMethod は %q または %q を指定してください（指定値: %q）",
+			LoanMethodEqualPayment, LoanMethodEqualPrincipal, i.LoanMethod,
 		)
 	}
 	return nil
