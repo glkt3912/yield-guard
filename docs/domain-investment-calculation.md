@@ -162,11 +162,33 @@ years := max(LoanYears, HoldingYears, 35)
 
 ---
 
+## 年次賃料下落（`RentDeclineRate`）
+
+毎年の実効賃料に下落係数を乗じることで経年劣化による賃料低下を表現する。
+
+```
+yearAnnualRent = baseAnnualRent × (1 - RentDeclineRate)^y
+  baseAnnualRent : MonthlyRent × 12 × (1 - effectiveVacancy)
+  y              : 経過年数（0始まり。1年目は y=0 で係数 1.0）
+```
+
+`RentDeclineRate = 0`（デフォルト）の場合は毎年同一賃料。
+
+**構造別推奨値（経験則）**
+
+| 建物構造 | 推奨下落率 |
+|---------|-----------|
+| 木造 | 1.0%/年 |
+| 軽量鉄骨・重量鉄骨 | 0.8%/年 |
+| RC造・SRC造 | 0.5%/年 |
+
+---
+
 ## 各年次ループの計算順序
 
 ```
 ① ローン返済内訳（利息・元金）の計算
-② 実効賃料収入・運営経費の計算
+② 実効賃料収入・運営経費の計算（RentDeclineRate を適用）
 ③ 当年の減価償却費（耐用年数内のみ）
 ④ 課税所得 = 収入 - 利息 - 減価償却 - 経費
 ⑤ 所得税 = 課税所得 × IncomeTaxRate（課税所得 ≤ 0 なら 0）

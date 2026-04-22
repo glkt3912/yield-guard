@@ -337,7 +337,8 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
   "holdingYears": 10,
   "exitYieldTarget": 0.06,
   "vacancyRateDelta": 0,
-  "loanRateDelta": 0
+  "loanRateDelta": 0,
+  "rentDeclineRate": 0.01
 }
 ```
 
@@ -346,7 +347,8 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 | フィールド | 制約 |
 |-----------|------|
 | `landPrice` | 1〜100億円 |
-| `buildingCost` | 1〜100億円 |
+| `buildingCost` | 1〜100億円（新築は建設費、中古は建物に帰属する取得費） |
+| `rentDeclineRate` | 0.0〜0.2（年間賃料下落率。省略時は 0 = 下落なし） |
 | `monthlyRent` | 正の値 |
 | `vacancyRate` | 0.0〜0.99 |
 | `loanAmount` | 0以上 |
