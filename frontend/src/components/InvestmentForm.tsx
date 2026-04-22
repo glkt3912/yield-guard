@@ -131,7 +131,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   const [quickTotalPriceMan, setQuickTotalPriceMan] = useState("");
   // クイックモード: 相場データ取得セクションの開閉
   const [showLandSection, setShowLandSection] = useState(false);
-  // 現金購入フラグ（クイックモード専用）
+  // 現金購入フラグ（クイック・詳細モード共用）
   const [isCashPurchase, setIsCashPurchase] = useState(false);
   // 現金購入前のローン値を保存（チェックを外したときに復元）
   const [savedLoanAmount, setSavedLoanAmount] = useState(DEFAULT_INPUT.loanAmount);
@@ -191,7 +191,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
 
   // モード切替時に現金購入フラグをリセットし、ローン値を復元する
   useEffect(() => {
-    if (!isQuick && isCashPurchase) {
+    if (isCashPurchase) {
       setIsCashPurchase(false);
       setInput((prev) => ({ ...prev, loanAmount: savedLoanAmount, loanYears: savedLoanYears }));
     }
