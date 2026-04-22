@@ -183,4 +183,64 @@ describe("InvestmentForm", () => {
       expect(screen.queryByText(/クイックモード:/)).not.toBeInTheDocument();
     });
   });
+
+  describe("現金購入チェックボックス（クイックモード）", () => {
+    it("クイックモードでは現金購入チェックボックスが表示される", () => {
+      renderForm("quick");
+      expect(screen.getByLabelText(/現金購入（ローンなし）/)).toBeInTheDocument();
+    });
+
+    it("詳細モードでも現金購入チェックボックスが表示される", () => {
+      renderForm("full");
+      expect(screen.getByLabelText(/現金購入（ローンなし）/)).toBeInTheDocument();
+    });
+
+    it("詳細モードで現金購入チェックを入れるとローン関連フィールドが無効化される", async () => {
+      renderForm("full");
+      const checkbox = screen.getByLabelText(/現金購入（ローンなし）/);
+      await userEvent.click(checkbox);
+      expect(screen.getByLabelText(/ローン金額/)).toBeDisabled();
+      expect(screen.getByLabelText(/返済期間/)).toBeDisabled();
+    });
+
+    it("現金購入チェックを入れるとローン金額入力欄が無効化される", async () => {
+      renderForm("quick");
+      const checkbox = screen.getByLabelText(/現金購入（ローンなし）/);
+      await userEvent.click(checkbox);
+      expect(screen.getByLabelText(/ローン金額/)).toBeDisabled();
+    });
+
+    it("現金購入チェックを入れるとローン金額が0になる", async () => {
+      renderForm("quick");
+      const checkbox = screen.getByLabelText(/現金購入（ローンなし）/);
+      await userEvent.click(checkbox);
+      expect(screen.getByLabelText(/ローン金額/)).toHaveValue(0);
+    });
+
+    it("現金購入チェックを外すとローン金額入力欄が有効になる", async () => {
+      renderForm("quick");
+      const checkbox = screen.getByLabelText(/現金購入（ローンなし）/);
+      await userEvent.click(checkbox);
+      await userEvent.click(checkbox);
+      expect(screen.getByLabelText(/ローン金額/)).not.toBeDisabled();
+    });
+
+    it("現金購入チェック時にシミュレーションを実行するとloanAmountが0で送信される", async () => {
+      const { onAnalyze } = renderForm("quick");
+      await userEvent.type(screen.getByLabelText(/物件価格（土地＋建物の総額）/), "1500");
+      await userEvent.click(screen.getByLabelText(/現金購入（ローンなし）/));
+      await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
+      expect(onAnalyze).toHaveBeenCalledWith(expect.objectContaining({
+        loanAmount: 0,
+        loanYears: 0,
+      }));
+    });
+
+    it("現金購入チェック時にインフォバナーが「現金購入（ローンなし）」に変わる", async () => {
+      renderForm("quick");
+      const checkbox = screen.getByLabelText(/現金購入（ローンなし）/);
+      await userEvent.click(checkbox);
+      expect(screen.getAllByText(/現金購入（ローンなし）/).length).toBeGreaterThan(0);
+    });
+  });
 });
