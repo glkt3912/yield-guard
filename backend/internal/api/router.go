@@ -13,6 +13,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"golang.org/x/time/rate"
 )
 
 func internalKeyMiddleware() gin.HandlerFunc {
@@ -99,15 +100,20 @@ func NewRouter(h *Handler) *gin.Engine {
 		AllowCredentials: false,
 	}))
 
+	// IP ベースレートリミッター: 一般 API 60 req/min、analyze 10 req/min
+	generalRL := newRateLimiter(rate.Every(time.Minute/60), 20)
+	analyzeRL := newRateLimiter(rate.Every(time.Minute/10), 5)
+
 	r.GET("/health", h.HealthCheck)
 
 	api := r.Group("/api")
 	api.Use(internalKeyMiddleware())
+	api.Use(generalRL.middleware())
 	{
 		api.GET("/land-prices/stats", h.GetLandPrices)
 		api.GET("/land-prices/compare", h.CompareLandPrice)
 		api.GET("/land-prices/estimate", h.EstimateLandPrice)
-		api.POST("/investment/analyze", h.Analyze)
+		api.POST("/investment/analyze", analyzeRL.middleware(), h.Analyze)
 		api.GET("/municipalities", h.GetMunicipalities)
 		api.GET("/station-ridership", h.GetStationRidership)
 		api.GET("/population-forecast", h.GetPopulationForecast)
