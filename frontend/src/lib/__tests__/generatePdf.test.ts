@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { downloadReportPDF } from "@/lib/generatePdf";
-import { makeInput, makeResult } from "./helpers";
+import { makeInput, makeResult } from "@/components/__tests__/helpers";
 
 // Mock pdfmake – avoids loading the full browser build in jsdom
 const mockDownload = vi.fn();
