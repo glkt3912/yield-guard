@@ -144,15 +144,6 @@ func TestValidateInvestmentInput_Boundaries(t *testing.T) {
 		{"vacancyRate=0 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.VacancyRate = 0 }), false},
 		{"vacancyRate=0.99 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.VacancyRate = 0.99 }), false},
 		{"vacancyRate=1.0 → error", withField(validBase, func(i *domain.InvestmentInput) { i.VacancyRate = 1.0 }), true},
-		// VacancyRate + VacancyRateDelta overflow
-		{"vacancyRate=0.5+vacancyRateDelta=0.6 → error", withField(validBase, func(i *domain.InvestmentInput) {
-			i.VacancyRate = 0.5
-			i.VacancyRateDelta = 0.6
-		}), true},
-		{"vacancyRate=0.5+vacancyRateDelta=0.49 → ok", withField(validBase, func(i *domain.InvestmentInput) {
-			i.VacancyRate = 0.5
-			i.VacancyRateDelta = 0.49
-		}), false},
 		// LoanAmount
 		{"loanAmount=-1 → error", withField(validBase, func(i *domain.InvestmentInput) { i.LoanAmount = -1 }), true},
 		{"loanAmount=0 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.LoanAmount = 0 }), false},
@@ -191,11 +182,48 @@ func TestValidateInvestmentInput_Boundaries(t *testing.T) {
 		{"holdingYears=0 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.HoldingYears = 0 }), false},
 		{"holdingYears=50 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.HoldingYears = 50 }), false},
 		{"holdingYears=51 → error", withField(validBase, func(i *domain.InvestmentInput) { i.HoldingYears = 51 }), true},
+		// RentDeclineRate
+		{"rentDeclineRate=-0.001 → error", withField(validBase, func(i *domain.InvestmentInput) { i.RentDeclineRate = -0.001 }), true},
+		{"rentDeclineRate=0 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.RentDeclineRate = 0 }), false},
+		{"rentDeclineRate=0.2 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.RentDeclineRate = 0.2 }), false},
+		{"rentDeclineRate=0.201 → error", withField(validBase, func(i *domain.InvestmentInput) { i.RentDeclineRate = 0.201 }), true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateInvestmentInput(tt.input)
+			if tt.wantErr && err == nil {
+				t.Error("expected error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("expected no error, got: %v", err)
+			}
+		})
+	}
+}
+
+func TestDomainValidate_Combinations(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   domain.InvestmentInput
+		wantErr bool
+	}{
+		{"vacancyRate=0.5+vacancyRateDelta=0.6 → error", withField(validBase, func(i *domain.InvestmentInput) {
+			i.VacancyRate = 0.5
+			i.VacancyRateDelta = 0.6
+		}), true},
+		{"vacancyRate=0.5+vacancyRateDelta=0.49 → ok", withField(validBase, func(i *domain.InvestmentInput) {
+			i.VacancyRate = 0.5
+			i.VacancyRateDelta = 0.49
+		}), false},
+		{"rentDeclineRate=-0.001 → error", withField(validBase, func(i *domain.InvestmentInput) { i.RentDeclineRate = -0.001 }), true},
+		{"rentDeclineRate=0.2 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.RentDeclineRate = 0.2 }), false},
+		{"rentDeclineRate=0.201 → error", withField(validBase, func(i *domain.InvestmentInput) { i.RentDeclineRate = 0.201 }), true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.input.Validate()
 			if tt.wantErr && err == nil {
 				t.Error("expected error, got nil")
 			}
