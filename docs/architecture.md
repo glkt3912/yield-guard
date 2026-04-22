@@ -131,7 +131,7 @@ flowchart LR
 | 環境 | `OTEL_EXPORTER_OTLP_ENDPOINT` | トレース出力先 | メトリクス出力先 |
 |---|---|---|---|
 | ローカル開発 | 未設定 | stdout（整形JSON） | stdout |
-| Cloud Run 本番 | `https://...` (OTLP エンドポイント) | Cloud Trace（OTLP gRPC） | Cloud Monitoring（OTLP gRPC） |
+| Cloud Run 本番 | `host:port`（例: `otel-collector:4317`） | Cloud Trace（OTLP gRPC） | Cloud Monitoring（OTLP gRPC） |
 
 ### 構造化ログフォーマット（Cloud Logging 準拠）
 
