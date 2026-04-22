@@ -231,7 +231,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
       {isQuick && (
         <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
           <span className="font-semibold">クイックモード:</span>{" "}
-          6項目のみ入力してください。空室率5%・運営経費率20%・建物構造:木造 をデフォルトとして計算します。
+          6項目のみ入力してください。空室率5%・運営経費率20%・建物構造:木造・年利1.5% をデフォルトとして計算します。
         </div>
       )}
 
