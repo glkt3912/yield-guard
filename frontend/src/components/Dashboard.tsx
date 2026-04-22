@@ -1,29 +1,5 @@
 "use client";
-import React, { useState, useRef, useEffect, Component } from "react";
-
-class PdfErrorBoundary extends Component<
-  { children: React.ReactNode },
-  { failed: boolean }
-> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  render() {
-    if (this.state.failed)
-      return (
-        <button
-          disabled
-          className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white shadow-sm opacity-50 cursor-not-allowed"
-          title="PDF生成ライブラリが現在のReactバージョンに未対応です"
-        >
-          <FileDown className="h-3.5 w-3.5" />
-          PDF生成に失敗しました
-        </button>
-      );
-    return this.props.children;
-  }
-}
+import React, { useState, useRef, useEffect } from "react";
 import { InvestmentForm } from "@/components/InvestmentForm";
 import { YieldAnalysis } from "@/components/YieldAnalysis";
 import { CashFlowChart } from "@/components/CashFlowChart";
@@ -34,17 +10,7 @@ import type { InvestmentInput, InvestmentResult, LandPriceComparison, Theoretica
 import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks } from "@/lib/api";
 import { ShieldAlert, Info, FileDown } from "lucide-react";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
-import dynamic from "next/dynamic";
-
-const PDFDownloadLink = dynamic(
-  () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
-  { ssr: false, loading: () => null }
-);
-
-const ReportPDF = dynamic(
-  () => import("@/components/ReportPDF").then((m) => m.ReportPDF),
-  { ssr: false }
-);
+import { downloadReportPDF } from "@/lib/generatePdf";
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
 function getCurrentPeriods(): { year: number; quarter: number; toYear: number; toQuarter: number } {
@@ -67,7 +33,7 @@ export function Dashboard() {
   const [externalUrbanRisks, setExternalUrbanRisks] = useState<UrbanRisk[] | null>(null);
   const [simulationMode, setSimulationMode] = useState<SimulationMode>("quick");
   const [modeNotice, setModeNotice] = useState(false);
-  const [pdfRequested, setPdfRequested] = useState(false);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -89,7 +55,7 @@ export function Dashboard() {
   const handleAnalyze = async (input: InvestmentInput) => {
     setLoading(true);
     setError(null);
-    setPdfRequested(false);
+    setPdfGenerating(false);
     try {
       const res = await analyze(input);
       setResult(res);
@@ -168,32 +134,21 @@ export function Dashboard() {
           </div>
           <div className="ml-auto flex items-center gap-3">
             {result && lastInput && (
-              pdfRequested ? (
-                <PdfErrorBoundary>
-                  <PDFDownloadLink
-                    document={<ReportPDF input={lastInput} result={result} />}
-                    fileName={`yield-guard-report-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.pdf`}
-                  >
-                    {({ loading: pdfLoading }) => (
-                      <button
-                        disabled={pdfLoading}
-                        className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-primary/90 disabled:opacity-60"
-                      >
-                        <FileDown className="h-3.5 w-3.5" />
-                        {pdfLoading ? "生成中..." : "PDFレポート出力"}
-                      </button>
-                    )}
-                  </PDFDownloadLink>
-                </PdfErrorBoundary>
-              ) : (
-                <button
-                  onClick={() => setPdfRequested(true)}
-                  className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-primary/90"
-                >
-                  <FileDown className="h-3.5 w-3.5" />
-                  PDFレポート出力
-                </button>
-              )
+              <button
+                disabled={pdfGenerating}
+                onClick={async () => {
+                  setPdfGenerating(true);
+                  try {
+                    await downloadReportPDF(lastInput, result);
+                  } finally {
+                    setPdfGenerating(false);
+                  }
+                }}
+                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-primary/90 disabled:opacity-60"
+              >
+                <FileDown className="h-3.5 w-3.5" />
+                {pdfGenerating ? "生成中..." : "PDFレポート出力"}
+              </button>
             )}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="h-2 w-2 rounded-full bg-green-400" />
