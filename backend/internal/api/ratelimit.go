@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ type rateLimiter struct {
 	limiters map[string]*ipLimiter
 	r        rate.Limit
 	burst    int
+	stop     chan struct{}
 }
 
 func newRateLimiter(r rate.Limit, burst int) *rateLimiter {
@@ -26,9 +28,26 @@ func newRateLimiter(r rate.Limit, burst int) *rateLimiter {
 		limiters: make(map[string]*ipLimiter),
 		r:        r,
 		burst:    burst,
+		stop:     make(chan struct{}),
 	}
-	go rl.cleanup()
+	t := time.NewTicker(5 * time.Minute)
+	go func() {
+		for {
+			select {
+			case <-t.C:
+				rl.purge()
+			case <-rl.stop:
+				t.Stop()
+				return
+			}
+		}
+	}()
 	return rl
+}
+
+// shutdown stops the background cleanup goroutine.
+func (rl *rateLimiter) shutdown() {
+	close(rl.stop)
 }
 
 func (rl *rateLimiter) get(ip string) *rate.Limiter {
@@ -43,23 +62,23 @@ func (rl *rateLimiter) get(ip string) *rate.Limiter {
 	return entry.limiter
 }
 
-// cleanup removes entries not seen for 10 minutes.
-func (rl *rateLimiter) cleanup() {
-	for range time.Tick(5 * time.Minute) {
-		rl.mu.Lock()
-		for ip, entry := range rl.limiters {
-			if time.Since(entry.lastSeen) > 10*time.Minute {
-				delete(rl.limiters, ip)
-			}
+func (rl *rateLimiter) purge() {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	for ip, entry := range rl.limiters {
+		if time.Since(entry.lastSeen) > 10*time.Minute {
+			delete(rl.limiters, ip)
 		}
-		rl.mu.Unlock()
 	}
 }
 
 func (rl *rateLimiter) middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !rl.get(c.ClientIP()).Allow() {
-			c.Header("Retry-After", "60")
+		res := rl.get(c.ClientIP()).Reserve()
+		if d := res.Delay(); d > 0 {
+			res.Cancel()
+			waitSec := int(d.Seconds()) + 1
+			c.Header("Retry-After", strconv.Itoa(waitSec))
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "リクエスト数が上限を超えました。しばらく待ってから再試行してください。"})
 			return
 		}

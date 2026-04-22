@@ -76,6 +76,11 @@ func recoveryMiddleware() gin.HandlerFunc {
 // NewRouter は Gin ルーターを初期化して返す
 func NewRouter(h *Handler) *gin.Engine {
 	r := gin.New()
+	// X-Forwarded-For を信頼しない: TCP 接続元 IP のみを ClientIP() として使用し
+	// ヘッダー偽装によるレートリミット回避を防ぐ。
+	if err := r.SetTrustedProxies(nil); err != nil {
+		panic(err)
+	}
 
 	r.Use(otelgin.Middleware("yield-guard-backend"))
 	r.Use(accessLogMiddleware())
@@ -100,9 +105,9 @@ func NewRouter(h *Handler) *gin.Engine {
 		AllowCredentials: false,
 	}))
 
-	// IP ベースレートリミッター: 一般 API 60 req/min、analyze 10 req/min
-	generalRL := newRateLimiter(rate.Every(time.Minute/60), 20)
-	analyzeRL := newRateLimiter(rate.Every(time.Minute/10), 5)
+	// IP ベースレートリミッター: 一般 API 60 req/min (1 token/s)、analyze 10 req/min (1 token/6s)
+	generalRL := newRateLimiter(rate.Every(time.Second), 20)
+	analyzeRL := newRateLimiter(rate.Every(6*time.Second), 5)
 
 	r.GET("/health", h.HealthCheck)
 
@@ -113,6 +118,7 @@ func NewRouter(h *Handler) *gin.Engine {
 		api.GET("/land-prices/stats", h.GetLandPrices)
 		api.GET("/land-prices/compare", h.CompareLandPrice)
 		api.GET("/land-prices/estimate", h.EstimateLandPrice)
+		// analyze は generalRL + analyzeRL の両方でトークンを消費する（意図的な二重制限）
 		api.POST("/investment/analyze", analyzeRL.middleware(), h.Analyze)
 		api.GET("/municipalities", h.GetMunicipalities)
 		api.GET("/station-ridership", h.GetStationRidership)

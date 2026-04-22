@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 func TestRateLimiter_AllowsUnderLimit(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	rl := newRateLimiter(rate.Every(time.Second), 5)
+	t.Cleanup(rl.shutdown)
 
 	r := gin.New()
 	r.GET("/test", rl.middleware(), func(c *gin.Context) {
@@ -32,8 +34,9 @@ func TestRateLimiter_AllowsUnderLimit(t *testing.T) {
 
 func TestRateLimiter_BlocksOverLimit(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	// burst=2: 3 requests should trigger 429
+	// burst=2: 3rd request should trigger 429
 	rl := newRateLimiter(rate.Every(time.Hour), 2)
+	t.Cleanup(rl.shutdown)
 
 	r := gin.New()
 	r.GET("/test", rl.middleware(), func(c *gin.Context) {
@@ -61,7 +64,9 @@ func TestRateLimiter_BlocksOverLimit(t *testing.T) {
 
 func TestRateLimiter_RetryAfterHeader(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	// 1 token per hour, burst=1: 2nd request must wait ~3600s
 	rl := newRateLimiter(rate.Every(time.Hour), 1)
+	t.Cleanup(rl.shutdown)
 
 	r := gin.New()
 	r.GET("/test", rl.middleware(), func(c *gin.Context) {
@@ -81,14 +86,17 @@ func TestRateLimiter_RetryAfterHeader(t *testing.T) {
 	if w.Code != http.StatusTooManyRequests {
 		t.Fatalf("want 429, got %d", w.Code)
 	}
-	if w.Header().Get("Retry-After") != "60" {
-		t.Fatalf("want Retry-After: 60, got %q", w.Header().Get("Retry-After"))
+	retryAfter := w.Header().Get("Retry-After")
+	secs, err := strconv.Atoi(retryAfter)
+	if err != nil || secs <= 0 {
+		t.Fatalf("Retry-After must be a positive integer, got %q", retryAfter)
 	}
 }
 
 func TestRateLimiter_IsolatesPerIP(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	rl := newRateLimiter(rate.Every(time.Hour), 1)
+	t.Cleanup(rl.shutdown)
 
 	r := gin.New()
 	r.GET("/test", rl.middleware(), func(c *gin.Context) {
