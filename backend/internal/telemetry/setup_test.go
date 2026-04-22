@@ -10,8 +10,8 @@ import (
 )
 
 func TestSetup_StdoutExporter(t *testing.T) {
-	// Ensure OTEL_EXPORTER_OTLP_ENDPOINT is unset so stdout exporter is used.
-	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	// Ensure GOOGLE_CLOUD_PROJECT is unset so stdout exporter is used.
+	t.Setenv("GOOGLE_CLOUD_PROJECT", "")
 
 	ctx := context.Background()
 	shutdown, err := Setup(ctx, "test-service", "0.0.1")
@@ -45,7 +45,7 @@ func TestSetup_StdoutExporter(t *testing.T) {
 }
 
 func TestSetup_InstrumentsInitialised(t *testing.T) {
-	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	t.Setenv("GOOGLE_CLOUD_PROJECT", "")
 
 	ctx := context.Background()
 	shutdown, err := Setup(ctx, "test-service", "0.0.1")
