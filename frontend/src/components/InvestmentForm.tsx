@@ -158,7 +158,17 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
     () => isQuick ? validateQuick(quickTotalPriceMan, input) : validateFull(input),
     [isQuick, quickTotalPriceMan, input]
   );
-  const hasErrors = Object.keys(currentErrors).length > 0;
+  const scheduleHasErrors = useMemo(() => {
+    if (!rateScheduleEnabled) return false;
+    return input.rateAdjustmentSchedule.some((step, i) => {
+      const maxYear = input.loanYears || 35;
+      const prevYear = i > 0 ? input.rateAdjustmentSchedule[i - 1].afterYear : 1;
+      return step.afterYear < 2 || step.afterYear > maxYear || step.afterYear <= prevYear
+        || step.rate <= 0 || step.rate > 0.3;
+    });
+  }, [rateScheduleEnabled, input.rateAdjustmentSchedule, input.loanYears]);
+
+  const hasErrors = Object.keys(currentErrors).length > 0 || scheduleHasErrors;
 
   // touched フィールドにのみエラーを表示する
   const fieldError = (key: string) => touched.has(key) ? currentErrors[key as keyof FormErrors] : undefined;
@@ -238,8 +248,10 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
 
   const addRateStep = () => {
     const schedule = input.rateAdjustmentSchedule;
+    const maxYear = input.loanYears || 35;
     const lastYear = schedule.length > 0 ? schedule[schedule.length - 1].afterYear : 1;
-    const nextYear = Math.min(lastYear + 5, input.loanYears || 35);
+    if (lastYear >= maxYear) return;
+    const nextYear = Math.min(lastYear + 5, maxYear);
     const newStep: RateAdjustment = { afterYear: nextYear, rate: input.annualLoanRate + 0.005 };
     setInput((prev) => ({ ...prev, rateAdjustmentSchedule: [...prev.rateAdjustmentSchedule, newStep] }));
   };
@@ -847,7 +859,9 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                         </div>
                       );
                     })}
-                    {input.rateAdjustmentSchedule.length < 3 && (
+                    {input.rateAdjustmentSchedule.length < 3 &&
+                      (input.rateAdjustmentSchedule.length === 0 ||
+                        input.rateAdjustmentSchedule[input.rateAdjustmentSchedule.length - 1].afterYear < (input.loanYears || 35)) && (
                       <button
                         type="button"
                         onClick={addRateStep}
