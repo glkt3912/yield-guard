@@ -173,6 +173,8 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		},
 	)
 
+	yieldScenarios := calcYieldScenarios(input, totalInvestment)
+
 	return InvestmentResult{
 		TotalInvestment:       totalInvestment,
 		MiscExpenses:          miscExpenses,
@@ -191,6 +193,33 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		ExitNetProceeds:       exitNet,
 		ExitTotalEquity:       exitEquity,
 		StressScenarios:       stressScenarios,
+		YieldScenarios:        yieldScenarios,
+	}
+}
+
+// calcYieldScenarios は楽観・標準・悲観の3シナリオにおける年間実効賃料と表面利回りを算出する。
+// 楽観: vacancyRate × 0.5、標準: vacancyRate × 1.0、悲観: vacancyRate × 1.5
+// 注意: 表面利回りは満室想定年収/総投資額（空室率に依存しない）であるが、
+//   AnnualRent（実効賃料）は空室率を反映した値を返す。
+func calcYieldScenarios(input InvestmentInput, totalInvestment float64) YieldScenarios {
+	grossYield := 0.0
+	if totalInvestment > 0 {
+		grossYield = (input.MonthlyRent * 12) / totalInvestment
+	}
+
+	calcScenario := func(vacancyMultiplier float64) YieldScenario {
+		effectiveVacancy := math.Min(input.VacancyRate*vacancyMultiplier, 0.99)
+		annualRent := input.MonthlyRent * 12 * (1 - effectiveVacancy)
+		return YieldScenario{
+			AnnualRent: annualRent,
+			GrossYield: grossYield,
+		}
+	}
+
+	return YieldScenarios{
+		Optimistic:  calcScenario(0.5),
+		Standard:    calcScenario(1.0),
+		Pessimistic: calcScenario(1.5),
 	}
 }
 
