@@ -76,6 +76,25 @@ effectiveRate    := input.AnnualLoanRate + input.LoanRateDelta
 
 > **根拠・出典**: 全国宅地建物取引業協会連合会（全宅連）および不動産情報サービス各社（SUUMO・HOME'S 等）が物件掲載時に使用する慣習的指標。物件間の横断比較に用いる。実際の収入は空室や経費分だけ下振れするため、実質利回りと併用して判断する。
 
+## 空室シナリオ別利回り（calcYieldScenarios）
+
+`Analyze()` 内で呼び出され、`InvestmentResult.YieldScenarios` として返される。
+
+```
+楽観シナリオ: effectiveVacancy = min(VacancyRate × 0.5, 0.99)
+標準シナリオ: effectiveVacancy = min(VacancyRate × 1.0, 0.99)
+悲観シナリオ: effectiveVacancy = min(VacancyRate × 1.5, 0.99)
+
+AnnualRent = MonthlyRent × 12 × (1 - effectiveVacancy)
+GrossYield = (MonthlyRent × 12) / 総投資額  ← 全シナリオ共通（満室想定）
+```
+
+**0.99 キャップの意図**: 悲観×1.5 で空室率が 100% を超える場合（例: 入力 80% × 1.5 = 120%）、年間賃料がゼロ以下になることを防ぐ。`math.Min(..., 0.99)` で最大99%に制限する。
+
+**GrossYield の一定性**: 表面利回りは「満室想定年収 / 総投資額」で定義され、シナリオ間で変化しない。シナリオで変化するのは `AnnualRent`（実効賃料）のみ。
+
+---
+
 ## 実質利回り（NetYield）
 
 ```

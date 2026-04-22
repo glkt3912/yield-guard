@@ -410,13 +410,37 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
       "breakEvenYear": 4,
       "isSafe": true
     }
-  ]
+  ],
+  "yieldScenarios": {
+    "optimistic":  { "annualRent": 1368000, "grossYield": 0.0897 },
+    "standard":    { "annualRent": 1296000, "grossYield": 0.0897 },
+    "pessimistic": { "annualRent": 1224000, "grossYield": 0.0897 }
+  }
 }
 ```
 
 #### `stressScenarios: StressScenarioResult[]`
 
 `Analyze()` が自動生成する 6 つのデフォルトシナリオ（ベースライン / 金利+1% / 金利+2% / 空室+10% / 空室+20% / 複合ストレス）の結果配列。入力に `vacancyRateDelta` または `loanRateDelta` が指定されている場合はカスタムシナリオが 7 本目として追加される。
+
+#### `yieldScenarios: YieldScenarios`
+
+楽観・標準・悲観の 3 シナリオにおける年間実効賃料と表面利回りをバックエンドで計算して返す。
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `optimistic` | YieldScenario | 楽観シナリオ（空室率 × 0.5） |
+| `standard` | YieldScenario | 標準シナリオ（空室率 × 1.0） |
+| `pessimistic` | YieldScenario | 悲観シナリオ（空室率 × 1.5、上限 0.99 キャップ） |
+
+`YieldScenario` の構造:
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `annualRent` | float64 | 年間実効賃料収入（空室控除後、円） |
+| `grossYield` | float64 | 表面利回り（満室想定年収 / 総投資額。全シナリオ共通値） |
+
+**注意**: `grossYield` はシナリオによらず満室想定で計算した固定値。シナリオ間で `annualRent` のみが変化する。
 
 | フィールド | 型 | 説明 |
 |-----------|-----|------|

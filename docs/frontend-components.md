@@ -14,7 +14,8 @@ page.tsx
         ├── YieldAnalysis      (result + populationForecast を受け取り表示)
         ├── CostBreakdown      (result.acquisitionCosts + yearlyResults を受け取り表示)
         ├── CashFlowChart      (result + equityInvested を受け取り表示)
-        └── DeadCrossChart     (result を受け取り表示)
+        ├── DeadCrossChart     (result を受け取り表示)
+        └── ReportPDF          (result + lastInput を受け取り PDF 生成。SSR無効)
 ```
 
 `Dashboard` が `result: InvestmentResult | null`、`comparison: LandPriceComparison | null`、`populationForecast: PopulationForecastResult | null` を管理する。
@@ -29,11 +30,16 @@ page.tsx
 
 **状態管理**:
 - `result`: `InvestmentResult | null`
+- `lastInput`: `InvestmentInput | null` — 直近のシミュレーション入力。PDF 出力に使用
 - `comparison`: `LandPriceComparison | null`
 - `stationRidership`: `StationRidershipResult[] | null` — 緯度・経度が指定された場合に `GET /api/station-ridership` から取得
 - `populationForecast`: `PopulationForecastResult | null` — 緯度・経度が指定された場合に `GET /api/population-forecast` から取得
 - `externalUrbanRisks`: `UrbanRisk[] | null` — 緯度・経度が指定された場合に `GET /api/urban-risks` から取得（XKT003/020/030/XST001）
 - `loading`, `error`: ローディング・エラー状態
+
+**「PDFレポート出力」ボタン**:
+
+`result && lastInput` が両方存在する場合のみヘッダーにボタンを表示。`@react-pdf/renderer` の `PDFDownloadLink` を `next/dynamic(..., { ssr: false })` でクライアント専用モジュールとして読み込む。ファイル名: `yield-guard-report-YYYYMMDD.pdf`。
 
 **`handleFetchLandPrices(area, city, lat?, lng?)`**:
 
@@ -105,7 +111,17 @@ const equityInvested = result.totalInvestment - input.loanAmount
 | 土地相場データ | 折りたたみ（初期非表示・任意） | 常時展開 |
 | フォーム構造 | フラット | 4セクション（物件情報/収益条件/ローン条件/出口戦略） |
 | ストレステスト | 非表示 | 常時表示 |
-| デフォルト値バナー | 表示（空室率5%・経費率20%等を明示） | なし |
+| デフォルト値バナー | 表示（空室率5%・経費率20%等を明示。現金購入時は「現金購入（ローンなし）」に変化） | なし |
+| 現金購入チェックボックス | ローン金額フィールドの上に表示 | ローン条件セクションのヘッダー右側に表示 |
+
+**現金購入モード（`isCashPurchase`）**:
+
+「現金購入（ローンなし）」チェックボックスをクイック・詳細モード両方に設置。
+
+- チェック ON: `loanAmount=0`・`loanYears=0` をセットし、ローン金額・年利・返済期間フィールドを `disabled` にする。チェック前の値は `savedLoanAmount`・`savedLoanYears` に退避する。
+- チェック OFF: 退避値を復元してフィールドを再有効化する。
+- モード切り替え時（クイック→詳細、詳細→クイック）: `useEffect` でチェック状態をリセットし退避値を復元する。
+- バックエンドの `calcMonthlyPayment` は `LoanYears <= 0` で 0 を返すガードがあるため、`loanYears=0` を送信しても安全。
 
 クイックモード送信時は「物件価格総額」（`quickTotalPriceMan`）を `landPrice = total × 0.7`・`buildingCost = total × 0.3` に自動分割し、`QUICK_MODE_DEFAULTS` とマージして API へ送信する。
 
@@ -299,17 +315,17 @@ targetPosition = (TARGET_PCT / MAX_YIELD_PCT) * 100           // = 50%（常に�
 - `(grossYield - 0.08)`: 目標に対する余裕度（%表示）
 - 「賃料が何%下落すると8%を下回るか」も表示: `(grossYield - 0.08) / grossYield`
 
-**空室率シナリオ比較テーブル**:
+**空室シナリオ別 年間賃料収入カード（`VacancyScenarioCard`）**:
 
-フロントエンドのみで3シナリオを計算して表示する（バックエンド呼び出しなし）。
+バックエンドの `result.yieldScenarios`（`POST /api/investment/analyze` レスポンス）を受け取り表示する。フロントでの再計算は行わない。
 
-| シナリオ | 空室率 | 計算式 |
-|---------|--------|--------|
-| 満室想定 | 0% | `grossYield × (1 - expenseRate)` |
-| 現況 | `actualVacancyRate`（0の場合は`vacancyRate`にフォールバック） | `grossYield × (1 - actualV) × (1 - expenseRate)` |
-| ストレス | `actualV + vacancyRateDelta`（上限99%） | `grossYield × (1 - stressV) × (1 - expenseRate)` |
+| シナリオ | 想定空室率 | 表示内容 |
+|---------|-----------|---------|
+| 楽観 | `vacancyRate × 0.5` | `yieldScenarios.optimistic.annualRent` / `grossYield` |
+| 標準 | `vacancyRate × 1.0` | `yieldScenarios.standard.annualRent` / `grossYield` |
+| 悲観 | `vacancyRate × 1.5` | `yieldScenarios.pessimistic.annualRent` / `grossYield` |
 
-表面利回りが8%以上の行は緑、未満は赤で表示。
+`result.yieldScenarios` が存在する場合のみカードをレンダリングする（`null`チェック済み）。表面利回り（`grossYield`）は全シナリオ共通値（満室想定）。
 
 **人口減少シナリオ（`populationForecast`）**:
 
@@ -323,6 +339,34 @@ targetPosition = (TARGET_PCT / MAX_YIELD_PCT) * 100           // = 50%（常に�
 | 年間CF（概算） | `grossYield × totalInvestment × (1 - popV) − loanPayment − expenses` |
 
 CF がマイナスの場合は「赤字転落 ⚠️」バッジを表示。フッターに「30年後人口推計: XX%（現在比）／トレンド: ○○」を記載。
+
+---
+
+## ReportPDF
+
+`frontend/src/components/ReportPDF.tsx`
+
+> テストカバレッジ: `ReportPDF.test.tsx`（Vitest + RTL）— 通常レンダリング・空のストレステスト・固定資産税日割りあり・新築・デッドクロスありの5ケースを検証。
+
+**概要**: `@react-pdf/renderer` を使い投資分析結果を PDF ドキュメントとして生成するコンポーネント。ブラウザ専用（`next/dynamic` + `ssr: false` で読み込む）。日本語文字化け防止のため Noto Sans JP を Google Fonts CDN から `Font.register()` で埋め込む。
+
+**props**:
+- `input: InvestmentInput` — 物件情報・ローン条件等
+- `result: InvestmentResult` — 分析結果（`yieldScenarios`, `stressScenarios`, `yearlyResults` 等）
+
+**PDF 構成（5ページ）**:
+
+| ページ | 内容 |
+|--------|------|
+| 表紙 | 物件概要（土地価格・建物費・築年数・構造・月額賃料・ローン情報）・分析日 |
+| P1 投資サマリー | 表面利回り・実質利回り・DSCR（1年目）・LTV・出口戦略内訳 |
+| P2 10年キャッシュフロー表 | `YearlyResult[]` から生成。年次賃料・ローン返済・経費・税引後CF・累積CF・残債。マイナス値は赤色 |
+| P3 ストレステスト結果 | 6シナリオ×（総CF・DSCR・黒字転換年・安全フラグ）。`stressScenarios.length > 0` の場合のみレンダリング |
+| P4 取得コスト内訳 | 初期投資・`AcquisitionCostBreakdown` 明細・1年目年間経費内訳 |
+
+全ページフッター: 「本資料は yield-guard による試算です。実際の投資判断は専門家にご相談ください。」
+
+**ファイル名**: `yield-guard-report-YYYYMMDD.pdf`（`Dashboard.tsx` の `PDFDownloadLink` で指定）
 
 ---
 
