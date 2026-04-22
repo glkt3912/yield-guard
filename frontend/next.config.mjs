@@ -10,7 +10,8 @@ const withPWA = withPWAInit({
     disableDevLogs: true,
     runtimeCaching: [
       {
-        urlPattern: /\/api\/.*/i,
+        urlPattern: ({ url, request }) =>
+          /\/api\/.*/i.test(url.pathname) && request.method === "GET",
         handler: "NetworkFirst",
         options: {
           cacheName: "api-cache",
