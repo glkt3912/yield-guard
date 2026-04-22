@@ -17,7 +17,7 @@ const QUICK_HISTORY_MAX = 5;
 
 interface QuickHistoryEntry {
   totalPriceMan: string;
-  monthlyRentMan: string;
+  monthlyRentYen: string;
   ts: number;
 }
 
@@ -350,7 +350,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
       });
       const entry: QuickHistoryEntry = {
         totalPriceMan: quickTotalPriceMan,
-        monthlyRentMan: String(input.monthlyRent),
+        monthlyRentYen: String(input.monthlyRent),
         ts: Date.now(),
       };
       saveQuickHistory(entry);
@@ -365,7 +365,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
     if (quickHistory.length === 0) return;
     const last = quickHistory[0];
     setQuickTotalPriceMan(last.totalPriceMan);
-    setNum("monthlyRent", parseFloat(last.monthlyRentMan) || 0);
+    setNum("monthlyRent", parseFloat(last.monthlyRentYen) || 0);
   };
 
   return (
