@@ -1,12 +1,12 @@
 import { XOctagon, AlertTriangle } from "lucide-react";
 import type { CriticalError } from "@/types/investment";
 
-interface Props {
+interface CriticalErrorBannerProps {
   errors: CriticalError[];
 }
 
-export function CriticalErrorBanner({ errors }: Props) {
-  if (errors.length === 0) return null;
+export function CriticalErrorBanner({ errors }: CriticalErrorBannerProps) {
+  if (!errors || errors.length === 0) return null;
 
   return (
     <div className="space-y-2">
