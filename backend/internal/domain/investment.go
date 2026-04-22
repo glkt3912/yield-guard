@@ -292,28 +292,27 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 	cumCF := 0.0
 	remainingBalance := in.LoanAmount
 	for y := 1; y <= holdingYears; y++ {
-		yearLoan := annualLoanPayment
-		if remainingBalance <= 0 || y > in.LoanYears {
-			yearLoan = 0
+		yearLoan := 0.0
+		if remainingBalance > 0 && y <= in.LoanYears {
+			if in.LoanMethod == LoanMethodEqualPrincipal {
+				// 元金均等: 残高に応じて毎年の返済額が変化するため再計算
+				yi, yp := calcYearlyLoanComponentsEqualPrincipal(remainingBalance, effectiveRate, monthlyPrincipalStress)
+				yearLoan = yi + yp
+				remainingBalance -= yp
+			} else {
+				yearLoan = annualLoanPayment
+				_, annPrincipal := calcYearlyLoanComponents(remainingBalance, effectiveRate, monthlyPayment)
+				remainingBalance -= annPrincipal
+			}
+			if remainingBalance < 0 {
+				remainingBalance = 0
+			}
 		}
 		cf := annualRent - yearLoan - annualExpenses
 		totalCF += cf
 		cumCF += cf
 		if breakEvenYear == -1 && cumCF > 0 {
 			breakEvenYear = y
-		}
-		// 残高更新
-		if remainingBalance > 0 && y <= in.LoanYears {
-			var annPrincipal float64
-			if in.LoanMethod == LoanMethodEqualPrincipal {
-				_, annPrincipal = calcYearlyLoanComponentsEqualPrincipal(remainingBalance, effectiveRate, monthlyPrincipalStress)
-			} else {
-				_, annPrincipal = calcYearlyLoanComponents(remainingBalance, effectiveRate, monthlyPayment)
-			}
-			remainingBalance -= annPrincipal
-			if remainingBalance < 0 {
-				remainingBalance = 0
-			}
 		}
 	}
 
