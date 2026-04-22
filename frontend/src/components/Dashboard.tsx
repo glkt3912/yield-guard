@@ -55,7 +55,6 @@ export function Dashboard() {
   const handleAnalyze = async (input: InvestmentInput) => {
     setLoading(true);
     setError(null);
-    setPdfGenerating(false);
     try {
       const res = await analyze(input);
       setResult(res);

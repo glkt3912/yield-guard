@@ -37,13 +37,17 @@ function today(): string {
 }
 
 // Fonts are served from our own domain (public/fonts/) — no CDN dependency
-const FONT_REGULAR = "/fonts/NotoSansJP-Regular.woff2";
-const FONT_BOLD = "/fonts/NotoSansJP-Bold.woff2";
+const FONTS = {
+  regular: "/fonts/NotoSansJP-Regular.woff2",
+  bold: "/fonts/NotoSansJP-Bold.woff2",
+} as const;
 
-const fontCache: Record<string, string> = {};
+type FontKey = keyof typeof FONTS;
+const fontCache: Partial<Record<FontKey, string>> = {};
 
-async function toBase64(url: string): Promise<string> {
-  if (fontCache[url]) return fontCache[url];
+async function loadFont(key: FontKey): Promise<string> {
+  if (fontCache[key]) return fontCache[key]!;
+  const url = FONTS[key];
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`);
   const buf = await res.arrayBuffer();
@@ -54,8 +58,8 @@ async function toBase64(url: string): Promise<string> {
   for (let i = 0; i < bytes.length; i += CHUNK) {
     binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
   }
-  fontCache[url] = btoa(binary);
-  return fontCache[url];
+  fontCache[key] = btoa(binary);
+  return fontCache[key]!;
 }
 
 function infoRow(label: string, value: string) {
@@ -115,8 +119,8 @@ export async function downloadReportPDF(
 ): Promise<void> {
   const [pdfMakeModule, regularB64, boldB64] = await Promise.all([
     import("pdfmake/build/pdfmake"),
-    toBase64(FONT_REGULAR),
-    toBase64(FONT_BOLD),
+    loadFont("regular"),
+    loadFont("bold"),
   ]);
 
   const pdfMake = ((pdfMakeModule as Record<string, unknown>).default ?? pdfMakeModule) as {

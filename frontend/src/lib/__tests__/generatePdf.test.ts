@@ -26,8 +26,6 @@ function makeFontFetchMock() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Reset font cache between tests
-  vi.resetModules();
 });
 
 describe("downloadReportPDF", () => {
