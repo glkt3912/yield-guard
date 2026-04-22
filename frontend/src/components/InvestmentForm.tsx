@@ -122,7 +122,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [muniLoading, setMuniLoading] = useState(false);
   const [muniFilter, setMuniFilter] = useState("");
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Set<string>>(new Set());
   const [zoningType, setZoningType] = useState<ZoningType>("");
 
   // クイックモード専用: 物件価格（総額）
@@ -142,6 +142,19 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
     landA + buildingA > 0 ? totalMan * (buildingA / (landA + buildingA)) : 0;
 
   const isQuick = simulationMode === "quick";
+
+  // 現在の入力値からエラーをリアルタイムで算出（派生状態）
+  const currentErrors = useMemo(
+    () => isQuick ? validateQuick(quickTotalPriceMan, input) : validateFull(input),
+    [isQuick, quickTotalPriceMan, input]
+  );
+  const hasErrors = Object.keys(currentErrors).length > 0;
+
+  // touched フィールドにのみエラーを表示する
+  const fieldError = (key: string) => touched.has(key) ? currentErrors[key as keyof FormErrors] : undefined;
+
+  const markTouched = (key: string) =>
+    setTouched((prev) => prev.has(key) ? prev : new Set([...prev, key]));
 
   const filteredMunicipalities = useMemo(
     () => muniFilter.trim()
@@ -183,12 +196,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
 
   const setNum = (key: keyof InvestmentInput, value: number) => {
     setInput((prev) => ({ ...prev, [key]: value }));
-    setErrors((prev) => {
-      if (!prev[key]) return prev;
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
+    markTouched(key);
   };
   const setStr = (key: keyof InvestmentInput, value: string) =>
     setInput((prev) => ({ ...prev, [key]: value }));
@@ -199,10 +207,8 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   const fromPct = (s: string) => (parseFloat(s) || 0) / 100;
 
   const handleAnalyze = () => {
+    if (hasErrors) return;
     if (isQuick) {
-      const errs = validateQuick(quickTotalPriceMan, input);
-      setErrors(errs);
-      if (Object.keys(errs).length > 0) return;
       const total = (parseFloat(quickTotalPriceMan) || 0) * 10_000;
       const payload: InvestmentInput = {
         ...input,
@@ -212,9 +218,6 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
       };
       onAnalyze(payload);
     } else {
-      const errs = validateFull(input);
-      setErrors(errs);
-      if (Object.keys(errs).length > 0) return;
       onAnalyze(input);
     }
   };
@@ -338,20 +341,20 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                     value={quickTotalPriceMan}
                     onChange={(e) => {
                       setQuickTotalPriceMan(e.target.value);
-                      setErrors((prev) => { const n = { ...prev }; delete n.quickTotalPrice; return n; });
+                      markTouched("quickTotalPrice");
                     }}
-                    error={errors.quickTotalPrice}
+                    error={fieldError("quickTotalPrice")}
                   />
                   <p className="text-xs text-muted-foreground mt-1">内部で土地70%・建物30%に按分して計算します</p>
                 </div>
                 <Input label="想定月額賃料" type="number" suffix="円"
                   value={String(input.monthlyRent)}
                   onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
-                  error={errors.monthlyRent} />
+                  error={fieldError("monthlyRent")} />
                 <Input label="ローン金額" type="number" suffix="万円"
                   value={toMan(input.loanAmount)}
                   onChange={(e) => setNum("loanAmount", fromMan(e.target.value))}
-                  error={errors.loanAmount} />
+                  error={fieldError("loanAmount")} />
               </div>
 
               <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 space-y-0.5">
@@ -359,7 +362,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                 <p>空室率 5%・運営経費率 20%・建物構造: 木造・年利 1.5%・返済期間 35年・10年後売却・所得税率 33%</p>
               </div>
 
-              <Button className="w-full" size="lg" loading={loading} onClick={handleAnalyze}>
+              <Button className="w-full" size="lg" loading={loading} disabled={hasErrors || loading} onClick={handleAnalyze}>
                 <Calculator className="h-5 w-5" />
                 シミュレーション実行
               </Button>
@@ -481,7 +484,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   <Input label="土地取得価格" type="number" suffix="万円"
                     value={toMan(input.landPrice)}
                     onChange={(e) => setNum("landPrice", fromMan(e.target.value))}
-                    error={errors.landPrice} />
+                    error={fieldError("landPrice")} />
                   <Input label="土地面積" type="number" suffix="m²"
                     value={String(input.landArea)}
                     onChange={(e) => setNum("landArea", parseFloat(e.target.value) || 0)} />
@@ -489,7 +492,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                     <Input label="建物価格" type="number" suffix="万円"
                       value={toMan(input.buildingCost)}
                       onChange={(e) => setNum("buildingCost", fromMan(e.target.value))}
-                      error={errors.buildingCost} />
+                      error={fieldError("buildingCost")} />
                     <p className="text-xs text-muted-foreground mt-1">新築は建設費、中古は売買契約書記載の建物価格（消費税の課税対象部分）を入力</p>
 
                     <button
@@ -576,22 +579,22 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   <Input label="想定月額賃料" type="number" suffix="円"
                     value={String(input.monthlyRent)}
                     onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
-                    error={errors.monthlyRent} />
+                    error={fieldError("monthlyRent")} />
                   <Input label="現況空室率" type="number" suffix="%" step="1"
                     value={toPct(input.actualVacancyRate, 0)}
                     onChange={(e) => setNum("actualVacancyRate", fromPct(e.target.value))} />
                   <Input label="想定空室率（長期）" type="number" suffix="%" step="1"
                     value={toPct(input.vacancyRate, 0)}
                     onChange={(e) => setNum("vacancyRate", fromPct(e.target.value))}
-                    error={errors.vacancyRate} />
+                    error={fieldError("vacancyRate")} />
                   <Input label="運営経費率※" type="number" suffix="%" step="1"
                     value={toPct(input.expenseRate, 0)}
                     onChange={(e) => setNum("expenseRate", fromPct(e.target.value))}
-                    error={errors.expenseRate} />
+                    error={fieldError("expenseRate")} />
                   <Input label="諸経費率" type="number" suffix="%" step="0.5"
                     value={toPct(input.miscExpenseRate, 1)}
                     onChange={(e) => setNum("miscExpenseRate", fromPct(e.target.value))}
-                    error={errors.miscExpenseRate} />
+                    error={fieldError("miscExpenseRate")} />
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
                   ※運営経費率はローン利息を含みません（管理費・修繕費・固定資産税・保険等）
@@ -641,15 +644,15 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   <Input label="ローン金額" type="number" suffix="万円"
                     value={toMan(input.loanAmount)}
                     onChange={(e) => setNum("loanAmount", fromMan(e.target.value))}
-                    error={errors.loanAmount} />
+                    error={fieldError("loanAmount")} />
                   <Input label="年利" type="number" suffix="%" step="0.01"
                     value={toPct(input.annualLoanRate)}
                     onChange={(e) => setNum("annualLoanRate", fromPct(e.target.value))}
-                    error={errors.annualLoanRate} />
+                    error={fieldError("annualLoanRate")} />
                   <Input label="返済期間" type="number" suffix="年"
                     value={String(input.loanYears)}
                     onChange={(e) => setNum("loanYears", parseInt(e.target.value) || 35)}
-                    error={errors.loanYears} />
+                    error={fieldError("loanYears")} />
                 </div>
               </div>
 
@@ -660,15 +663,15 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   <Input label="売却予定年数" type="number" suffix="年後"
                     value={String(input.holdingYears)}
                     onChange={(e) => setNum("holdingYears", parseInt(e.target.value) || 10)}
-                    error={errors.holdingYears} />
+                    error={fieldError("holdingYears")} />
                   <Input label="売却時目標利回り（実質）" type="number" suffix="%" step="0.5"
                     value={toPct(input.exitYieldTarget, 1)}
                     onChange={(e) => setNum("exitYieldTarget", fromPct(e.target.value))}
-                    error={errors.exitYieldTarget} />
+                    error={fieldError("exitYieldTarget")} />
                   <Input label="所得税率（実効）" type="number" suffix="%" step="1"
                     value={toPct(input.incomeTaxRate, 0)}
                     onChange={(e) => setNum("incomeTaxRate", fromPct(e.target.value))}
-                    error={errors.incomeTaxRate} />
+                    error={fieldError("incomeTaxRate")} />
                 </div>
               </div>
 
@@ -685,7 +688,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   formatValue={(v) => `+${formatPct(v)}`} />
               </div>
 
-              <Button className="w-full" size="lg" loading={loading} onClick={handleAnalyze}>
+              <Button className="w-full" size="lg" loading={loading} disabled={hasErrors || loading} onClick={handleAnalyze}>
                 <Calculator className="h-5 w-5" />
                 シミュレーション実行
               </Button>
