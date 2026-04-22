@@ -140,6 +140,8 @@ export function Dashboard() {
                   setPdfGenerating(true);
                   try {
                     await downloadReportPDF(lastInput, result);
+                  } catch {
+                    setError("PDF の生成に失敗しました。しばらく後で再試行してください。");
                   } finally {
                     setPdfGenerating(false);
                   }
