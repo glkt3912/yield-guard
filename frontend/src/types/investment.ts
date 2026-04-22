@@ -66,6 +66,7 @@ export interface InvestmentInput {
   vacancyRateDelta: number;
   loanRateDelta: number;
   annualPropertyTax: number;  // 固定資産税・都市計画税（年間）。0 = ExpenseRateに含む。
+  rentDeclineRate: number;    // 年間賃料下落率（例: 0.01 = 1%/年）
 }
 
 export interface YearlyResult {
@@ -206,6 +207,7 @@ export const DEFAULT_INPUT: InvestmentInput = {
   vacancyRateDelta: 0,
   loanRateDelta: 0,
   annualPropertyTax: 0,
+  rentDeclineRate: 0,
 };
 
 export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
