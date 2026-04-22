@@ -86,7 +86,7 @@ Dependabot により Go modules・npm の依存パッケージが毎週月曜（
 | 環境 | エクスポーター | 送信先 |
 |------|--------------|--------|
 | ローカル開発（未設定） | `stdouttrace` / `stdoutmetric` | コンソール標準出力 |
-| 本番（Cloud Run） | `cloudtrace` / `googlemonitoring` | Cloud Trace / Cloud Monitoring |
+| 本番（Cloud Run） | `cloudtrace` / `monitoring` | Cloud Trace / Cloud Monitoring |
 
 ### 計装ポイント
 
