@@ -133,6 +133,18 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   const [errors, setErrors] = useState<FormErrors>({});
   const [zoningType, setZoningType] = useState<ZoningType>("");
 
+  // 按分ヘルパーの状態
+  const [showBuildingHelper, setShowBuildingHelper] = useState(false);
+  const [taxAmount, setTaxAmount] = useState("");
+  const [landAssess, setLandAssess] = useState("");
+  const [buildingAssess, setBuildingAssess] = useState("");
+  const [totalPrice, setTotalPrice] = useState("");
+
+  // 按分計算ユーティリティ
+  const calcFromTax = (taxMan: number) => taxMan / 0.1;
+  const calcFromAssessment = (totalMan: number, landA: number, buildingA: number) =>
+    landA + buildingA > 0 ? totalMan * (buildingA / (landA + buildingA)) : 0;
+
   const isQuick = simulationMode === "quick";
 
   const filteredMunicipalities = useMemo(
@@ -358,6 +370,93 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                 onChange={(e) => setNum("buildingCost", fromMan(e.target.value))}
                 error={errors.buildingCost} />
               <p className="text-xs text-muted-foreground mt-1">新築は建設費、中古は売買契約書記載の建物価格（消費税の課税対象部分）を入力</p>
+
+              {/* 按分ヘルパー */}
+              <button
+                type="button"
+                className="mt-2 text-xs text-primary underline-offset-2 hover:underline"
+                onClick={() => setShowBuildingHelper((p) => !p)}
+              >
+                {showBuildingHelper ? "▲ 按分ヘルパーを閉じる" : "▼ 建物価格がわからない場合（按分ヘルパー）"}
+              </button>
+
+              {showBuildingHelper && (
+                <div className="mt-2 rounded-md bg-muted/50 p-3 space-y-3 text-sm">
+                  {/* 方法1: 消費税から計算 */}
+                  <div>
+                    <p className="font-medium text-xs mb-1">① 消費税額から計算（最も確実）</p>
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <Input
+                          label="消費税額"
+                          type="number"
+                          suffix="万円"
+                          value={taxAmount}
+                          onChange={(e) => setTaxAmount(e.target.value)}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mb-0 shrink-0"
+                        onClick={() => {
+                          const tax = parseFloat(taxAmount) || 0;
+                          const result = calcFromTax(tax);
+                          if (result > 0) setNum("buildingCost", result * 10_000);
+                        }}
+                      >
+                        適用
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">建物価格 = 消費税額 ÷ 0.1</p>
+                  </div>
+
+                  {/* 方法2: 固定資産税評価額から計算 */}
+                  <div>
+                    <p className="font-medium text-xs mb-1">② 固定資産税評価額の比率で按分</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input
+                        label="土地評価額"
+                        type="number"
+                        suffix="万円"
+                        value={landAssess}
+                        onChange={(e) => setLandAssess(e.target.value)}
+                      />
+                      <Input
+                        label="建物評価額"
+                        type="number"
+                        suffix="万円"
+                        value={buildingAssess}
+                        onChange={(e) => setBuildingAssess(e.target.value)}
+                      />
+                      <Input
+                        label="購入総額"
+                        type="number"
+                        suffix="万円"
+                        value={totalPrice}
+                        onChange={(e) => setTotalPrice(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => {
+                        const total = parseFloat(totalPrice) || 0;
+                        const land = parseFloat(landAssess) || 0;
+                        const building = parseFloat(buildingAssess) || 0;
+                        const result = calcFromAssessment(total, land, building);
+                        if (result > 0) setNum("buildingCost", result * 10_000);
+                      }}
+                    >
+                      按分して適用
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">建物価格 = 総額 × 建物評価 ÷（土地+建物評価）</p>
+                  </div>
+                </div>
+              )}
             </div>
             {!isQuick && (
               <Input label="築年数" type="number" suffix="年（0=新築）"
