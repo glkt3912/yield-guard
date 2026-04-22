@@ -12,6 +12,39 @@ import { fetchMunicipalities, type Municipality } from "@/lib/api";
 import { Search, Calculator, Info, AlertTriangle, ShieldCheck, Zap, SlidersHorizontal, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { ZONING_TYPES, ZONING_META, type ZoningType } from "@/lib/zoning";
 
+const QUICK_HISTORY_KEY = "yield-guard:quick-history";
+const QUICK_HISTORY_MAX = 5;
+
+interface QuickHistoryEntry {
+  totalPriceMan: string;
+  monthlyRentYen: string;
+  ts: number;
+}
+
+function loadQuickHistory(): QuickHistoryEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(QUICK_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as QuickHistoryEntry[];
+  } catch {
+    return [];
+  }
+}
+
+function saveQuickHistory(entry: QuickHistoryEntry): QuickHistoryEntry[] {
+  try {
+    const history = loadQuickHistory();
+    const next = [entry, ...history].slice(0, QUICK_HISTORY_MAX);
+    localStorage.setItem(QUICK_HISTORY_KEY, JSON.stringify(next));
+    return next;
+  } catch {
+    return loadQuickHistory();
+  }
+}
+
 const PREFECTURES = [
   { value: "01", label: "北海道" }, { value: "02", label: "青森県" },
   { value: "03", label: "岩手県" }, { value: "04", label: "宮城県" },
@@ -136,6 +169,10 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   // 現金購入前のローン値を保存（チェックを外したときに復元）
   const [savedLoanAmount, setSavedLoanAmount] = useState(DEFAULT_INPUT.loanAmount);
   const [savedLoanYears, setSavedLoanYears] = useState(DEFAULT_INPUT.loanYears);
+  // クイックモード: ローン自動計算（80%）の展開フラグ
+  const [showCustomLoan, setShowCustomLoan] = useState(false);
+  // クイックモード: 入力履歴
+  const [quickHistory, setQuickHistory] = useState<QuickHistoryEntry[]>([]);
 
   // 変動金利スケジュール
   const [rateScheduleEnabled, setRateScheduleEnabled] = useState(false);
@@ -225,6 +262,11 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
     }
   }, [filteredMunicipalities]);
 
+  // クイックモード入力履歴をlocalStorageから読み込む
+  useEffect(() => {
+    setQuickHistory(loadQuickHistory());
+  }, []);
+
   const handleAreaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const code = e.target.value;
     setArea(code);
@@ -244,6 +286,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
       setSavedLoanAmount(input.loanAmount);
       setSavedLoanYears(input.loanYears);
       setInput((prev) => ({ ...prev, loanAmount: 0, loanYears: 0 }));
+      setShowCustomLoan(false);
     } else {
       setInput((prev) => ({ ...prev, loanAmount: savedLoanAmount, loanYears: savedLoanYears }));
     }
@@ -299,16 +342,31 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
     if (hasErrors) return;
     if (isQuick) {
       const total = (parseFloat(quickTotalPriceMan) || 0) * 10_000;
+      const autoLoanAmount = !isCashPurchase && !showCustomLoan ? total * 0.8 : input.loanAmount;
       const payload: InvestmentInput = sortedInput({
         ...input,
         ...QUICK_MODE_DEFAULTS,
         landPrice: total * 0.7,
         buildingCost: total * 0.3,
+        loanAmount: isCashPurchase ? 0 : autoLoanAmount,
       });
+      const entry: QuickHistoryEntry = {
+        totalPriceMan: quickTotalPriceMan,
+        monthlyRentYen: String(input.monthlyRent),
+        ts: Date.now(),
+      };
+      setQuickHistory(saveQuickHistory(entry));
       onAnalyze(payload);
     } else {
       onAnalyze(sortedInput(input));
     }
+  };
+
+  const handleRestoreLastInput = () => {
+    if (quickHistory.length === 0) return;
+    const last = quickHistory[0];
+    setQuickTotalPriceMan(last.totalPriceMan);
+    setNum("monthlyRent", parseFloat(last.monthlyRentYen) || 0);
   };
 
   return (
@@ -412,7 +470,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
             )}
           </div>
 
-          {/* 3項目フォーム */}
+          {/* クイックモード入力フォーム */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -421,6 +479,15 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {quickHistory.length > 0 && (
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 min-h-[44px] text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+                  onClick={handleRestoreLastInput}
+                >
+                  前回の入力から開始
+                </button>
+              )}
               <div className="space-y-3">
                 <div>
                   <Input
@@ -441,7 +508,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
                   error={fieldError("monthlyRent")} />
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <label className="flex items-center gap-2 cursor-pointer select-none min-h-[44px]">
                     <input
                       type="checkbox"
                       checked={isCashPurchase}
@@ -451,11 +518,37 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                     />
                     <span className="text-sm font-medium">現金購入（ローンなし）</span>
                   </label>
-                  <Input label="ローン金額" type="number" suffix="万円"
-                    value={toMan(input.loanAmount)}
-                    onChange={(e) => { if (!isCashPurchase) setNum("loanAmount", fromMan(e.target.value)); }}
-                    error={fieldError("loanAmount")}
-                    disabled={isCashPurchase} />
+                  {!isCashPurchase && (
+                    <>
+                      {!showCustomLoan && (
+                        <p className="text-xs text-muted-foreground">
+                          ローン 80% 自動適用中 —{" "}
+                          <button
+                            type="button"
+                            className="underline underline-offset-2 hover:text-foreground"
+                            onClick={() => setShowCustomLoan(true)}
+                          >
+                            カスタム設定
+                          </button>
+                        </p>
+                      )}
+                      {showCustomLoan && (
+                        <div className="space-y-1">
+                          <Input label="ローン金額" type="number" suffix="万円"
+                            value={toMan(input.loanAmount)}
+                            onChange={(e) => setNum("loanAmount", fromMan(e.target.value))}
+                            error={fieldError("loanAmount")} />
+                          <button
+                            type="button"
+                            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                            onClick={() => setShowCustomLoan(false)}
+                          >
+                            80% 自動計算に戻す
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
                 <Input label="目標利回り" type="number" suffix="%" step="0.5"
                   value={toPct(input.yieldTarget, 1)}
@@ -465,7 +558,13 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
 
               <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 space-y-0.5">
                 <p className="font-semibold">自動設定されるデフォルト値</p>
-                <p>空室率 5%・運営経費率 20%・建物構造: 木造・{isCashPurchase ? "現金購入（ローンなし）" : "年利 1.5%・返済期間 35年"}・10年後売却・所得税率 33%</p>
+                <p>空室率 5%・運営経費率 20%・建物構造: 木造・{
+                  isCashPurchase
+                    ? "現金購入（ローンなし）"
+                    : !showCustomLoan
+                      ? "ローン 80%・年利 1.5%・返済期間 35年"
+                      : "年利 1.5%・返済期間 35年"
+                }・10年後売却・所得税率 33%</p>
               </div>
 
               <Button className="w-full" size="lg" loading={loading} disabled={hasErrors || loading} onClick={handleAnalyze}>
