@@ -77,6 +77,40 @@ Dependabot により Go modules・npm の依存パッケージが毎週月曜（
 
 ---
 
+## インフラ・セキュリティ
+
+### サービスアカウント設計
+
+SA（Service Account）を用途ごとに分離し、最小権限を実現している。
+
+| SA | メール | 用途 | 主な権限 |
+|---|---|---|---|
+| deployer | `sa-yield-guard-prod-deployer@...` | GitHub Actions / Terraform 専用 | `projectIamAdmin`, `serviceAccountAdmin`, `artifactregistry.repoAdmin`, `run.developer`, `storage.admin`（tfstate のみ） |
+| runtime | `sa-yield-guard-prod@...` | Cloud Run アプリ実行専用 | `secretmanager.secretAccessor`, `cloudtrace.agent`, `monitoring.metricWriter` |
+
+**分離の背景**: 以前は CI/CD とランタイムが同一 SA を共有していた。`terraform apply` に必要な `projectIamAdmin` がランタイム SA にも付与されており、アプリ脆弱性経由で GCP プロジェクト全体を掌握できる権限昇格リスクがあった（Issue #188 対応）。
+
+### Workload Identity Federation（WIF）
+
+GitHub Actions → GCP 認証にパスワード不要の OIDC 連携を使用する。
+
+```
+GitHub Actions (OIDC token)
+  → WIF Pool (github-pool-prod)
+  → WIF Provider (github-provider)
+  → impersonate deployer SA
+```
+
+- `SA_EMAIL` GitHub Secret: deployer SA のメールアドレスを設定
+- `WIF_PROVIDER` GitHub Secret: WIF プロバイダーのリソース名を設定
+- トークン交換は `glkt3912/yield-guard` リポジトリのみに制限（`attribute_condition`）
+
+### Terraform 状態管理
+
+Terraform state は GCS バケット `yield-guard-tfstate`（prefix: `yield-guard/prod`）に保存。deployer SA が `roles/storage.admin`（lock ファイル書き込み含む）を持つ。
+
+---
+
 ## 観測基盤（OpenTelemetry + 構造化ロギング）
 
 ### スタック概要
@@ -133,7 +167,7 @@ flowchart LR
 | ローカル開発 | 未設定 | stdout（整形JSON） | stdout |
 | Cloud Run 本番 | GCP プロジェクト ID | Cloud Trace（ADC 認証） | Cloud Monitoring（ADC 認証） |
 
-Cloud Run SA には `roles/cloudtrace.agent` と `roles/monitoring.metricWriter` が必要（`terraform/iam.tf` で管理）。認証は ADC（Application Default Credentials）が自動処理するため、コード内での認証設定は不要。
+Cloud Run ランタイム SA には `roles/cloudtrace.agent` と `roles/monitoring.metricWriter` が必要（`terraform/iam.tf` で管理）。認証は ADC（Application Default Credentials）が自動処理するため、コード内での認証設定は不要。
 
 ### 構造化ログフォーマット（Cloud Logging 準拠）
 
