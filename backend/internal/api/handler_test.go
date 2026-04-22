@@ -144,6 +144,15 @@ func TestValidateInvestmentInput_Boundaries(t *testing.T) {
 		{"vacancyRate=0 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.VacancyRate = 0 }), false},
 		{"vacancyRate=0.99 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.VacancyRate = 0.99 }), false},
 		{"vacancyRate=1.0 → error", withField(validBase, func(i *domain.InvestmentInput) { i.VacancyRate = 1.0 }), true},
+		// VacancyRate + VacancyRateDelta overflow
+		{"vacancyRate=0.5+vacancyRateDelta=0.6 → error", withField(validBase, func(i *domain.InvestmentInput) {
+			i.VacancyRate = 0.5
+			i.VacancyRateDelta = 0.6
+		}), true},
+		{"vacancyRate=0.5+vacancyRateDelta=0.49 → ok", withField(validBase, func(i *domain.InvestmentInput) {
+			i.VacancyRate = 0.5
+			i.VacancyRateDelta = 0.49
+		}), false},
 		// LoanAmount
 		{"loanAmount=-1 → error", withField(validBase, func(i *domain.InvestmentInput) { i.LoanAmount = -1 }), true},
 		{"loanAmount=0 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.LoanAmount = 0 }), false},
