@@ -110,10 +110,10 @@ func (i *InvestmentInput) Validate() error {
 			i.RentDeclineRate,
 		)
 	}
-	if i.LoanMethod != "" && i.LoanMethod != "equal-payment" && i.LoanMethod != "equal-principal" {
+	if i.LoanMethod != "" && i.LoanMethod != LoanMethodEqualPayment && i.LoanMethod != LoanMethodEqualPrincipal {
 		return fmt.Errorf(
 			"LoanMethod(%q) must be %q or %q",
-			i.LoanMethod, "equal-payment", "equal-principal",
+			i.LoanMethod, LoanMethodEqualPayment, LoanMethodEqualPrincipal,
 		)
 	}
 	return nil
@@ -141,7 +141,7 @@ func (i *InvestmentInput) Defaults() {
 		i.BuildingType = BuildingTypeWood
 	}
 	if i.LoanMethod == "" {
-		i.LoanMethod = "equal-payment"
+		i.LoanMethod = LoanMethodEqualPayment
 	}
 }
 
