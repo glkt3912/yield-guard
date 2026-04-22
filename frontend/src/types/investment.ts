@@ -47,6 +47,11 @@ export interface StationRidershipResult {
 
 export type LoanMethod = "equal-payment" | "equal-principal";
 
+export interface RateAdjustment {
+  afterYear: number; // この年（1始まり）以降に適用（例: 6 = 6年目から）
+  rate: number;      // 絶対値の年利（例: 0.02 = 2%）
+}
+
 export interface InvestmentInput {
   landPrice: number;
   landArea: number;       // 土地面積 (m²)
@@ -71,6 +76,7 @@ export interface InvestmentInput {
   rentDeclineRate: number;    // 年間賃料下落率（例: 0.01 = 1%/年）
   yieldTarget: number;        // 目標表面利回り（例: 0.08 = 8%）
   loanMethod?: LoanMethod;    // 返済方式（省略時 = equal-payment）
+  rateAdjustmentSchedule: RateAdjustment[]; // 変動金利スケジュール（空=固定金利）
 }
 
 export interface YearlyResult {
@@ -89,6 +95,7 @@ export interface YearlyResult {
   cumulativeCashFlow: number;
   isDeadCrossYear: boolean;
   isInDeadCrossZone: boolean;   // デッドクロス継続ゾーン
+  effectiveRate: number;        // その年の適用金利（年利）
 }
 
 export interface StressScenarioResult {
@@ -238,6 +245,7 @@ export const DEFAULT_INPUT: InvestmentInput = {
   rentDeclineRate: 0,
   yieldTarget: 0.08,
   loanMethod: "equal-payment",
+  rateAdjustmentSchedule: [],
 };
 
 export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
@@ -265,8 +273,9 @@ export const QUICK_MODE_DEFAULTS: Partial<InvestmentInput> = {
   loanRateDelta:     0,
   annualPropertyTax: 0,
   buildingType:      "木造" as BuildingType,
-  annualLoanRate:    0.015,
-  rentDeclineRate:   0.01,
-  yieldTarget:       0.08,
-  loanMethod:        "equal-payment",
+  annualLoanRate:           0.015,
+  rentDeclineRate:          0.01,
+  yieldTarget:              0.08,
+  loanMethod:               "equal-payment",
+  rateAdjustmentSchedule:  [],
 };

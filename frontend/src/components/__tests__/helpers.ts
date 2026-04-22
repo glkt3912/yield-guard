@@ -24,6 +24,7 @@ export function makeInput(overrides: Partial<InvestmentInput> = {}): InvestmentI
     annualPropertyTax: 0,
     rentDeclineRate: 0,
     yieldTarget: 0.08,
+    rateAdjustmentSchedule: [],
     ...overrides,
   };
 }
@@ -76,6 +77,7 @@ export function makeYearlyResult(year: number, overrides: Partial<YearlyResult> 
     cumulativeCashFlow: 274_200 * year,
     isDeadCrossYear: false,
     isInDeadCrossZone: false,
+    effectiveRate: 0.015,
     ...overrides,
   };
 }
