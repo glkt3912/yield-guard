@@ -43,22 +43,14 @@ const FONTS = {
 } as const;
 
 type FontKey = keyof typeof FONTS;
-const fontCache: Partial<Record<FontKey, string>> = {};
+const fontCache: Partial<Record<FontKey, Uint8Array>> = {};
 
-async function loadFont(key: FontKey): Promise<string> {
+async function loadFont(key: FontKey): Promise<Uint8Array> {
   if (fontCache[key]) return fontCache[key]!;
   const url = FONTS[key];
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`);
-  const buf = await res.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  // Chunk-based btoa to avoid call-stack overflow on large font files
-  const CHUNK = 8192;
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  fontCache[key] = btoa(binary);
+  fontCache[key] = new Uint8Array(await res.arrayBuffer());
   return fontCache[key]!;
 }
 
@@ -117,27 +109,27 @@ export async function downloadReportPDF(
   input: InvestmentInput,
   result: InvestmentResult
 ): Promise<void> {
-  const [pdfMakeModule, regularB64, boldB64] = await Promise.all([
+  const [pdfMakeModule, regularBytes, boldBytes] = await Promise.all([
     import("pdfmake/build/pdfmake"),
     loadFont("regular"),
     loadFont("bold"),
   ]);
 
   const pdfMake = ((pdfMakeModule as Record<string, unknown>).default ?? pdfMakeModule) as {
-    virtualfs: { writeFileSync: (name: string, data: string) => void };
+    virtualfs: { writeFileSync: (name: string, data: Uint8Array) => void };
     fonts: Record<string, unknown>;
     createPdf: (def: unknown) => { download: (name: string) => void };
   };
 
-  // pdfmake 0.3.x uses virtualfs.writeFileSync (not pdfMake.vfs)
-  pdfMake.virtualfs.writeFileSync("NotoSansJP-Regular.woff2", regularB64);
-  pdfMake.virtualfs.writeFileSync("NotoSansJP-Bold.woff2", boldB64);
+  // Pass raw binary (Uint8Array) — base64 strings are stored as ASCII bytes and fail font parsing
+  pdfMake.virtualfs.writeFileSync("NotoSansJP-Regular.ttf", regularBytes);
+  pdfMake.virtualfs.writeFileSync("NotoSansJP-Bold.ttf", boldBytes);
   pdfMake.fonts = {
     NotoSansJP: {
-      normal: "NotoSansJP-Regular.woff2",
-      bold: "NotoSansJP-Bold.woff2",
-      italics: "NotoSansJP-Regular.woff2",
-      bolditalics: "NotoSansJP-Bold.woff2",
+      normal: "NotoSansJP-Regular.ttf",
+      bold: "NotoSansJP-Bold.ttf",
+      italics: "NotoSansJP-Regular.ttf",
+      bolditalics: "NotoSansJP-Bold.ttf",
     },
   };
 
