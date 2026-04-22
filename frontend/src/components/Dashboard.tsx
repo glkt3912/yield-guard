@@ -30,7 +30,8 @@ import { CashFlowChart } from "@/components/CashFlowChart";
 import { DeadCrossChart } from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
-import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode } from "@/types/investment";
+import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
+import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode, LoanMethod } from "@/types/investment";
 import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks } from "@/lib/api";
 import { ShieldAlert, Info, FileDown } from "lucide-react";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
@@ -68,6 +69,7 @@ export function Dashboard() {
   const [simulationMode, setSimulationMode] = useState<SimulationMode>("quick");
   const [modeNotice, setModeNotice] = useState(false);
   const [pdfRequested, setPdfRequested] = useState(false);
+  const [loanMethod, setLoanMethod] = useState<LoanMethod>("equal-payment");
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -90,10 +92,27 @@ export function Dashboard() {
     setLoading(true);
     setError(null);
     setPdfRequested(false);
+    const inputWithMethod = { ...input, loanMethod };
     try {
-      const res = await analyze(input);
+      const res = await analyze(inputWithMethod);
       setResult(res);
-      setLastInput(input);
+      setLastInput(inputWithMethod);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "シミュレーションに失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoanMethodChange = async (method: LoanMethod) => {
+    setLoanMethod(method);
+    if (!lastInput) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await analyze({ ...lastInput, loanMethod: method });
+      setResult(res);
+      setLastInput((prev) => prev ? { ...prev, loanMethod: method } : prev);
     } catch (e) {
       setError(e instanceof Error ? e.message : "シミュレーションに失敗しました");
     } finally {
@@ -245,6 +264,11 @@ export function Dashboard() {
               <>
                 <CriticalErrorBanner errors={result.criticalErrors} />
                 <YieldAnalysis result={result} input={lastInput} populationForecast={populationForecast} />
+                <LoanOptimizationPanel
+                  result={result}
+                  loanMethod={loanMethod}
+                  onLoanMethodChange={handleLoanMethodChange}
+                />
                 {simulationMode === "full" && (
                   <>
                     {result.acquisitionCosts && (
