@@ -343,10 +343,13 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
             )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input label="建築費" type="number" suffix="万円"
-              value={toMan(input.buildingCost)}
-              onChange={(e) => setNum("buildingCost", fromMan(e.target.value))}
-              error={errors.buildingCost} />
+            <div>
+              <Input label="建物価格" type="number" suffix="万円"
+                value={toMan(input.buildingCost)}
+                onChange={(e) => setNum("buildingCost", fromMan(e.target.value))}
+                error={errors.buildingCost} />
+              <p className="text-xs text-muted-foreground mt-1">新築は建設費、中古は売買契約書記載の建物価格（消費税の課税対象部分）を入力</p>
+            </div>
             {!isQuick && (
               <Input label="築年数" type="number" suffix="年（0=新築）"
                 value={String(input.buildingAge)}
