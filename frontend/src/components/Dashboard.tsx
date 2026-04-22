@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { InvestmentForm } from "@/components/InvestmentForm";
 import { YieldAnalysis } from "@/components/YieldAnalysis";
 import { CashFlowChart } from "@/components/CashFlowChart";
@@ -31,8 +31,15 @@ export function Dashboard() {
   const [landAppraisal, setLandAppraisal] = useState<AppraisalComparisonResult | null>(null);
   const [externalUrbanRisks, setExternalUrbanRisks] = useState<UrbanRisk[] | null>(null);
   const [simulationMode, setSimulationMode] = useState<SimulationMode>("quick");
+  const [modeNotice, setModeNotice] = useState(false);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleModeChange = (mode: SimulationMode) => {
+    if (result) {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+      setModeNotice(true);
+      noticeTimer.current = setTimeout(() => setModeNotice(false), 4000);
+    }
     setSimulationMode(mode);
     setResult(null);
   };
@@ -127,6 +134,12 @@ export function Dashboard() {
         {error && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             ⚠ {error}
+          </div>
+        )}
+
+        {modeNotice && (
+          <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            ℹ モードを切り替えたため、結果をクリアしました。再度シミュレーションを実行してください。
           </div>
         )}
 
