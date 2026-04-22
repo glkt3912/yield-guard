@@ -74,3 +74,12 @@ resource "google_secret_manager_secret_iam_member" "internal_key_accessor" {
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.backend.email}"
 }
+
+# --- Terraform state backend permissions ---
+
+resource "google_storage_bucket_iam_member" "sa_tfstate_reader" {
+  # CI runs terraform init/plan and needs read access to the GCS state backend.
+  bucket = "yield-guard-tfstate"
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.backend.email}"
+}
