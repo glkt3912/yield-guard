@@ -55,7 +55,13 @@ export function LoanOptimizationPanel({ result, loanMethod, onLoanMethodChange }
         {/* LTV 感度テーブル */}
         {result.ltvSensitivity && result.ltvSensitivity.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">LTV 感度分析</p>
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-xs font-medium text-muted-foreground">LTV 感度分析</p>
+              <p className="text-xs text-muted-foreground">
+                （ベースケース基準
+                {loanMethod === "equal-principal" ? "・元金均等は1年目返済額で試算" : ""}）
+              </p>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse">
                 <thead>

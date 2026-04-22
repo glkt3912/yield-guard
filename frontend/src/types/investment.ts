@@ -268,4 +268,5 @@ export const QUICK_MODE_DEFAULTS: Partial<InvestmentInput> = {
   annualLoanRate:    0.015,
   rentDeclineRate:   0.01,
   yieldTarget:       0.08,
+  loanMethod:        "equal-payment",
 };
