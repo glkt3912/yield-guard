@@ -59,6 +59,20 @@ resource "google_project_iam_member" "deployer_project_iam_admin" {
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+resource "google_project_iam_member" "deployer_sa_admin" {
+  # Required to set IAM policies on individual service accounts (WIF binding, act-as).
+  project = var.project_id
+  role    = "roles/iam.serviceAccountAdmin"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+resource "google_project_iam_member" "deployer_ar_repo_admin" {
+  # Required to set IAM policies on Artifact Registry repositories.
+  project = var.project_id
+  role    = "roles/artifactregistry.repoAdmin"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 resource "google_project_iam_member" "deployer_run_developer" {
   project = var.project_id
   role    = "roles/run.developer"
