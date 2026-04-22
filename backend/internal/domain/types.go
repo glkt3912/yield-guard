@@ -89,6 +89,10 @@ type InvestmentInput struct {
 
 	// 目標表面利回り（例: 0.08 = 8%）。0 の場合は Defaults() で 0.08 にセットされる。
 	YieldTarget float64 `json:"yieldTarget"`
+
+	// 返済方式: "equal-payment"（元利均等）| "equal-principal"（元金均等）
+	// 省略時は Defaults() で "equal-payment" にセットされる。
+	LoanMethod string `json:"loanMethod"`
 }
 
 // Validate は入力値のバリデーションを行い、不正な組み合わせはエラーを返す。
@@ -104,6 +108,12 @@ func (i *InvestmentInput) Validate() error {
 		return fmt.Errorf(
 			"RentDeclineRate(%.3f) must be between 0.0 and 0.2",
 			i.RentDeclineRate,
+		)
+	}
+	if i.LoanMethod != "" && i.LoanMethod != "equal-payment" && i.LoanMethod != "equal-principal" {
+		return fmt.Errorf(
+			"LoanMethod(%q) must be %q or %q",
+			i.LoanMethod, "equal-payment", "equal-principal",
 		)
 	}
 	return nil
@@ -129,6 +139,9 @@ func (i *InvestmentInput) Defaults() {
 	}
 	if i.BuildingType == "" {
 		i.BuildingType = BuildingTypeWood
+	}
+	if i.LoanMethod == "" {
+		i.LoanMethod = "equal-payment"
 	}
 }
 
@@ -190,6 +203,16 @@ type YieldScenarios struct {
 	Pessimistic YieldScenario `json:"pessimistic"` // 悲観: 空室率 × 1.5
 }
 
+// LTVSensitivityRow は1つの LTV 水準における収支試算結果
+type LTVSensitivityRow struct {
+	LTV        float64 `json:"ltv"`        // 借入比率（例: 0.70）
+	Equity     float64 `json:"equity"`     // 自己資金（円）
+	LoanAmount float64 `json:"loanAmount"` // 借入額（円）
+	DSCR       float64 `json:"dscr"`       // 借入金償還余裕率
+	AnnualCF   float64 `json:"annualCF"`   // 年間キャッシュフロー（円）
+	CFYield    float64 `json:"cfYield"`    // CF利回り（AnnualCF / 総投資額）
+}
+
 // InvestmentResult は収支シミュレーションの結果
 type InvestmentResult struct {
 	TotalInvestment float64 `json:"totalInvestment"` // 総投資額（土地+建物+諸経費）
@@ -216,6 +239,9 @@ type InvestmentResult struct {
 
 	StressScenarios []StressScenarioResult `json:"stressScenarios"`
 	YieldScenarios  YieldScenarios         `json:"yieldScenarios"`
+
+	DSCR           float64             `json:"dscr"`           // 1年目の借入金償還余裕率（NOI/年間返済額）
+	LTVSensitivity []LTVSensitivityRow `json:"ltvSensitivity"` // LTV感度分析（50%〜90%）
 }
 
 // AcquisitionCostBreakdown は物件取得時の諸経費内訳
