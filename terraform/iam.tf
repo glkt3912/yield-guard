@@ -77,9 +77,9 @@ resource "google_secret_manager_secret_iam_member" "internal_key_accessor" {
 
 # --- Terraform state backend permissions ---
 
-resource "google_storage_bucket_iam_member" "sa_tfstate_reader" {
-  # CI runs terraform init/plan and needs read access to the GCS state backend.
+resource "google_storage_bucket_iam_member" "sa_tfstate_admin" {
+  # terraform plan/apply writes a lock file; objectAdmin is required.
   bucket = "yield-guard-tfstate"
-  role   = "roles/storage.objectViewer"
+  role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.backend.email}"
 }
