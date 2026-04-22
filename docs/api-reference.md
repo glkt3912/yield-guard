@@ -369,6 +369,19 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 - `loanYears` 省略時 → `35`
 - `buildingType` 省略時 → `"木造"`
 
+クロスフィールドバリデーション:
+- `vacancyRate + vacancyRateDelta` の合計が `0.99` を超える場合はエラー
+
+### バリデーションエラーレスポンス
+
+バリデーション違反時は `400 Bad Request` を返す。
+
+```json
+{
+  "error": "rentDeclineRate は 0.0〜0.2 の範囲で指定してください"
+}
+```
+
 ### レスポンス: `InvestmentResult`
 
 ```json
