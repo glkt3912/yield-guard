@@ -19,11 +19,18 @@ vi.mock("next/dynamic", () => ({
   default: () => () => null,
 }));
 
+// Mock next/navigation for useRouter
+const mockReplace = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mockReplace }),
+}));
+
 import * as api from "@/lib/api";
 
 describe("Dashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockReplace.mockClear();
   });
 
   it("初期状態でプレースホルダーが表示される", () => {
@@ -110,5 +117,80 @@ describe("Dashboard", () => {
     await waitFor(() => {
       expect(screen.getByText(/シミュレーションに失敗しました/)).toBeInTheDocument();
     });
+  });
+
+  it("シミュレーション実行後にrouter.replaceでURLが更新される", async () => {
+    const mockResult = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
+    vi.mocked(api.analyze).mockResolvedValue(mockResult);
+
+    render(<Dashboard />);
+
+    await userEvent.type(screen.getByLabelText(/物件価格（土地＋建物の総額）/), "1500");
+    await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalled();
+    });
+
+    const calledWith = mockReplace.mock.calls[0][0] as string;
+    // URLにmodeパラメータが含まれること
+    expect(calledWith).toContain("mode=quick");
+    // クイックモードのtotalPriceが含まれること
+    expect(calledWith).toContain("totalPrice=1500");
+  });
+
+  it("initialParamsでクイックモードが復元される", () => {
+    const params = new URLSearchParams("mode=quick&totalPrice=2000&rent=12");
+    render(<Dashboard initialParams={params} />);
+    // クイックモードのラジオが選択されていること
+    expect(screen.getByRole("radio", { name: /クイック/ })).toHaveAttribute("aria-checked", "true");
+    // 物件価格フィールドが復元されていること
+    expect(screen.getByLabelText(/物件価格（土地＋建物の総額）/)).toHaveValue(2000);
+  });
+
+  it("initialParamsでフルモードが復元される", () => {
+    const params = new URLSearchParams("mode=full&landPrice=1000&buildingCost=500");
+    render(<Dashboard initialParams={params} />);
+    // フルモードのラジオが選択されていること
+    expect(screen.getByRole("radio", { name: /詳細/ })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("シミュレーション結果表示後に「この条件を共有」ボタンが表示される", async () => {
+    const mockResult = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
+    vi.mocked(api.analyze).mockResolvedValue(mockResult);
+
+    render(<Dashboard />);
+
+    await userEvent.type(screen.getByLabelText(/物件価格（土地＋建物の総額）/), "1500");
+    await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /この条件を共有/ })).toBeInTheDocument();
+    });
+  });
+
+  it("「この条件を共有」ボタンを押すとクリップボードにURLがコピーされる", async () => {
+    const mockResult = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
+    vi.mocked(api.analyze).mockResolvedValue(mockResult);
+
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    render(<Dashboard />);
+
+    await userEvent.type(screen.getByLabelText(/物件価格（土地＋建物の総額）/), "1500");
+    await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /この条件を共有/ })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /この条件を共有/ }));
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith(expect.any(String));
   });
 });

@@ -155,10 +155,13 @@ describe("InvestmentForm", () => {
       await userEvent.type(screen.getByLabelText(/物件価格（土地＋建物の総額）/), "1500");
       await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
       expect(onAnalyze).toHaveBeenCalledTimes(1);
-      expect(onAnalyze).toHaveBeenCalledWith(expect.objectContaining({
-        vacancyRate: QUICK_MODE_DEFAULTS.vacancyRate,
-        expenseRate: QUICK_MODE_DEFAULTS.expenseRate,
-      }));
+      expect(onAnalyze).toHaveBeenCalledWith(
+        expect.objectContaining({
+          vacancyRate: QUICK_MODE_DEFAULTS.vacancyRate,
+          expenseRate: QUICK_MODE_DEFAULTS.expenseRate,
+        }),
+        "1500"
+      );
     });
 
     it("詳細ボタンをクリックすると onModeChange('full') が呼ばれる", async () => {
@@ -231,10 +234,13 @@ describe("InvestmentForm", () => {
       await userEvent.type(screen.getByLabelText(/物件価格（土地＋建物の総額）/), "1500");
       await userEvent.click(screen.getByLabelText(/現金購入（ローンなし）/));
       await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
-      expect(onAnalyze).toHaveBeenCalledWith(expect.objectContaining({
-        loanAmount: 0,
-        loanYears: 0,
-      }));
+      expect(onAnalyze).toHaveBeenCalledWith(
+        expect.objectContaining({
+          loanAmount: 0,
+          loanYears: 0,
+        }),
+        "1500"
+      );
     });
 
     it("現金購入チェック時にインフォバナーが「現金購入（ローンなし）」に変わる", async () => {
