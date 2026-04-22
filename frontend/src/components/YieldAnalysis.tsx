@@ -2,7 +2,7 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { InvestmentInput, InvestmentResult, PopulationForecastResult, StressScenarioResult } from "@/types/investment";
+import type { InvestmentInput, InvestmentResult, PopulationForecastResult, StressScenarioResult, YieldScenarios } from "@/types/investment";
 import { formatMan, formatPct, formatYen } from "@/lib/utils";
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Users } from "lucide-react";
 
@@ -172,6 +172,11 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
         </CardContent>
       </Card>
 
+      {/* 空室シナリオ比較 */}
+      {result.yieldScenarios && (
+        <VacancyScenarioCard yieldScenarios={result.yieldScenarios} vacancyRate={input.vacancyRate} />
+      )}
+
       {/* 総投資額サマリー */}
       <Card>
         <CardHeader><CardTitle className="text-base">投資サマリー</CardTitle></CardHeader>
@@ -244,5 +249,71 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
         </Card>
       )}
     </div>
+  );
+}
+
+interface VacancyScenarioCardProps {
+  yieldScenarios: YieldScenarios;
+  vacancyRate: number;
+}
+
+function VacancyScenarioCard({ yieldScenarios, vacancyRate }: VacancyScenarioCardProps) {
+  const scenarios = [
+    {
+      label: "楽観",
+      vacancyPct: (vacancyRate * 0.5 * 100).toFixed(0),
+      annualRent: yieldScenarios.optimistic.annualRent,
+      grossYield: yieldScenarios.optimistic.grossYield,
+      colorClass: "text-green-600",
+    },
+    {
+      label: "標準",
+      vacancyPct: (vacancyRate * 1.0 * 100).toFixed(0),
+      annualRent: yieldScenarios.standard.annualRent,
+      grossYield: yieldScenarios.standard.grossYield,
+      colorClass: "text-blue-600",
+    },
+    {
+      label: "悲観",
+      vacancyPct: (vacancyRate * 1.5 * 100).toFixed(0),
+      annualRent: yieldScenarios.pessimistic.annualRent,
+      grossYield: yieldScenarios.pessimistic.grossYield,
+      colorClass: "text-red-600",
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">空室シナリオ別 年間賃料収入</CardTitle></CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-muted-foreground">
+                <th className="pb-2 text-left font-medium">シナリオ</th>
+                <th className="pb-2 text-right font-medium">想定空室率</th>
+                <th className="pb-2 text-right font-medium">年間実効賃料</th>
+                <th className="pb-2 text-right font-medium">表面利回り</th>
+              </tr>
+            </thead>
+            <tbody>
+              {scenarios.map((s) => (
+                <tr key={s.label} className="border-b last:border-0">
+                  <td className={`py-2 font-medium ${s.colorClass}`}>{s.label}</td>
+                  <td className="py-2 text-right text-muted-foreground">{s.vacancyPct}%</td>
+                  <td className="py-2 text-right font-medium">{formatYen(s.annualRent)}</td>
+                  <td className={`py-2 text-right font-medium ${s.colorClass}`}>
+                    {(s.grossYield * 100).toFixed(2)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          ※ 楽観: 想定空室率×0.5、標準: 想定空室率×1.0、悲観: 想定空室率×1.5。表面利回りは満室想定年収/総投資額。
+        </p>
+      </CardContent>
+    </Card>
   );
 }
