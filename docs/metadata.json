@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-22T02:15:00",
+  "lastUpdated": "2026-04-22T15:30:00",
   "documents": [
     {
       "id": "overview",
@@ -11,6 +11,16 @@
       "industry": ["不動産", "フィンテック"],
       "topics": ["Go", "Gin", "Next.js", "Tailwind CSS", "Recharts", "Clean Architecture", "国交省API", "起動手順", "テスト", "APP_INTERNAL_API_KEY", "MLIT_API_KEY", "ALLOW_ORIGINS", "@ducanh2912/next-pwa", "manifest.ts", "PWA", "Service Worker", "Vercel", "vercel deploy", "VERCEL_TOKEN", "frontend-ci.yml", "deploy-backend.yml"],
       "updatedAt": "2026-04-21"
+    },
+    {
+      "id": "architecture",
+      "path": "docs/architecture.md",
+      "title": "アーキテクチャ詳細",
+      "description": "投資計算フロー（InvestmentInput→年次ループ→InvestmentResult）の Mermaid 図と計算式サマリー（表面利回り・元利均等返済・デッドクロス・長期譲渡税率・法定耐用年数）。デプロイフロー（GitHub Actions CI → Docker ビルド → Cloud Run / Vercel → Terraform）。観測基盤（OpenTelemetry + 構造化ロギング）: OTel シグナルフロー（Gin → otelgin → TracerProvider/MeterProvider → stdout/OTLP gRPC）・OTEL_EXPORTER_OTLP_ENDPOINT によるエクスポーター切り替え・Cloud Logging 準拠 JSON ログフォーマット（severity/message/logging.googleapis.com/trace フィールド）・メトリクス計装一覧（analyze.requests.total/mlit.api.request.duration/mlit.cache.hits/mlit.cache.misses）・LOG_LEVEL 環境変数と LevelCritical カスタムレベル。",
+      "tags": ["アーキテクチャ", "投資計算", "デプロイ", "CI/CD", "OpenTelemetry", "OTel", "構造化ロギング", "slog", "Cloud Logging", "Cloud Run", "Vercel", "GitHub Actions", "Terraform", "メトリクス", "トレース", "観測基盤"],
+      "industry": ["不動産", "フィンテック"],
+      "topics": ["InvestmentInput", "InvestmentResult", "YearlyResult", "表面利回り", "元利均等返済", "デッドクロス", "長期譲渡税率", "法定耐用年数", "Docker", "Dependabot", "otelgin", "TracerProvider", "MeterProvider", "stdouttrace", "stdoutmetric", "otlptracegrpc", "otlpmetricgrpc", "OTEL_EXPORTER_OTLP_ENDPOINT", "cloudHandler", "slog.NewJSONHandler", "severity", "logging.googleapis.com/trace", "logging.googleapis.com/spanId", "logging.googleapis.com/trace_sampled", "GOOGLE_CLOUD_PROJECT", "LOG_LEVEL", "LevelCritical", "analyze.requests.total", "mlit.api.request.duration", "mlit.cache.hits", "mlit.cache.misses", "telemetry/setup.go", "logger/logger.go", "backend-ci.yml", "frontend-ci.yml"],
+      "updatedAt": "2026-04-22"
     },
     {
       "id": "domain-investment-calculation",
@@ -66,11 +76,11 @@
       "id": "security",
       "path": "docs/security.md",
       "title": "セキュリティ設計",
-      "description": "Vercel-Cloud Run 間の内部通信認証（APP_INTERNAL_API_KEY / X-Internal-Key ヘッダー）の設計意図・動作仕様・適用範囲・ローカル開発での挙動・本番キー設定手順。internalKeyMiddleware が /api/* グループに適用され、/health はスキップ。APP_INTERNAL_API_KEY 未設定時はミドルウェアをスキップし後方互換を維持。Workload Identity Federation（OIDC パスワードレスデプロイ）・SHA固定 GitHub Actions・Secret Manager・Artifact Registry クリーンアップポリシーを含む。フロントエンド GitHub Actions デプロイ（VERCEL_TOKEN env渡し・vercel CLI バージョン固定・最小権限）も記載。",
-      "tags": ["セキュリティ", "認証", "ミドルウェア", "X-Internal-Key", "APP_INTERNAL_API_KEY", "Vercel", "Cloud Run", "内部通信", "WIF", "OIDC", "Secret Manager", "SHA固定", "VERCEL_TOKEN", "GitHub Actions"],
+      "description": "Vercel-Cloud Run 間の内部通信認証（APP_INTERNAL_API_KEY / X-Internal-Key ヘッダー）の設計意図・動作仕様・適用範囲・ローカル開発での挙動・本番キー設定手順。internalKeyMiddleware が /api/* グループに適用され、/health はスキップ。APP_INTERNAL_API_KEY 未設定時はミドルウェアをスキップし後方互換を維持。Workload Identity Federation（OIDC パスワードレスデプロイ）・SHA固定 GitHub Actions・Secret Manager・Artifact Registry クリーンアップポリシーを含む。フロントエンド GitHub Actions デプロイ（VERCEL_TOKEN env渡し・vercel CLI バージョン固定・最小権限）も記載。OpenTelemetry 観測基盤のセキュリティ考慮: OTEL_EXPORTER_OTLP_ENDPOINT の管理方針（非シークレット・Cloud Run 環境変数）・stdout エクスポーターのデータスコープ（ローカル開発時の出力内容）・スパン属性ポリシー（mlit.query.* 属性に PII を含まない設計）・GOOGLE_CLOUD_PROJECT と Cloud Logging トレース相関の説明。",
+      "tags": ["セキュリティ", "認証", "ミドルウェア", "X-Internal-Key", "APP_INTERNAL_API_KEY", "Vercel", "Cloud Run", "内部通信", "WIF", "OIDC", "Secret Manager", "SHA固定", "VERCEL_TOKEN", "GitHub Actions", "OpenTelemetry", "OTel", "OTEL_EXPORTER_OTLP_ENDPOINT", "GOOGLE_CLOUD_PROJECT", "スパン属性", "PII", "Cloud Logging"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["internalKeyMiddleware", "X-Internal-Key", "APP_INTERNAL_API_KEY", "middleware.ts", "router.go", "401 Unauthorized", "/health", "本番環境", "ローカル開発", "Workload Identity Federation", "WIF_PROVIDER", "SA_EMAIL", "deploy-cloudrun", "SHA固定", "Secret Manager", "Artifact Registry", "クリーンアップポリシー", "VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID", "frontend-ci.yml", "vercel deploy"],
-      "updatedAt": "2026-04-21"
+      "topics": ["internalKeyMiddleware", "X-Internal-Key", "APP_INTERNAL_API_KEY", "middleware.ts", "router.go", "401 Unauthorized", "/health", "本番環境", "ローカル開発", "Workload Identity Federation", "WIF_PROVIDER", "SA_EMAIL", "deploy-cloudrun", "SHA固定", "Secret Manager", "Artifact Registry", "クリーンアップポリシー", "VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID", "frontend-ci.yml", "vercel deploy", "OTEL_EXPORTER_OTLP_ENDPOINT", "GOOGLE_CLOUD_PROJECT", "mlit.query.*", "mlit.endpoint", "mlit.cache.hit", "mlit.retry.count", "stdout exporter", "Cloud Logging", "setup.go", "logger.go"],
+      "updatedAt": "2026-04-22"
     },
     {
       "id": "mlit-api-integration",
