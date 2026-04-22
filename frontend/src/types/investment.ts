@@ -236,4 +236,5 @@ export const QUICK_MODE_DEFAULTS: Partial<InvestmentInput> = {
   annualPropertyTax: 0,
   buildingType:      "木造" as BuildingType,
   annualLoanRate:    0.015,
+  rentDeclineRate:   0.01,
 };
