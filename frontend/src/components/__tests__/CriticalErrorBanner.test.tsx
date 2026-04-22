@@ -46,23 +46,24 @@ describe("CriticalErrorBanner", () => {
     expect(screen.getByText(/DEADCROSS_EARLY/)).toBeInTheDocument();
   });
 
-  it("各バナーに role=alert が付与されている", () => {
+  it("外側ラッパーに role=alert が付与され、各アイテムに role=listitem が付与されている", () => {
     render(<CriticalErrorBanner errors={[rejectError, warningError]} />);
-    const alerts = screen.getAllByRole("alert");
-    expect(alerts).toHaveLength(2);
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    const items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(2);
   });
 
   it("REJECT のとき赤系クラスが適用されている", () => {
     render(<CriticalErrorBanner errors={[rejectError]} />);
-    const alert = screen.getByRole("alert");
-    expect(alert.className).toContain("border-red-500");
-    expect(alert.className).toContain("bg-red-50");
+    const item = screen.getByRole("listitem");
+    expect(item.className).toContain("border-red-500");
+    expect(item.className).toContain("bg-red-50");
   });
 
   it("WARNING のとき黄系クラスが適用されている", () => {
     render(<CriticalErrorBanner errors={[warningError]} />);
-    const alert = screen.getByRole("alert");
-    expect(alert.className).toContain("border-yellow-400");
-    expect(alert.className).toContain("bg-yellow-50");
+    const item = screen.getByRole("listitem");
+    expect(item.className).toContain("border-yellow-400");
+    expect(item.className).toContain("bg-yellow-50");
   });
 });
