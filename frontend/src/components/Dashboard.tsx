@@ -8,7 +8,8 @@ import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
 import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode } from "@/types/investment";
 import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks } from "@/lib/api";
-import { ShieldAlert, XOctagon, AlertTriangle } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
+import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
 function getCurrentPeriods(): { year: number; quarter: number; toYear: number; toQuarter: number } {
@@ -155,31 +156,7 @@ export function Dashboard() {
 
             {result && lastInput && (
               <>
-                {result.criticalErrors.length > 0 && (
-                  <div className="space-y-2">
-                    {result.criticalErrors.map((err) => (
-                      <div
-                        key={err.code}
-                        className={`flex items-start gap-3 rounded-md border-2 p-4 ${
-                          err.status === "REJECT"
-                            ? "border-red-500 bg-red-50 text-red-900"
-                            : "border-yellow-400 bg-yellow-50 text-yellow-900"
-                        }`}
-                      >
-                        {err.status === "REJECT"
-                          ? <XOctagon className="h-5 w-5 shrink-0 mt-0.5 text-red-600" />
-                          : <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-yellow-600" />
-                        }
-                        <div>
-                          <p className="text-sm font-bold">
-                            {err.status === "REJECT" ? "⛔ 一発退場" : "⚠ 警告"}: {err.code}
-                          </p>
-                          <p className="text-sm mt-0.5">{err.message}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <CriticalErrorBanner errors={result.criticalErrors} />
                 <YieldAnalysis result={result} input={lastInput} populationForecast={populationForecast} />
                 {simulationMode === "full" && (
                   <>
