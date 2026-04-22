@@ -29,6 +29,12 @@ func internalKeyMiddleware() gin.HandlerFunc {
 
 func accessLogMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// liveness probe のログノイズを抑制
+		if c.Request.URL.Path == "/health" {
+			c.Next()
+			return
+		}
+
 		start := time.Now()
 		method := c.Request.Method
 		path := c.Request.URL.Path
