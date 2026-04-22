@@ -41,6 +41,11 @@ resource "google_cloud_run_v2_service" "backend" {
       }
 
       env {
+        name  = "GIN_MODE"
+        value = "release"
+      }
+
+      env {
         name = "MLIT_API_KEY"
         value_source {
           secret_key_ref {
