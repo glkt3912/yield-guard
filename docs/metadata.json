@@ -1,16 +1,26 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-22T02:15:00",
+  "lastUpdated": "2026-04-22T12:00:00",
   "documents": [
     {
       "id": "overview",
       "path": "docs/overview.md",
       "title": "プロジェクト概要とアーキテクチャ",
-      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック・ディレクトリ構成・起動手順・計算の制約と免責事項。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。PWA対応（@ducanh2912/next-pwa・manifest.ts）を含む。フロントエンド（Vercel）・バックエンド（Cloud Run）のデプロイフローも記載。",
-      "tags": ["概要", "アーキテクチャ", "セットアップ", "不動産投資", "環境変数", "APP_INTERNAL_API_KEY", "PWA", "デプロイ", "Vercel", "Cloud Run"],
+      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック（OpenTelemetry SDK / opentelemetry-operations-go 含む）・ディレクトリ構成・起動手順・計算の制約と免責事項。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY/GOOGLE_CLOUD_PROJECT）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。GOOGLE_CLOUD_PROJECT 設定時は Cloud Trace / Cloud Monitoring へ OTel データを送信、未設定時は stdout。PWA対応（@ducanh2912/next-pwa・manifest.ts）を含む。フロントエンド（Vercel）・バックエンド（Cloud Run）のデプロイフローも記載。",
+      "tags": ["概要", "アーキテクチャ", "セットアップ", "不動産投資", "環境変数", "APP_INTERNAL_API_KEY", "PWA", "デプロイ", "Vercel", "Cloud Run", "OpenTelemetry", "OTel", "observability"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["Go", "Gin", "Next.js", "Tailwind CSS", "Recharts", "Clean Architecture", "国交省API", "起動手順", "テスト", "APP_INTERNAL_API_KEY", "MLIT_API_KEY", "ALLOW_ORIGINS", "@ducanh2912/next-pwa", "manifest.ts", "PWA", "Service Worker", "Vercel", "vercel deploy", "VERCEL_TOKEN", "frontend-ci.yml", "deploy-backend.yml"],
-      "updatedAt": "2026-04-21"
+      "topics": ["Go", "Gin", "Next.js", "Tailwind CSS", "Recharts", "Clean Architecture", "国交省API", "起動手順", "テスト", "APP_INTERNAL_API_KEY", "MLIT_API_KEY", "ALLOW_ORIGINS", "GOOGLE_CLOUD_PROJECT", "OpenTelemetry", "opentelemetry-operations-go", "Cloud Trace", "Cloud Monitoring", "@ducanh2912/next-pwa", "manifest.ts", "PWA", "Service Worker", "Vercel", "vercel deploy", "VERCEL_TOKEN", "frontend-ci.yml", "deploy-backend.yml"],
+      "updatedAt": "2026-04-22"
+    },
+    {
+      "id": "architecture",
+      "path": "docs/architecture.md",
+      "title": "アーキテクチャ詳細",
+      "description": "投資計算フロー（mermaid図・計算式サマリー・法定耐用年数）・デプロイフロー（GitHub Actions / Vercel / Cloud Run / Terraform / Dependabot）・CI ワークフロー詳細。Observability セクション: GOOGLE_CLOUD_PROJECT の有無でエクスポーター先（Cloud Trace/Monitoring vs stdout）を切り替える設計・計装ポイント（otelgin ミドルウェア・AnalyzeRequestsTotal・MLITAPILatencyHistogram・MLITCacheHits/Misses）・Cloud Run 環境変数設定・SA に付与する IAM ロール（roles/cloudtrace.agent / roles/monitoring.metricWriter）・ADC 自動認証の仕組み。",
+      "tags": ["アーキテクチャ", "デプロイ", "CI", "GitHub Actions", "Cloud Run", "Terraform", "OpenTelemetry", "OTel", "observability", "Cloud Trace", "Cloud Monitoring", "ADC", "IAM"],
+      "industry": ["不動産", "フィンテック"],
+      "topics": ["投資計算フロー", "デプロイフロー", "CI", "backend-ci.yml", "frontend-ci.yml", "Dependabot", "Terraform", "Observability", "OpenTelemetry", "otelgin", "AnalyzeRequestsTotal", "MLITAPILatencyHistogram", "MLITCacheHits", "MLITCacheMisses", "GOOGLE_CLOUD_PROJECT", "Cloud Trace", "Cloud Monitoring", "cloudtrace.agent", "monitoring.metricWriter", "ADC", "Application Default Credentials", "stdouttrace", "stdoutmetric", "cloudtrace.New", "monitoring.New", "setup.go"],
+      "updatedAt": "2026-04-22"
     },
     {
       "id": "domain-investment-calculation",
