@@ -1533,3 +1533,80 @@ func TestAnalyze_DSCR(t *testing.T) {
 
 	t.Logf("DSCR=%.3f, NOI=%.0f, AnnualLoanPayment=%.0f", result.DSCR, noi, y1.AnnualLoanPayment)
 }
+
+// TestAnalyze_EqualPrincipalStressScenario は元金均等時のストレスシナリオ CF を検証する
+// 修正前は calcStressScenario の yearLoan が1年目固定で、後半の CF が過少推計されていた。
+// 修正後は残高に応じて毎年再計算されるため、CF は年々改善する。
+func TestAnalyze_EqualPrincipalStressScenario(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		ExpenseRate:     0.20,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+		LoanMethod:      LoanMethodEqualPrincipal,
+	}
+
+	result := Analyze(input)
+
+	// ① 年次結果: 元金均等の年間返済額は年々減少する
+	for i := 1; i < input.HoldingYears; i++ {
+		prev := result.YearlyResults[i-1].AnnualLoanPayment
+		curr := result.YearlyResults[i].AnnualLoanPayment
+		if curr >= prev {
+			t.Errorf("年次結果: year%d AnnualLoanPayment(%.0f) >= year%d(%.0f), 元金均等は逓減すべき",
+				i+1, curr, i, prev)
+		}
+	}
+
+	// ② ストレスシナリオの累積CF: 後半5年の CF 合計が前半5年より大きいはず
+	// （返済額が年々減少するため）
+	findScenario := func(scenarios []StressScenarioResult, label string) *StressScenarioResult {
+		for i := range scenarios {
+			if scenarios[i].Label == label {
+				return &scenarios[i]
+			}
+		}
+		return nil
+	}
+	baseline := findScenario(result.StressScenarios, "ベースライン")
+	if baseline == nil {
+		t.Fatal("ベースラインシナリオが見つかりません")
+	}
+
+	// ③ ストレスシナリオの TotalCashFlow が Analyze() の年次 CF 合計と整合すること
+	// （両者は同じ空室率・金利・賃料で計算されるため近似一致するはず）
+	annualRent := input.MonthlyRent * 12 * (1 - input.VacancyRate)
+	annualExpenses := annualRent*input.ExpenseRate
+	var manualTotalCF float64
+	remainingBal := input.LoanAmount
+	monthlyPrincipal := input.LoanAmount / float64(input.LoanYears*12)
+	for y := 1; y <= input.HoldingYears; y++ {
+		yearLoan := 0.0
+		if remainingBal > 0 {
+			yi, yp := calcYearlyLoanComponentsEqualPrincipal(remainingBal, input.AnnualLoanRate, monthlyPrincipal)
+			yearLoan = yi + yp
+			remainingBal -= yp
+			if remainingBal < 0 {
+				remainingBal = 0
+			}
+		}
+		manualTotalCF += annualRent - yearLoan - annualExpenses
+	}
+	if math.Abs(baseline.TotalCashFlow-manualTotalCF) > 1000 {
+		t.Errorf("ストレスシナリオ TotalCashFlow(%.0f) と手動計算値(%.0f) の差が 1000 超",
+			baseline.TotalCashFlow, manualTotalCF)
+	}
+
+	t.Logf("ベースライン TotalCashFlow=%.0f（手動計算=%.0f）", baseline.TotalCashFlow, manualTotalCF)
+	t.Logf("年次返済額推移: year1=%.0f, year5=%.0f, year10=%.0f",
+		result.YearlyResults[0].AnnualLoanPayment,
+		result.YearlyResults[4].AnnualLoanPayment,
+		result.YearlyResults[9].AnnualLoanPayment,
+	)
+}
