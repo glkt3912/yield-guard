@@ -8,8 +8,19 @@ import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
 import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode } from "@/types/investment";
 import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks } from "@/lib/api";
-import { ShieldAlert, Info } from "lucide-react";
+import { ShieldAlert, Info, FileDown } from "lucide-react";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
+import dynamic from "next/dynamic";
+
+const PDFDownloadLink = dynamic(
+  () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
+  { ssr: false, loading: () => null }
+);
+
+const ReportPDF = dynamic(
+  () => import("@/components/ReportPDF").then((m) => m.ReportPDF),
+  { ssr: false }
+);
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
 function getCurrentPeriods(): { year: number; quarter: number; toYear: number; toQuarter: number } {
@@ -129,9 +140,27 @@ export function Dashboard() {
             <h1 className="text-xl font-bold text-foreground">Yield-Guard</h1>
             <p className="text-xs text-muted-foreground">不動産投資リスク可視化ツール</p>
           </div>
-          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-green-400" />
-            国交省API使用
+          <div className="ml-auto flex items-center gap-3">
+            {result && lastInput && (
+              <PDFDownloadLink
+                document={<ReportPDF input={lastInput} result={result} />}
+                fileName={`yield-guard-report-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.pdf`}
+              >
+                {({ loading: pdfLoading }) => (
+                  <button
+                    disabled={pdfLoading}
+                    className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-primary/90 disabled:opacity-60"
+                  >
+                    <FileDown className="h-3.5 w-3.5" />
+                    {pdfLoading ? "生成中..." : "PDFレポート出力"}
+                  </button>
+                )}
+              </PDFDownloadLink>
+            )}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="h-2 w-2 rounded-full bg-green-400" />
+              国交省API使用
+            </div>
           </div>
         </div>
       </header>

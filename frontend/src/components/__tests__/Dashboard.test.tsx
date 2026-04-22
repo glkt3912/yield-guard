@@ -14,6 +14,11 @@ vi.mock("@/lib/api", () => ({
   fetchLandAppraisals: vi.fn(),
 }));
 
+// PDFDownloadLink is a browser-only API; stub it out in jsdom
+vi.mock("next/dynamic", () => ({
+  default: () => () => null,
+}));
+
 import * as api from "@/lib/api";
 
 describe("Dashboard", () => {
