@@ -45,6 +45,8 @@ export interface StationRidershipResult {
   correction: number;
 }
 
+export type LoanMethod = "equal-payment" | "equal-principal";
+
 export interface RateAdjustment {
   afterYear: number; // この年（1始まり）以降に適用（例: 6 = 6年目から）
   rate: number;      // 絶対値の年利（例: 0.02 = 2%）
@@ -73,6 +75,7 @@ export interface InvestmentInput {
   annualPropertyTax: number;  // 固定資産税・都市計画税（年間）。0 = ExpenseRateに含む。
   rentDeclineRate: number;    // 年間賃料下落率（例: 0.01 = 1%/年）
   yieldTarget: number;        // 目標表面利回り（例: 0.08 = 8%）
+  loanMethod?: LoanMethod;    // 返済方式（省略時 = equal-payment）
   rateAdjustmentSchedule: RateAdjustment[]; // 変動金利スケジュール（空=固定金利）
 }
 
@@ -116,6 +119,15 @@ export interface YieldScenarios {
   pessimistic: YieldScenario; // 悲観: 空室率 × 1.5
 }
 
+export interface LTVSensitivityRow {
+  ltv: number;        // 借入比率（例: 0.70）
+  equity: number;     // 自己資金（円）
+  loanAmount: number; // 借入額（円）
+  dscr: number;       // 借入金償還余裕率
+  annualCF: number;   // 年間キャッシュフロー（円）
+  cfYield: number;    // CF利回り（annualCF / 総投資額）
+}
+
 export interface InvestmentResult {
   totalInvestment: number;
   miscExpenses: number;
@@ -136,6 +148,8 @@ export interface InvestmentResult {
   exitTotalEquity: number;
   stressScenarios: StressScenarioResult[];
   yieldScenarios: YieldScenarios;
+  dscr: number;                        // 1年目 DSCR（NOI / 年間返済額）
+  ltvSensitivity: LTVSensitivityRow[]; // LTV 感度分析（50%〜90%）
 }
 
 export interface LandTransaction {
@@ -230,6 +244,7 @@ export const DEFAULT_INPUT: InvestmentInput = {
   annualPropertyTax: 0,
   rentDeclineRate: 0,
   yieldTarget: 0.08,
+  loanMethod: "equal-payment",
   rateAdjustmentSchedule: [],
 };
 
@@ -261,5 +276,6 @@ export const QUICK_MODE_DEFAULTS: Partial<InvestmentInput> = {
   annualLoanRate:           0.015,
   rentDeclineRate:          0.01,
   yieldTarget:              0.08,
+  loanMethod:               "equal-payment",
   rateAdjustmentSchedule:  [],
 };

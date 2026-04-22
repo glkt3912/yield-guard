@@ -9,13 +9,14 @@
 ```
 page.tsx
   └── Dashboard
-        ├── InvestmentForm     (入力 → onAnalyze, onFetchLandPrices)
-        ├── LandPriceAnalysis  (comparison + populationForecast を受け取り表示)
-        ├── YieldAnalysis      (result + populationForecast を受け取り表示)
-        ├── CostBreakdown      (result.acquisitionCosts + yearlyResults を受け取り表示)
-        ├── CashFlowChart      (result + equityInvested を受け取り表示)
-        ├── DeadCrossChart     (result を受け取り表示)
-        └── ReportPDF          (result + lastInput を受け取り PDF 生成。SSR無効)
+        ├── InvestmentForm         (入力 → onAnalyze, onFetchLandPrices)
+        ├── LandPriceAnalysis      (comparison + populationForecast を受け取り表示)
+        ├── YieldAnalysis          (result + populationForecast を受け取り表示)
+        ├── LoanOptimizationPanel  (result + loanMethod を受け取り DSCR・LTV感度を表示)
+        ├── CostBreakdown          (result.acquisitionCosts + yearlyResults を受け取り表示)
+        ├── CashFlowChart          (result + equityInvested を受け取り表示)
+        ├── DeadCrossChart         (result を受け取り表示)
+        └── ReportPDF              (result + lastInput を受け取り PDF 生成。SSR無効)
 ```
 
 `Dashboard` が `result: InvestmentResult | null`、`comparison: LandPriceComparison | null`、`populationForecast: PopulationForecastResult | null` を管理する。
@@ -31,6 +32,7 @@ page.tsx
 **状態管理**:
 - `result`: `InvestmentResult | null`
 - `lastInput`: `InvestmentInput | null` — 直近のシミュレーション入力。PDF 出力に使用
+- `loanMethod`: `LoanMethod` — `"equal-payment"` | `"equal-principal"`。初期値 `"equal-payment"`。変更時に直近の `lastInput` で再解析を実行する
 - `comparison`: `LandPriceComparison | null`
 - `stationRidership`: `StationRidershipResult[] | null` — 緯度・経度が指定された場合に `GET /api/station-ridership` から取得
 - `populationForecast`: `PopulationForecastResult | null` — 緯度・経度が指定された場合に `GET /api/population-forecast` から取得
@@ -50,6 +52,47 @@ lat/lng が両方渡された場合、`fetchStationRidership`・`fetchPopulation
 const equityInvested = result.totalInvestment - input.loanAmount
 ```
 自己資金（頭金 + 諸経費）。`CashFlowChart` に渡して投資回収年計算に使用。
+
+---
+
+## LoanOptimizationPanel
+
+`frontend/src/components/LoanOptimizationPanel.tsx`
+
+> テストカバレッジ: `LoanOptimizationPanel.test.tsx`（Vitest + RTL）— DSCR バッジ・LTV感度テーブル・返済方式セレクタの6ケースを検証。
+
+**props**:
+- `result: InvestmentResult`
+- `loanMethod: LoanMethod`
+- `onLoanMethodChange: (method: LoanMethod) => void`
+
+**DSCR 表示**:
+
+`result.dscr` の値に応じてバッジの色を変化させる。
+
+| 条件 | バッジ | 色 |
+|------|--------|-----|
+| `dscr >= 1.0` | 「安全（≥ 1.0）」 + `CheckCircle` | 緑 |
+| `dscr < 1.0` | 「危険（< 1.0）」 + `AlertTriangle` | 赤 |
+
+表示値は小数点2桁（`.toFixed(2)`）。副題に「NOI ÷ 年間返済額（1年目）」を表示。
+
+**返済方式セレクタ**:
+
+カードヘッダー右に `<select>` を配置。`value = loanMethod`（`"equal-payment"` / `"equal-principal"`）。変更時に `onLoanMethodChange` を呼び出し、`Dashboard` が再解析を実行する。
+
+**LTV 感度分析テーブル**（`result.ltvSensitivity.length > 0` の場合のみ表示）:
+
+| 列 | 内容 |
+|----|------|
+| LTV | `formatPct(row.ltv)` |
+| 自己資金 | `formatMan(row.equity)` |
+| 借入額 | `formatMan(row.loanAmount)` |
+| DSCR | `row.dscr.toFixed(2)` — `>= 1.0`: 緑文字 / `< 1.0`: 赤文字 |
+| 年間CF | `formatMan(row.annualCF)` — 負値は赤文字 |
+| CF利回り | `formatPct(row.cfYield)` — 負値は赤文字 |
+
+ヘッダー副題に「ベースケース基準」を表示。元金均等の場合は「元金均等は1年目返済額で試算」を追記。
 
 ---
 

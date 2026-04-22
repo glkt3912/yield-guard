@@ -1334,6 +1334,283 @@ func TestAnalyze_UltraLowInterestRate(t *testing.T) {
 	}
 }
 
+// TestCalcDSCR は DSCR の計算を検証する
+func TestCalcDSCR(t *testing.T) {
+	tests := []struct {
+		name              string
+		noi               float64
+		annualDebtService float64
+		want              float64
+	}{
+		{"正常: NOI > 返済額 (安全)", 1_200_000, 1_000_000, 1.2},
+		{"正常: NOI < 返済額 (危険)", 800_000, 1_000_000, 0.8},
+		{"ゼロ除算: 返済額=0", 1_200_000, 0, 0},
+		{"NOI=0", 0, 1_000_000, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CalcDSCR(tt.noi, tt.annualDebtService)
+			if !approxEqual(got, tt.want, 0.0001) {
+				t.Errorf("CalcDSCR(%.0f, %.0f) = %.4f, want %.4f", tt.noi, tt.annualDebtService, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestCalcEqualPrincipalPayment は元金均等返済の月次返済額を検証する
+func TestCalcEqualPrincipalPayment(t *testing.T) {
+	principal := 12_000_000.0
+	annualRate := 0.024 // 年利2.4%
+	months := 120      // 10年
+
+	// 月次元金 = 12,000,000 / 120 = 100,000円
+	monthlyPrincipal := principal / float64(months)
+
+	// 1ヶ月目: 利息 = 12,000,000 × 0.002 = 24,000 → 合計 124,000
+	month1 := CalcEqualPrincipalPayment(principal, annualRate, months, 1)
+	want1 := monthlyPrincipal + principal*(annualRate/12)
+	if !approxEqual(month1, want1, 1) {
+		t.Errorf("month1 = %.0f, want %.0f", month1, want1)
+	}
+
+	// 最終月: 利息 = monthlyPrincipal × 0.002 (残高=元金1口分)
+	monthLast := CalcEqualPrincipalPayment(principal, annualRate, months, months)
+	wantLast := monthlyPrincipal + monthlyPrincipal*(annualRate/12)
+	if !approxEqual(monthLast, wantLast, 1) {
+		t.Errorf("monthLast = %.0f, want %.0f", monthLast, wantLast)
+	}
+
+	// 1ヶ月目 > 最終月（返済が進むにつれて減少）
+	if month1 <= monthLast {
+		t.Errorf("month1(%.0f) should be > monthLast(%.0f)", month1, monthLast)
+	}
+
+	// 無効引数
+	if CalcEqualPrincipalPayment(0, annualRate, months, 1) != 0 {
+		t.Error("principal=0 should return 0")
+	}
+	if CalcEqualPrincipalPayment(principal, annualRate, months, 0) != 0 {
+		t.Error("month=0 should return 0")
+	}
+}
+
+// TestCalcLTVSensitivity は LTV 感度分析の計算を検証する
+func TestCalcLTVSensitivity(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:      5_000_000,
+		BuildingCost:   10_000_000,
+		MonthlyRent:    120_000,
+		VacancyRate:    0.05,
+		AnnualLoanRate: 0.015,
+		LoanYears:      35,
+		ExpenseRate:    0.20,
+	}
+	input.Defaults()
+
+	rows := CalcLTVSensitivity(input, nil)
+
+	if len(rows) != 5 {
+		t.Fatalf("len(rows) = %d, want 5", len(rows))
+	}
+
+	ltvExpected := []float64{0.5, 0.6, 0.7, 0.8, 0.9}
+	for i, row := range rows {
+		if !approxEqual(row.LTV, ltvExpected[i], 0.0001) {
+			t.Errorf("rows[%d].LTV = %.2f, want %.2f", i, row.LTV, ltvExpected[i])
+		}
+		// Equity + LoanAmount = TotalInvestment
+		miscExpenses := (input.LandPrice + input.BuildingCost) * input.MiscExpenseRate
+		totalInvestment := input.LandPrice + input.BuildingCost + miscExpenses
+		if !approxEqual(row.Equity+row.LoanAmount, totalInvestment, 1) {
+			t.Errorf("rows[%d] equity+loan = %.0f, want %.0f", i, row.Equity+row.LoanAmount, totalInvestment)
+		}
+		// LTV が高いほど DSCR は低下
+		if i > 0 && row.DSCR >= rows[i-1].DSCR {
+			t.Errorf("rows[%d].DSCR(%.4f) should be < rows[%d].DSCR(%.4f)", i, row.DSCR, i-1, rows[i-1].DSCR)
+		}
+	}
+}
+
+// TestAnalyze_EqualPrincipal は元金均等返済での計算を検証する
+func TestAnalyze_EqualPrincipal(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:      5_000_000,
+		BuildingCost:   10_000_000,
+		MonthlyRent:    120_000,
+		VacancyRate:    0.05,
+		LoanAmount:     13_000_000,
+		AnnualLoanRate: 0.015,
+		LoanYears:      35,
+		BuildingType:   BuildingTypeWood,
+		ExpenseRate:    0.20,
+		IncomeTaxRate:  0.33,
+		HoldingYears:   10,
+		ExitYieldTarget: 0.06,
+		LoanMethod:     LoanMethodEqualPrincipal,
+	}
+
+	epResult := Analyze(input)
+
+	// 同一入力で元利均等と比較
+	inputEP := input
+	inputEP.LoanMethod = LoanMethodEqualPayment
+	equalPayResult := Analyze(inputEP)
+
+	// 元金均等: 1年目の返済額 > 元利均等の返済額（初期は利息負担が大きい）
+	y1EP := epResult.YearlyResults[0]
+	y1EqualPay := equalPayResult.YearlyResults[0]
+	if y1EP.AnnualLoanPayment <= y1EqualPay.AnnualLoanPayment {
+		t.Errorf("元金均等1年目返済額(%.0f) should be > 元利均等(%.0f)", y1EP.AnnualLoanPayment, y1EqualPay.AnnualLoanPayment)
+	}
+
+	// 元金均等: 最終年の返済額 < 元利均等の返済額（後期は元利均等の方が高い）
+	last := input.LoanYears - 1
+	yLastEP := epResult.YearlyResults[last]
+	yLastEqualPay := equalPayResult.YearlyResults[last]
+	if yLastEP.AnnualLoanPayment >= yLastEqualPay.AnnualLoanPayment {
+		t.Errorf("元金均等最終年返済額(%.0f) should be < 元利均等(%.0f)", yLastEP.AnnualLoanPayment, yLastEqualPay.AnnualLoanPayment)
+	}
+
+	// 元金均等: 総支払利息 < 元利均等の総支払利息
+	totalInterestEP := 0.0
+	totalInterestEqualPay := 0.0
+	for i := 0; i < input.LoanYears; i++ {
+		totalInterestEP += epResult.YearlyResults[i].AnnualInterest
+		totalInterestEqualPay += equalPayResult.YearlyResults[i].AnnualInterest
+	}
+	if totalInterestEP >= totalInterestEqualPay {
+		t.Errorf("元金均等総利息(%.0f) should be < 元利均等総利息(%.0f)", totalInterestEP, totalInterestEqualPay)
+	}
+
+	// DSCR が 0 より大きいこと
+	if epResult.DSCR <= 0 {
+		t.Errorf("DSCR = %.4f, want > 0", epResult.DSCR)
+	}
+
+	// LTVSensitivity が 5 行あること
+	if len(epResult.LTVSensitivity) != 5 {
+		t.Errorf("len(LTVSensitivity) = %d, want 5", len(epResult.LTVSensitivity))
+	}
+
+	t.Logf("元金均等1年目返済額=%.0f, 元利均等=%.0f", y1EP.AnnualLoanPayment, y1EqualPay.AnnualLoanPayment)
+	t.Logf("元金均等総利息=%.0f, 元利均等総利息=%.0f", totalInterestEP, totalInterestEqualPay)
+	t.Logf("DSCR=%.3f, LTVSensitivity rows=%d", epResult.DSCR, len(epResult.LTVSensitivity))
+}
+
+// TestAnalyze_DSCR は Analyze() の DSCR 計算を検証する
+func TestAnalyze_DSCR(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:      5_000_000,
+		BuildingCost:   10_000_000,
+		MonthlyRent:    120_000,
+		VacancyRate:    0.05,
+		LoanAmount:     13_000_000,
+		AnnualLoanRate: 0.015,
+		LoanYears:      35,
+		ExpenseRate:    0.20,
+		HoldingYears:   10,
+		ExitYieldTarget: 0.06,
+	}
+	result := Analyze(input)
+
+	// DSCR > 0 であること
+	if result.DSCR <= 0 {
+		t.Errorf("DSCR = %.4f, want > 0", result.DSCR)
+	}
+
+	// LTVSensitivity が正しく設定されていること
+	if len(result.LTVSensitivity) != 5 {
+		t.Errorf("len(LTVSensitivity) = %d, want 5", len(result.LTVSensitivity))
+	}
+
+	// 手動検証: year1 NOI / year1 AnnualLoanPayment
+	y1 := result.YearlyResults[0]
+	noi := y1.AnnualRent - y1.AnnualExpenses
+	wantDSCR := CalcDSCR(noi, y1.AnnualLoanPayment)
+	if !approxEqual(result.DSCR, wantDSCR, 0.0001) {
+		t.Errorf("DSCR = %.4f, want %.4f", result.DSCR, wantDSCR)
+	}
+
+	t.Logf("DSCR=%.3f, NOI=%.0f, AnnualLoanPayment=%.0f", result.DSCR, noi, y1.AnnualLoanPayment)
+}
+
+// TestAnalyze_EqualPrincipalStressScenario は元金均等時のストレスシナリオ CF を検証する
+// 修正前は calcStressScenario の yearLoan が1年目固定で、後半の CF が過少推計されていた。
+// 修正後は残高に応じて毎年再計算されるため、CF は年々改善する。
+func TestAnalyze_EqualPrincipalStressScenario(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		ExpenseRate:     0.20,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+		LoanMethod:      LoanMethodEqualPrincipal,
+	}
+
+	result := Analyze(input)
+
+	// ① 年次結果: 元金均等の年間返済額は年々減少する
+	for i := 1; i < input.HoldingYears; i++ {
+		prev := result.YearlyResults[i-1].AnnualLoanPayment
+		curr := result.YearlyResults[i].AnnualLoanPayment
+		if curr >= prev {
+			t.Errorf("年次結果: year%d AnnualLoanPayment(%.0f) >= year%d(%.0f), 元金均等は逓減すべき",
+				i+1, curr, i, prev)
+		}
+	}
+
+	// ② ストレスシナリオの累積CF: 後半5年の CF 合計が前半5年より大きいはず
+	// （返済額が年々減少するため）
+	findScenario := func(scenarios []StressScenarioResult, label string) *StressScenarioResult {
+		for i := range scenarios {
+			if scenarios[i].Label == label {
+				return &scenarios[i]
+			}
+		}
+		return nil
+	}
+	baseline := findScenario(result.StressScenarios, "ベースライン")
+	if baseline == nil {
+		t.Fatal("ベースラインシナリオが見つかりません")
+	}
+
+	// ③ ストレスシナリオの TotalCashFlow が Analyze() の年次 CF 合計と整合すること
+	// （両者は同じ空室率・金利・賃料で計算されるため近似一致するはず）
+	annualRent := input.MonthlyRent * 12 * (1 - input.VacancyRate)
+	annualExpenses := annualRent*input.ExpenseRate
+	var manualTotalCF float64
+	remainingBal := input.LoanAmount
+	monthlyPrincipal := input.LoanAmount / float64(input.LoanYears*12)
+	for y := 1; y <= input.HoldingYears; y++ {
+		yearLoan := 0.0
+		if remainingBal > 0 {
+			yi, yp := calcYearlyLoanComponentsEqualPrincipal(remainingBal, input.AnnualLoanRate, monthlyPrincipal)
+			yearLoan = yi + yp
+			remainingBal -= yp
+			if remainingBal < 0 {
+				remainingBal = 0
+			}
+		}
+		manualTotalCF += annualRent - yearLoan - annualExpenses
+	}
+	if math.Abs(baseline.TotalCashFlow-manualTotalCF) > 1000 {
+		t.Errorf("ストレスシナリオ TotalCashFlow(%.0f) と手動計算値(%.0f) の差が 1000 超",
+			baseline.TotalCashFlow, manualTotalCF)
+	}
+
+	t.Logf("ベースライン TotalCashFlow=%.0f（手動計算=%.0f）", baseline.TotalCashFlow, manualTotalCF)
+	t.Logf("年次返済額推移: year1=%.0f, year5=%.0f, year10=%.0f",
+		result.YearlyResults[0].AnnualLoanPayment,
+		result.YearlyResults[4].AnnualLoanPayment,
+		result.YearlyResults[9].AnnualLoanPayment,
+	)
+}
+
 // ── 変動金利テスト ────────────────────────────────────────────────
 
 // TestResolveRateForYear はスケジュールに基づく年別金利解決を検証する

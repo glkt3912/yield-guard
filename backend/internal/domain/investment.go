@@ -10,6 +10,9 @@ import (
 const (
 	// SqmPerTsubo は 1坪あたりの平方メートル数（mlit パッケージからも参照）
 	SqmPerTsubo = 3.30578
+
+	LoanMethodEqualPayment   = "equal-payment"   // 元利均等返済
+	LoanMethodEqualPrincipal = "equal-principal"  // 元金均等返済
 )
 
 // resolveRateForYear はスケジュールと基準金利から指定年の適用金利を返す。
@@ -50,9 +53,15 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	// 目標利回り逆算
 	requiredRent, landDrop := calcRequiredForTarget(input, totalInvestment)
 
-	// 変動金利: 初年度の実効金利でローン返済額を計算
+	// ローン月次計算（変動金利+返済方式に応じて切り替え）
 	currentRate := resolveRateForYear(input.AnnualLoanRate, input.LoanRateDelta, input.RateAdjustmentSchedule, 1)
-	monthlyPayment := calcMonthlyPayment(input.LoanAmount, currentRate, input.LoanYears)
+	var monthlyPayment float64
+	var monthlyPrincipalFixed float64
+	if input.LoanMethod == LoanMethodEqualPrincipal && input.LoanYears > 0 {
+		monthlyPrincipalFixed = input.LoanAmount / float64(input.LoanYears*12)
+	} else {
+		monthlyPayment = calcMonthlyPayment(input.LoanAmount, currentRate, input.LoanYears)
+	}
 
 	// 減価償却 (定額法)
 	// 中古物件は簡便法耐用年数を使用（新築は法定耐用年数）
@@ -81,12 +90,14 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	for y := 0; y < years; y++ {
 		year := y + 1
 
-		// 変動金利: スケジュールで金利が変化したら返済額を残高・残期間で再計算
+		// 変動金利: スケジュールで金利が変化したら返済額を残高・残期間で再計算（元利均等のみ）
 		if year > 1 && len(input.RateAdjustmentSchedule) > 0 {
 			newRate := resolveRateForYear(input.AnnualLoanRate, input.LoanRateDelta, input.RateAdjustmentSchedule, year)
 			if newRate != currentRate && remainingBalance > 0 && year <= input.LoanYears {
-				remainingYears := input.LoanYears - y
-				monthlyPayment = calcMonthlyPayment(remainingBalance, newRate, remainingYears)
+				if input.LoanMethod != LoanMethodEqualPrincipal {
+					remainingYears := input.LoanYears - y
+					monthlyPayment = calcMonthlyPayment(remainingBalance, newRate, remainingYears)
+				}
 				currentRate = newRate
 			}
 		}
@@ -96,10 +107,17 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		annualLoanPayment := 0.0
 
 		if remainingBalance > 0 && year <= input.LoanYears {
-			annualInterest, annualPrincipal = calcYearlyLoanComponents(
-				remainingBalance, currentRate, monthlyPayment,
-			)
-			annualLoanPayment = monthlyPayment * 12
+			if input.LoanMethod == LoanMethodEqualPrincipal {
+				annualInterest, annualPrincipal = calcYearlyLoanComponentsEqualPrincipal(
+					remainingBalance, currentRate, monthlyPrincipalFixed,
+				)
+				annualLoanPayment = annualInterest + annualPrincipal
+			} else {
+				annualInterest, annualPrincipal = calcYearlyLoanComponents(
+					remainingBalance, currentRate, monthlyPayment,
+				)
+				annualLoanPayment = monthlyPayment * 12
+			}
 			remainingBalance -= annualPrincipal
 			if remainingBalance < 0 {
 				remainingBalance = 0
@@ -158,6 +176,13 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		}
 	}
 
+	// DSCR: 1年目の NOI / 年間返済額
+	dscr := 0.0
+	if len(yearlyResults) > 0 {
+		noi := yearlyResults[0].AnnualRent - yearlyResults[0].AnnualExpenses
+		dscr = CalcDSCR(noi, yearlyResults[0].AnnualLoanPayment)
+	}
+
 	// 出口戦略 (holdingYears 年後に売却)
 	exitSalePrice, exitCapGain, exitTax, exitNet, exitEquity := calcExit(
 		input, yearlyResults, accumulatedDepreciation, miscExpenses,
@@ -198,6 +223,7 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	)
 
 	yieldScenarios := calcYieldScenarios(input, totalInvestment)
+	ltvSensitivity := CalcLTVSensitivity(input, nil)
 
 	return InvestmentResult{
 		TotalInvestment:       totalInvestment,
@@ -219,6 +245,8 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		ExitTotalEquity:       exitEquity,
 		StressScenarios:       stressScenarios,
 		YieldScenarios:        yieldScenarios,
+		DSCR:                  dscr,
+		LTVSensitivity:        ltvSensitivity,
 	}
 }
 
@@ -263,8 +291,18 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 
 	// 初年度の実効金利（スケジュール+ストレスdelta）
 	initRate := resolveRateForYear(in.AnnualLoanRate, rateDelta, in.RateAdjustmentSchedule, 1)
-	monthlyPayment := calcMonthlyPayment(in.LoanAmount, initRate, in.LoanYears)
-	annualLoanPayment := monthlyPayment * 12
+	var monthlyPayment float64
+	var monthlyPrincipalStress float64
+	var annualLoanPayment float64
+	if in.LoanMethod == LoanMethodEqualPrincipal && in.LoanYears > 0 {
+		totalMonths := in.LoanYears * 12
+		monthlyPrincipalStress = in.LoanAmount / float64(totalMonths)
+		yi, yp := calcYearlyLoanComponentsEqualPrincipal(in.LoanAmount, initRate, monthlyPrincipalStress)
+		annualLoanPayment = yi + yp
+	} else {
+		monthlyPayment = calcMonthlyPayment(in.LoanAmount, initRate, in.LoanYears)
+		annualLoanPayment = monthlyPayment * 12
+	}
 
 	// DSCR = NOI / 初年度年間ローン返済額
 	dscr := 0.0
@@ -284,32 +322,38 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 	currentRate := initRate
 	curMonthlyPayment := monthlyPayment
 	for y := 1; y <= holdingYears; y++ {
-		// 変動金利スケジュール適用
+		// 変動金利スケジュール適用（元利均等のみ月次返済額を再計算）
 		if y > 1 && len(in.RateAdjustmentSchedule) > 0 {
 			newRate := resolveRateForYear(in.AnnualLoanRate, rateDelta, in.RateAdjustmentSchedule, y)
 			if newRate != currentRate && remainingBalance > 0 && y <= in.LoanYears {
-				remainingYears := in.LoanYears - (y - 1)
-				curMonthlyPayment = calcMonthlyPayment(remainingBalance, newRate, remainingYears)
+				if in.LoanMethod != LoanMethodEqualPrincipal {
+					remainingYears := in.LoanYears - (y - 1)
+					curMonthlyPayment = calcMonthlyPayment(remainingBalance, newRate, remainingYears)
+				}
 				currentRate = newRate
 			}
 		}
 
-		yearLoan := curMonthlyPayment * 12
-		if remainingBalance <= 0 || y > in.LoanYears {
-			yearLoan = 0
+		yearLoan := 0.0
+		if remainingBalance > 0 && y <= in.LoanYears {
+			if in.LoanMethod == LoanMethodEqualPrincipal {
+				yi, yp := calcYearlyLoanComponentsEqualPrincipal(remainingBalance, currentRate, monthlyPrincipalStress)
+				yearLoan = yi + yp
+				remainingBalance -= yp
+			} else {
+				yearLoan = curMonthlyPayment * 12
+				_, annPrincipal := calcYearlyLoanComponents(remainingBalance, currentRate, curMonthlyPayment)
+				remainingBalance -= annPrincipal
+			}
+			if remainingBalance < 0 {
+				remainingBalance = 0
+			}
 		}
 		cf := annualRent - yearLoan - annualExpenses
 		totalCF += cf
 		cumCF += cf
 		if breakEvenYear == -1 && cumCF > 0 {
 			breakEvenYear = y
-		}
-		if remainingBalance > 0 && y <= in.LoanYears {
-			_, annPrincipal := calcYearlyLoanComponents(remainingBalance, currentRate, curMonthlyPayment)
-			remainingBalance -= annPrincipal
-			if remainingBalance < 0 {
-				remainingBalance = 0
-			}
 		}
 	}
 
@@ -384,6 +428,100 @@ func calcMonthlyPayment(principal, annualRate float64, years int) float64 {
 	r := annualRate / 12
 	n := float64(years * 12)
 	return principal * r * math.Pow(1+r, n) / (math.Pow(1+r, n) - 1)
+}
+
+// CalcDSCR は借入金償還余裕率を返す（DSCR = NOI / 年間返済額）
+// annualDebtService が 0 以下の場合は 0 を返す。
+func CalcDSCR(noi, annualDebtService float64) float64 {
+	if annualDebtService <= 0 {
+		return 0
+	}
+	return noi / annualDebtService
+}
+
+// CalcEqualPrincipalPayment は元金均等返済の month 回目（1始まり）の月次返済額を返す。
+// principal: 借入元本, annualRate: 年利, months: 総返済回数, month: 対象月（1〜months）
+func CalcEqualPrincipalPayment(principal, annualRate float64, months, month int) float64 {
+	if principal <= 0 || months <= 0 || month < 1 || month > months {
+		return 0
+	}
+	monthlyPrincipal := principal / float64(months)
+	remainingBalance := principal - float64(month-1)*monthlyPrincipal
+	monthlyInterest := remainingBalance * (annualRate / 12)
+	return monthlyPrincipal + monthlyInterest
+}
+
+// calcYearlyLoanComponentsEqualPrincipal は元金均等返済における1年分の利息・元金返済額を計算する。
+// monthlyPrincipal: 毎月の固定元金返済額（= 元本 / 総返済回数）
+func calcYearlyLoanComponentsEqualPrincipal(balance, annualRate, monthlyPrincipal float64) (interest, principal float64) {
+	r := annualRate / 12
+	remaining := balance
+	for range 12 {
+		if remaining <= 0 {
+			break
+		}
+		mp := monthlyPrincipal
+		if mp > remaining {
+			mp = remaining
+		}
+		interest += remaining * r
+		principal += mp
+		remaining -= mp
+	}
+	return interest, principal
+}
+
+// CalcLTVSensitivity は指定の LTV 水準ごとに DSCR・CF・CF利回りを算出して返す。
+// ltvRange が nil の場合は [0.5, 0.6, 0.7, 0.8, 0.9] を使用する。
+func CalcLTVSensitivity(input InvestmentInput, ltvRange []float64) []LTVSensitivityRow {
+	input.Defaults()
+	if ltvRange == nil {
+		ltvRange = []float64{0.5, 0.6, 0.7, 0.8, 0.9}
+	}
+
+	miscExpenses := (input.LandPrice + input.BuildingCost) * input.MiscExpenseRate
+	totalInvestment := input.LandPrice + input.BuildingCost + miscExpenses
+	if totalInvestment <= 0 {
+		return nil
+	}
+
+	effectiveVacancy := math.Min(input.VacancyRate, 0.99)
+	annualRent := input.MonthlyRent * 12 * (1 - effectiveVacancy)
+	annualExpenses := annualRent*input.ExpenseRate + input.AnnualPropertyTax
+	noi := annualRent - annualExpenses
+
+	rows := make([]LTVSensitivityRow, 0, len(ltvRange))
+	for _, ltv := range ltvRange {
+		loanAmount := totalInvestment * ltv
+		equity := totalInvestment * (1 - ltv)
+
+		var annualDebtService float64
+		if input.LoanMethod == LoanMethodEqualPrincipal && input.LoanYears > 0 {
+			totalMonths := input.LoanYears * 12
+			monthlyPrincipal := loanAmount / float64(totalMonths)
+			yearInterest, yearPrincipal := calcYearlyLoanComponentsEqualPrincipal(
+				loanAmount, input.AnnualLoanRate, monthlyPrincipal,
+			)
+			annualDebtService = yearInterest + yearPrincipal
+		} else {
+			mp := calcMonthlyPayment(loanAmount, input.AnnualLoanRate, input.LoanYears)
+			annualDebtService = mp * 12
+		}
+
+		dscr := CalcDSCR(noi, annualDebtService)
+		annualCF := noi - annualDebtService
+		cfYield := annualCF / totalInvestment
+
+		rows = append(rows, LTVSensitivityRow{
+			LTV:        ltv,
+			Equity:     equity,
+			LoanAmount: loanAmount,
+			DSCR:       dscr,
+			AnnualCF:   annualCF,
+			CFYield:    cfYield,
+		})
+	}
+	return rows
 }
 
 // calcYearlyLoanComponents は1年分の利息・元金返済額を計算する
