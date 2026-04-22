@@ -22,6 +22,7 @@ export function makeInput(overrides: Partial<InvestmentInput> = {}): InvestmentI
     vacancyRateDelta: 0,
     loanRateDelta: 0,
     annualPropertyTax: 0,
+    rentDeclineRate: 0,
     ...overrides,
   };
 }
