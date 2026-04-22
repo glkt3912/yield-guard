@@ -12,21 +12,20 @@ interface Props {
   populationForecast?: PopulationForecastResult | null;
 }
 
-const MAX_YIELD_PCT = 16; // ゲージ上限（8%が中央に来る設計）
-const TARGET_PCT = 8;
-
 export function YieldAnalysis({ result, input, populationForecast }: Props) {
   const yieldPct = result.grossYield * 100;
   const netYieldPct = result.netYield * 100;
-  const isGood = result.isAbove8Percent;
+  const isGood = result.isAboveYieldTarget;
+  const targetPct = result.yieldTarget * 100;
+  const maxYieldPct = targetPct * 2; // ゲージ上限: 目標の2倍（目標が中央）
 
   // 人口シナリオ用（populationForecast表示のために残す）
   const actualV = input.actualVacancyRate > 0 ? input.actualVacancyRate : input.vacancyRate;
 
   const stressScenarios: StressScenarioResult[] = result.stressScenarios ?? [];
 
-  const gaugePosition = Math.min(yieldPct / MAX_YIELD_PCT, 1) * 100;
-  const targetPosition = (TARGET_PCT / MAX_YIELD_PCT) * 100; // = 50%
+  const gaugePosition = Math.min(yieldPct / maxYieldPct, 1) * 100;
+  const targetPosition = 50; // 目標は常にゲージ中央
 
   return (
     <div className="space-y-4">
@@ -50,23 +49,23 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
               {isGood ? (
                 <>
                   <CheckCircle className="h-12 w-12 text-green-500" />
-                  <Badge variant="success">8%超え ✓</Badge>
+                  <Badge variant="success">{targetPct}%超え ✓</Badge>
                 </>
               ) : (
                 <>
                   <AlertTriangle className="h-12 w-12 text-red-500" />
-                  <Badge variant="danger">8%未満 ✗</Badge>
+                  <Badge variant="danger">{targetPct}%未満 ✗</Badge>
                 </>
               )}
             </div>
           </div>
 
-          {/* 8%境界線ゲージ（上限16%、8%が中央） */}
+          {/* 目標利回り境界線ゲージ（目標が中央） */}
           <div className="mt-4">
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
               <span>0%</span>
-              <span className="font-semibold text-orange-500">目標 {TARGET_PCT}%</span>
-              <span>{MAX_YIELD_PCT}%+</span>
+              <span className="font-semibold text-orange-500">目標 {targetPct}%</span>
+              <span>{maxYieldPct}%+</span>
             </div>
             <div className="relative h-3 rounded-full bg-muted overflow-hidden">
               <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 w-full" />
@@ -193,13 +192,13 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
         </CardContent>
       </Card>
 
-      {/* 8%未達の場合: 逆算カード（ISSUE-16: either-or を明示） */}
+      {/* 目標利回り未達の場合: 逆算カード（ISSUE-16: either-or を明示） */}
       {!isGood && (
         <Card className="border-orange-200 bg-orange-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base text-orange-800">
               <TrendingDown className="h-5 w-5" />
-              8%達成のために必要な改善（いずれか一方）
+              {targetPct}%達成のために必要な改善（いずれか一方）
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -221,23 +220,23 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
         </Card>
       )}
 
-      {/* 8%以上の場合: 余裕度 */}
+      {/* 目標利回り以上の場合: 余裕度 */}
       {isGood && (
         <Card className="border-green-200 bg-green-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base text-green-800">
               <TrendingUp className="h-5 w-5" />
-              8%超え達成！余裕度
+              {targetPct}%超え達成！余裕度
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-green-700">
-              目標の8%に対して{" "}
-              <span className="font-bold">+{formatPct(result.grossYield - 0.08)}</span>{" "}
+              目標の{targetPct}%に対して{" "}
+              <span className="font-bold">+{formatPct(result.grossYield - result.yieldTarget)}</span>{" "}
               の余裕があります。
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
-              ※満室想定賃料が{formatPct((result.grossYield - 0.08) / result.grossYield)}下落すると8%を下回ります
+              ※満室想定賃料が{formatPct((result.grossYield - result.yieldTarget) / result.grossYield)}下落すると{targetPct}%を下回ります
               （空室変動の影響は別途考慮してください）
             </p>
           </CardContent>

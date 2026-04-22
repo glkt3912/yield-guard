@@ -96,6 +96,8 @@ function validateFull(input: InvestmentInput): FormErrors {
     e.incomeTaxRate = "0〜60%の範囲で入力してください";
   if (input.exitYieldTarget <= 0 || input.exitYieldTarget > 0.5)
     e.exitYieldTarget = "0%超〜50%の範囲で入力してください";
+  if (input.yieldTarget <= 0 || input.yieldTarget > 0.5)
+    e.yieldTarget = "0%超〜50%の範囲で入力してください";
   if (input.holdingYears < 0 || input.holdingYears > 50)
     e.holdingYears = "0〜50年の範囲で入力してください";
   return e;
@@ -355,6 +357,10 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   value={toMan(input.loanAmount)}
                   onChange={(e) => setNum("loanAmount", fromMan(e.target.value))}
                   error={fieldError("loanAmount")} />
+                <Input label="目標利回り" type="number" suffix="%" step="0.5"
+                  value={toPct(input.yieldTarget, 1)}
+                  onChange={(e) => setNum("yieldTarget", fromPct(e.target.value))}
+                  error={fieldError("yieldTarget")} />
               </div>
 
               <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 space-y-0.5">
@@ -668,6 +674,10 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                     value={toPct(input.exitYieldTarget, 1)}
                     onChange={(e) => setNum("exitYieldTarget", fromPct(e.target.value))}
                     error={fieldError("exitYieldTarget")} />
+                  <Input label="目標表面利回り" type="number" suffix="%" step="0.5"
+                    value={toPct(input.yieldTarget, 1)}
+                    onChange={(e) => setNum("yieldTarget", fromPct(e.target.value))}
+                    error={fieldError("yieldTarget")} />
                   <Input label="所得税率（実効）" type="number" suffix="%" step="1"
                     value={toPct(input.incomeTaxRate, 0)}
                     onChange={(e) => setNum("incomeTaxRate", fromPct(e.target.value))}
