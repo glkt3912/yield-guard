@@ -170,6 +170,14 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
 
   const hasErrors = Object.keys(currentErrors).length > 0 || scheduleHasErrors;
 
+  const canAddRateStep = useMemo(() => {
+    const schedule = input.rateAdjustmentSchedule;
+    if (schedule.length >= 3) return false;
+    const maxYear = input.loanYears || 35;
+    const lastYear = schedule.length > 0 ? schedule[schedule.length - 1].afterYear : 1;
+    return lastYear < maxYear;
+  }, [input.rateAdjustmentSchedule, input.loanYears]);
+
   // touched フィールドにのみエラーを表示する
   const fieldError = (key: string) => touched.has(key) ? currentErrors[key as keyof FormErrors] : undefined;
 
@@ -859,9 +867,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                         </div>
                       );
                     })}
-                    {input.rateAdjustmentSchedule.length < 3 &&
-                      (input.rateAdjustmentSchedule.length === 0 ||
-                        input.rateAdjustmentSchedule[input.rateAdjustmentSchedule.length - 1].afterYear < (input.loanYears || 35)) && (
+                    {canAddRateStep && (
                       <button
                         type="button"
                         onClick={addRateStep}
