@@ -203,26 +203,27 @@ describe("InvestmentForm", () => {
       expect(screen.getByLabelText(/返済期間/)).toBeDisabled();
     });
 
-    it("現金購入チェックを入れるとローン金額入力欄が無効化される", async () => {
+    it("現金購入チェックを入れるとローン80%自動適用メッセージが非表示になる", async () => {
       renderForm("quick");
+      expect(screen.getByText(/ローン 80% 自動適用中/)).toBeInTheDocument();
       const checkbox = screen.getByLabelText(/現金購入（ローンなし）/);
       await userEvent.click(checkbox);
-      expect(screen.getByLabelText(/ローン金額/)).toBeDisabled();
+      expect(screen.queryByText(/ローン 80% 自動適用中/)).not.toBeInTheDocument();
     });
 
-    it("現金購入チェックを入れるとローン金額が0になる", async () => {
+    it("カスタム設定リンクをクリックするとローン金額入力欄が表示される", async () => {
       renderForm("quick");
-      const checkbox = screen.getByLabelText(/現金購入（ローンなし）/);
-      await userEvent.click(checkbox);
-      expect(screen.getByLabelText(/ローン金額/)).toHaveValue(0);
+      expect(screen.queryByLabelText(/ローン金額/)).not.toBeInTheDocument();
+      await userEvent.click(screen.getByText(/カスタム設定/));
+      expect(screen.getByLabelText(/ローン金額/)).toBeInTheDocument();
     });
 
-    it("現金購入チェックを外すとローン金額入力欄が有効になる", async () => {
+    it("カスタム設定後に80%自動計算に戻すリンクをクリックするとローン金額入力欄が非表示になる", async () => {
       renderForm("quick");
-      const checkbox = screen.getByLabelText(/現金購入（ローンなし）/);
-      await userEvent.click(checkbox);
-      await userEvent.click(checkbox);
-      expect(screen.getByLabelText(/ローン金額/)).not.toBeDisabled();
+      await userEvent.click(screen.getByText(/カスタム設定/));
+      expect(screen.getByLabelText(/ローン金額/)).toBeInTheDocument();
+      await userEvent.click(screen.getByText(/80% 自動計算に戻す/));
+      expect(screen.queryByLabelText(/ローン金額/)).not.toBeInTheDocument();
     });
 
     it("現金購入チェック時にシミュレーションを実行するとloanAmountが0で送信される", async () => {
