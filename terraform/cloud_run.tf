@@ -90,8 +90,8 @@ resource "google_cloud_run_v2_service" "backend" {
     google_project_service.apis,
     google_secret_manager_secret_iam_member.mlit_accessor,
     google_secret_manager_secret_iam_member.internal_key_accessor,
-    google_project_iam_member.sa_trace_agent,
-    google_project_iam_member.sa_metric_writer,
+    google_project_iam_member.backend_trace_agent,
+    google_project_iam_member.backend_metric_writer,
   ]
 }
 

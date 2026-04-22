@@ -8,7 +8,12 @@ output "wif_provider" {
   value       = google_iam_workload_identity_pool_provider.github.name
 }
 
-output "sa_email" {
-  description = "Service account email (set as SA_EMAIL GitHub Secret)"
+output "deployer_sa_email" {
+  description = "Deployer SA email (set as SA_EMAIL GitHub Secret)"
+  value       = google_service_account.deployer.email
+}
+
+output "runtime_sa_email" {
+  description = "Runtime SA email (used by Cloud Run)"
   value       = google_service_account.backend.email
 }

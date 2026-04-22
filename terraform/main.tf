@@ -19,6 +19,7 @@ provider "google" {
 }
 
 locals {
-  service_name = "yield-guard-${var.env}-backend"
-  sa_name      = "sa-yield-guard-${var.env}"
+  service_name     = "yield-guard-${var.env}-backend"
+  sa_name          = "sa-yield-guard-${var.env}"
+  deployer_sa_name = "sa-yield-guard-${var.env}-deployer"
 }

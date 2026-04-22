@@ -1,6 +1,13 @@
+# --- Service Accounts ---
+
 resource "google_service_account" "backend" {
   account_id   = local.sa_name
-  display_name = "yield-guard ${var.env} backend"
+  display_name = "yield-guard ${var.env} backend (runtime)"
+}
+
+resource "google_service_account" "deployer" {
+  account_id   = local.deployer_sa_name
+  display_name = "yield-guard ${var.env} deployer (CI/CD)"
 }
 
 # --- Workload Identity Federation ---
@@ -26,12 +33,11 @@ resource "google_iam_workload_identity_pool_provider" "github" {
     "attribute.repository" = "assertion.repository"
   }
 
-  # Restrict token exchange to this specific repository
   attribute_condition = "attribute.repository == 'glkt3912/yield-guard'"
 }
 
 resource "google_service_account_iam_binding" "wif_impersonation" {
-  service_account_id = google_service_account.backend.name
+  service_account_id = google_service_account.deployer.name
   role               = "roles/iam.workloadIdentityUser"
 
   members = [
@@ -39,43 +45,48 @@ resource "google_service_account_iam_binding" "wif_impersonation" {
   ]
 }
 
-# --- Minimal permissions for the Service Account ---
+# --- Deployer SA permissions (CI/CD only) ---
 
-resource "google_artifact_registry_repository_iam_member" "sa_push" {
+resource "google_project_iam_member" "deployer_viewer" {
+  project = var.project_id
+  role    = "roles/viewer"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+resource "google_project_iam_member" "deployer_project_iam_admin" {
+  project = var.project_id
+  role    = "roles/resourcemanager.projectIamAdmin"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+resource "google_project_iam_member" "deployer_run_developer" {
+  project = var.project_id
+  role    = "roles/run.developer"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+resource "google_artifact_registry_repository_iam_member" "deployer_push" {
   repository = google_artifact_registry_repository.backend.name
   location   = var.region
   role       = "roles/artifactregistry.writer"
-  member     = "serviceAccount:${google_service_account.backend.email}"
+  member     = "serviceAccount:${google_service_account.deployer.email}"
 }
 
-resource "google_project_iam_member" "sa_run_developer" {
-  project = var.project_id
-  role    = "roles/run.developer"
-  member  = "serviceAccount:${google_service_account.backend.email}"
-}
-
-resource "google_project_iam_member" "sa_viewer" {
-  # terraform plan reads current state of all managed resources.
-  project = var.project_id
-  role    = "roles/viewer"
-  member  = "serviceAccount:${google_service_account.backend.email}"
-}
-
-resource "google_project_iam_member" "sa_project_iam_admin" {
-  # terraform apply sets project-level IAM bindings; requires setIamPolicy.
-  project = var.project_id
-  role    = "roles/resourcemanager.projectIamAdmin"
-  member  = "serviceAccount:${google_service_account.backend.email}"
-}
-
-resource "google_service_account_iam_member" "sa_act_as" {
-  # deploy-cloudrun Action が SA impersonation に必要。
-  # GitHub Actions SA と Cloud Run ランタイム SA を統一しているための自己参照。
-  # SA を分離する場合は GitHub Actions 側 SA → Cloud Run SA への付与に変更する。
+resource "google_service_account_iam_member" "deployer_act_as_backend" {
+  # deployer SA impersonates runtime SA when deploying Cloud Run.
   service_account_id = google_service_account.backend.name
   role               = "roles/iam.serviceAccountUser"
-  member             = "serviceAccount:${google_service_account.backend.email}"
+  member             = "serviceAccount:${google_service_account.deployer.email}"
 }
+
+resource "google_storage_bucket_iam_member" "deployer_tfstate_admin" {
+  # storage.admin includes getIamPolicy/setIamPolicy needed for terraform apply.
+  bucket = "yield-guard-tfstate"
+  role   = "roles/storage.admin"
+  member = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+# --- Runtime SA permissions (Cloud Run only) ---
 
 resource "google_secret_manager_secret_iam_member" "mlit_accessor" {
   secret_id = google_secret_manager_secret.mlit_api_key.secret_id
@@ -89,25 +100,14 @@ resource "google_secret_manager_secret_iam_member" "internal_key_accessor" {
   member    = "serviceAccount:${google_service_account.backend.email}"
 }
 
-# --- Observability permissions ---
-
-resource "google_project_iam_member" "sa_trace_agent" {
+resource "google_project_iam_member" "backend_trace_agent" {
   project = var.project_id
   role    = "roles/cloudtrace.agent"
   member  = "serviceAccount:${google_service_account.backend.email}"
 }
 
-resource "google_project_iam_member" "sa_metric_writer" {
+resource "google_project_iam_member" "backend_metric_writer" {
   project = var.project_id
   role    = "roles/monitoring.metricWriter"
   member  = "serviceAccount:${google_service_account.backend.email}"
-}
-
-# --- Terraform state backend permissions ---
-
-resource "google_storage_bucket_iam_member" "sa_tfstate_admin" {
-  # storage.admin includes getIamPolicy/setIamPolicy needed for terraform apply.
-  bucket = "yield-guard-tfstate"
-  role   = "roles/storage.admin"
-  member = "serviceAccount:${google_service_account.backend.email}"
 }
