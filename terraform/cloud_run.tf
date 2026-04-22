@@ -36,6 +36,11 @@ resource "google_cloud_run_v2_service" "backend" {
       }
 
       env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
+
+      env {
         name = "MLIT_API_KEY"
         value_source {
           secret_key_ref {
@@ -85,6 +90,8 @@ resource "google_cloud_run_v2_service" "backend" {
     google_project_service.apis,
     google_secret_manager_secret_iam_member.mlit_accessor,
     google_secret_manager_secret_iam_member.internal_key_accessor,
+    google_project_iam_member.sa_trace_agent,
+    google_project_iam_member.sa_metric_writer,
   ]
 }
 

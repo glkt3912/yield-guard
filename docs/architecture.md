@@ -105,7 +105,7 @@ flowchart LR
 
     subgraph Export["エクスポーター"]
         Stdout["stdout\n（ローカル開発）"]
-        OTLP["OTLP gRPC\n（本番: Cloud Trace / Monitoring）"]
+        GCloud["Cloud Trace / Monitoring\n（本番: ADC 認証）"]
     end
 
     subgraph Logging["internal/logger"]
@@ -117,21 +117,23 @@ flowchart LR
     Handler --> TP
     Handler --> MP
     TP --> Stdout
-    TP --> OTLP
+    TP --> GCloud
     MP --> Stdout
-    MP --> OTLP
+    MP --> GCloud
     OtelGin -.-> |SpanContext| SlogHandler
     SlogHandler --> CloudLog
 ```
 
 ### エクスポーター切り替え
 
-`OTEL_EXPORTER_OTLP_ENDPOINT` 環境変数の有無で自動切り替えする。
+`GOOGLE_CLOUD_PROJECT` 環境変数の有無で自動切り替えする。
 
-| 環境 | `OTEL_EXPORTER_OTLP_ENDPOINT` | トレース出力先 | メトリクス出力先 |
+| 環境 | `GOOGLE_CLOUD_PROJECT` | トレース出力先 | メトリクス出力先 |
 |---|---|---|---|
 | ローカル開発 | 未設定 | stdout（整形JSON） | stdout |
-| Cloud Run 本番 | `host:port`（例: `otel-collector:4317`） | Cloud Trace（OTLP gRPC） | Cloud Monitoring（OTLP gRPC） |
+| Cloud Run 本番 | GCP プロジェクト ID | Cloud Trace（ADC 認証） | Cloud Monitoring（ADC 認証） |
+
+Cloud Run SA には `roles/cloudtrace.agent` と `roles/monitoring.metricWriter` が必要（`terraform/iam.tf` で管理）。認証は ADC（Application Default Credentials）が自動処理するため、コード内での認証設定は不要。
 
 ### 構造化ログフォーマット（Cloud Logging 準拠）
 
