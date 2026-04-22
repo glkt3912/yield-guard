@@ -193,6 +193,9 @@ func validateInvestmentInput(in domain.InvestmentInput) error {
 	if in.HoldingYears < 0 || in.HoldingYears > 50 {
 		return errors.New("holdingYears は 0〜50 年の範囲で指定してください")
 	}
+	if in.RentDeclineRate < 0 || in.RentDeclineRate > 0.2 {
+		return errors.New("rentDeclineRate は 0.0〜0.2 の範囲で指定してください")
+	}
 	return nil
 }
 
