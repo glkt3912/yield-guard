@@ -17,20 +17,16 @@
     "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-slider": "^1.2.0",
     "@radix-ui/react-tooltip": "^1.1.2",
-    "@react-pdf/renderer": "^4.5.1",
+    "@types/pdfmake": "^0.3.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",
     "next": "^16.2.4",
+    "pdfmake": "^0.3.7",
     "react": "^19",
     "react-dom": "^19",
     "recharts": "^2.12.7",
     "tailwind-merge": "^2.4.0"
-  },
-  "overrides": {
-    "@react-pdf/reconciler": {
-      "scheduler": "0.25.0"
-    }
   },
   "devDependencies": {
     "@emnapi/core": "^1.10.0",
