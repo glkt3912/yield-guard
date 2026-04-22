@@ -421,7 +421,50 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 
 #### `stressScenarios: StressScenarioResult[]`
 
-`Analyze()` が自動生成する 6 つのデフォルトシナリオ（ベースライン / 金利+1% / 金利+2% / 空室+10% / 空室+20% / 複合ストレス）の結果配列。入力に `vacancyRateDelta` または `loanRateDelta` が指定されている場合はカスタムシナリオが 7 本目として追加される。
+`Analyze()` が自動生成する 6 つのデフォルトシナリオの結果配列。入力に `vacancyRateDelta` または `loanRateDelta` が指定されている場合はカスタムシナリオが 7 本目として追加される。銀行提出資料や投資判断の感度分析に活用できる。
+
+##### 自動生成シナリオ一覧
+
+| `label` | `interestRateDelta` | `vacancyRateDelta` | 想定用途 |
+|---------|--------------------|--------------------|----------|
+| `"ベースライン"` | 0 | 0 | 入力条件そのままの基準値。他シナリオとの比較基点 |
+| `"金利+1%"` | +0.01 | 0 | 金利上昇局面の軽微ストレス（変動金利リスク確認） |
+| `"金利+2%"` | +0.02 | 0 | 金利急騰時の重大ストレス（銀行提出資料の標準感度） |
+| `"空室+10%"` | 0 | +0.10 | 需要低下・競合増加による空室悪化シナリオ |
+| `"空室+20%"` | 0 | +0.20 | 人口減少地域や築古物件の空室リスク最大値 |
+| `"複合ストレス"` | +0.02 | +0.10 | 金利上昇＋空室悪化の同時発生（最悪ケース試算） |
+| `"カスタム"` | `loanRateDelta` | `vacancyRateDelta` | リクエスト指定値による任意ストレス（任意追加） |
+
+> カスタムシナリオは `vacancyRateDelta` または `loanRateDelta` のいずれかが非ゼロのときのみ追加される。
+
+##### `StressScenarioResult` の構造
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `label` | string | シナリオ名（上表参照） |
+| `interestRateDelta` | float64 | 基準金利からの上昇幅（例: `0.02` = +2%） |
+| `vacancyRateDelta` | float64 | 基準空室率からの上昇幅（例: `0.10` = +10%） |
+| `totalCashFlow` | float64 | 保有期間の税引前累積キャッシュフロー（円） |
+| `dscr` | float64 | DSCR（Debt Service Coverage Ratio）。ローンなしの場合は `0` |
+| `breakEvenYear` | int | 累積CF黒字転換年（保有期間内に未達なら `-1`） |
+| `isSafe` | bool | 安全判定フラグ（下記参照） |
+
+**DSCR（負債返済カバレッジ比率）の計算式:**
+
+```
+NOI = 年間実効賃料収入 × (1 − 空室率) − 経費 − 固定資産税
+DSCR = NOI / 年間ローン返済額
+```
+
+DSCR が 1.0 以上であれば NOI だけでローン返済を賄える状態（銀行融資審査の基準値）。
+
+**`isSafe` の判定ロジック:**
+
+| 条件 | 判定 |
+|------|------|
+| ローンあり: `DSCR >= 1.0` かつ `breakEvenYear` が保有期間以内 | `true` |
+| ローンなし（`loanAmount = 0`）: `breakEvenYear` が保有期間以内 | `true` |
+| 上記以外 | `false` |
 
 #### `yieldScenarios: YieldScenarios`
 
@@ -441,16 +484,6 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 | `grossYield` | float64 | 表面利回り（満室想定年収 / 総投資額。全シナリオ共通値） |
 
 **注意**: `grossYield` はシナリオによらず満室想定で計算した固定値。シナリオ間で `annualRent` のみが変化する。
-
-| フィールド | 型 | 説明 |
-|-----------|-----|------|
-| `label` | string | シナリオ名 |
-| `interestRateDelta` | float64 | 金利上昇幅（率） |
-| `vacancyRateDelta` | float64 | 空室率上昇幅（率） |
-| `totalCashFlow` | float64 | 保有期間の税引後累積キャッシュフロー（円） |
-| `dscr` | float64 | 負債返済カバレッジ比率（ローンなしの場合は 0） |
-| `breakEvenYear` | int | 累積CF黒字転換年（期間内未達なら `-1`） |
-| `isSafe` | bool | 安全判定（`DSCR >= 1.0 && BreakEvenYear` が保有期間以内。ローンなしは BreakEvenYear のみ） |
 
 ### エラー
 
