@@ -106,11 +106,11 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice, station
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
+          <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-800">
             <SearchX className="h-5 w-5 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-semibold">取引データが見つかりませんでした</p>
-              <p className="text-xs mt-1">エリア・取得期間の条件を変更して再取得してください。</p>
+              <p className="text-sm font-semibold">このエリアの取引データは未収録です</p>
+              <p className="text-xs mt-1">国交省データベースに該当期間の宅地取引実績がありません。都道府県・市区町村・取得期間を変更してお試しください。</p>
             </div>
           </div>
         </CardContent>
