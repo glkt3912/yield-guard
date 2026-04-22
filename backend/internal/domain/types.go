@@ -177,6 +177,19 @@ type StressScenarioResult struct {
 	IsSafe            bool    `json:"isSafe"`        // DSCR >= 1.0 && BreakEvenYear <= HoldingYears
 }
 
+// YieldScenario は1つの空室シナリオにおける利回り結果
+type YieldScenario struct {
+	AnnualRent float64 `json:"annualRent"` // 年間実効賃料収入（空室控除後）
+	GrossYield float64 `json:"grossYield"` // 表面利回り（満室想定年収/総投資額）
+}
+
+// YieldScenarios は楽観・標準・悲観シナリオの利回り結果セット
+type YieldScenarios struct {
+	Optimistic  YieldScenario `json:"optimistic"`  // 楽観: 空室率 × 0.5
+	Standard    YieldScenario `json:"standard"`    // 標準: 空室率 × 1.0
+	Pessimistic YieldScenario `json:"pessimistic"` // 悲観: 空室率 × 1.5
+}
+
 // InvestmentResult は収支シミュレーションの結果
 type InvestmentResult struct {
 	TotalInvestment float64 `json:"totalInvestment"` // 総投資額（土地+建物+諸経費）
@@ -202,6 +215,7 @@ type InvestmentResult struct {
 	ExitTotalEquity float64 `json:"exitTotalEquity"` // 最終手残り（売却手取り+累積CF）
 
 	StressScenarios []StressScenarioResult `json:"stressScenarios"`
+	YieldScenarios  YieldScenarios         `json:"yieldScenarios"`
 }
 
 // AcquisitionCostBreakdown は物件取得時の諸経費内訳

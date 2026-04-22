@@ -108,6 +108,11 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
     exitNetProceeds: 11_600_000,
     exitTotalEquity: 3_000_000,
     stressScenarios: [],
+    yieldScenarios: {
+      optimistic:  { annualRent: 1_368_000, grossYield: 0.09 },
+      standard:    { annualRent: 1_296_000, grossYield: 0.09 },
+      pessimistic: { annualRent: 1_224_000, grossYield: 0.09 },
+    },
     ...overrides,
   };
 }
