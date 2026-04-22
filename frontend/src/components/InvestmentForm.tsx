@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import type { InvestmentInput, BuildingType, SimulationMode } from "@/types/investment";
+import type { InvestmentInput, BuildingType, SimulationMode, RateAdjustment } from "@/types/investment";
 import { DEFAULT_INPUT, QUICK_MODE_DEFAULTS } from "@/types/investment";
 import { formatPct } from "@/lib/utils";
 import { fetchMunicipalities, type Municipality } from "@/lib/api";
-import { Search, Calculator, Info, AlertTriangle, ShieldCheck, Zap, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Calculator, Info, AlertTriangle, ShieldCheck, Zap, SlidersHorizontal, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { ZONING_TYPES, ZONING_META, type ZoningType } from "@/lib/zoning";
 
 const PREFECTURES = [
@@ -137,6 +137,9 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   const [savedLoanAmount, setSavedLoanAmount] = useState(DEFAULT_INPUT.loanAmount);
   const [savedLoanYears, setSavedLoanYears] = useState(DEFAULT_INPUT.loanYears);
 
+  // 変動金利スケジュール
+  const [rateScheduleEnabled, setRateScheduleEnabled] = useState(false);
+
   // 按分ヘルパーの状態
   const [showBuildingHelper, setShowBuildingHelper] = useState(false);
   const [taxAmount, setTaxAmount] = useState("");
@@ -233,19 +236,58 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   const toPct = (rate: number, digits = 2) => (rate * 100).toFixed(digits);
   const fromPct = (s: string) => (parseFloat(s) || 0) / 100;
 
+  const addRateStep = () => {
+    const schedule = input.rateAdjustmentSchedule;
+    const lastYear = schedule.length > 0 ? schedule[schedule.length - 1].afterYear : 1;
+    const nextYear = Math.min(lastYear + 5, input.loanYears || 35);
+    const newStep: RateAdjustment = { afterYear: nextYear, rate: input.annualLoanRate + 0.005 };
+    setInput((prev) => ({ ...prev, rateAdjustmentSchedule: [...prev.rateAdjustmentSchedule, newStep] }));
+  };
+
+  const removeRateStep = (index: number) => {
+    setInput((prev) => ({
+      ...prev,
+      rateAdjustmentSchedule: prev.rateAdjustmentSchedule.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateRateStep = (index: number, field: keyof RateAdjustment, value: number) => {
+    setInput((prev) => ({
+      ...prev,
+      rateAdjustmentSchedule: prev.rateAdjustmentSchedule.map((s, i) =>
+        i === index ? { ...s, [field]: value } : s
+      ),
+    }));
+  };
+
+  const handleRateScheduleToggle = (enabled: boolean) => {
+    setRateScheduleEnabled(enabled);
+    if (!enabled) {
+      setInput((prev) => ({ ...prev, rateAdjustmentSchedule: [] }));
+    }
+  };
+
+  // 送信前にスケジュールを afterYear 昇順にソートする
+  const sortedInput = (src: InvestmentInput): InvestmentInput => ({
+    ...src,
+    rateAdjustmentSchedule: [...src.rateAdjustmentSchedule].sort(
+      (a, b) => a.afterYear - b.afterYear
+    ),
+  });
+
   const handleAnalyze = () => {
     if (hasErrors) return;
     if (isQuick) {
       const total = (parseFloat(quickTotalPriceMan) || 0) * 10_000;
-      const payload: InvestmentInput = {
+      const payload: InvestmentInput = sortedInput({
         ...input,
         ...QUICK_MODE_DEFAULTS,
         landPrice: total * 0.7,
         buildingCost: total * 0.3,
-      };
+      });
       onAnalyze(payload);
     } else {
-      onAnalyze(input);
+      onAnalyze(sortedInput(input));
     }
   };
 
@@ -736,6 +778,87 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                     onChange={(e) => setNum("incomeTaxRate", fromPct(e.target.value))}
                     error={fieldError("incomeTaxRate")} />
                 </div>
+              </div>
+
+              {/* 変動金利スケジュール */}
+              <div className="border-t pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">変動金利シミュレーション</p>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rateScheduleEnabled}
+                      onChange={(e) => handleRateScheduleToggle(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-xs text-muted-foreground">有効にする</span>
+                  </label>
+                </div>
+                {rateScheduleEnabled && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      指定年以降の適用金利（絶対値）を設定します。最大3ステップ。
+                    </p>
+                    {input.rateAdjustmentSchedule.map((step, i) => {
+                      const maxYear = input.loanYears || 35;
+                      const prevYear = i > 0 ? input.rateAdjustmentSchedule[i - 1].afterYear : 1;
+                      const yearError = step.afterYear < 2
+                        ? "2年目以降を指定してください"
+                        : step.afterYear > maxYear
+                        ? `${maxYear}年以内を指定してください`
+                        : step.afterYear <= prevYear
+                        ? `前のステップより後の年を指定してください`
+                        : undefined;
+                      const rateError = step.rate <= 0 || step.rate > 0.3
+                        ? "0%超〜30%の範囲で入力してください"
+                        : undefined;
+                      return (
+                        <div key={i} className="flex items-center gap-2">
+                          <Input
+                            label={i === 0 ? "開始年" : ""}
+                            type="number"
+                            suffix="年目〜"
+                            min="2"
+                            max={String(maxYear)}
+                            step="1"
+                            value={String(step.afterYear)}
+                            onChange={(e) => updateRateStep(i, "afterYear", parseInt(e.target.value) || 2)}
+                            error={yearError}
+                          />
+                          <Input
+                            label={i === 0 ? "適用金利" : ""}
+                            type="number"
+                            suffix="%"
+                            min="0.1"
+                            max="30"
+                            step="0.1"
+                            value={(step.rate * 100).toFixed(2)}
+                            onChange={(e) => updateRateStep(i, "rate", (parseFloat(e.target.value) || 0) / 100)}
+                            error={rateError}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeRateStep(i)}
+                            className={`text-muted-foreground hover:text-destructive flex-shrink-0 ${i === 0 ? "mt-5" : ""}`}
+                            aria-label="削除"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {input.rateAdjustmentSchedule.length < 3 && (
+                      <button
+                        type="button"
+                        onClick={addRateStep}
+                        className="flex items-center gap-1 text-xs text-primary hover:underline"
+                      >
+                        <Plus className="h-3 w-3" />
+                        金利ステップを追加
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* ストレステスト */}

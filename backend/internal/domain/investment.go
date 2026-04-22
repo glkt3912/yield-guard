@@ -12,13 +12,25 @@ const (
 	SqmPerTsubo = 3.30578
 )
 
+// resolveRateForYear はスケジュールと基準金利から指定年の適用金利を返す。
+// schedule が空の場合は baseRate + rateDelta を返す（固定金利）。
+// rateDelta はストレステスト用の追加オフセット。
+func resolveRateForYear(baseRate, rateDelta float64, schedule []RateAdjustment, year int) float64 {
+	rate := baseRate
+	for _, adj := range schedule {
+		if year >= adj.AfterYear {
+			rate = adj.Rate
+		}
+	}
+	return rate + rateDelta
+}
+
 // Analyze は投資入力値から収支シミュレーション結果を算出する
 func Analyze(input InvestmentInput) InvestmentResult {
 	input.Defaults()
 
 	// ストレステスト値を適用（空室率は99%上限でキャップ）
 	effectiveVacancy := math.Min(input.VacancyRate+input.VacancyRateDelta, 0.99)
-	effectiveRate := input.AnnualLoanRate + input.LoanRateDelta
 
 	miscExpenses := (input.LandPrice + input.BuildingCost) * input.MiscExpenseRate
 	totalInvestment := input.LandPrice + input.BuildingCost + miscExpenses
@@ -38,8 +50,9 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	// 目標利回り逆算
 	requiredRent, landDrop := calcRequiredForTarget(input, totalInvestment)
 
-	// ローン月次計算
-	monthlyPayment := calcMonthlyPayment(input.LoanAmount, effectiveRate, input.LoanYears)
+	// 変動金利: 初年度の実効金利でローン返済額を計算
+	currentRate := resolveRateForYear(input.AnnualLoanRate, input.LoanRateDelta, input.RateAdjustmentSchedule, 1)
+	monthlyPayment := calcMonthlyPayment(input.LoanAmount, currentRate, input.LoanYears)
 
 	// 減価償却 (定額法)
 	// 中古物件は簡便法耐用年数を使用（新築は法定耐用年数）
@@ -67,13 +80,24 @@ func Analyze(input InvestmentInput) InvestmentResult {
 
 	for y := 0; y < years; y++ {
 		year := y + 1
+
+		// 変動金利: スケジュールで金利が変化したら返済額を残高・残期間で再計算
+		if year > 1 && len(input.RateAdjustmentSchedule) > 0 {
+			newRate := resolveRateForYear(input.AnnualLoanRate, input.LoanRateDelta, input.RateAdjustmentSchedule, year)
+			if newRate != currentRate && remainingBalance > 0 && year <= input.LoanYears {
+				remainingYears := input.LoanYears - y
+				monthlyPayment = calcMonthlyPayment(remainingBalance, newRate, remainingYears)
+				currentRate = newRate
+			}
+		}
+
 		annualInterest := 0.0
 		annualPrincipal := 0.0
 		annualLoanPayment := 0.0
 
 		if remainingBalance > 0 && year <= input.LoanYears {
 			annualInterest, annualPrincipal = calcYearlyLoanComponents(
-				remainingBalance, effectiveRate, monthlyPayment,
+				remainingBalance, currentRate, monthlyPayment,
 			)
 			annualLoanPayment = monthlyPayment * 12
 			remainingBalance -= annualPrincipal
@@ -130,6 +154,7 @@ func Analyze(input InvestmentInput) InvestmentResult {
 			CumulativeCashFlow:   cumulativeCF,
 			IsDeadCrossYear:      isDeadCrossYear,
 			IsInDeadCrossZone:    inDeadCrossZone,
+			EffectiveRate:        currentRate,
 		}
 	}
 
@@ -231,16 +256,17 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 	if effectiveVacancy > 1 {
 		effectiveVacancy = 1
 	}
-	effectiveRate := in.AnnualLoanRate + rateDelta
 
 	annualRent := in.MonthlyRent * 12 * (1 - effectiveVacancy)
 	annualExpenses := annualRent*in.ExpenseRate + in.AnnualPropertyTax
 	noi := annualRent - annualExpenses
 
-	monthlyPayment := calcMonthlyPayment(in.LoanAmount, effectiveRate, in.LoanYears)
+	// 初年度の実効金利（スケジュール+ストレスdelta）
+	initRate := resolveRateForYear(in.AnnualLoanRate, rateDelta, in.RateAdjustmentSchedule, 1)
+	monthlyPayment := calcMonthlyPayment(in.LoanAmount, initRate, in.LoanYears)
 	annualLoanPayment := monthlyPayment * 12
 
-	// DSCR = NOI / 年間ローン返済額
+	// DSCR = NOI / 初年度年間ローン返済額
 	dscr := 0.0
 	if annualLoanPayment > 0 {
 		dscr = noi / annualLoanPayment
@@ -255,8 +281,20 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 	breakEvenYear := -1
 	cumCF := 0.0
 	remainingBalance := in.LoanAmount
+	currentRate := initRate
+	curMonthlyPayment := monthlyPayment
 	for y := 1; y <= holdingYears; y++ {
-		yearLoan := annualLoanPayment
+		// 変動金利スケジュール適用
+		if y > 1 && len(in.RateAdjustmentSchedule) > 0 {
+			newRate := resolveRateForYear(in.AnnualLoanRate, rateDelta, in.RateAdjustmentSchedule, y)
+			if newRate != currentRate && remainingBalance > 0 && y <= in.LoanYears {
+				remainingYears := in.LoanYears - (y - 1)
+				curMonthlyPayment = calcMonthlyPayment(remainingBalance, newRate, remainingYears)
+				currentRate = newRate
+			}
+		}
+
+		yearLoan := curMonthlyPayment * 12
 		if remainingBalance <= 0 || y > in.LoanYears {
 			yearLoan = 0
 		}
@@ -266,10 +304,8 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 		if breakEvenYear == -1 && cumCF > 0 {
 			breakEvenYear = y
 		}
-		// 残高更新（簡略: 元金返済=返済額-利息）
 		if remainingBalance > 0 && y <= in.LoanYears {
-			annInterest, annPrincipal := calcYearlyLoanComponents(remainingBalance, effectiveRate, monthlyPayment)
-			_ = annInterest
+			_, annPrincipal := calcYearlyLoanComponents(remainingBalance, currentRate, curMonthlyPayment)
 			remainingBalance -= annPrincipal
 			if remainingBalance < 0 {
 				remainingBalance = 0

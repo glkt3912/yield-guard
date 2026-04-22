@@ -54,6 +54,14 @@ func CalcResidualUsefulLife(buildingType BuildingType, buildingAge int) int {
 	return residual
 }
 
+// RateAdjustment は変動金利スケジュールの1ステップ
+type RateAdjustment struct {
+	// AfterYear: この年（1始まり）以降に Rate を適用（例: 6 = 6年目から）
+	AfterYear int `json:"afterYear"`
+	// Rate: 絶対値の年利（例: 0.02 = 2%）
+	Rate float64 `json:"rate"`
+}
+
 // InvestmentInput は収支シミュレーションの入力値
 type InvestmentInput struct {
 	LandPrice       float64      `json:"landPrice"`       // 土地取得費 (円)
@@ -89,6 +97,10 @@ type InvestmentInput struct {
 
 	// 目標表面利回り（例: 0.08 = 8%）。0 の場合は Defaults() で 0.08 にセットされる。
 	YieldTarget float64 `json:"yieldTarget"`
+
+	// 変動金利スケジュール: 指定年以降に適用する金利ステップ（空=固定金利）
+	// LoanRateDelta はスケジュール後の金利にも加算される。
+	RateAdjustmentSchedule []RateAdjustment `json:"rateAdjustmentSchedule"`
 }
 
 // Validate は入力値のバリデーションを行い、不正な組み合わせはエラーを返す。
@@ -105,6 +117,36 @@ func (i *InvestmentInput) Validate() error {
 			"RentDeclineRate(%.3f) must be between 0.0 and 0.2",
 			i.RentDeclineRate,
 		)
+	}
+	loanYears := i.LoanYears
+	if loanYears == 0 {
+		loanYears = 35 // Defaults() 適用前に呼ばれる場合の保護
+	}
+	for idx, adj := range i.RateAdjustmentSchedule {
+		if adj.AfterYear < 2 {
+			return fmt.Errorf(
+				"RateAdjustmentSchedule[%d].AfterYear(%d) must be >= 2",
+				idx, adj.AfterYear,
+			)
+		}
+		if adj.AfterYear > loanYears {
+			return fmt.Errorf(
+				"RateAdjustmentSchedule[%d].AfterYear(%d) exceeds LoanYears(%d)",
+				idx, adj.AfterYear, loanYears,
+			)
+		}
+		if adj.Rate <= 0 || adj.Rate > 0.3 {
+			return fmt.Errorf(
+				"RateAdjustmentSchedule[%d].Rate(%.4f) must be between 0 and 0.3",
+				idx, adj.Rate,
+			)
+		}
+		if idx > 0 && adj.AfterYear <= i.RateAdjustmentSchedule[idx-1].AfterYear {
+			return fmt.Errorf(
+				"RateAdjustmentSchedule must be sorted in ascending order by afterYear: [%d].AfterYear(%d) <= [%d].AfterYear(%d)",
+				idx, adj.AfterYear, idx-1, i.RateAdjustmentSchedule[idx-1].AfterYear,
+			)
+		}
 	}
 	return nil
 }
@@ -149,6 +191,7 @@ type YearlyResult struct {
 	CumulativeCashFlow   float64 `json:"cumulativeCashFlow"`
 	IsDeadCrossYear      bool    `json:"isDeadCrossYear"`   // デッドクロス初年度
 	IsInDeadCrossZone    bool    `json:"isInDeadCrossZone"` // デッドクロス継続中
+	EffectiveRate        float64 `json:"effectiveRate"`     // その年の適用金利（年利）
 }
 
 // CriticalErrorStatus は重大エラーの深刻度

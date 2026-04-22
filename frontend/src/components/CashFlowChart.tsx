@@ -24,12 +24,24 @@ export function CashFlowChart({ result, equityInvested }: Props) {
     // 自己資金を初期コストとして加算した累積CF（ISSUE-22）
     累積CF: Math.round((y.cumulativeCashFlow - equityInvested) / 10_000),
     isDeadCrossZone: y.isInDeadCrossZone,
+    effectiveRate: y.effectiveRate,
   }));
 
   // 自己資金を回収した年（累積CF - 自己資金 >= 0）
   const breakEvenYear = yearlyResults.find(
     (y) => y.cumulativeCashFlow - equityInvested >= 0
   )?.year ?? null;
+
+  // 金利が変化した年のリスト（2年目以降で前年から変化した年）
+  const rateChangeYears: { year: string; rate: number }[] = [];
+  for (let i = 1; i < Math.min(yearlyResults.length, 35); i++) {
+    if (yearlyResults[i].effectiveRate !== yearlyResults[i - 1].effectiveRate) {
+      rateChangeYears.push({
+        year: `${yearlyResults[i].year}年`,
+        rate: yearlyResults[i].effectiveRate,
+      });
+    }
+  }
 
   return (
     <Card>
@@ -60,6 +72,16 @@ export function CashFlowChart({ result, equityInvested }: Props) {
               <ReferenceLine yAxisId="right" x={`${breakEvenYear}年`} stroke="#22c55e" strokeDasharray="4 4"
                 label={{ value: "回収", position: "top", fontSize: 10, fill: "#22c55e" }} />
             )}
+            {rateChangeYears.map(({ year, rate }) => (
+              <ReferenceLine
+                key={year}
+                yAxisId="left"
+                x={year}
+                stroke="#f97316"
+                strokeDasharray="4 3"
+                label={{ value: `${(rate * 100).toFixed(2)}%`, position: "insideTopRight", fontSize: 9, fill: "#f97316" }}
+              />
+            ))}
             <Bar yAxisId="left" dataKey="税引後CF" maxBarSize={20} radius={[2, 2, 0, 0]}>
               {data.map((entry, index) => (
                 <Cell key={index} fill={entry.isDeadCrossZone ? "#fca5a5" : "#60a5fa"} />
@@ -70,6 +92,7 @@ export function CashFlowChart({ result, equityInvested }: Props) {
         </ResponsiveContainer>
         <p className="mt-1 text-xs text-muted-foreground text-right">
           ※赤色の棒はデッドクロスゾーン（元金返済 &gt; 減価償却費）
+          {rateChangeYears.length > 0 && "　※橙色の縦線は金利変更年"}
         </p>
 
         {/* 出口戦略サマリー */}
