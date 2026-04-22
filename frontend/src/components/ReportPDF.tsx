@@ -20,12 +20,7 @@ import type {
 // Register Noto Sans JP for Japanese text rendering
 Font.register({
   family: "NotoSansJP",
-  fonts: [
-    {
-      src: "https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFBEj75vY0rw-oME.woff2",
-      fontWeight: "normal",
-    },
-  ],
+  src: "https://fonts.gstatic.com/s/notosansjp/v53/nKKF-GM_FYFRJvXzVXaAPe97P1K9CtBL.otf",
 });
 
 const COLORS = {
@@ -464,9 +459,9 @@ const SummaryPage = ({ result, input }: SummaryPageProps) => {
           </Text>
         </View>
         <View style={styles.kpiCard}>
-          <Text style={styles.kpiLabel}>8%基準</Text>
-          <Text style={[styles.kpiValue, { color: result.isAbove8Percent ? COLORS.safe : COLORS.danger }]}>
-            {result.isAbove8Percent ? "達成" : "未達"}
+          <Text style={styles.kpiLabel}>{(result.yieldTarget * 100).toFixed(0)}%基準</Text>
+          <Text style={[styles.kpiValue, { color: result.isAboveYieldTarget ? COLORS.safe : COLORS.danger }]}>
+            {result.isAboveYieldTarget ? "達成" : "未達"}
           </Text>
         </View>
       </View>

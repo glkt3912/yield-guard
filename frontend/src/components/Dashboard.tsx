@@ -6,7 +6,6 @@ import { CashFlowChart } from "@/components/CashFlowChart";
 import { DeadCrossChart } from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
-import { ReportPDF } from "@/components/ReportPDF";
 import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode } from "@/types/investment";
 import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks } from "@/lib/api";
 import { ShieldAlert, Info, FileDown } from "lucide-react";
@@ -16,6 +15,11 @@ import dynamic from "next/dynamic";
 const PDFDownloadLink = dynamic(
   () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
   { ssr: false, loading: () => null }
+);
+
+const ReportPDF = dynamic(
+  () => import("@/components/ReportPDF").then((m) => m.ReportPDF),
+  { ssr: false }
 );
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
