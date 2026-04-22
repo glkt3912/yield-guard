@@ -144,6 +144,12 @@ func (h *Handler) Analyze(c *gin.Context) {
 		return
 	}
 
+	input.Defaults()
+	if err := input.Validate(); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	result := domain.Analyze(input)
 	telemetry.AnalyzeRequestsTotal.Add(c.Request.Context(), 1)
 	c.JSON(http.StatusOK, result)
