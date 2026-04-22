@@ -69,7 +69,9 @@ func newJSONHandler(w io.Writer, level slog.Leveler, projectID string) slog.Hand
 			}
 			switch a.Key {
 			case slog.LevelKey:
-				return slog.String("severity", levelToSeverity(a.Value.Any().(slog.Level)))
+				if l, ok := a.Value.Any().(slog.Level); ok {
+					return slog.String("severity", levelToSeverity(l))
+				}
 			case slog.MessageKey:
 				return slog.Attr{Key: "message", Value: a.Value}
 			}
