@@ -5,9 +5,9 @@ import { makeComparison, makeInput, ZERO_STATS } from "./helpers";
 
 describe("LandPriceAnalysis", () => {
   describe("count === 0 のとき", () => {
-    it("「取引データが見つかりませんでした」を表示する", () => {
+    it("「このエリアの取引データは未収録です」を表示する", () => {
       render(<LandPriceAnalysis comparison={makeComparison({ stats: ZERO_STATS })} />);
-      expect(screen.getByText("取引データが見つかりませんでした")).toBeInTheDocument();
+      expect(screen.getByText("このエリアの取引データは未収録です")).toBeInTheDocument();
     });
 
     it("判定バッジを表示しない", () => {
@@ -101,9 +101,9 @@ describe("LandPriceAnalysis", () => {
       expect(screen.queryByText("統計データが不足しています")).not.toBeInTheDocument();
     });
 
-    it("「取引データが見つかりませんでした」を表示しない", () => {
+    it("「このエリアの取引データは未収録です」を表示しない", () => {
       render(<LandPriceAnalysis comparison={makeComparison()} />);
-      expect(screen.queryByText("取引データが見つかりませんでした")).not.toBeInTheDocument();
+      expect(screen.queryByText("このエリアの取引データは未収録です")).not.toBeInTheDocument();
     });
   });
 });

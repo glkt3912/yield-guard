@@ -101,7 +101,7 @@ export function Dashboard() {
         setExternalUrbanRisks(urbanRisks.status === "fulfilled" ? urbanRisks.value : null);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "相場データの取得に失敗しました");
+      setError(e instanceof Error ? e.message : "相場データの取得に失敗しました。しばらく後に再試行してください");
     } finally {
       setLoading(false);
     }
