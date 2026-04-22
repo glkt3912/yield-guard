@@ -338,7 +338,8 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
   "exitYieldTarget": 0.06,
   "vacancyRateDelta": 0,
   "loanRateDelta": 0,
-  "rentDeclineRate": 0.01
+  "rentDeclineRate": 0.01,
+  "loanMethod": "equal-payment"
 }
 ```
 
@@ -349,6 +350,7 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 | `landPrice` | 1〜100億円 |
 | `buildingCost` | 1〜100億円（新築は建設費、中古は建物に帰属する取得費） |
 | `rentDeclineRate` | 0.0〜0.2（年間賃料下落率。省略時は 0 = 下落なし） |
+| `loanMethod` | `"equal-payment"`（元利均等）または `"equal-principal"`（元金均等）。省略時は `"equal-payment"` |
 | `monthlyRent` | 正の値 |
 | `vacancyRate` | 0.0〜0.99 |
 | `loanAmount` | 0以上 |
@@ -368,6 +370,7 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 - `exitYieldTarget` 省略時 → `0.06`
 - `loanYears` 省略時 → `35`
 - `buildingType` 省略時 → `"木造"`
+- `loanMethod` 省略時 → `"equal-payment"`
 
 クロスフィールドバリデーション:
 - `vacancyRate + vacancyRateDelta` の合計が `0.99` を超える場合はエラー
@@ -380,6 +383,12 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 {
   "error": "rentDeclineRate は 0.0〜0.2 の範囲で指定してください"
 }
+```
+
+`loanMethod` に無効な値を指定した場合もバリデーションエラー:
+
+```json
+{ "error": "loanMethod は equal-payment または equal-principal を指定してください" }
 ```
 
 ### レスポンス: `InvestmentResult`
@@ -415,13 +424,38 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
     "optimistic":  { "annualRent": 1368000, "grossYield": 0.0897 },
     "standard":    { "annualRent": 1296000, "grossYield": 0.0897 },
     "pessimistic": { "annualRent": 1224000, "grossYield": 0.0897 }
-  }
+  },
+  "dscr": 1.25,
+  "ltvSensitivity": [
+    { "ltv": 0.50, "equity": 8025000, "loanAmount": 8025000,  "dscr": 2.10, "annualCF": 500000, "cfYield": 0.031 },
+    { "ltv": 0.60, "equity": 6420000, "loanAmount": 9630000,  "dscr": 1.60, "annualCF": 300000, "cfYield": 0.019 },
+    { "ltv": 0.70, "equity": 4815000, "loanAmount": 11235000, "dscr": 1.20, "annualCF": 100000, "cfYield": 0.006 },
+    { "ltv": 0.80, "equity": 3210000, "loanAmount": 12840000, "dscr": 0.90, "annualCF": -100000,"cfYield": -0.006 },
+    { "ltv": 0.90, "equity": 1605000, "loanAmount": 14445000, "dscr": 0.60, "annualCF": -300000,"cfYield": -0.019 }
+  ]
 }
 ```
 
 #### `stressScenarios: StressScenarioResult[]`
 
 `Analyze()` が自動生成する 6 つのデフォルトシナリオ（ベースライン / 金利+1% / 金利+2% / 空室+10% / 空室+20% / 複合ストレス）の結果配列。入力に `vacancyRateDelta` または `loanRateDelta` が指定されている場合はカスタムシナリオが 7 本目として追加される。
+
+#### `dscr: float64`
+
+1年目の DSCR（Debt Service Coverage Ratio: 借入金償還余裕率）。`NOI / 年間ローン返済額（1年目）`。ローンなしの場合は `0`。`>= 1.0` で安全圏。
+
+#### `ltvSensitivity: LTVSensitivityRow[]`
+
+LTV を 50/60/70/80/90% に変化させたときの感度分析。常に5行返す。ベースケース（ストレスなし）で試算。元金均等の場合は1年目（最大）返済額を使用。
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `ltv` | float64 | 借入比率（例: 0.70） |
+| `equity` | float64 | 自己資金（円） |
+| `loanAmount` | float64 | 借入額（円） |
+| `dscr` | float64 | DSCR |
+| `annualCF` | float64 | 年間キャッシュフロー（円） |
+| `cfYield` | float64 | CF利回り（`annualCF / 総投資額`） |
 
 #### `yieldScenarios: YieldScenarios`
 

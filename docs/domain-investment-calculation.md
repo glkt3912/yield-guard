@@ -18,6 +18,7 @@
 | `LoanAmount` | float64 | 円 | ローン金額 | — |
 | `AnnualLoanRate` | float64 | 率 | 年利（0.015 = 1.5%） | — |
 | `LoanYears` | int | 年 | ローン期間 | 35 |
+| `LoanMethod` | string | — | 返済方式: `"equal-payment"`（元利均等）or `"equal-principal"`（元金均等） | `"equal-payment"` |
 | `BuildingType` | BuildingType | — | 建物構造 | "木造" |
 | `ExpenseRate` | float64 | 率 | 運営経費率（管理・修繕・固定資産税等。ローン利息は含まない） | — |
 | `IncomeTaxRate` | float64 | 率 | 実効所得税率（給与との合算後） | — |
@@ -133,6 +134,90 @@ costReduction = max(totalInvestment - requiredTotalInvestment, 0)
 
 ---
 
+## DSCR算出（`CalcDSCR`）
+
+```
+DSCR = NOI / 年間ローン返済額（1年目）
+```
+
+- NOI（Net Operating Income）= 年間実効賃料収入 − 年間運営経費（利息・返済は含まない）
+- `annualDebtService <= 0` の場合は 0 を返す（ゼロ除算防止）
+- `DSCR >= 1.0` のとき債務返済能力あり（安全）、`< 1.0` のとき要注意
+
+> **根拠・出典**: DSCR（Debt Service Coverage Ratio: 借入金償還余裕率）は、金融機関が投資用不動産ローンの審査・モニタリングで使用する標準指標。日本の主要銀行・信用金庫のローン審査基準（一般的に DSCR ≥ 1.25〜1.3 を要求）や、米国 CMBS（商業用不動産担保証券）市場の格付基準でも広く使用される。
+
+---
+
+## 元金均等返済（`CalcEqualPrincipalPayment` / `calcYearlyLoanComponentsEqualPrincipal`）
+
+### 月次返済額（`CalcEqualPrincipalPayment`）
+
+```
+月次元金返済額 = P / (LoanYears × 12)
+残高           = P − (month − 1) × 月次元金返済額
+月次利息       = 残高 × (AnnualLoanRate / 12)
+月次返済額     = 月次元金返済額 + 月次利息
+```
+
+- 毎月の元金返済額は一定（`P / n`）
+- 利息は残高に比例して逓減するため月次返済額は毎月減少する
+- 元利均等返済と比べ、初期の月次返済額は高いが総支払利息は少ない
+- 返済額の逆転（クロスオーバー）は一般的に35年ローンで**約17年目**前後
+
+### 年次ローン内訳分解（`calcYearlyLoanComponentsEqualPrincipal`）
+
+元金均等返済用の年次積算ヘルパー。12ヶ月ループで月次利息・元金を積算する。
+
+```go
+for range 12 {
+    if remaining <= 0 { break }
+    mp := monthlyPrincipal
+    if mp > remaining { mp = remaining }  // 最終年の端数防止
+    interest += remaining * r
+    principal += mp
+    remaining -= mp
+}
+```
+
+`Analyze()` の年次ループでは各年の期首残高（`remainingBalance`）から `calcYearlyLoanComponentsEqualPrincipal` を呼び出し、年次利息・元金を求める。
+
+---
+
+## LTV 感度分析（`CalcLTVSensitivity`）
+
+LTV（Loan-to-Value: 借入比率）を 50/60/70/80/90% と変化させたときの DSCR・年間CF・CF利回りを試算する。
+
+```
+LTV       = 借入額 / 総投資額
+borrowing = 総投資額 × LTV
+equity    = 総投資額 × (1 − LTV)
+
+元利均等: 月次返済額 = calcMonthlyPayment(borrowing, rate, years)
+           annualDebt = 月次返済額 × 12
+元金均等: 1年目月次返済額 = CalcEqualPrincipalPayment(borrowing, rate, years×12, 1)
+           annualDebt = 1年目月次返済額 × 12  ← 最保守的（最大値）で試算
+
+NOI = 年間実効賃料収入 − 年間運営経費
+DSCR = NOI / annualDebt
+annualCF = NOI − annualDebt
+cfYield  = annualCF / 総投資額
+```
+
+**注意**: LTV 感度分析はベースケース（`VacancyRateDelta = 0` / `LoanRateDelta = 0`）で試算する。ストレス適用後の値は `StressScenarios` を参照。元金均等では1年目（最大）の年間返済額を使用するため、実際の返済額より保守的な DSCR になる。
+
+### LTVSensitivityRow フィールド
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `LTV` | float64 | 借入比率（例: 0.70） |
+| `Equity` | float64 | 自己資金（円） |
+| `LoanAmount` | float64 | 借入額（円） |
+| `DSCR` | float64 | 借入金償還余裕率 |
+| `AnnualCF` | float64 | 年間キャッシュフロー（円）|
+| `CFYield` | float64 | CF利回り（AnnualCF / 総投資額） |
+
+---
+
 ## 元利均等返済（`calcMonthlyPayment`）
 
 ```
@@ -151,7 +236,7 @@ costReduction = max(totalInvestment - requiredTotalInvestment, 0)
 
 ## 年次ローン内訳分解（`calcYearlyLoanComponents`）
 
-12ヶ月ループで月次利息・元金を積算する。
+元利均等返済用の12ヶ月ループで月次利息・元金を積算する。
 
 ```go
 for range 12 {
@@ -163,7 +248,7 @@ for range 12 {
 }
 ```
 
-この積算方式により、年度末残高が正確に計算される。
+この積算方式により、年度末残高が正確に計算される。元金均等返済の場合は `calcYearlyLoanComponentsEqualPrincipal` を使用する（上記「元金均等返済」節を参照）。
 
 ---
 
@@ -207,6 +292,8 @@ yearAnnualRent = baseAnnualRent × (1 - RentDeclineRate)^y
 
 ```
 ① ローン返済内訳（利息・元金）の計算
+   - equal-payment: calcYearlyLoanComponents(残高, rate, monthlyPayment)
+   - equal-principal: calcYearlyLoanComponentsEqualPrincipal(残高, rate, monthlyPrincipalFixed)
 ② 実効賃料収入・運営経費の計算（RentDeclineRate を適用）
 ③ 当年の減価償却費（耐用年数内のみ）
 ④ 課税所得 = 収入 - 利息 - 減価償却 - 経費
@@ -216,6 +303,11 @@ yearAnnualRent = baseAnnualRent × (1 - RentDeclineRate)^y
 ⑧ 累積CF += 税引後CF
 ⑨ デッドクロス判定
 ```
+
+**元金均等返済時の注意点**:
+- 初年度の年間返済額は元利均等より高い（月次元金返済が一定なのに対し利息は残高が多いため）
+- 返済額の逆転（クロスオーバー）は約17年目（35年ローンの場合）
+- `monthlyPrincipalFixed = LoanAmount / (LoanYears × 12)` を初期化時に算出し、各年次ループで使い回す
 
 ---
 
@@ -263,6 +355,8 @@ yearAnnualRent = baseAnnualRent × (1 - RentDeclineRate)^y
 | `ExitNetProceeds` | 売却手取り（税・残債・売却費控除後） |
 | `ExitTotalEquity` | 最終手残り（売却手取り + 累積CF） |
 | `StressScenarios` | ストレスシナリオ結果配列（詳細は下記） |
+| `DSCR` | 1年目の DSCR（NOI / 1年目年間ローン返済額）。ローンなしの場合は 0 |
+| `LTVSensitivity` | LTV感度分析結果（LTV=50/60/70/80/90%の5行。`LTVSensitivityRow[]`） |
 
 ---
 
