@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-19T22:05:00",
+  "lastUpdated": "2026-04-22T02:15:00",
   "documents": [
     {
       "id": "overview",
@@ -96,11 +96,11 @@
       "id": "frontend-components",
       "path": "docs/frontend-components.md",
       "title": "フロントエンドコンポーネント仕様",
-      "description": "Dashboard・InvestmentForm・YieldAnalysis・CostBreakdown・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック。LandPriceAnalysis に地価公示2軸比較セクション追加（XCT001）: 公示価格中央値・取引価格中央値・取引/公示比率・前年比トレンドバッジ（上昇/安定/下落）。Dashboard に landAppraisal・externalUrbanRisks ステートを追加。YieldAnalysisに人口減少シナリオ（4シナリオ目）追加。Dashboard の populationForecast・stationRidership・externalUrbanRisks を Promise.allSettled で並行呼び出し。LandPriceAnalysis で stats.urbanRisks（XIT001）と externalUrbanRisks（XKT003/020/030/XST001）を allUrbanRisks にマージして表示。InvestmentForm のグリッドは grid-cols-1 sm:grid-cols-2/3 でモバイルレスポンシブ対応。",
-      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ", "空室率", "シナリオ", "人口減少", "ストレステスト", "XKT013", "XCT001", "XKT003", "XKT020", "XKT030", "XST001", "地価公示", "2軸比較", "将来推計人口", "諸経費", "コスト内訳", "用途地域", "都市計画リスク", "立地適正化計画", "大規模盛土", "都市計画道路", "災害履歴", "理論価格", "乖離率", "駅距離", "需要スコア", "乗降客数", "レスポンシブ", "モバイル対応"],
+      "description": "Dashboard・InvestmentForm・YieldAnalysis・CostBreakdown・CashFlowChart・DeadCrossChart・LandPriceAnalysis の責務・props・表示ロジック。LandPriceAnalysis に地価公示2軸比較セクション追加（XCT001）: 公示価格中央値・取引価格中央値・取引/公示比率・前年比トレンドバッジ（上昇/安定/下落）。Dashboard に landAppraisal・externalUrbanRisks ステートを追加。YieldAnalysisに人口減少シナリオ（4シナリオ目）追加。Dashboard の populationForecast・stationRidership・externalUrbanRisks を Promise.allSettled で並行呼び出し。InvestmentForm はクイック（3項目入力・土地相場データ折りたたみ・総額70:30自動按分）と詳細（4セクションフラット: 物件情報/収益条件/ローン条件/出口戦略）の2モード。旧showAdvancedトグルは廃止。validateQuick（3項目）とvalidateFull（全フィールド）をモード別に呼び分け。QUICK_MODE_DEFAULTSにrentDeclineRate追加。",
+      "tags": ["フロントエンド", "コンポーネント", "React", "Recharts", "グラフ", "空室率", "シナリオ", "人口減少", "ストレステスト", "XKT013", "XCT001", "XKT003", "XKT020", "XKT030", "XST001", "地価公示", "2軸比較", "将来推計人口", "諸経費", "コスト内訳", "用途地域", "都市計画リスク", "立地適正化計画", "大規模盛土", "都市計画道路", "災害履歴", "理論価格", "乖離率", "駅距離", "需要スコア", "乗降客数", "レスポンシブ", "モバイル対応", "クイックモード", "詳細モード", "UX"],
       "industry": ["不動産", "フィンテック"],
-      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CostBreakdown", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "landAppraisal", "externalUrbanRisks", "allUrbanRisks", "fetchUrbanRisks", "UrbanRisk", "OUTSIDE_RESIDENTIAL_GUIDANCE", "LARGE_EMBANKMENT", "URBAN_PLANNING_ROAD", "DISASTER_HISTORY", "AppraisalComparisonResult", "fetchLandAppraisals", "appraisalMedianPerSqm", "appraisalTrend", "trendLabel", "取引/公示比率", "populationForecast", "fetchPopulationForecast", "Promise.allSettled", "stationRidership", "POPULATION_TREND_STYLE", "RISK_STYLE", "StationRidershipResult", "RidershipDemandScore", "RIDERSHIP_SCORE_LABEL", "TheoreticalPriceResult", "handleFetchLandPrices", "grid-cols-1", "sm:grid-cols-2", "sm:grid-cols-3", "レスポンシブグリッド"],
-      "updatedAt": "2026-04-21"
+      "topics": ["Dashboard", "InvestmentForm", "YieldAnalysis", "CostBreakdown", "CashFlowChart", "DeadCrossChart", "LandPriceAnalysis", "Next.js", "Shadcn/UI", "TypeScript", "landAppraisal", "externalUrbanRisks", "allUrbanRisks", "fetchUrbanRisks", "UrbanRisk", "OUTSIDE_RESIDENTIAL_GUIDANCE", "LARGE_EMBANKMENT", "URBAN_PLANNING_ROAD", "DISASTER_HISTORY", "AppraisalComparisonResult", "fetchLandAppraisals", "appraisalMedianPerSqm", "appraisalTrend", "trendLabel", "取引/公示比率", "populationForecast", "fetchPopulationForecast", "Promise.allSettled", "stationRidership", "POPULATION_TREND_STYLE", "RISK_STYLE", "StationRidershipResult", "RidershipDemandScore", "RIDERSHIP_SCORE_LABEL", "TheoreticalPriceResult", "handleFetchLandPrices", "grid-cols-1", "sm:grid-cols-2", "sm:grid-cols-3", "レスポンシブグリッド", "SimulationMode", "quickTotalPriceMan", "showLandSection", "validateQuick", "validateFull", "QUICK_MODE_DEFAULTS", "物件情報", "収益条件", "ローン条件", "出口戦略", "showAdvanced"],
+      "updatedAt": "2026-04-22"
     }
   ]
 }
