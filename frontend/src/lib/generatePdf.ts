@@ -36,10 +36,10 @@ function today(): string {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
 }
 
-// Fonts are served from our own domain (public/fonts/) — no CDN dependency
+// TTF subset served from our own domain — pdfmake's pdfkit does not support woff2
 const FONTS = {
-  regular: "/fonts/NotoSansJP-Regular.woff2",
-  bold: "/fonts/NotoSansJP-Bold.woff2",
+  regular: "/fonts/NotoSansJP-Regular.ttf",
+  bold: "/fonts/NotoSansJP-Bold.ttf",
 } as const;
 
 type FontKey = keyof typeof FONTS;
