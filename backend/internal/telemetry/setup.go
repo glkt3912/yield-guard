@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 
 	monitoring "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric"
@@ -76,7 +77,7 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (func(contex
 		traceExporter, err = cloudtrace.New()
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("trace exporter: %w", err)
 	}
 
 	tp := sdktrace.NewTracerProvider(
@@ -97,7 +98,7 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (func(contex
 	}
 	if err != nil {
 		_ = tp.Shutdown(ctx)
-		return nil, err
+		return nil, fmt.Errorf("metric exporter: %w", err)
 	}
 
 	mp := sdkmetric.NewMeterProvider(
