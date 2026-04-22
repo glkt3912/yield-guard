@@ -69,9 +69,8 @@ func newJSONHandler(w io.Writer, level slog.Leveler, projectID string) slog.Hand
 			}
 			switch a.Key {
 			case slog.LevelKey:
-				if l, ok := a.Value.Any().(slog.Level); ok {
-					return slog.String("severity", levelToSeverity(l))
-				}
+				// slog guarantees LevelKey value is always slog.Level; assertion is safe.
+				return slog.String("severity", levelToSeverity(a.Value.Any().(slog.Level))) //nolint:errcheck
 			case slog.MessageKey:
 				return slog.Attr{Key: "message", Value: a.Value}
 			}
