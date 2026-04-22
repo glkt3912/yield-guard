@@ -5,9 +5,9 @@ import (
 	"errors"
 	"os"
 
+	monitoring "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric"
+	cloudtrace "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/metric"
@@ -52,7 +52,8 @@ func initInstruments(mp metric.MeterProvider) {
 }
 
 // Setup initialises the global TracerProvider and MeterProvider.
-// If OTEL_EXPORTER_OTLP_ENDPOINT is empty, stdout exporters are used (local dev).
+// If GOOGLE_CLOUD_PROJECT is set, Google Cloud Trace/Monitoring exporters are used (production).
+// Otherwise stdout exporters are used (local dev).
 // Returns a shutdown function that must be deferred by the caller.
 func Setup(ctx context.Context, serviceName, serviceVersion string) (func(context.Context) error, error) {
 	res, err := resource.New(ctx,
@@ -65,14 +66,14 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (func(contex
 		return nil, err
 	}
 
-	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	gcpProject := os.Getenv("GOOGLE_CLOUD_PROJECT")
 
 	// --- Trace exporter ---
 	var traceExporter sdktrace.SpanExporter
-	if otlpEndpoint == "" {
+	if gcpProject == "" {
 		traceExporter, err = stdouttrace.New(stdouttrace.WithPrettyPrint())
 	} else {
-		traceExporter, err = otlptracegrpc.New(ctx)
+		traceExporter, err = cloudtrace.New()
 	}
 	if err != nil {
 		return nil, err
@@ -89,10 +90,10 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (func(contex
 
 	// --- Metric exporter ---
 	var metricExporter sdkmetric.Exporter
-	if otlpEndpoint == "" {
+	if gcpProject == "" {
 		metricExporter, err = stdoutmetric.New()
 	} else {
-		metricExporter, err = otlpmetricgrpc.New(ctx)
+		metricExporter, err = monitoring.New()
 	}
 	if err != nil {
 		_ = tp.Shutdown(ctx)
