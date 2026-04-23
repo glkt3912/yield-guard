@@ -22,7 +22,7 @@ dev:
 	fi; \
 	echo "==> Backend started (PID=$$BACKEND_PID)"; \
 	echo "==> Starting frontend..."; \
-	(cd frontend && npm run dev -- --webpack) & \
+	(cd frontend && npm run dev -- --no-turbopack) & \
 	wait
 
 ## test: 全テストを実行
