@@ -3,7 +3,7 @@
 PDF用 NotoSansJP フォントサブセット再生成スクリプト
 
 【実行条件】
-  pip install fonttools brotli zopfli
+  pip install fonttools
   npm install @fontsource/noto-sans-jp  （frontend/ で実行）
 
 【使い方】
@@ -22,7 +22,6 @@ PDF用 NotoSansJP フォントサブセット再生成スクリプト
   NEEDED_TEXT に該当文字を追記してから本スクリプトを再実行する。
 """
 
-import os
 import glob
 import subprocess
 from pathlib import Path
