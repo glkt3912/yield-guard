@@ -12,6 +12,7 @@ import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
 import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode, LoanMethod, MonteCarloResult } from "@/types/investment";
 import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks, simulate } from "@/lib/api";
 import { ShieldAlert, Info, FileDown, Share2, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { downloadReportPDF } from "@/lib/generatePdf";
 import { MonteCarloChart } from "@/components/MonteCarloChart";
@@ -76,6 +77,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const handleAnalyze = async (input: InvestmentInput, quickTotalMan?: string) => {
     setLoading(true);
     setError(null);
+    setMonteCarloResult(null);
     const inputWithMethod = { ...input, loanMethod };
     try {
       const res = await analyze(inputWithMethod);
@@ -302,13 +304,13 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                     <CashFlowChart result={result} equityInvested={result.totalInvestment - lastInput.loanAmount} />
                     <DeadCrossChart result={result} />
                     <div className="flex justify-center">
-                      <button
+                      <Button
                         onClick={handleMonteCarlo}
-                        disabled={monteCarloLoading}
-                        className="rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
+                        loading={monteCarloLoading}
+                        size="md"
                       >
-                        {monteCarloLoading ? "シミュレーション中…" : "モンテカルロ実行（1,000試行）"}
-                      </button>
+                        モンテカルロ実行（1,000試行）
+                      </Button>
                     </div>
                     {monteCarloResult && <MonteCarloChart result={monteCarloResult} />}
                   </>
