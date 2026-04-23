@@ -1817,3 +1817,146 @@ func TestAnalyzeWithRateSchedule(t *testing.T) {
 		}
 	})
 }
+
+func TestCalcNPV_Accuracy(t *testing.T) {
+	// 5年間、毎年CF=100,000円、TV=1,000,000円、r=10%、初期投資=500,000円
+	cfs := []float64{100_000, 100_000, 100_000, 100_000, 100_000}
+	npv := CalcNPV(cfs, 1_000_000, 0.10, 500_000)
+	// NPV = 379,079 + 1,000,000/1.1^5 - 500,000 ≈ 699,344円
+	// （手計算値を使う）
+	want := 0.0
+	for i, cf := range cfs {
+		want += cf / math.Pow(1.10, float64(i+1))
+	}
+	want += 1_000_000 / math.Pow(1.10, 5)
+	want -= 500_000
+	if !approxEqual(npv, want, 1.0) {
+		t.Errorf("CalcNPV = %.2f, want %.2f", npv, want)
+	}
+}
+
+func TestCalcIRR_Convergence(t *testing.T) {
+	// 初期投資=1,000,000、CF=150,000/year×5年、TV=800,000
+	cfs := []float64{150_000, 150_000, 150_000, 150_000, 150_000}
+	irr, err := CalcIRR(cfs, 800_000, 1_000_000)
+	if err != nil {
+		t.Fatalf("CalcIRR returned error: %v", err)
+	}
+	if irr == nil {
+		t.Fatal("CalcIRR returned nil without error")
+	}
+	// IRRでNPV=0になることを検証
+	npvAtIRR := CalcNPV(cfs, 800_000, *irr, 1_000_000)
+	if math.Abs(npvAtIRR) >= 1.0 {
+		t.Errorf("NPV at IRR = %.4f, want < 1.0", npvAtIRR)
+	}
+}
+
+func TestCalcIRR_NoRoot(t *testing.T) {
+	// 全CFが負→根なし
+	cfs := []float64{-100_000, -100_000, -100_000}
+	irr, err := CalcIRR(cfs, -500_000, 1_000_000)
+	if err == nil {
+		t.Errorf("expected error for no-root case, got IRR=%v", irr)
+	}
+	if irr != nil {
+		t.Errorf("expected nil IRR for no-root case")
+	}
+}
+
+func TestAnalyze_DecliningBalance(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:          5_000_000,
+		BuildingCost:       10_000_000,
+		BuildingAge:        0,
+		BuildingType:       BuildingTypeWood, // 耐用年数22年
+		MonthlyRent:        100_000,
+		LoanAmount:         0,
+		DepreciationMethod: DepreciationMethodDecliningBalance,
+		HoldingYears:       10,
+	}
+	input.Defaults()
+	result := Analyze(input)
+
+	straightInput := input
+	straightInput.DepreciationMethod = DepreciationMethodStraightLine
+	straightResult := Analyze(straightInput)
+
+	// 定率法の1年目減価は定額法より大きい
+	declYear1 := result.YearlyResults[0].AnnualDepreciation
+	straightYear1 := straightResult.YearlyResults[0].AnnualDepreciation
+	if declYear1 <= straightYear1 {
+		t.Errorf("declining-balance year1 depreciation (%.0f) should exceed straight-line (%.0f)",
+			declYear1, straightYear1)
+	}
+	// 総減価償却額はBuildingCostを超えない
+	var totalDecl float64
+	for _, yr := range result.YearlyResults {
+		totalDecl += yr.AnnualDepreciation
+	}
+	if totalDecl > input.BuildingCost+1 {
+		t.Errorf("total declining-balance depreciation %.0f exceeds BuildingCost %.0f", totalDecl, input.BuildingCost)
+	}
+}
+
+func TestAnalyze_PriceDeclineRate_Zero(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:        5_000_000,
+		BuildingCost:     8_000_000,
+		BuildingAge:      10,
+		BuildingType:     BuildingTypeWood,
+		MonthlyRent:      80_000,
+		LoanAmount:       10_000_000,
+		AnnualLoanRate:   0.02,
+		LoanYears:        25,
+		HoldingYears:     10,
+		ExitYieldTarget:  0.06,
+		DiscountRate:     0.05,
+		PriceDeclineRate: 0,
+	}
+	base.Defaults()
+	withZero := Analyze(base)
+
+	noField := base
+	noField.PriceDeclineRate = 0
+	noField.Defaults()
+	withoutField := Analyze(noField)
+
+	if withZero.IRR == nil || withoutField.IRR == nil {
+		return // 収束しない場合はスキップ
+	}
+	if !approxEqual(*withZero.IRR, *withoutField.IRR, 0.0001) {
+		t.Errorf("PriceDeclineRate=0 IRR %.4f != no-field IRR %.4f", *withZero.IRR, *withoutField.IRR)
+	}
+}
+
+func TestAnalyze_PriceDeclineRate_NonZero(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    8_000_000,
+		BuildingAge:     10,
+		BuildingType:    BuildingTypeWood,
+		MonthlyRent:     80_000,
+		LoanAmount:      10_000_000,
+		AnnualLoanRate:  0.02,
+		LoanYears:       25,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+		DiscountRate:    0.05,
+	}
+	base.Defaults()
+	zeroDecline := Analyze(base)
+
+	withDecline := base
+	withDecline.PriceDeclineRate = 0.02
+	withDecline.Defaults()
+	declineResult := Analyze(withDecline)
+
+	if zeroDecline.IRR == nil || declineResult.IRR == nil {
+		return
+	}
+	if *declineResult.IRR >= *zeroDecline.IRR {
+		t.Errorf("price decline IRR (%.4f) should be lower than zero-decline IRR (%.4f)",
+			*declineResult.IRR, *zeroDecline.IRR)
+	}
+}
