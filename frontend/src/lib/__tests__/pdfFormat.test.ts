@@ -6,40 +6,44 @@ describe("fmtYen", () => {
     expect(fmtYen(0)).toBe("0円");
   });
 
-  it("rounds fractional yen", () => {
-    expect(fmtYen(587_874.124)).toBe("587,874円");
+  it("rounds fractional yen and converts to 万円", () => {
+    expect(fmtYen(587_874.124)).toBe("59万円");
   });
 
-  it("formats values under 1,000,000 in yen", () => {
+  it("formats values under 10,000 in yen", () => {
     expect(fmtYen(9_999)).toBe("9,999円");
   });
 
-  it("formats 999,999 in yen", () => {
-    expect(fmtYen(999_999)).toBe("999,999円");
+  it("formats 10,000 as 1万円 (boundary)", () => {
+    expect(fmtYen(10_000)).toBe("1万円");
   });
 
-  it("formats 150,000 in yen", () => {
-    expect(fmtYen(150_000)).toBe("150,000円");
+  it("formats 150,000 as 15万円", () => {
+    expect(fmtYen(150_000)).toBe("15万円");
   });
 
-  it("formats 1,000,000 as 1.0百万円", () => {
-    expect(fmtYen(1_000_000)).toBe("1.0百万円");
+  it("formats 999,999 as 100万円 (rounds to nearest 万)", () => {
+    expect(fmtYen(999_999)).toBe("100万円");
   });
 
-  it("formats values in 百万円", () => {
-    expect(fmtYen(1_500_000)).toBe("1.5百万円");
+  it("formats 1,000,000 as 100万円", () => {
+    expect(fmtYen(1_000_000)).toBe("100万円");
   });
 
-  it("formats 99,999,999 in 百万円", () => {
-    expect(fmtYen(99_999_999)).toBe("100.0百万円");
+  it("formats 1,500,000 as 150万円", () => {
+    expect(fmtYen(1_500_000)).toBe("150万円");
+  });
+
+  it("formats 99,999,999 as 10000万円", () => {
+    expect(fmtYen(99_999_999)).toBe("10000万円");
   });
 
   it("formats 100,000,000 as 1.0億円", () => {
     expect(fmtYen(100_000_000)).toBe("1.0億円");
   });
 
-  it("formats negative values", () => {
-    expect(fmtYen(-2_000_000)).toBe("-2.0百万円");
+  it("formats negative 万円 values", () => {
+    expect(fmtYen(-2_000_000)).toBe("-200万円");
   });
 
   it("formats negative under 10,000", () => {
