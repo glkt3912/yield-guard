@@ -77,7 +77,9 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -out=tfplan -no-color 2>&1 | tee /tmp/plan.txt
+        run: |
+          set -o pipefail
+          terraform plan -out=tfplan -no-color 2>&1 | tee /tmp/plan.txt
         working-directory: terraform
 
       - name: Post Plan to PR
