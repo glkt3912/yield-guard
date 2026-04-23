@@ -1,11 +1,10 @@
 name: Deploy Backend to Cloud Run
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Backend CI"]
+    types: [completed]
     branches: [main]
-    paths:
-      - "backend/**"
-      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 permissions:
@@ -20,13 +19,17 @@ jobs:
   deploy:
     name: Build & Deploy
     runs-on: ubuntu-24.04
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     env:
       IMAGE: asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/yield-guard/backend
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Authenticate to Google Cloud (OIDC)
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093  # v3.0.0
@@ -43,10 +46,10 @@ jobs:
       - name: Build and push Docker image
         run: |
           docker build \
-            --tag "${{ env.IMAGE }}:${{ github.sha }}" \
+            --tag "${{ env.IMAGE }}:${{ env.DEPLOY_SHA }}" \
             --tag "${{ env.IMAGE }}:latest" \
             ./backend
-          docker push "${{ env.IMAGE }}:${{ github.sha }}"
+          docker push "${{ env.IMAGE }}:${{ env.DEPLOY_SHA }}"
           docker push "${{ env.IMAGE }}:latest"
 
       - name: Deploy to Cloud Run
@@ -56,4 +59,4 @@ jobs:
           # stg 環境用には deploy-backend-stg.yml を別途作成し service 名を変更する。
           service: yield-guard-prod-backend
           region: asia-northeast1
-          image: ${{ env.IMAGE }}:${{ github.sha }}
+          image: ${{ env.IMAGE }}:${{ env.DEPLOY_SHA }}
