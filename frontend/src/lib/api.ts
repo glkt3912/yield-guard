@@ -13,6 +13,7 @@ import type {
   RenovationResult,
   MonteCarloInput,
   MonteCarloResult,
+  InvestmentScoreResult,
 } from "@/types/investment";
 
 const BASE = "/api";
@@ -191,7 +192,7 @@ export async function analyzeRenovation(input: RenovationInput): Promise<Renovat
 export async function fetchInvestmentScore(params: {
   lat: number;
   lng: number;
-}): Promise<import("@/types/investment").InvestmentScoreResult> {
+}): Promise<InvestmentScoreResult> {
   const p = new URLSearchParams({
     lat: String(params.lat),
     lng: String(params.lng),
