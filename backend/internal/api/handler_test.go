@@ -1147,3 +1147,117 @@ func TestGetInvestmentScore_PartialAPIFailure(t *testing.T) {
 		t.Errorf("expected score 60 with flood API failure, got %d", result.TotalScore)
 	}
 }
+
+func TestGetHazardInfo_MissingLatLng(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	for _, url := range []string{"/api/hazard", "/api/hazard?lat=35.68", "/api/hazard?lng=139.69"} {
+		req := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("url=%s: expected 400, got %d", url, w.Code)
+		}
+	}
+}
+
+func TestGetHazardInfo_InvalidLatLng(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	cases := []string{
+		"/api/hazard?lat=999&lng=139.69",  // lat 範囲外
+		"/api/hazard?lat=35.68&lng=200",   // lng 範囲外
+		"/api/hazard?lat=abc&lng=139.69",  // lat 非数値
+	}
+	for _, url := range cases {
+		req := httptest.NewRequest(http.MethodGet, url, nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("url=%s: expected 400, got %d", url, w.Code)
+		}
+	}
+}
+
+func TestGetHazardInfo_Success(t *testing.T) {
+	client := &mockMLITClient{
+		floodHazardFunc: func(_ context.Context, z, x, y int) ([]domain.FloodHazardItem, error) {
+			return []domain.FloodHazardItem{{DepthRank: 4, RiverName: "荒川"}}, nil
+		},
+		tsunamiHazardFunc: func(_ context.Context, z, x, y int) ([]domain.TsunamiHazardItem, error) {
+			return []domain.TsunamiHazardItem{{DepthJa: "3m以上"}}, nil
+		},
+	}
+	r := newTestRouter(client)
+	req := httptest.NewRequest(http.MethodGet, "/api/hazard?lat=35.68&lng=139.69", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var risks []domain.UrbanRisk
+	if err := json.NewDecoder(w.Body).Decode(&risks); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if len(risks) != 2 {
+		t.Fatalf("expected 2 risks (flood + tsunami), got %d", len(risks))
+	}
+	codes := map[string]bool{}
+	for _, r := range risks {
+		codes[r.Code] = true
+	}
+	if !codes["FLOOD_HAZARD"] {
+		t.Error("expected FLOOD_HAZARD in response")
+	}
+	if !codes["TSUNAMI_HAZARD"] {
+		t.Error("expected TSUNAMI_HAZARD in response")
+	}
+}
+
+func TestGetHazardInfo_PartialAPIFailure(t *testing.T) {
+	client := &mockMLITClient{
+		floodHazardFunc: func(_ context.Context, z, x, y int) ([]domain.FloodHazardItem, error) {
+			return nil, fmt.Errorf("upstream error")
+		},
+		landslideHazardFunc: func(_ context.Context, z, x, y int) ([]domain.LandslideHazardItem, error) {
+			return []domain.LandslideHazardItem{{PhenomenonType: 2, ZoneCode: 1}}, nil
+		},
+	}
+	r := newTestRouter(client)
+	req := httptest.NewRequest(http.MethodGet, "/api/hazard?lat=35.68&lng=139.69", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	// flood 失敗でも 200 を返し、他のハザード結果は含まれること
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 even with partial API failure, got %d", w.Code)
+	}
+	var risks []domain.UrbanRisk
+	if err := json.NewDecoder(w.Body).Decode(&risks); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if len(risks) != 1 || risks[0].Code != "LANDSLIDE_HAZARD" {
+		t.Errorf("expected only LANDSLIDE_HAZARD, got %+v", risks)
+	}
+}
+
+func TestGetHazardInfo_EmptyResult(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/hazard?lat=35.68&lng=139.69", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var risks []domain.UrbanRisk
+	if err := json.NewDecoder(w.Body).Decode(&risks); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	// ハザードなし → 空スライス（null でなく []）
+	if risks == nil {
+		t.Error("expected empty slice, got nil")
+	}
+	if len(risks) != 0 {
+		t.Errorf("expected 0 risks, got %d", len(risks))
+	}
+}

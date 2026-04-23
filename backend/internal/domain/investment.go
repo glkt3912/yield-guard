@@ -994,11 +994,18 @@ func BuildHazardRisks(
 		})
 	}
 
-	// XKT027: 高潮浸水想定区域 — 存在すれば WARNING
+	// XKT027: 高潮浸水想定区域 — 存在すれば WARNING（深さ文字列は最初の非空エントリを採用）
 	if len(storms) > 0 {
+		depthJa := ""
+		for _, s := range storms {
+			if s.DepthJa != "" {
+				depthJa = s.DepthJa
+				break
+			}
+		}
 		desc := "高潮浸水想定区域に該当します。台風・高波時に浸水リスクがあります。"
-		if storms[0].DepthJa != "" {
-			desc = fmt.Sprintf("高潮浸水想定区域（%s）に該当します。台風・高波時に浸水リスクがあります。", storms[0].DepthJa)
+		if depthJa != "" {
+			desc = fmt.Sprintf("高潮浸水想定区域（%s）に該当します。台風・高波時に浸水リスクがあります。", depthJa)
 		}
 		risks = append(risks, UrbanRisk{
 			Code:        "STORM_HAZARD",
@@ -1038,7 +1045,10 @@ func BuildHazardRisks(
 			zoneName = "特別警戒区域"
 		}
 		phenomenonNames := map[int]string{1: "急傾斜地崩壊", 2: "土石流", 3: "地すべり"}
-		pName := phenomenonNames[worst.PhenomenonType]
+		pName, ok := phenomenonNames[worst.PhenomenonType]
+		if !ok {
+			pName = "土砂災害"
+		}
 		desc := fmt.Sprintf("土砂災害%s（%s）に該当します。大雨時の土砂崩れ・土石流リスクがあります。", zoneName, pName)
 		risks = append(risks, UrbanRisk{
 			Code:        "LANDSLIDE_HAZARD",

@@ -60,6 +60,9 @@ Copy `.env.example` → `.env` (project root).
 | `GET` | `/api/station-ridership` | Station ridership (tile coords) |
 | `GET` | `/api/population-forecast` | Population forecast (tile coords) |
 | `GET` | `/api/land-appraisals` | Official land appraisals |
+| `GET` | `/api/urban-risks` | Urban planning risks (tile coords) |
+| `GET` | `/api/hazard` | Hazard info: flood/storm/tsunami/landslide (tile coords) |
+| `GET` | `/api/investment-score` | Investment suitability score (tile coords) |
 
 ## Directory structure
 
