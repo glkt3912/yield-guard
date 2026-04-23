@@ -399,3 +399,18 @@ export const DEFAULT_RENOVATION_INPUT: RenovationInput = {
   selfLaborRatePerHour: 0,
   items: [],
 };
+
+export interface HeatmapTile {
+  x: number;
+  y: number;
+  z: number;
+  centerLat: number;
+  centerLng: number;
+  totalScore: number;
+  grade: string;
+}
+
+export interface HeatmapResponse {
+  tiles: HeatmapTile[];
+  tileCount: number;
+}
