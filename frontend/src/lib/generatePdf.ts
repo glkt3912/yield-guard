@@ -167,33 +167,23 @@ export async function downloadReportPDF(
       subject: `物件分析 ${date}`,
       creator: "yield-guard",
     },
-    header: (currentPage: number) => {
+    header: (currentPage: number, pageCount: number) => {
       if (currentPage === 1) return null;
       return {
         columns: [
-          { text: "yield-guard 不動産投資分析レポート", fontSize: 7, color: C.muted, margin: [36, 16, 0, 0] },
-          { text: date, fontSize: 7, color: C.muted, alignment: "right" as const, margin: [0, 16, 36, 0] },
+          { text: "yield-guard 不動産投資分析レポート", fontSize: 7, color: C.muted },
+          { text: date, fontSize: 7, color: C.muted, alignment: "center" as const },
+          { text: `${currentPage} / ${pageCount}`, fontSize: 7, color: C.muted, alignment: "right" as const },
         ],
+        margin: [36, 16, 36, 0],
       };
     },
-    footer: (currentPage: number, pageCount: number) => ({
-      columns: [
-        {
-          text: "本資料は yield-guard による試算です。実際の投資判断は専門家にご相談ください。",
-          fontSize: 7,
-          color: C.muted,
-          width: "*",
-          margin: [36, 4, 0, 0],
-        },
-        {
-          text: `${currentPage} / ${pageCount}`,
-          fontSize: 7,
-          color: C.muted,
-          width: "auto",
-          alignment: "right" as const,
-          margin: [0, 4, 36, 0],
-        },
-      ],
+    footer: () => ({
+      text: "本資料は yield-guard による試算です。実際の投資判断は専門家にご相談ください。",
+      fontSize: 7,
+      color: C.muted,
+      alignment: "center" as const,
+      margin: [36, 4, 36, 0],
     }),
     content: [
       // ── Page 1: Cover ──────────────────────────────────────────────
@@ -236,12 +226,7 @@ export async function downloadReportPDF(
                 fontSize: 20,
                 bold: true,
                 color: verdict.color,
-              },
-              {
-                text: verdict.label,
-                fontSize: 8,
-                color: verdict.color,
-                marginTop: 2,
+                noWrap: true,
               },
             ],
             width: "30%",

@@ -134,26 +134,28 @@ describe("downloadReportPDF", () => {
     expect(info?.author).toBe("yield-guard");
   });
 
-  it("sets header function that returns null on page 1", async () => {
+  it("sets header function that returns null on page 1 and page number on page 2", async () => {
     global.fetch = makeFontFetchMock();
     await downloadReportPDF(makeInput(), makeResult());
 
     const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0] as unknown as Record<string, unknown>;
-    const header = docDef?.header as ((page: number) => unknown) | undefined;
+    const header = docDef?.header as ((page: number, count: number) => unknown) | undefined;
     expect(typeof header).toBe("function");
-    expect(header?.(1)).toBeNull();
-    expect(header?.(2)).not.toBeNull();
+    expect(header?.(1, 5)).toBeNull();
+    const h2 = JSON.stringify(header?.(2, 5));
+    expect(h2).toContain("2 / 5");
   });
 
-  it("sets footer function with page number columns", async () => {
+  it("sets footer function with centered disclaimer only", async () => {
     global.fetch = makeFontFetchMock();
     await downloadReportPDF(makeInput(), makeResult());
 
     const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0] as unknown as Record<string, unknown>;
-    const footer = docDef?.footer as ((page: number, count: number) => unknown) | undefined;
+    const footer = docDef?.footer as (() => unknown) | undefined;
     expect(typeof footer).toBe("function");
-    const result = footer?.(2, 5) as Record<string, unknown>;
+    const result = footer?.() as Record<string, unknown>;
     const json = JSON.stringify(result);
-    expect(json).toContain("2 / 5");
+    expect(json).toContain("本資料は");
+    expect(json).toContain("center");
   });
 });
