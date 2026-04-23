@@ -432,6 +432,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 onModeChange={handleModeChange}
                 initialInput={lastInput ?? decoded?.input}
                 initialQuickTotalPriceMan={lastInput ? undefined : decoded?.quickTotalPriceMan}
+                isOnline={isOnline}
               />
             </div>
           </div>
