@@ -699,6 +699,86 @@ vacancyRateDelta = max(0, -changeRate30yr × 0.5)
 
 ---
 
+## POST /api/investment/simulate
+
+モンテカルロ法による確率的ストレステストを実行する。空室率・金利を正規分布でサンプリングした N 試行を実施し、IRR・最終純資産の分布と統計量を返す。
+
+### リクエストボディ: `MonteCarloInput`（JSON）
+
+```json
+{
+  "base": { /* InvestmentInput と同一構造 */ },
+  "simulations": 1000,
+  "vacancyRateSigma": 0.05,
+  "loanRateSigma": 0.005
+}
+```
+
+| フィールド | 型 | デフォルト | 説明 |
+|---|---|---|---|
+| `base` | `InvestmentInput` | 必須 | `POST /api/investment/analyze` と同一の入力構造 |
+| `simulations` | `int` | `1000` | 試行回数（最大 `10000`。超過時は自動クランプ） |
+| `vacancyRateSigma` | `float64` | `0.05` | 空室率の正規分布標準偏差 |
+| `loanRateSigma` | `float64` | `0.005` | 金利の正規分布標準偏差 |
+
+`base` フィールドのバリデーションは `POST /api/investment/analyze` と同一ルールを適用。
+
+### レスポンス: `MonteCarloResult`
+
+```json
+{
+  "simulationCount": 1000,
+  "irrPercentiles": {
+    "p10": -0.012,
+    "p25": 0.021,
+    "p50": 0.048,
+    "p75": 0.073,
+    "p90": 0.098
+  },
+  "equityPercentiles": {
+    "p10": 3200000,
+    "p25": 5800000,
+    "p50": 8500000,
+    "p75": 11200000,
+    "p90": 14100000
+  },
+  "deadCrossRate": 0.312,
+  "irrHistogram": [
+    { "min": -0.05, "max": -0.04, "count": 12 }
+  ],
+  "equityHistogram": [
+    { "min": 2000000, "max": 3000000, "count": 8 }
+  ],
+  "successRate": 0.847
+}
+```
+
+| フィールド | 説明 |
+|---|---|
+| `simulationCount` | 実施した試行回数 |
+| `irrPercentiles` | IRR（内部収益率）の P10/P25/P50/P75/P90 |
+| `equityPercentiles` | 最終純資産（売却手取り＋累積CF）の P10/P25/P50/P75/P90 |
+| `deadCrossRate` | デッドクロスが発生した試行の割合（0〜1） |
+| `irrHistogram` | IRR の度数分布（20ビン）。全試行の IRR が NaN の場合は `null` |
+| `equityHistogram` | 最終純資産の度数分布（20ビン）。空の場合は `null` |
+| `successRate` | IRR > 0 だった試行の割合（NaN 試行を分母から除外） |
+
+**IRR 計算仕様**:
+- CF 系列: `[-TotalInvestment, AfterTaxCF_1, ..., AfterTaxCF_N + ExitNetProceeds]`
+- 二分法（[-99%, 1000%] 範囲・最大100回反復）で `NPV(r) = 0` となる `r` を求める
+- 解が存在しない場合（全年 CF がマイナス等）は `NaN` として集計から除外
+
+**サンプリング仕様**:
+- Box-Muller 変換で正規分布 N(0, σ) からノイズを生成し、ベース値に加算
+- 固定シード（`42`）により同一入力では常に同一の分布を返す（再現性保証）
+- 空室率: `[0, 0.99]`、金利: `[0, 0.30]` にクランプ
+
+### レートリミット
+
+`POST /api/investment/analyze` と同一の二重レートリミットを適用（`generalRL` 20 req/s + `analyzeRL` 6秒間隔）。
+
+---
+
 ## GET /health
 
 サーバー生存確認。

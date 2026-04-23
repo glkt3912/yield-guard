@@ -155,6 +155,27 @@ func (h *Handler) Analyze(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// MonteCarlo はモンテカルロシミュレーションを実行する
+// POST /api/investment/simulate
+func (h *Handler) MonteCarlo(c *gin.Context) {
+	var input domain.MonteCarloInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "リクエストの形式が不正です: " + err.Error()})
+		return
+	}
+	if err := validateInvestmentInput(input.Base); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	input.Base.Defaults()
+	if err := input.Base.Validate(); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	result := domain.MonteCarloSimulate(input)
+	c.JSON(http.StatusOK, result)
+}
+
 // validateInvestmentInput は投資入力値の範囲チェックを行う
 func validateInvestmentInput(in domain.InvestmentInput) error {
 	if in.LandPrice <= 0 || in.LandPrice > 10_000_000_000 {

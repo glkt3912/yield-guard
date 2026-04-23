@@ -9,6 +9,8 @@ import type {
   PopulationForecastResult,
   AppraisalComparisonResult,
   UrbanRisk,
+  MonteCarloInput,
+  MonteCarloResult,
 } from "@/types/investment";
 
 const BASE = "/api";
@@ -171,4 +173,14 @@ export async function analyze(input: InvestmentInput): Promise<InvestmentResult>
     body: JSON.stringify(input),
   });
   return handleResponse<InvestmentResult>(res);
+}
+
+/** モンテカルロシミュレーションを実行 */
+export async function simulate(input: MonteCarloInput): Promise<MonteCarloResult> {
+  const res = await fetch(`${BASE}/investment/simulate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return handleResponse<MonteCarloResult>(res);
 }

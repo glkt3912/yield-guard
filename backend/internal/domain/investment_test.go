@@ -1980,3 +1980,55 @@ func TestAnalyze_OverLoan_IRRNil(t *testing.T) {
 		t.Errorf("expected NPV=0 for over-loan case, got %.2f", result.NPV)
 	}
 }
+
+// TestAnalyze_DeadCross_ZeroBuildingCost は建物費用=0のときデッドクロスが発生しないことを確認する
+func TestAnalyze_DeadCross_ZeroBuildingCost(t *testing.T) {
+	in := InvestmentInput{
+		LandPrice:       10_000_000,
+		BuildingCost:    0, // 土地のみ投資 → 減価償却資産なし
+		BuildingAge:     0,
+		BuildingType:    "木造",
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     80_000,
+		VacancyRate:     0.05,
+		LoanAmount:      8_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		HoldingYears:    10,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		ExitYieldTarget: 0.06,
+		YieldTarget:     0.08,
+	}
+	result := Analyze(in)
+	if result.DeadCrossYear != -1 {
+		t.Errorf("DeadCrossYear = %d, want -1 (none) when BuildingCost=0", result.DeadCrossYear)
+	}
+}
+
+// TestAnalyze_DeadCross_NewWoodFrame は新築木造・35年ローン・1.5%のときデッドクロスが早期に発生しないことを確認する
+func TestAnalyze_DeadCross_NewWoodFrame(t *testing.T) {
+	in := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000, // 耐用年数22年: 減価償却≒454,545円/年
+		BuildingAge:     0,
+		BuildingType:    "木造",
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		HoldingYears:    10,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		ExitYieldTarget: 0.06,
+		YieldTarget:     0.08,
+	}
+	result := Analyze(in)
+	// 新築木造35年1.5%では1年目の元金返済≒285,000円 < 減価償却≒454,545円
+	// 両者が逆転するのは23年目（実計算値）
+	if result.DeadCrossYear != 23 {
+		t.Errorf("DeadCrossYear = %d, want 23", result.DeadCrossYear)
+	}
+}
