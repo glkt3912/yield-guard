@@ -21,7 +21,7 @@ resource "google_project_service" "apis" {
   disable_on_destroy = false
 }
 
-resource "google_project_service" "cloudbilling" {
-  service            = "cloudbilling.googleapis.com"
+resource "google_project_service" "billingbudgets" {
+  service            = "billingbudgets.googleapis.com"
   disable_on_destroy = false
 }
