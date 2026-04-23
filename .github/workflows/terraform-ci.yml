@@ -36,6 +36,7 @@ jobs:
       TF_VAR_app_internal_api_key: ${{ secrets.APP_INTERNAL_API_KEY }}
       TF_VAR_vercel_frontend_url: ${{ vars.VERCEL_FRONTEND_URL }}
       TF_VAR_notification_email: ${{ vars.NOTIFICATION_EMAIL }}
+      TF_VAR_billing_account_id: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
 
     steps:
       - name: Checkout
