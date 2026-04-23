@@ -34,8 +34,12 @@ describe("fmtYen", () => {
     expect(fmtYen(1_500_000)).toBe("150万円");
   });
 
-  it("formats 99,999,999 as 10000万円", () => {
-    expect(fmtYen(99_999_999)).toBe("10000万円");
+  it("formats 99,999,999 as 1.0億円 (rounds up to 億円)", () => {
+    expect(fmtYen(99_999_999)).toBe("1.0億円");
+  });
+
+  it("formats 95,000,000 as 9500万円 (stays in 万円)", () => {
+    expect(fmtYen(95_000_000)).toBe("9500万円");
   });
 
   it("formats 100,000,000 as 1.0億円", () => {

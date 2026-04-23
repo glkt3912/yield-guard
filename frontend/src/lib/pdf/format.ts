@@ -1,10 +1,17 @@
 /** 金額を億/万/円の3段階で表示。同一テーブル内で単位を統一するため万円ベースを基本とする。
- * ルール: 1万円未満は円、1億円未満は万円、1億円以上は億円 */
+ * ルール: 1万円未満は円、1億円未満は万円、1億円以上は億円
+ * 万円未満は四捨五入（例: 587,874円 → 59万円）。
+ * 万円換算で10,000以上になる場合（≒1億円）は億円に切り上げて表示する。 */
 export function fmtYen(v: number): string {
   const rounded = Math.round(v);
   const abs = Math.abs(rounded);
   if (abs >= 100_000_000) return `${(rounded / 100_000_000).toFixed(1)}億円`;
-  if (abs >= 10_000) return `${Math.round(rounded / 10_000)}万円`;
+  if (abs >= 10_000) {
+    const man = Math.round(rounded / 10_000);
+    // 四捨五入で10,000万円以上になった場合は億円で表示（例: 99,999,999 → 1.0億円）
+    if (Math.abs(man) >= 10_000) return `${(rounded / 100_000_000).toFixed(1)}億円`;
+    return `${man}万円`;
+  }
   return `${rounded.toLocaleString("ja-JP")}円`;
 }
 
