@@ -191,7 +191,7 @@ resource "google_monitoring_alert_policy" "cloudrun_error_rate" {
   conditions {
     display_name = "5xx 割合 > 5% が 5 分継続"
     condition_monitoring_query_language {
-      query = <<-EOT
+      query    = <<-EOT
         fetch cloud_run_revision
         | metric 'run.googleapis.com/request_count'
         | filter resource.service_name = '${local.service_name}'
@@ -222,7 +222,7 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
   conditions {
     display_name = "キャッシュヒット率 < 50% が 10 分継続"
     condition_monitoring_query_language {
-      query = <<-EOT
+      query    = <<-EOT
         fetch generic_task
         | {
             metric 'workload.googleapis.com/mlit.cache.misses'
