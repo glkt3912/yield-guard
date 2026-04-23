@@ -128,3 +128,42 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.apply
         run: terraform apply -auto-approve tfplan
         working-directory: terraform
+
+  terraform-stg:
+    name: Plan (stg)
+    runs-on: ubuntu-24.04
+    needs: [terraform]
+    if: github.event_name == 'pull_request'
+
+    env:
+      TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+      TF_VAR_env: "stg"
+      TF_VAR_region: "asia-northeast1"
+      TF_VAR_mlit_api_key: ${{ secrets.MLIT_API_KEY }}
+      TF_VAR_app_internal_api_key: ${{ secrets.APP_INTERNAL_API_KEY }}
+      TF_VAR_vercel_frontend_url: ${{ vars.VERCEL_FRONTEND_URL }}
+      TF_VAR_notification_email: ${{ vars.NOTIFICATION_EMAIL }}
+      TF_VAR_billing_account_id: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85  # v4.0.0
+        with:
+          terraform_version: "1.14.9"
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093  # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.SA_EMAIL }}
+
+      - name: Terraform Init (stg)
+        run: terraform init -backend-config="prefix=yield-guard/stg"
+        working-directory: terraform
+
+      - name: Terraform Plan (stg)
+        run: terraform plan -no-color
+        working-directory: terraform
