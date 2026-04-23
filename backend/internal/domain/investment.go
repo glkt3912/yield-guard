@@ -149,7 +149,8 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		// デッドクロス判定: 元金返済額 > 減価償却費 となるゾーン
 		// 耐用年数経過後は減価償却=0のため、元金返済が残っていれば即デッドクロス
 		// ローン完済後（annualPrincipal==0）はデッドクロスゾーンから脱出
-		inDeadCrossZone := annualPrincipal > 0 && annualPrincipal > yearDepreciation
+		// 建物費用=0の場合は減価償却対象資産がなくデッドクロスの概念が適用されないため除外
+		inDeadCrossZone := input.BuildingCost > 0 && annualPrincipal > 0 && annualPrincipal > yearDepreciation
 		isDeadCrossYear := false
 		if deadCrossYear == -1 && inDeadCrossZone {
 			deadCrossYear = year
