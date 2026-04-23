@@ -228,7 +228,7 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
     # setup.go で resource.WithDetectors() を使っていないため generic_task が正しいとコード解析で確認 (#269)。
     # apply 後は Metrics Explorer で workload.googleapis.com/mlit.cache.misses のリソースタイプを目視確認すること。
     condition_monitoring_query_language {
-      query    = <<-EOT
+      query = <<-EOT
         fetch generic_task
         | {
             metric 'workload.googleapis.com/mlit.cache.misses'
