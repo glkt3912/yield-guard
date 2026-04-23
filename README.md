@@ -117,6 +117,7 @@ cd frontend && npm install && npm run dev
 | フロントエンドコンポーネント仕様 | [docs/frontend-components.md](docs/frontend-components.md) |
 | セキュリティ・認証（WIF・Secret Manager） | [docs/security.md](docs/security.md) |
 | ユースケース一覧（UC-01〜UC-14） | [docs/usecases.md](docs/usecases.md) |
+| 不動産投資 概念・指標 解説 | [docs/domain-glossary.md](docs/domain-glossary.md) |
 
 ## 開発
 
