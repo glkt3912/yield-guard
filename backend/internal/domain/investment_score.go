@@ -54,7 +54,7 @@ func CalcInvestmentScore(input InvestmentScoreInput) InvestmentScoreResult {
 			LiquefactionRisk: liquefaction,
 			Embankment:       embankment,
 			DisasterHistory:  disaster,
-			RadarData:        buildRadarData(pop.Score, ridership.Score, urbanArea.Score, locationOpt.Score, hazard.Score, liquefaction.Score, embankment.Score),
+			RadarData:        buildRadarData(pop.Score, ridership.Score, urbanArea.Score, locationOpt.Score, hazard.Score, liquefaction.Score, embankment.Score, disaster.Score),
 		},
 	}
 }
@@ -179,7 +179,7 @@ func calcHazardScore(flood []FloodHazardItem, storm []StormHazardItem, tsunami [
 
 	// 土砂リスク（XKT029）
 	if len(landslide) > 0 {
-		minZone := 9
+		minZone := math.MaxInt
 		for _, l := range landslide {
 			if l.ZoneCode < minZone {
 				minZone = l.ZoneCode
@@ -265,7 +265,8 @@ func calcDisasterScore(items []DisasterHistoryItem) ScoreItem {
 }
 
 // buildRadarData はレーダーチャート用の5カテゴリ正規化スコアを生成する（0〜100）。
-func buildRadarData(pop, ridership, urbanArea, locationOpt, hazard, liquefaction, embankment int) []RadarPoint {
+// disaster スコアはハザードカテゴリに合算し、総合スコアとレーダーの乖離を防ぐ。
+func buildRadarData(pop, ridership, urbanArea, locationOpt, hazard, liquefaction, embankment, disaster int) []RadarPoint {
 	clamp := func(v float64) float64 {
 		if v < 0 {
 			return 0
@@ -279,7 +280,8 @@ func buildRadarData(pop, ridership, urbanArea, locationOpt, hazard, liquefaction
 	popNorm := clamp((float64(pop) + 15) / 30.0 * 100)
 	ridershipNorm := clamp(float64(ridership) / 20.0 * 100)
 	urbanNorm := clamp((float64(urbanArea+locationOpt) + 5) / 25.0 * 100)
-	hazardNorm := clamp((20.0 + float64(hazard)) / 20.0 * 100)
+	// ハザード＋災害履歴の合算: 最良=0+0=0、最悪=-20+(-10)=-30 → 分母30で正規化
+	hazardNorm := clamp((30.0 + float64(hazard) + float64(disaster)) / 30.0 * 100)
 	groundNorm := clamp((15.0 + float64(liquefaction+embankment)) / 15.0 * 100)
 
 	return []RadarPoint{
