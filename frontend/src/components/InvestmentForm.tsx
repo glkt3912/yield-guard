@@ -99,7 +99,7 @@ interface Props {
   onModeChange: (mode: SimulationMode) => void;
   initialInput?: Partial<InvestmentInput>;
   initialQuickTotalPriceMan?: string;
-  isOnline?: boolean;
+  isOnline?: boolean | null;
 }
 
 function getPeriodLabel(): string {
@@ -156,7 +156,7 @@ function validateQuick(quickTotalPriceMan: string, input: InvestmentInput): Form
   return e;
 }
 
-export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulationMode, onModeChange, initialInput, initialQuickTotalPriceMan, isOnline = true }: Props) {
+export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulationMode, onModeChange, initialInput, initialQuickTotalPriceMan, isOnline = null }: Props) {
   const [input, setInput] = useState<InvestmentInput>({ ...DEFAULT_INPUT, ...initialInput });
   const [area, setArea] = useState("10");
   const [city, setCity] = useState("");
@@ -497,10 +497,10 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                 <p className="text-xs text-muted-foreground">
                   {getPeriodLabel()}分の宅地取引実績（国交省公式API）を取得します
                 </p>
-                {!isOnline && (
+                {isOnline === false && (
                   <p className="text-xs text-amber-700">オフライン中は相場取得を利用できません</p>
                 )}
-                <Button variant="outline" className="w-full" loading={loading} disabled={!isOnline}
+                <Button variant="outline" className="w-full" loading={loading} disabled={isOnline === false}
                   onClick={() => {
                     const lat = parseFloat(propertyLat);
                     const lng = parseFloat(propertyLng);
@@ -706,10 +706,10 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
               <p className="text-xs text-muted-foreground">
                 {getPeriodLabel()}分の宅地取引実績（国交省公式API）を取得します。緯度・経度を入力すると周辺駅の需要スコアも取得します
               </p>
-              {!isOnline && (
+              {isOnline === false && (
                 <p className="text-xs text-amber-700">オフライン中は相場取得を利用できません</p>
               )}
-              <Button variant="outline" className="w-full" loading={loading} disabled={!isOnline}
+              <Button variant="outline" className="w-full" loading={loading} disabled={isOnline === false}
                 onClick={() => {
                   const lat = parseFloat(propertyLat);
                   const lng = parseFloat(propertyLng);
