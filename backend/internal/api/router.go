@@ -128,6 +128,7 @@ func NewRouter(h *Handler) *gin.Engine {
 		api.GET("/population-forecast", h.GetPopulationForecast)
 		api.GET("/land-appraisals", h.GetLandAppraisals)
 		api.GET("/urban-risks", h.GetUrbanRisks)
+		api.GET("/hazard", h.GetHazardInfo)
 		api.GET("/investment-score", h.GetInvestmentScore)
 	}
 
