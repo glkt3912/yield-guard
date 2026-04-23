@@ -529,3 +529,20 @@ type RenovationResult struct {
 	AnnualRentIncrease  float64                    `json:"annualRentIncrease"`
 	ClassifiedItems     []ClassifiedRenovationItem `json:"classifiedItems"`
 }
+
+// HeatmapTile はヒートマップの1タイル分の投資スコア情報
+type HeatmapTile struct {
+	X          int     `json:"x"`
+	Y          int     `json:"y"`
+	Z          int     `json:"z"`
+	CenterLat  float64 `json:"centerLat"`
+	CenterLng  float64 `json:"centerLng"`
+	TotalScore int     `json:"totalScore"`
+	Grade      string  `json:"grade"`
+}
+
+// HeatmapResponse はヒートマップエンドポイントのレスポンス
+type HeatmapResponse struct {
+	Tiles     []HeatmapTile `json:"tiles"`
+	TileCount int           `json:"tileCount"`
+}
