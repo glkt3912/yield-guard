@@ -223,12 +223,12 @@ Cloud Console > Monitoring > Dashboards の "Yield Guard" ダッシュボード�
 
 **アラートポリシー（`google_monitoring_alert_policy`）**
 
-| ポリシー | 条件 | 判定方式 | 継続時間 |
-|----------|------|----------|---------|
-| MLIT API P99 > 15s | `ALIGN_PERCENTILE_99` + `REDUCE_MAX` | `condition_threshold` | 5 分 |
-| Cloud Run 5xx エラー率 > 5% | `ratio` MQL | `condition_monitoring_query_language` | 5 分 |
-| キャッシュヒット率 < 50% | `ratio` MQL（`generic_task` リソース） | `condition_monitoring_query_language` | 10 分 |
-| インスタンス数 >= 2（上限到達） | `ALIGN_MAX` + `REDUCE_MAX` | `condition_threshold` | 5 分 |
+| ポリシー | 判定方式 | MQL / フィルタ概要 | 継続時間 |
+|----------|----------|-------------------|---------|
+| MLIT API P99 > 15s | MQL | `align delta(5m) \| percentile(99) \| condition val() > 15`（CUMULATIVE DISTRIBUTION のため MQL で変換） | 5 分 |
+| Cloud Run 5xx エラー率 > 5% | MQL | `align rate(5m)` で各ブランチ整列後 `ratio`（5xx / 全体）| 5 分 |
+| キャッシュヒット率 < 50% | MQL | `align rate(10m)` で各ブランチ整列後 `ratio`（miss / (miss+hit)） | 10 分 |
+| インスタンス数 > 1（上限到達） | `condition_threshold` | `resource.type="cloud_run_revision"` + `ALIGN_MAX` + `REDUCE_MAX`、閾値 1（> 1 = ≥ 2） | 5 分 |
 
 通知先メールアドレスは `var.notification_email`（`terraform.tfvars` で設定、gitignore 済み）。全ポリシーの `auto_close` は 3600s（1時間）。
 

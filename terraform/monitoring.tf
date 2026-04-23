@@ -163,16 +163,16 @@ resource "google_monitoring_alert_policy" "mlit_latency" {
 
   conditions {
     display_name = "MLIT API P99 > 15s が 5 分継続"
-    condition_threshold {
-      filter          = "metric.type=\"workload.googleapis.com/mlit.api.request.duration\" AND resource.type=\"generic_task\""
-      comparison      = "COMPARISON_GT"
-      threshold_value = 15
-      duration        = "300s"
-      aggregations {
-        alignment_period     = "60s"
-        per_series_aligner   = "ALIGN_PERCENTILE_99"
-        cross_series_reducer = "REDUCE_MAX"
-      }
+    condition_monitoring_query_language {
+      query    = <<-EOT
+        fetch generic_task
+        | metric 'workload.googleapis.com/mlit.api.request.duration'
+        | align delta(5m)
+        | every 5m
+        | percentile(99)
+        | condition val() > 15
+      EOT
+      duration = "300s"
     }
   }
 
@@ -197,10 +197,13 @@ resource "google_monitoring_alert_policy" "cloudrun_error_rate" {
         | filter resource.service_name = '${local.service_name}'
         | {
             filter metric.response_code_class = '5xx'
-          ; ident
+            | align rate(5m)
+            | every 5m
+          ;
+            align rate(5m)
+            | every 5m
           }
         | ratio
-        | every 5m
         | condition val() > 0.05
       EOT
       duration = "300s"
@@ -226,11 +229,14 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
         fetch generic_task
         | {
             metric 'workload.googleapis.com/mlit.cache.misses'
+            | align rate(10m)
+            | every 10m
           ;
             metric 'workload.googleapis.com/mlit.cache.hits'
+            | align rate(10m)
+            | every 10m
           }
         | ratio
-        | every 10m
         | condition val() > 0.5
       EOT
       duration = "600s"
@@ -251,7 +257,7 @@ resource "google_monitoring_alert_policy" "cloudrun_max_instances" {
   conditions {
     display_name = "インスタンス数 > 1 が 5 分継続（上限 2 に到達）"
     condition_threshold {
-      filter          = "metric.type=\"run.googleapis.com/container/instance_count\" AND resource.labels.service_name=\"${local.service_name}\""
+      filter          = "metric.type=\"run.googleapis.com/container/instance_count\" AND resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${local.service_name}\""
       comparison      = "COMPARISON_GT"
       threshold_value = 1
       duration        = "300s"
