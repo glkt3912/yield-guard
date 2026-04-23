@@ -105,7 +105,8 @@ accumulatedDepreciation += yearDepreciation
 ### 判定コード
 
 ```go
-inDeadCrossZone := annualPrincipal > 0 && annualPrincipal > yearDepreciation
+// 建物費用=0の場合は減価償却対象資産がなくデッドクロスの概念が適用されないため除外
+inDeadCrossZone := input.BuildingCost > 0 && annualPrincipal > 0 && annualPrincipal > yearDepreciation
 isDeadCrossYear := false
 if deadCrossYear == -1 && inDeadCrossZone {
     deadCrossYear = year
@@ -113,6 +114,7 @@ if deadCrossYear == -1 && inDeadCrossZone {
 }
 ```
 
+- `input.BuildingCost > 0` の条件: 土地のみ投資（建物費用ゼロ）は減価償却資産がないためデッドクロスの概念が適用されない。`BuildingCost = 0` のとき `DeadCrossYear = -1`（発生なし）を返す
 - `annualPrincipal > 0` の条件: ローン完済後（元金返済ゼロ）はデッドクロスから「脱出」
 - `deadCrossYear == -1` の条件: **初年度フラグは初回のみ立てる**
 
@@ -123,9 +125,9 @@ if deadCrossYear == -1 && inDeadCrossZone {
 | `IsDeadCrossYear` | デッドクロス初年度 | 最初の1年のみ |
 | `IsInDeadCrossZone` | デッドクロス継続中 | ゾーン全体（完済まで続く） |
 
-**耐用年数超過後の特殊ケース**: `yearDepreciation = 0` となるため、元金返済が少しでも残っていれば `inDeadCrossZone = true`。
+**耐用年数超過後の特殊ケース**: `yearDepreciation = 0` となるため、元金返済が少しでも残っていれば `inDeadCrossZone = true`（ただし `BuildingCost > 0` の前提条件あり）。
 
-`DeadCrossYear = -1`: 35年以内にデッドクロスが発生しないことを示す。
+`DeadCrossYear = -1`: 35年以内にデッドクロスが発生しないことを示す（`BuildingCost = 0` の場合も含む）。
 
 ---
 
