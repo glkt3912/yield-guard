@@ -239,6 +239,118 @@ type DisasterHistoryProperties struct {
 	DisasterSource   string `json:"disaster_source"`
 }
 
+// UrbanZoningGeoJSON は XKT001 都市計画区域/区域区分APIのGeoJSONレスポンス
+type UrbanZoningGeoJSON struct {
+	Type     string              `json:"type"`
+	Features []UrbanZoningFeature `json:"features"`
+}
+
+// UrbanZoningFeature は GeoJSON の1フィーチャ
+type UrbanZoningFeature struct {
+	Properties UrbanZoningProperties `json:"properties"`
+}
+
+// UrbanZoningProperties は都市計画区域/区域区分の属性。フィールド名は国交省 XKT001 仕様に準拠。
+type UrbanZoningProperties struct {
+	AreaClassificationJa string `json:"area_classification_ja"` // 例: "市街化区域"、"市街化調整区域"
+	KubunID              int    `json:"kubun_id"`
+	Prefecture           string `json:"prefecture"`
+	CityCode             string `json:"city_code"`
+	CityName             string `json:"city_name"`
+}
+
+// LiquefactionGeoJSON は XKT025 液状化発生傾向図APIのGeoJSONレスポンス
+type LiquefactionGeoJSON struct {
+	Type     string               `json:"type"`
+	Features []LiquefactionFeature `json:"features"`
+}
+
+// LiquefactionFeature は GeoJSON の1フィーチャ
+type LiquefactionFeature struct {
+	Properties LiquefactionProperties `json:"properties"`
+}
+
+// LiquefactionProperties は液状化発生傾向図の属性。フィールド名は国交省 XKT025 仕様に準拠。
+type LiquefactionProperties struct {
+	LiquefactionTendencyLevel int    `json:"liquefaction_tendency_level"` // 6段階（低値ほど液状化リスク高）
+	Note                      string `json:"note"`                        // 例: "液状化しにくい"
+	MeshCode                  string `json:"mesh_code"`
+}
+
+// FloodHazardGeoJSON は XKT026 洪水浸水想定区域APIのGeoJSONレスポンス
+type FloodHazardGeoJSON struct {
+	Type     string             `json:"type"`
+	Features []FloodHazardFeature `json:"features"`
+}
+
+// FloodHazardFeature は GeoJSON の1フィーチャ
+type FloodHazardFeature struct {
+	Properties FloodHazardProperties `json:"properties"`
+}
+
+// FloodHazardProperties は洪水浸水想定区域の属性。フィールド名は国交省 XKT026 仕様に準拠。
+type FloodHazardProperties struct {
+	DepthRank    int    `json:"A31a_205"` // 浸水深ランク（高いほど深い）
+	RiverName    string `json:"A31a_202"` // 河川名
+	RiverManager string `json:"A31a_204"` // 河川管理者
+}
+
+// StormHazardGeoJSON は XKT027 高潮浸水想定区域APIのGeoJSONレスポンス
+type StormHazardGeoJSON struct {
+	Type     string              `json:"type"`
+	Features []StormHazardFeature `json:"features"`
+}
+
+// StormHazardFeature は GeoJSON の1フィーチャ
+type StormHazardFeature struct {
+	Properties StormHazardProperties `json:"properties"`
+}
+
+// StormHazardProperties は高潮浸水想定区域の属性。フィールド名は国交省 XKT027 仕様に準拠。
+type StormHazardProperties struct {
+	DepthJa    string `json:"A49_003"`    // 浸水深区分（例: "5m以上10m未満"）
+	Prefecture string `json:"A49_001"`    // 都道府県名
+	TargetYear int    `json:"target_year"`
+}
+
+// TsunamiHazardGeoJSON は XKT028 津波浸水想定APIのGeoJSONレスポンス
+type TsunamiHazardGeoJSON struct {
+	Type     string               `json:"type"`
+	Features []TsunamiHazardFeature `json:"features"`
+}
+
+// TsunamiHazardFeature は GeoJSON の1フィーチャ
+type TsunamiHazardFeature struct {
+	Properties TsunamiHazardProperties `json:"properties"`
+}
+
+// TsunamiHazardProperties は津波浸水想定の属性。フィールド名は国交省 XKT028 仕様に準拠。
+type TsunamiHazardProperties struct {
+	DepthJa    string `json:"A40_003"`    // 津波浸水深区分（例: "3m以上～5m未満"）
+	Prefecture string `json:"A40_001"`    // 都道府県名
+	TargetYear int    `json:"target_year"`
+}
+
+// LandslideHazardGeoJSON は XKT029 土砂災害警戒区域APIのGeoJSONレスポンス
+type LandslideHazardGeoJSON struct {
+	Type     string                 `json:"type"`
+	Features []LandslideHazardFeature `json:"features"`
+}
+
+// LandslideHazardFeature は GeoJSON の1フィーチャ
+type LandslideHazardFeature struct {
+	Properties LandslideHazardProperties `json:"properties"`
+}
+
+// LandslideHazardProperties は土砂災害警戒区域の属性。フィールド名は国交省 XKT029 仕様に準拠。
+type LandslideHazardProperties struct {
+	PhenomenonType  int    `json:"A33_001"` // 現象種類（1=急傾斜地崩壊, 2=土石流, 3=地すべり）
+	ZoneCode        int    `json:"A33_002"` // 区域区分（1=特別警戒区域, 2=警戒区域）
+	PrefectureCode  string `json:"A33_003"` // 都道府県コード
+	ZoneNumber      string `json:"A33_004"` // 区域番号
+	SpecialZoneFlag int    `json:"A33_008"` // 特別警戒未指定フラグ
+}
+
 // Prefectures は都道府県コードマップ
 var Prefectures = map[string]string{
 	"01": "北海道", "02": "青森県", "03": "岩手県", "04": "宮城県",
