@@ -17,7 +17,7 @@ page.tsx
         ├── CashFlowChart          (result + equityInvested を受け取り表示)
         ├── DeadCrossChart         (result を受け取り表示)
         ├── MonteCarloChart        (monteCarloResult を受け取り確率分布を表示。ボタン押下後のみ表示)
-        └── ReportPDF              (result + lastInput を受け取り PDF 生成。SSR無効)
+        └── (PDF出力はコンポーネントではなく downloadReportPDF() で処理)
 ```
 
 `Dashboard` が `result: InvestmentResult | null`、`comparison: LandPriceComparison | null`、`populationForecast: PopulationForecastResult | null` を管理する。
@@ -42,7 +42,7 @@ page.tsx
 
 **「PDFレポート出力」ボタン**:
 
-`result && lastInput` が両方存在する場合のみヘッダーにボタンを表示。`@react-pdf/renderer` の `PDFDownloadLink` を `next/dynamic(..., { ssr: false })` でクライアント専用モジュールとして読み込む。ファイル名: `yield-guard-report-YYYYMMDD.pdf`。
+`result && lastInput` が両方存在する場合のみヘッダーにボタンを表示。クリックで `downloadReportPDF(lastInput, result)` を呼び出し、`pdfmake` がクライアント側でPDFを生成してダウンロードする。ファイル名: `yield-guard-report-YYYYMMDD.pdf`。
 
 **`handleFetchLandPrices(area, city, lat?, lng?)`**:
 
@@ -398,7 +398,7 @@ CF がマイナスの場合は「赤字転落 ⚠️」バッジを表示。フ�
 
 `frontend/src/lib/generatePdf.ts`
 
-> テストカバレッジ: `src/lib/__tests__/generatePdf.test.ts`（Vitest）— 正常生成・空ストレステスト・取得コストなし・新築・XSSサニタイズ・フォント取得失敗・ファイル名・メタデータ・ヘッダー/フッター の11ケースを検証。
+> テストカバレッジ: `src/lib/__tests__/generatePdf.test.ts`（Vitest）— 正常生成・空ストレステスト・取得コストなし・新築・XSSサニタイズ・フォント取得失敗・ファイル名・メタデータ・ヘッダー/フッター の11ケースを検証。`src/lib/__tests__/pdfFormat.test.ts`（21件）
 
 **概要**: `pdfmake ^0.3.7` を使い投資分析結果を PDF ドキュメントとして生成する非同期関数。`Dashboard.tsx` のボタンクリックから `downloadReportPDF(input, result)` を呼び出すとブラウザのダウンロード機能で自動保存される。日本語対応のため Noto Sans JP（TTF）を `/public/fonts/` から `fetch` して `pdfMake.virtualfs` に登録する（pdfmake は woff2 非対応のため TTF を使用）。
 
@@ -415,7 +415,7 @@ export async function downloadReportPDF(
 
 | ファイル | 役割 |
 |---------|------|
-| `format.ts` | `fmtYen`（億/百万/円の3段階・Math.round済み）・`fmtPct`・`fmtDate`・`sanitize`（XSS除去） |
+| `format.ts` | `fmtYen`（1万円未満は円・1万円以上は万円・1億円以上は億円、万円未満は四捨五入）・`fmtPct`・`fmtDate`・`sanitize`（XSS除去） |
 | `verdict.ts` | `calcVerdict()` — PASS/CAUTION/REJECT の総合判定・根拠3点・自動コメント生成 |
 | `charts.ts` | `buildCfBarChartSvg`・`buildDeadCrossLineSvg`・`buildCostDonutSvg` — SVG文字列を直接生成（Recharts不使用） |
 
@@ -424,7 +424,7 @@ export async function downloadReportPDF(
 | ページ | 内容 |
 |--------|------|
 | 表紙 | 物件概要（土地価格・建物費・築年数・構造・月額賃料・ローン情報）・分析日 |
-| P1 投資サマリー | 総合判定バッジ（PASS/CAUTION/REJECT）＋根拠3点・KPI 2行×3列（表面利回り・実質利回り・DSCR基本 / DSCR複合・LTV・出口Equity）・ストレステスト要約・出口戦略テーブル・自動生成コメント |
+| P1 投資サマリー | 総合判定バッジ（PASS/CAUTION/REJECT）＋根拠3点・KPI 2行×3列（表面利回り・実質利回り・DSCR基本 / DSCR複合・LTV・出口収益）・ストレステスト要約・出口戦略テーブル・自動生成コメント |
 | P2 10年キャッシュフロー | CFバーチャート（SVG）＋ `YearlyResult[]` テーブル。デッドクロスゾーンの年は赤色バー |
 | P3 ストレステスト結果 | デッドクロス折れ線チャート（SVG）＋ 6シナリオ表。`stressScenarios.length > 0` の場合のみ表示 |
 | P4 取得コスト内訳 | コストドーナツチャート（SVG）＋ 初期投資・`AcquisitionCostBreakdown` 明細・1年目年間経費内訳 |
@@ -435,6 +435,25 @@ export async function downloadReportPDF(
 - PDFメタデータ（`info`）: `title`・`author`・`subject`・`creator` を設定
 
 **ファイル名**: `yield-guard-report-YYYYMMDD.pdf`（`downloadReportPDF` 内で自動生成）
+
+### `fmtYen()` 金額フォーマットルール
+
+| 金額範囲 | 表示形式 | 例 |
+|---|---|---|
+| 1万円未満 | 円（カンマ区切り） | `9,999円` |
+| 1万円以上〜1億円未満 | 万円（万円未満は四捨五入） | `88万円`、`9500万円` |
+| 万換算で10,000万以上になる場合 | 億円に繰り上げ | `99,999,999円 → 1.0億円` |
+| 1億円以上 | 億円（小数1桁） | `1.5億円` |
+
+### フォントサブセット管理
+
+`public/fonts/NotoSansJP-{Regular,Bold}.ttf` はPDF出力で使われる全文字を網羅したサブセット（各 ≈265 KB）。  
+PDF文言に新しい漢字を追加した場合は `NEEDED_TEXT` に追記の上、再生成スクリプトを実行する:
+
+```bash
+cd frontend
+python3 scripts/regenerate-pdf-fonts.py
+```
 
 ---
 

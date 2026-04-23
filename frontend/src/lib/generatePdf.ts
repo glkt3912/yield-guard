@@ -182,12 +182,14 @@ export async function downloadReportPDF(
           text: "本資料は yield-guard による試算です。実際の投資判断は専門家にご相談ください。",
           fontSize: 7,
           color: C.muted,
+          width: "*",
           margin: [36, 4, 0, 0],
         },
         {
           text: `${currentPage} / ${pageCount}`,
           fontSize: 7,
           color: C.muted,
+          width: "auto",
           alignment: "right" as const,
           margin: [0, 4, 36, 0],
         },
@@ -272,7 +274,7 @@ export async function downloadReportPDF(
           ),
           kpiBlock("LTV", fmtPct(ltv), ltv <= 0.8 ? C.safe : C.danger),
           kpiBlock(
-            "出口Equity",
+            "出口収益",
             fmtYen(result.exitTotalEquity),
             result.exitTotalEquity >= 0 ? C.safe : C.danger
           ),
@@ -339,7 +341,7 @@ export async function downloadReportPDF(
         twoCol("譲渡所得税", fmtYen(result.exitTransferTax)),
         twoCol("売却手取り", fmtYen(result.exitNetProceeds)),
         twoCol(
-          "トータルエクイティ",
+          "売却後総収益（CF累積＋売却益）",
           fmtYen(result.exitTotalEquity),
           true,
           result.exitTotalEquity >= 0 ? C.safe : C.danger
