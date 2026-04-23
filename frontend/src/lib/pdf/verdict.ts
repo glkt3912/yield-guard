@@ -1,4 +1,5 @@
 import type { InvestmentInput, InvestmentResult } from "@/types/investment";
+import { fmtYen, fmtPct } from "./format";
 
 export type VerdictLevel = "PASS" | "CAUTION" | "REJECT";
 
@@ -8,18 +9,6 @@ export interface VerdictResult {
   color: string;
   reasons: string[];
   autoComment: string;
-}
-
-function fmtPct(v: number): string {
-  return `${(v * 100).toFixed(2)}%`;
-}
-
-function fmtYen(v: number): string {
-  const rounded = Math.round(v);
-  const abs = Math.abs(rounded);
-  if (abs >= 100_000_000) return `${(rounded / 100_000_000).toFixed(1)}億円`;
-  if (abs >= 1_000_000) return `${(rounded / 1_000_000).toFixed(1)}百万円`;
-  return `${rounded.toLocaleString("ja-JP")}円`;
 }
 
 function buildAutoComment(

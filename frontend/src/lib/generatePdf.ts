@@ -236,8 +236,7 @@ export async function downloadReportPDF(
                 color: verdict.color,
               },
               {
-                text: verdict.level === "PASS" ? "投資適格" :
-                      verdict.level === "CAUTION" ? "条件付き可" : "見送り推奨",
+                text: verdict.label,
                 fontSize: 8,
                 color: verdict.color,
                 marginTop: 2,
@@ -269,7 +268,7 @@ export async function downloadReportPDF(
           kpiBlock(
             "DSCR 複合ストレス",
             dscrStress > 0 ? dscrStress.toFixed(2) : "－",
-            dscrStress > 0 && dscrStress >= 1.0 ? C.safe : C.danger
+            dscrStress === 0 ? C.muted : dscrStress >= 1.0 ? C.safe : C.danger
           ),
           kpiBlock("LTV", fmtPct(ltv), ltv <= 0.8 ? C.safe : C.danger),
           kpiBlock(
