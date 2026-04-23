@@ -374,6 +374,73 @@ type DisasterHistoryItem struct {
 	Year int    // 発生年（不明時は0）
 }
 
+// UrbanZoningItem は XKT001 都市計画区域/区域区分のドメイン層受け渡し用軽量型
+type UrbanZoningItem struct {
+	AreaClassificationJa string
+	KubunID              int
+}
+
+// LiquefactionRiskItem は XKT025 液状化発生傾向図のドメイン層受け渡し用軽量型
+type LiquefactionRiskItem struct {
+	TendencyLevel int    // liquefaction_tendency_level（6段階: 低値ほど高リスク）
+	Note          string
+}
+
+// FloodHazardItem は XKT026 洪水浸水想定区域のドメイン層受け渡し用軽量型
+type FloodHazardItem struct {
+	DepthRank int    // A31a_205（浸水深ランク）
+	RiverName string
+}
+
+// StormHazardItem は XKT027 高潮浸水想定区域のドメイン層受け渡し用軽量型
+type StormHazardItem struct {
+	DepthJa string // A49_003
+}
+
+// TsunamiHazardItem は XKT028 津波浸水想定のドメイン層受け渡し用軽量型
+type TsunamiHazardItem struct {
+	DepthJa string // A40_003
+}
+
+// LandslideHazardItem は XKT029 土砂災害警戒区域のドメイン層受け渡し用軽量型
+type LandslideHazardItem struct {
+	PhenomenonType int // A33_001（1=急傾斜地崩壊, 2=土石流, 3=地すべり）
+	ZoneCode       int // A33_002（1=特別警戒区域, 2=警戒区域）
+}
+
+// InvestmentScoreResult は投資適地スコアの算出結果
+type InvestmentScoreResult struct {
+	TotalScore int            `json:"totalScore"`
+	Grade      string         `json:"grade"` // 優良/良好/普通/注意/要注意
+	Breakdown  ScoreBreakdown `json:"breakdown"`
+}
+
+// ScoreItem は各指標のスコアと説明
+type ScoreItem struct {
+	Score       int    `json:"score"`
+	Label       string `json:"label"`
+	Description string `json:"description"`
+}
+
+// RadarPoint はレーダーチャート用の正規化スコア（0〜100）
+type RadarPoint struct {
+	Category string  `json:"category"`
+	Score    float64 `json:"score"`
+}
+
+// ScoreBreakdown は投資適地スコアの内訳
+type ScoreBreakdown struct {
+	Population       ScoreItem    `json:"population"`
+	Ridership        ScoreItem    `json:"ridership"`
+	UrbanArea        ScoreItem    `json:"urbanArea"`
+	LocationOpt      ScoreItem    `json:"locationOptimization"`
+	HazardRisk       ScoreItem    `json:"hazardRisk"`
+	LiquefactionRisk ScoreItem    `json:"liquefactionRisk"`
+	Embankment       ScoreItem    `json:"embankment"`
+	DisasterHistory  ScoreItem    `json:"disasterHistory"`
+	RadarData        []RadarPoint `json:"radarData"`
+}
+
 // ZoningSummary はエリア内の取引から抽出した代表的な用途地域情報
 type ZoningSummary struct {
 	CityPlanning     string `json:"cityPlanning"`     // 最頻の都市計画区域（例: 第一種住居地域）
