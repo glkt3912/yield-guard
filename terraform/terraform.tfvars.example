@@ -33,6 +33,3 @@ app_internal_api_key = "generate with: openssl rand -hex 32"
 vercel_frontend_url  = "https://your-app.vercel.app"
 notification_email   = "your@email.com"
 billing_account_id   = "XXXXXX-XXXXXX-XXXXXX"  # gcloud billing accounts list で確認
-
-# stg 環境で `terraform init -backend-config="prefix=yield-guard/stg"` を使用する
-# TF_VAR_env=stg で apply すると yield-guard-stg-backend が作成される
