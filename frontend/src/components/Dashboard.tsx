@@ -256,7 +256,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-4 lg:py-6">
+      <main className="mx-auto max-w-7xl px-4 py-4 pb-24 lg:py-6 lg:pb-6">
         {error && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             ⚠ {error}
@@ -392,7 +392,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 simulationMode={simulationMode}
                 onModeChange={handleModeChange}
                 initialInput={lastInput ?? decoded?.input}
-                initialQuickTotalPriceMan={decoded?.quickTotalPriceMan}
+                initialQuickTotalPriceMan={lastInput ? undefined : decoded?.quickTotalPriceMan}
               />
             </div>
           </div>
