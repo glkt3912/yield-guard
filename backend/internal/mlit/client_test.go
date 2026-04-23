@@ -761,15 +761,15 @@ func TestTileToLatLng_RoundTrip(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			x, y := LatLngToTile(tt.lat, tt.lng, tt.z)
 			gotLat, gotLng := TileToLatLng(x, y, tt.z)
-			// タイル中心は元の座標から最大でタイル1枚分以内にあればよい
-			tileSize := 360.0 / math.Pow(2, float64(tt.z))
-			if math.Abs(gotLng-tt.lng) > tileSize {
+			// タイル中心は元の座標からタイル半幅以内に収まるはず
+			halfTile := 180.0 / math.Pow(2, float64(tt.z))
+			if math.Abs(gotLng-tt.lng) > halfTile {
 				t.Errorf("TileToLatLng lng round-trip at z=%d: got %.4f, original %.4f (diff > %.4f)",
-					tt.z, gotLng, tt.lng, tileSize)
+					tt.z, gotLng, tt.lng, halfTile)
 			}
-			if math.Abs(gotLat-tt.lat) > tileSize {
+			if math.Abs(gotLat-tt.lat) > halfTile {
 				t.Errorf("TileToLatLng lat round-trip at z=%d: got %.4f, original %.4f (diff > %.4f)",
-					tt.z, gotLat, tt.lat, tileSize)
+					tt.z, gotLat, tt.lat, halfTile)
 			}
 		})
 	}
