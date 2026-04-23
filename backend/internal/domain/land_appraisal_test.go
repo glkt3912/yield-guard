@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"math"
 	"testing"
 )
 
@@ -55,6 +56,82 @@ func TestCalcAppraisalComparison_TrendLabel(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("appraisalTrendLabel(%v) = %q, want %q", tt.trend, got, tt.want)
 		}
+	}
+}
+
+func TestCalcRentDeclineHint_FallbackWhenTooFewPoints(t *testing.T) {
+	// 総件数 < 5 → fallback
+	itemsByYear := map[int][]LandAppraisalItem{
+		2022: {{Year: 2022, PricePerSqm: 100_000}},
+		2024: {{Year: 2024, PricePerSqm: 90_000}},
+	}
+	got := CalcRentDeclineHint(itemsByYear)
+	if !got.FallbackUsed {
+		t.Errorf("expected fallback when dataPointCount < 5, got %+v", got)
+	}
+	if got.DataPointCount != 2 {
+		t.Errorf("expected dataPointCount=2, got %v", got.DataPointCount)
+	}
+}
+
+func TestCalcRentDeclineHint_FallbackWhenOnlyOneYear(t *testing.T) {
+	// 有効年数 < 2 → fallback
+	items := make([]LandAppraisalItem, 10)
+	for i := range items {
+		items[i] = LandAppraisalItem{Year: 2024, PricePerSqm: 100_000}
+	}
+	got := CalcRentDeclineHint(map[int][]LandAppraisalItem{2024: items})
+	if !got.FallbackUsed {
+		t.Errorf("expected fallback when only one year available, got %+v", got)
+	}
+}
+
+func TestCalcRentDeclineHint_DeclineTrend(t *testing.T) {
+	// 地価が下落（5点ずつ、2年間で100000→90000）
+	makeItems := func(year int, price float64, n int) []LandAppraisalItem {
+		items := make([]LandAppraisalItem, n)
+		for i := range items {
+			items[i] = LandAppraisalItem{Year: year, PricePerSqm: price}
+		}
+		return items
+	}
+	itemsByYear := map[int][]LandAppraisalItem{
+		2022: makeItems(2022, 100_000, 5),
+		2024: makeItems(2024, 90_000, 5),
+	}
+	got := CalcRentDeclineHint(itemsByYear)
+	if got.FallbackUsed {
+		t.Errorf("expected no fallback for declining trend, got %+v", got)
+	}
+	if got.Basis != "land_appraisal" {
+		t.Errorf("expected basis=land_appraisal, got %q", got.Basis)
+	}
+	// CAGR = (90000/100000)^(1/2) - 1 ≒ -0.05132
+	want := math.Abs(math.Pow(90_000.0/100_000.0, 1.0/2.0) - 1)
+	if math.Abs(got.HintRate-want) > 1e-9 {
+		t.Errorf("hintRate = %v, want %v", got.HintRate, want)
+	}
+}
+
+func TestCalcRentDeclineHint_RiseTrend(t *testing.T) {
+	// 地価が上昇 → fallback
+	makeItems := func(year int, price float64, n int) []LandAppraisalItem {
+		items := make([]LandAppraisalItem, n)
+		for i := range items {
+			items[i] = LandAppraisalItem{Year: year, PricePerSqm: price}
+		}
+		return items
+	}
+	itemsByYear := map[int][]LandAppraisalItem{
+		2022: makeItems(2022, 100_000, 5),
+		2024: makeItems(2024, 120_000, 5),
+	}
+	got := CalcRentDeclineHint(itemsByYear)
+	if !got.FallbackUsed {
+		t.Errorf("expected fallback for rising trend, got %+v", got)
+	}
+	if got.HintRate != 0 {
+		t.Errorf("expected hintRate=0 for rising trend, got %v", got.HintRate)
 	}
 }
 

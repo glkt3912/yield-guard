@@ -383,6 +383,14 @@ export interface InvestmentScoreResult {
   breakdown: ScoreBreakdown;
 }
 
+export interface RentDeclineHint {
+  hintRate: number;
+  basis: "land_appraisal" | "fallback";
+  dataPointCount: number;
+  fallbackUsed: boolean;
+  note: string;
+}
+
 export const DEFAULT_RENOVATION_INPUT: RenovationInput = {
   propertyPrice: 10_000_000,
   annualBaseRent: 1_200_000,

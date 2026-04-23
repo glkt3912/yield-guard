@@ -483,6 +483,57 @@ func (h *Handler) GetLandAppraisals(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// GetRentDeclineHint は XCT001 直近5年分から賃料下落率参考値を返す
+// GET /api/investment/rent-decline-hint?area=13[&municipality=13101]
+func (h *Handler) GetRentDeclineHint(c *gin.Context) {
+	area := c.Query("area")
+	if area == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "area は必須パラメータです"})
+		return
+	}
+
+	municipality := c.Query("municipality")
+	ctx := c.Request.Context()
+
+	// XCT001 の対応年（2022〜2026）を並列取得
+	years := []int{2022, 2023, 2024, 2025, 2026}
+	type yearResult struct {
+		year  int
+		items []domain.LandAppraisalItem
+		err   error
+	}
+	ch := make(chan yearResult, len(years))
+	for _, y := range years {
+		go func() {
+			items, err := h.mlitClient.FetchLandAppraisals(ctx, area, municipality, y, "00")
+			ch <- yearResult{year: y, items: items, err: err}
+		}()
+	}
+
+	itemsByYear := make(map[int][]domain.LandAppraisalItem, len(years))
+	var fetchErr error
+	for range years {
+		r := <-ch
+		if r.err != nil {
+			slog.WarnContext(ctx, "FetchLandAppraisals failed", "year", r.year, "area", area, "error", r.err)
+			fetchErr = r.err
+			continue
+		}
+		if len(r.items) > 0 {
+			itemsByYear[r.year] = r.items
+		}
+	}
+
+	// 全年エラーの場合のみ502を返す
+	if len(itemsByYear) == 0 && fetchErr != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "地価公示APIからのデータ取得に失敗しました: " + fetchErr.Error()})
+		return
+	}
+
+	hint := domain.CalcRentDeclineHint(itemsByYear)
+	c.JSON(http.StatusOK, hint)
+}
+
 // GetUrbanRisks は緯度経度から都市計画リスクを一括取得する
 // GET /api/urban-risks?lat=35.68&lng=139.69
 func (h *Handler) GetUrbanRisks(c *gin.Context) {
