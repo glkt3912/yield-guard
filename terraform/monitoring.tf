@@ -164,7 +164,7 @@ resource "google_monitoring_alert_policy" "mlit_latency" {
   conditions {
     display_name = "MLIT API P99 > 15s が 5 分継続"
     condition_threshold {
-      filter          = "metric.type=\"workload.googleapis.com/mlit.api.request.duration\""
+      filter          = "metric.type=\"workload.googleapis.com/mlit.api.request.duration\" AND resource.type=\"generic_task\""
       comparison      = "COMPARISON_GT"
       threshold_value = 15
       duration        = "300s"
@@ -201,7 +201,7 @@ resource "google_monitoring_alert_policy" "cloudrun_error_rate" {
           }
         | ratio
         | every 5m
-        | condition val > 0.05
+        | condition val() > 0.05
       EOT
       duration = "300s"
     }
@@ -231,7 +231,7 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
           }
         | ratio
         | every 10m
-        | condition val > 0.5
+        | condition val() > 0.5
       EOT
       duration = "600s"
     }
@@ -249,11 +249,11 @@ resource "google_monitoring_alert_policy" "cloudrun_max_instances" {
   combiner     = "OR"
 
   conditions {
-    display_name = "インスタンス数 >= 2 が 5 分継続"
+    display_name = "インスタンス数 > 1 が 5 分継続（上限 2 に到達）"
     condition_threshold {
       filter          = "metric.type=\"run.googleapis.com/container/instance_count\" AND resource.labels.service_name=\"${local.service_name}\""
-      comparison      = "COMPARISON_GE"
-      threshold_value = 2
+      comparison      = "COMPARISON_GT"
+      threshold_value = 1
       duration        = "300s"
       aggregations {
         alignment_period     = "60s"
