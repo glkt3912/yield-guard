@@ -422,7 +422,7 @@ export async function downloadReportPDF(
 | P4 取得コスト内訳 | コストドーナツチャート（SVG）＋ 初期投資・`AcquisitionCostBreakdown` 明細・1年目年間経費内訳 |
 
 **ヘッダー/フッター**:
-- 表紙（P1）はヘッダーなし。P2以降は「yield-guard 不動産投資分析レポート」と分析日をヘッダーに表示
+- 表紙（1ページ目）はヘッダーなし。2ページ目以降は「yield-guard 不動産投資分析レポート」と分析日をヘッダーに表示
 - 全ページフッター: 免責文 ＋ 「現在ページ / 総ページ数」
 - PDFメタデータ（`info`）: `title`・`author`・`subject`・`creator` を設定
 
