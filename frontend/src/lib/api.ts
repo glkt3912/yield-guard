@@ -187,6 +187,19 @@ export async function analyzeRenovation(input: RenovationInput): Promise<Renovat
   return handleResponse<RenovationResult>(res);
 }
 
+/** 投資適地スコアを取得 */
+export async function fetchInvestmentScore(params: {
+  lat: number;
+  lng: number;
+}): Promise<import("@/types/investment").InvestmentScoreResult> {
+  const p = new URLSearchParams({
+    lat: String(params.lat),
+    lng: String(params.lng),
+  });
+  const res = await fetch(`${BASE}/investment-score?${p}`);
+  return handleResponse(res);
+}
+
 /** モンテカルロシミュレーションを実行 */
 export async function simulate(input: MonteCarloInput): Promise<MonteCarloResult> {
   const res = await fetch(`${BASE}/investment/simulate`, {

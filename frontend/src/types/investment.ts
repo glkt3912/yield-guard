@@ -354,6 +354,35 @@ export interface RenovationResult {
   classifiedItems: ClassifiedRenovationItem[];
 }
 
+export interface ScoreItem {
+  score: number;
+  label: string;
+  description: string;
+}
+
+export interface RadarPoint {
+  category: string;
+  score: number;
+}
+
+export interface ScoreBreakdown {
+  population: ScoreItem;
+  ridership: ScoreItem;
+  urbanArea: ScoreItem;
+  locationOptimization: ScoreItem;
+  hazardRisk: ScoreItem;
+  liquefactionRisk: ScoreItem;
+  embankment: ScoreItem;
+  disasterHistory: ScoreItem;
+  radarData: RadarPoint[];
+}
+
+export interface InvestmentScoreResult {
+  totalScore: number;
+  grade: string;
+  breakdown: ScoreBreakdown;
+}
+
 export const DEFAULT_RENOVATION_INPUT: RenovationInput = {
   propertyPrice: 10_000_000,
   annualBaseRent: 1_200_000,
