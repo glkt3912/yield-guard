@@ -5,10 +5,12 @@
 
 ## dev: バックエンド・フロントエンドの開発サーバーを起動
 dev:
-	@echo "==> Starting backend..."
-	cd backend && set -a; . ../.env 2>/dev/null; set +a; go run ./cmd/server &
-	@echo "==> Starting frontend..."
-	cd frontend && npm run dev -- --webpack
+	@trap 'kill 0' INT TERM EXIT; \
+	echo "==> Starting backend..."; \
+	(cd backend && set -a; . ../.env 2>/dev/null; set +a; go run ./cmd/server) & \
+	echo "==> Starting frontend..."; \
+	(cd frontend && npm run dev -- --webpack) & \
+	wait
 
 ## test: 全テストを実行
 test:
