@@ -109,6 +109,10 @@ GitHub Actions (OIDC token)
 
 Terraform state は GCS バケット `yield-guard-tfstate`（prefix: `yield-guard/prod`）に保存。deployer SA が `roles/storage.admin`（lock ファイル書き込み含む）を持つ。
 
+### Cloud Run 削除保護
+
+`terraform/cloud_run.tf` で `deletion_protection = true` を設定している。`terraform destroy` の誤実行および Cloud Console からの手動削除を GCP API レベルでブロックする。削除が必要な場合は `false` に戻して `apply` してから `destroy` する。
+
 ---
 
 ## 観測基盤（OpenTelemetry + 構造化ロギング）
@@ -201,6 +205,32 @@ Cloud Run ランタイム SA には `roles/cloudtrace.agent` と `roles/monitori
 | `mlit.api.request.duration` | Histogram | MLIT API リクエストレイテンシ（秒） |
 | `mlit.cache.hits` | Counter | MLIT インメモリキャッシュ ヒット数 |
 | `mlit.cache.misses` | Counter | MLIT インメモリキャッシュ ミス数 |
+
+### Cloud Monitoring ダッシュボード・アラートポリシー
+
+`terraform/monitoring.tf` で以下を管理する。
+
+**ダッシュボード（`google_monitoring_dashboard`）**
+
+Cloud Console > Monitoring > Dashboards の "Yield Guard" ダッシュボードに4パネルを表示する。
+
+| パネル | メトリクス |
+|--------|-----------|
+| MLIT API 応答時間 P99 | `workload.googleapis.com/mlit.api.request.duration`（`ALIGN_PERCENTILE_99`） |
+| キャッシュ ヒット/ミス | `workload.googleapis.com/mlit.cache.hits/misses`（`ALIGN_RATE`） |
+| 投資分析 API 呼び出し数 | `workload.googleapis.com/analyze.requests.total`（`ALIGN_RATE`） |
+| Cloud Run 5xx エラー | `run.googleapis.com/request_count`（`response_code_class="5xx"` でフィルタ） |
+
+**アラートポリシー（`google_monitoring_alert_policy`）**
+
+| ポリシー | 条件 | 判定方式 | 継続時間 |
+|----------|------|----------|---------|
+| MLIT API P99 > 15s | `ALIGN_PERCENTILE_99` + `REDUCE_MAX` | `condition_threshold` | 5 分 |
+| Cloud Run 5xx エラー率 > 5% | `ratio` MQL | `condition_monitoring_query_language` | 5 分 |
+| キャッシュヒット率 < 50% | `ratio` MQL（`generic_task` リソース） | `condition_monitoring_query_language` | 10 分 |
+| インスタンス数 >= 2（上限到達） | `ALIGN_MAX` + `REDUCE_MAX` | `condition_threshold` | 5 分 |
+
+通知先メールアドレスは `var.notification_email`（`terraform.tfvars` で設定、gitignore 済み）。全ポリシーの `auto_close` は 3600s（1時間）。
 
 ### ログレベル制御
 

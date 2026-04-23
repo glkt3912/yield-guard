@@ -30,3 +30,8 @@ variable "vercel_frontend_url" {
   description = "Vercel frontend URL set as ALLOW_ORIGINS on the backend"
   type        = string
 }
+
+variable "notification_email" {
+  description = "Email address for Cloud Monitoring alert notifications"
+  type        = string
+}
