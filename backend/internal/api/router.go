@@ -121,6 +121,7 @@ func NewRouter(h *Handler) *gin.Engine {
 		api.GET("/land-prices/estimate", h.EstimateLandPrice)
 		// analyze は generalRL + analyzeRL の両方でトークンを消費する（意図的な二重制限）
 		api.POST("/investment/analyze", analyzeRL.middleware(), h.Analyze)
+		api.POST("/renovation/analyze", h.HandleRenovationAnalyze)
 		api.GET("/municipalities", h.GetMunicipalities)
 		api.GET("/station-ridership", h.GetStationRidership)
 		api.GET("/population-forecast", h.GetPopulationForecast)
