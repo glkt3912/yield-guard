@@ -351,6 +351,9 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 | `buildingCost` | 1〜100億円（新築は建設費、中古は建物に帰属する取得費） |
 | `rentDeclineRate` | 0.0〜0.2（年間賃料下落率。省略時は 0 = 下落なし） |
 | `loanMethod` | `"equal-payment"`（元利均等）または `"equal-principal"`（元金均等）。省略時は `"equal-payment"` |
+| `discountRate` | float64 | ✗ | 割引率（0–0.30）。0 は未指定扱い → Defaults() で 0.05 に補完 | 0.05 |
+| `priceDeclineRate` | float64 | ✗ | 物件価格年間下落率（0–0.10）。IRR/NPVのターミナルバリューに適用 | 0 |
+| `depreciationMethod` | string | ✗ | `"straight-line"` または `"declining-balance"` | `"straight-line"` |
 | `monthlyRent` | 正の値 |
 | `vacancyRate` | 0.0〜0.99 |
 | `loanAmount` | 0以上 |
@@ -482,6 +485,9 @@ DSCR が 1.0 以上であれば NOI だけでローン返済を賄える状態�
 | ローンあり: `DSCR >= 1.0` かつ `breakEvenYear` が保有期間以内 | `true` |
 | ローンなし（`loanAmount = 0`）: `breakEvenYear` が保有期間以内 | `true` |
 | 上記以外 | `false` |
+
+| `irr` | float64\|null | 内部収益率（equity ≤ 0 または HoldingYears = 0 のとき null） |
+| `npv` | float64 | 正味現在価値（円） |
 
 #### `dscr: float64`
 
@@ -788,6 +794,62 @@ vacancyRateDelta = max(0, -changeRate30yr × 0.5)
 ```json
 { "status": "ok" }
 ```
+
+---
+
+---
+
+## POST /api/renovation/analyze
+
+リフォームROIシミュレーションを実行する。
+
+**レート制限**: `generalRL`（60 req/分）のみ。
+
+### リクエストボディ（`RenovationInput`）
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `propertyPrice` | float64 | ✓ | 物件取得価格（円、正値必須） |
+| `annualBaseRent` | float64 | ✗ | リフォーム前年間家賃（円、≥0） |
+| `annualExpenses` | float64 | ✗ | 年間経費（円、絶対額） |
+| `effectiveTaxRate` | float64 | ✗ | 実効税率（0.0〜1.0） |
+| `selfLaborRatePerHour` | float64 | ✗ | セルフリフォーム時給（円/時間、≥0） |
+| `items` | RenovationItem[] | ✓ | 工事項目（1件以上）。各 `cost` は正値必須 |
+
+**`RenovationItem`**:
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `name` | string | 部位名 |
+| `cost` | float64 | 工事費（円、正値必須） |
+| `expectedMonthlyRentIncrease` | float64 | 期待月額賃料アップ（円） |
+| `isSelfWork` | bool | セルフリフォームか |
+| `selfLaborHours` | float64 | 工数（時間） |
+
+### レスポンス（`RenovationResult`）
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `recoveryYears` | float64 | 修繕費回収期間（年）。家賃アップなしは `0` |
+| `isRecoverable` | bool | 回収可能か |
+| `taxSavings` | float64 | 節税効果（円） |
+| `virtualLaborCost` | float64 | セルフリフォーム仮想人件費合計（円） |
+| `capitalExpenditures` | float64 | 資本的支出合計（60万円超） |
+| `repairExpenses` | float64 | 修繕費合計（60万円以下） |
+| `actualYield` | float64 | 実質利回り |
+| `totalRenovationCost` | float64 | リフォーム総費用 |
+| `annualRentIncrease` | float64 | 年間家賃アップ額 |
+| `classifiedItems` | ClassifiedRenovationItem[] | 分類済み工事項目 |
+
+**`ClassifiedRenovationItem`**: `RenovationItem` の全フィールド + `isCapitalExpenditure bool` + `virtualLaborCost float64`
+
+### バリデーションエラー（400）
+
+- `propertyPrice` ≤ 0
+- `effectiveTaxRate` が 0–1 範囲外
+- `selfLaborRatePerHour` < 0
+- `items` が空
+- いずれかの `item.cost` ≤ 0
 
 ---
 
