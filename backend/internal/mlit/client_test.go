@@ -744,3 +744,33 @@ func TestLatLngToTile(t *testing.T) {
 		})
 	}
 }
+
+func TestTileToLatLng_RoundTrip(t *testing.T) {
+	// LatLngToTile → TileToLatLng の往復で元の座標のタイル内に収まることを確認
+	tests := []struct {
+		name     string
+		lat, lng float64
+		z        int
+	}{
+		{"東京 z=13", 35.6812, 139.7671, 13},
+		{"大阪 z=14", 34.6937, 135.5023, 14},
+		{"札幌 z=12", 43.0618, 141.3545, 12},
+		{"那覇 z=13", 26.2124, 127.6792, 13},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			x, y := LatLngToTile(tt.lat, tt.lng, tt.z)
+			gotLat, gotLng := TileToLatLng(x, y, tt.z)
+			// タイル中心は元の座標から最大でタイル1枚分以内にあればよい
+			tileSize := 360.0 / math.Pow(2, float64(tt.z))
+			if math.Abs(gotLng-tt.lng) > tileSize {
+				t.Errorf("TileToLatLng lng round-trip at z=%d: got %.4f, original %.4f (diff > %.4f)",
+					tt.z, gotLng, tt.lng, tileSize)
+			}
+			if math.Abs(gotLat-tt.lat) > tileSize {
+				t.Errorf("TileToLatLng lat round-trip at z=%d: got %.4f, original %.4f (diff > %.4f)",
+					tt.z, gotLat, tt.lat, tileSize)
+			}
+		})
+	}
+}

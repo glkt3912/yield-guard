@@ -705,8 +705,11 @@ func (h *Handler) GetHazardInfo(c *gin.Context) {
 }
 
 // calcScoreForTile は指定タイル座標に対して 11 API を並列取得し投資適地スコアを返す。
-// 全 API が失敗した場合でもゼロ値スコアを返す（部分失敗は警告ログのみ）。
+// 個別 API の失敗は警告ログのみでスキップする。コンテキストキャンセル時はエラーを返す。
 func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.InvestmentScoreResult, error) {
+	if err := ctx.Err(); err != nil {
+		return domain.InvestmentScoreResult{}, err
+	}
 	type result[T any] struct {
 		data T
 		err  error
@@ -925,7 +928,17 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 	for tx := xMin; tx <= xMax; tx++ {
 		for ty := yMin; ty <= yMax; ty++ {
 			go func(tx, ty int) {
-				sem <- struct{}{}
+				defer func() {
+					if r := recover(); r != nil {
+						results <- tileResult{err: fmt.Errorf("panic in calcScoreForTile: %v", r)}
+					}
+				}()
+				select {
+				case <-ctx.Done():
+					results <- tileResult{err: ctx.Err()}
+					return
+				case sem <- struct{}{}:
+				}
 				defer func() { <-sem }()
 				score, err := h.calcScoreForTile(ctx, z, tx, ty)
 				if err != nil {
