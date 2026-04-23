@@ -12,18 +12,11 @@ import {
 } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { MonteCarloResult } from "@/types/investment";
+import { formatMan, formatPct } from "@/lib/utils";
 import { Sigma } from "lucide-react";
 
 interface Props {
   result: MonteCarloResult;
-}
-
-function pctLabel(v: number) {
-  return `${(v * 100).toFixed(1)}%`;
-}
-
-function manLabel(v: number) {
-  return `${Math.round(v / 10_000).toLocaleString()}万円`;
 }
 
 export function MonteCarloChart({ result }: Props) {
@@ -37,14 +30,15 @@ export function MonteCarloChart({ result }: Props) {
     successRate,
   } = result;
 
-  const irrData = irrHistogram.map((b) => ({
-    label: pctLabel(b.min),
+  // null guard: 全試行のIRRがNaNの場合バックエンドからnullが返る
+  const irrData = (irrHistogram ?? []).map((b) => ({
+    label: formatPct(b.min, 1),
     count: b.count,
     positive: b.min >= 0,
   }));
 
-  const equityData = equityHistogram.map((b) => ({
-    label: manLabel(b.min),
+  const equityData = (equityHistogram ?? []).map((b) => ({
+    label: formatMan(b.min, 0),
     count: b.count,
     positive: b.min >= 0,
   }));
@@ -71,27 +65,31 @@ export function MonteCarloChart({ result }: Props) {
       <CardContent className="space-y-6">
         {/* サマリーバッジ */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <StatCard label="IRR正値達成率" value={pctLabel(successRate)} positive={successRate >= 0.5} />
-          <StatCard label="デッドクロス発生率" value={pctLabel(deadCrossRate)} positive={deadCrossRate < 0.3} invert />
-          <StatCard label="IRR中央値" value={pctLabel(irrPercentiles.p50)} positive={irrPercentiles.p50 >= 0} />
+          <StatCard label="IRR正値達成率" value={formatPct(successRate, 1)} positive={successRate >= 0.5} />
+          <StatCard label="デッドクロス発生率" value={formatPct(deadCrossRate, 1)} positive={deadCrossRate < 0.3} invert />
+          <StatCard label="IRR中央値" value={formatPct(irrPercentiles.p50, 1)} positive={irrPercentiles.p50 >= 0} />
         </div>
 
         {/* IRRヒストグラム */}
         <div>
           <p className="mb-2 text-sm font-medium">IRR 分布</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={irrData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v: number) => [`${v} 件`, "頻度"]} />
-              <Bar dataKey="count" maxBarSize={24} radius={[2, 2, 0, 0]}>
-                {irrData.map((entry, i) => (
-                  <Cell key={i} fill={entry.positive ? "#60a5fa" : "#fca5a5"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {irrData.length === 0 ? (
+            <p className="text-xs text-muted-foreground">IRRを算出できた試行がありませんでした。</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={irrData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 10 }} />
+                <Tooltip formatter={(v: number) => [`${v} 件`, "頻度"]} />
+                <Bar dataKey="count" maxBarSize={24} radius={[2, 2, 0, 0]}>
+                  {irrData.map((entry, i) => (
+                    <Cell key={i} fill={entry.positive ? "#60a5fa" : "#fca5a5"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* 最終純資産ヒストグラム */}
@@ -127,10 +125,10 @@ export function MonteCarloChart({ result }: Props) {
                 <tr key={r.label} className="border-b last:border-0">
                   <td className="py-1">{r.label}</td>
                   <td className={`py-1 text-right font-mono ${r.irr >= 0 ? "text-blue-600" : "text-red-500"}`}>
-                    {pctLabel(r.irr)}
+                    {formatPct(r.irr, 1)}
                   </td>
                   <td className={`py-1 text-right font-mono ${r.equity >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                    {manLabel(r.equity)}
+                    {formatMan(r.equity, 0)}
                   </td>
                 </tr>
               ))}
