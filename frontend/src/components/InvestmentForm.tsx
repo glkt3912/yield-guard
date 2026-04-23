@@ -279,10 +279,18 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
     setQuickHistory(loadQuickHistory());
   }, []);
 
+  const clearRentHint = () => { setRentHint(null); setRentHintError(null); };
+
   const handleAreaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const code = e.target.value;
     setArea(code);
+    clearRentHint();
     loadMunicipalities(code);
+  };
+
+  const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCity(e.target.value);
+    clearRentHint();
   };
 
   const setNum = (key: keyof InvestmentInput, value: number) => {
@@ -472,7 +480,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                     />
                     <select
                       value={city}
-                      onChange={(e) => setCity(e.target.value)}
+                      onChange={handleCityChange}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <option value="">（全市区町村）</option>
@@ -642,7 +650,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   />
                   <select
                     value={city}
-                    onChange={(e) => setCity(e.target.value)}
+                    onChange={handleCityChange}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <option value="">（全市区町村）</option>

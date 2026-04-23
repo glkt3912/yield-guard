@@ -56,6 +56,7 @@ Copy `.env.example` → `.env` (project root).
 | `GET` | `/api/land-prices/compare` | Compare vs. market price |
 | `GET` | `/api/land-prices/estimate` | Theoretical price estimate |
 | `POST` | `/api/investment/analyze` | Investment simulation |
+| `GET` | `/api/investment/rent-decline-hint` | Rent decline rate hint from land appraisals (area, municipality) |
 | `GET` | `/api/municipalities` | Municipality list |
 | `GET` | `/api/station-ridership` | Station ridership (tile coords) |
 | `GET` | `/api/population-forecast` | Population forecast (tile coords) |
