@@ -1,10 +1,10 @@
-/** 金額を億/百万/円の3段階で表示。Math.round済みなので小数は出ない。
- * ルール: 100万円未満は円、1億円未満は百万円、1億円以上は億円 */
+/** 金額を億/万/円の3段階で表示。同一テーブル内で単位を統一するため万円ベースを基本とする。
+ * ルール: 1万円未満は円、1億円未満は万円、1億円以上は億円 */
 export function fmtYen(v: number): string {
   const rounded = Math.round(v);
   const abs = Math.abs(rounded);
   if (abs >= 100_000_000) return `${(rounded / 100_000_000).toFixed(1)}億円`;
-  if (abs >= 1_000_000) return `${(rounded / 1_000_000).toFixed(1)}百万円`;
+  if (abs >= 10_000) return `${Math.round(rounded / 10_000)}万円`;
   return `${rounded.toLocaleString("ja-JP")}円`;
 }
 
