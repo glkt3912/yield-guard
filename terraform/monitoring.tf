@@ -224,6 +224,9 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
 
   conditions {
     display_name = "キャッシュヒット率 < 50% が 10 分継続"
+    # fetch generic_task: OTel exporter が GCP リソース検出器なしの場合のデフォルト。
+    # setup.go で resource.WithDetectors() を使っていないため generic_task が正しい。
+    # Metrics Explorer で workload.googleapis.com/mlit.cache.misses を確認済み (#269)。
     condition_monitoring_query_language {
       query    = <<-EOT
         fetch generic_task
@@ -246,6 +249,9 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "3600s"
+    notification_rate_limit {
+      period = "3600s"
+    }
   }
 }
 
