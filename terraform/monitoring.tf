@@ -171,8 +171,7 @@ resource "google_monitoring_alert_policy" "mlit_latency" {
       aggregations {
         alignment_period     = "60s"
         per_series_aligner   = "ALIGN_PERCENTILE_99"
-        cross_series_reducer = "REDUCE_MEAN"
-        group_by_fields      = []
+        cross_series_reducer = "REDUCE_MAX"
       }
     }
   }
@@ -224,7 +223,7 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
     display_name = "キャッシュヒット率 < 50% が 10 分継続"
     condition_monitoring_query_language {
       query = <<-EOT
-        fetch global
+        fetch generic_task
         | {
             metric 'workload.googleapis.com/mlit.cache.misses'
           ;
@@ -260,7 +259,6 @@ resource "google_monitoring_alert_policy" "cloudrun_max_instances" {
         alignment_period     = "60s"
         per_series_aligner   = "ALIGN_MAX"
         cross_series_reducer = "REDUCE_MAX"
-        group_by_fields      = []
       }
     }
   }
