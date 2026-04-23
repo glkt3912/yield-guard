@@ -38,6 +38,12 @@ const (
 	endpointEmbankment             = "/XKT020"
 	endpointUrbanRoad              = "/XKT030"
 	endpointDisasterHistory        = "/XST001"
+	endpointUrbanZoning            = "/XKT001"
+	endpointLiquefaction           = "/XKT025"
+	endpointFloodHazard            = "/XKT026"
+	endpointStormHazard            = "/XKT027"
+	endpointTsunamiHazard          = "/XKT028"
+	endpointLandslideHazard        = "/XKT029"
 
 	requestTimeout = 30 * time.Second
 
@@ -873,6 +879,132 @@ func (c *Client) FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domai
 		})
 	}
 	c.cache.setDisaster(key, result)
+	return result, nil
+}
+
+// FetchUrbanZoning はタイル座標で XKT001 を呼び出し都市計画区域/区域区分情報を取得する。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.UrbanZoningItem, error) {
+	key := fmt.Sprintf("urban_zoning:%d:%d:%d", z, x, y)
+	if cached, ok := c.cache.getUrbanZoning(key); ok {
+		return cached, nil
+	}
+	var geoResp UrbanZoningGeoJSON
+	if err := c.fetchTileGeoJSON(ctx, endpointUrbanZoning, z, x, y, &geoResp); err != nil {
+		return nil, err
+	}
+	result := make([]domain.UrbanZoningItem, 0, len(geoResp.Features))
+	for _, f := range geoResp.Features {
+		result = append(result, domain.UrbanZoningItem{
+			AreaClassificationJa: f.Properties.AreaClassificationJa,
+			KubunID:              f.Properties.KubunID,
+		})
+	}
+	c.cache.setUrbanZoning(key, result)
+	return result, nil
+}
+
+// FetchLiquefaction はタイル座標で XKT025 を呼び出し液状化発生傾向情報を取得する。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.LiquefactionRiskItem, error) {
+	key := fmt.Sprintf("liquefaction:%d:%d:%d", z, x, y)
+	if cached, ok := c.cache.getLiquefaction(key); ok {
+		return cached, nil
+	}
+	var geoResp LiquefactionGeoJSON
+	if err := c.fetchTileGeoJSON(ctx, endpointLiquefaction, z, x, y, &geoResp); err != nil {
+		return nil, err
+	}
+	result := make([]domain.LiquefactionRiskItem, 0, len(geoResp.Features))
+	for _, f := range geoResp.Features {
+		result = append(result, domain.LiquefactionRiskItem{
+			TendencyLevel: f.Properties.LiquefactionTendencyLevel,
+			Note:          f.Properties.Note,
+		})
+	}
+	c.cache.setLiquefaction(key, result)
+	return result, nil
+}
+
+// FetchFloodHazard はタイル座標で XKT026 を呼び出し洪水浸水想定区域情報を取得する。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchFloodHazard(ctx context.Context, z, x, y int) ([]domain.FloodHazardItem, error) {
+	key := fmt.Sprintf("flood_hazard:%d:%d:%d", z, x, y)
+	if cached, ok := c.cache.getFloodHazard(key); ok {
+		return cached, nil
+	}
+	var geoResp FloodHazardGeoJSON
+	if err := c.fetchTileGeoJSON(ctx, endpointFloodHazard, z, x, y, &geoResp); err != nil {
+		return nil, err
+	}
+	result := make([]domain.FloodHazardItem, 0, len(geoResp.Features))
+	for _, f := range geoResp.Features {
+		result = append(result, domain.FloodHazardItem{
+			DepthRank: f.Properties.DepthRank,
+			RiverName: f.Properties.RiverName,
+		})
+	}
+	c.cache.setFloodHazard(key, result)
+	return result, nil
+}
+
+// FetchStormHazard はタイル座標で XKT027 を呼び出し高潮浸水想定区域情報を取得する。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.StormHazardItem, error) {
+	key := fmt.Sprintf("storm_hazard:%d:%d:%d", z, x, y)
+	if cached, ok := c.cache.getStormHazard(key); ok {
+		return cached, nil
+	}
+	var geoResp StormHazardGeoJSON
+	if err := c.fetchTileGeoJSON(ctx, endpointStormHazard, z, x, y, &geoResp); err != nil {
+		return nil, err
+	}
+	result := make([]domain.StormHazardItem, 0, len(geoResp.Features))
+	for _, f := range geoResp.Features {
+		result = append(result, domain.StormHazardItem{DepthJa: f.Properties.DepthJa})
+	}
+	c.cache.setStormHazard(key, result)
+	return result, nil
+}
+
+// FetchTsunamiHazard はタイル座標で XKT028 を呼び出し津波浸水想定情報を取得する。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.TsunamiHazardItem, error) {
+	key := fmt.Sprintf("tsunami_hazard:%d:%d:%d", z, x, y)
+	if cached, ok := c.cache.getTsunamiHazard(key); ok {
+		return cached, nil
+	}
+	var geoResp TsunamiHazardGeoJSON
+	if err := c.fetchTileGeoJSON(ctx, endpointTsunamiHazard, z, x, y, &geoResp); err != nil {
+		return nil, err
+	}
+	result := make([]domain.TsunamiHazardItem, 0, len(geoResp.Features))
+	for _, f := range geoResp.Features {
+		result = append(result, domain.TsunamiHazardItem{DepthJa: f.Properties.DepthJa})
+	}
+	c.cache.setTsunamiHazard(key, result)
+	return result, nil
+}
+
+// FetchLandslideHazard はタイル座標で XKT029 を呼び出し土砂災害警戒区域情報を取得する。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domain.LandslideHazardItem, error) {
+	key := fmt.Sprintf("landslide_hazard:%d:%d:%d", z, x, y)
+	if cached, ok := c.cache.getLandslideHazard(key); ok {
+		return cached, nil
+	}
+	var geoResp LandslideHazardGeoJSON
+	if err := c.fetchTileGeoJSON(ctx, endpointLandslideHazard, z, x, y, &geoResp); err != nil {
+		return nil, err
+	}
+	result := make([]domain.LandslideHazardItem, 0, len(geoResp.Features))
+	for _, f := range geoResp.Features {
+		result = append(result, domain.LandslideHazardItem{
+			PhenomenonType: f.Properties.PhenomenonType,
+			ZoneCode:       f.Properties.ZoneCode,
+		})
+	}
+	c.cache.setLandslideHazard(key, result)
 	return result, nil
 }
 

@@ -31,6 +31,12 @@ type mockMLITClient struct {
 	embankmentFunc       func(ctx context.Context, z, x, y int) ([]domain.EmbankmentItem, error)
 	urbanRoadFunc        func(ctx context.Context, z, x, y int) ([]domain.UrbanRoadItem, error)
 	disasterHistoryFunc  func(ctx context.Context, z, x, y int) ([]domain.DisasterHistoryItem, error)
+	urbanZoningFunc      func(ctx context.Context, z, x, y int) ([]domain.UrbanZoningItem, error)
+	liquefactionFunc     func(ctx context.Context, z, x, y int) ([]domain.LiquefactionRiskItem, error)
+	floodHazardFunc      func(ctx context.Context, z, x, y int) ([]domain.FloodHazardItem, error)
+	stormHazardFunc      func(ctx context.Context, z, x, y int) ([]domain.StormHazardItem, error)
+	tsunamiHazardFunc    func(ctx context.Context, z, x, y int) ([]domain.TsunamiHazardItem, error)
+	landslideHazardFunc  func(ctx context.Context, z, x, y int) ([]domain.LandslideHazardItem, error)
 }
 
 func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
@@ -94,6 +100,43 @@ func (m *mockMLITClient) FetchDisasterHistory(ctx context.Context, z, x, y int) 
 		return m.disasterHistoryFunc(ctx, z, x, y)
 	}
 	return []domain.DisasterHistoryItem{}, nil
+}
+
+func (m *mockMLITClient) FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.UrbanZoningItem, error) {
+	if m.urbanZoningFunc != nil {
+		return m.urbanZoningFunc(ctx, z, x, y)
+	}
+	return []domain.UrbanZoningItem{}, nil
+}
+func (m *mockMLITClient) FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.LiquefactionRiskItem, error) {
+	if m.liquefactionFunc != nil {
+		return m.liquefactionFunc(ctx, z, x, y)
+	}
+	return []domain.LiquefactionRiskItem{}, nil
+}
+func (m *mockMLITClient) FetchFloodHazard(ctx context.Context, z, x, y int) ([]domain.FloodHazardItem, error) {
+	if m.floodHazardFunc != nil {
+		return m.floodHazardFunc(ctx, z, x, y)
+	}
+	return []domain.FloodHazardItem{}, nil
+}
+func (m *mockMLITClient) FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.StormHazardItem, error) {
+	if m.stormHazardFunc != nil {
+		return m.stormHazardFunc(ctx, z, x, y)
+	}
+	return []domain.StormHazardItem{}, nil
+}
+func (m *mockMLITClient) FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.TsunamiHazardItem, error) {
+	if m.tsunamiHazardFunc != nil {
+		return m.tsunamiHazardFunc(ctx, z, x, y)
+	}
+	return []domain.TsunamiHazardItem{}, nil
+}
+func (m *mockMLITClient) FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domain.LandslideHazardItem, error) {
+	if m.landslideHazardFunc != nil {
+		return m.landslideHazardFunc(ctx, z, x, y)
+	}
+	return []domain.LandslideHazardItem{}, nil
 }
 
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す
@@ -988,5 +1031,119 @@ func TestGetUrbanRisks_PartialAPIFailure(t *testing.T) {
 	}
 	if !found {
 		t.Error("expected DISASTER_HISTORY in response despite embankment API failure")
+	}
+}
+
+// ---- /api/investment-score テスト ----
+
+func TestGetInvestmentScore_MissingParams(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	for _, url := range []string{
+		"/api/investment-score",
+		"/api/investment-score?lat=35.68",
+		"/api/investment-score?lng=139.69",
+	} {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, url, nil))
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("url=%s: expected 400, got %d", url, w.Code)
+		}
+	}
+}
+
+func TestGetInvestmentScore_InvalidRange(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	for _, url := range []string{
+		"/api/investment-score?lat=10&lng=139.69",   // lat 範囲外（< 20）
+		"/api/investment-score?lat=35.68&lng=200",   // lng 範囲外（> 154）
+		"/api/investment-score?lat=abc&lng=139.69",  // 数値でない
+	} {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, url, nil))
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("url=%s: expected 400, got %d", url, w.Code)
+		}
+	}
+}
+
+func TestGetInvestmentScore_EmptyResult(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	req := httptest.NewRequest(http.MethodGet, "/api/investment-score?lat=35.68&lng=139.69", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var result domain.InvestmentScoreResult
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if result.TotalScore != 50 {
+		t.Errorf("all-empty input should yield base score 50, got %d", result.TotalScore)
+	}
+	if result.Grade != "普通" {
+		t.Errorf("expected grade 普通, got %q", result.Grade)
+	}
+	if len(result.Breakdown.RadarData) != 5 {
+		t.Errorf("expected 5 radar categories, got %d", len(result.Breakdown.RadarData))
+	}
+}
+
+func TestGetInvestmentScore_WithData(t *testing.T) {
+	mock := &mockMLITClient{
+		urbanZoningFunc: func(_ context.Context, _, _, _ int) ([]domain.UrbanZoningItem, error) {
+			return []domain.UrbanZoningItem{{AreaClassificationJa: "市街化区域"}}, nil
+		},
+		floodHazardFunc: func(_ context.Context, _, _, _ int) ([]domain.FloodHazardItem, error) {
+			return []domain.FloodHazardItem{{DepthRank: 3, RiverName: "多摩川"}}, nil
+		},
+	}
+	r := newTestRouter(mock)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment-score?lat=35.68&lng=139.69", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var result domain.InvestmentScoreResult
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	// 市街化区域 +10、洪水 -5 → base50 + 10 - 5 = 55
+	if result.TotalScore != 55 {
+		t.Errorf("expected score 55, got %d", result.TotalScore)
+	}
+	if result.Breakdown.UrbanArea.Score != 10 {
+		t.Errorf("expected urbanArea score 10, got %d", result.Breakdown.UrbanArea.Score)
+	}
+	if result.Breakdown.HazardRisk.Score != -5 {
+		t.Errorf("expected hazardRisk score -5, got %d", result.Breakdown.HazardRisk.Score)
+	}
+}
+
+func TestGetInvestmentScore_PartialAPIFailure(t *testing.T) {
+	mock := &mockMLITClient{
+		floodHazardFunc: func(_ context.Context, _, _, _ int) ([]domain.FloodHazardItem, error) {
+			return nil, errors.New("API timeout")
+		},
+		urbanZoningFunc: func(_ context.Context, _, _, _ int) ([]domain.UrbanZoningItem, error) {
+			return []domain.UrbanZoningItem{{AreaClassificationJa: "市街化区域"}}, nil
+		},
+	}
+	r := newTestRouter(mock)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment-score?lat=35.68&lng=139.69", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	// 一部 API 失敗でも 200 を返すこと
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 even with partial API failure, got %d", w.Code)
+	}
+	var result domain.InvestmentScoreResult
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	// flood 失敗 → hazard=0、urban +10 → base50 + 10 = 60
+	if result.TotalScore != 60 {
+		t.Errorf("expected score 60 with flood API failure, got %d", result.TotalScore)
 	}
 }

@@ -1,13 +1,26 @@
 .PHONY: dev test lint build clean help \
         mlit-land-prices mlit-municipalities mlit-station-ridership mlit-population-forecast mlit-land-appraisals \
-        api-station-ridership api-estimate-ridership api-population-forecast api-land-appraisals \
+        mlit-urban-zoning mlit-liquefaction mlit-flood-hazard mlit-storm-hazard mlit-tsunami-hazard mlit-landslide-hazard \
+        api-station-ridership api-estimate-ridership api-population-forecast api-land-appraisals api-investment-score \
         integration integration-population integration-land-appraisals
 
 ## dev: バックエンド・フロントエンドの開発サーバーを起動
 dev:
+	@if [ ! -f .env ]; then \
+	  echo "ERROR: .env が見つかりません。worktree の場合は以下を実行してください:"; \
+	  echo "  cp ../yield-guard/.env .env"; \
+	  exit 1; \
+	fi
 	@trap 'kill 0' INT TERM EXIT; \
 	echo "==> Starting backend..."; \
-	(cd backend && set -a; . ../.env 2>/dev/null; set +a; go run ./cmd/server) & \
+	(cd backend && set -a; . ../.env; set +a; go run ./cmd/server) & \
+	BACKEND_PID=$$!; \
+	sleep 3; \
+	if ! kill -0 $$BACKEND_PID 2>/dev/null; then \
+	  echo "ERROR: バックエンドの起動に失敗しました。ログを確認してください。"; \
+	  exit 1; \
+	fi; \
+	echo "==> Backend started (PID=$$BACKEND_PID)"; \
 	echo "==> Starting frontend..."; \
 	(cd frontend && npm run dev -- --webpack) & \
 	wait
@@ -130,6 +143,84 @@ mlit-population-forecast:
 # ---------------------------------------------------------------------------
 API_BASE := http://localhost:8080/api
 
+## mlit-urban-zoning: 都市計画区域/区域区分を取得 (XKT001) ※フィールド値確認用
+##   使い方: make mlit-urban-zoning z=14 x=14547 y=6451
+mlit-urban-zoning:
+	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
+	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
+	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
+	@source .env 2>/dev/null; \
+	 curl -s \
+	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
+	   --compressed \
+	   "$(MLIT_BASE)/XKT001?response_format=geojson&z=$(z)&x=$(x)&y=$(y)" \
+	   | jq '{feature_count: (.features | length), sample: (.features[:3] | map(.properties | {area_classification_ja, kubun_id, city_name}))}'
+
+## mlit-liquefaction: 液状化発生傾向図を取得 (XKT025) ※liquefaction_tendency_level の実値確認用
+##   使い方: make mlit-liquefaction z=14 x=14547 y=6451
+mlit-liquefaction:
+	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
+	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
+	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
+	@source .env 2>/dev/null; \
+	 curl -s \
+	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
+	   --compressed \
+	   "$(MLIT_BASE)/XKT025?response_format=geojson&z=$(z)&x=$(x)&y=$(y)" \
+	   | jq '{feature_count: (.features | length), sample: (.features[:5] | map(.properties | {liquefaction_tendency_level, note, mesh_code}))}'
+
+## mlit-flood-hazard: 洪水浸水想定区域を取得 (XKT026) ※A31a_205 浸水深ランクの実値確認用
+##   使い方: make mlit-flood-hazard z=14 x=14547 y=6451
+mlit-flood-hazard:
+	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
+	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
+	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
+	@source .env 2>/dev/null; \
+	 curl -s \
+	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
+	   --compressed \
+	   "$(MLIT_BASE)/XKT026?response_format=geojson&z=$(z)&x=$(x)&y=$(y)" \
+	   | jq '{feature_count: (.features | length), sample: (.features[:3] | map(.properties | {A31a_205, A31a_202, A31a_204}))}'
+
+## mlit-storm-hazard: 高潮浸水想定区域を取得 (XKT027) ※A49_003 浸水深区分の実値確認用
+##   使い方: make mlit-storm-hazard z=14 x=14547 y=6451
+mlit-storm-hazard:
+	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
+	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
+	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
+	@source .env 2>/dev/null; \
+	 curl -s \
+	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
+	   --compressed \
+	   "$(MLIT_BASE)/XKT027?response_format=geojson&z=$(z)&x=$(x)&y=$(y)" \
+	   | jq '{feature_count: (.features | length), sample: (.features[:3] | map(.properties | {A49_003, A49_001, target_year}))}'
+
+## mlit-tsunami-hazard: 津波浸水想定を取得 (XKT028) ※A40_003 浸水深区分の実値確認用
+##   使い方: make mlit-tsunami-hazard z=14 x=14547 y=6451
+mlit-tsunami-hazard:
+	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
+	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
+	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
+	@source .env 2>/dev/null; \
+	 curl -s \
+	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
+	   --compressed \
+	   "$(MLIT_BASE)/XKT028?response_format=geojson&z=$(z)&x=$(x)&y=$(y)" \
+	   | jq '{feature_count: (.features | length), sample: (.features[:3] | map(.properties | {A40_003, A40_001, target_year}))}'
+
+## mlit-landslide-hazard: 土砂災害警戒区域を取得 (XKT029) ※A33_001/A33_002 の実値確認用
+##   使い方: make mlit-landslide-hazard z=14 x=14547 y=6451
+mlit-landslide-hazard:
+	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
+	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
+	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
+	@source .env 2>/dev/null; \
+	 curl -s \
+	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
+	   --compressed \
+	   "$(MLIT_BASE)/XKT029?response_format=geojson&z=$(z)&x=$(x)&y=$(y)" \
+	   | jq '{feature_count: (.features | length), sample: (.features[:3] | map(.properties | {A33_001, A33_002, A33_005, A33_007}))}'
+
 ## api-station-ridership: ローカルの /api/station-ridership を呼び出す
 ##   使い方: make api-station-ridership lat=35.6762 lng=139.6503 [z=14]
 api-station-ridership:
@@ -157,6 +248,16 @@ api-population-forecast:
 	curl -s \
 	  "$(API_BASE)/population-forecast?lat=$(lat)&lng=$(lng)$(if $(z),&z=$(z),)" \
 	  | jq .
+
+## api-investment-score: ローカルの /api/investment-score を呼び出す
+##   使い方: make api-investment-score lat=35.6580 lng=139.7016
+##   渋谷付近: lat=35.6580 lng=139.7016 / 前橋付近: lat=36.3897 lng=139.0607
+api-investment-score:
+	@test -n "$(lat)" || (echo "ERROR: lat は必須です (例: lat=35.6580)"; exit 1)
+	@test -n "$(lng)" || (echo "ERROR: lng は必須です (例: lng=139.7016)"; exit 1)
+	curl -s \
+	  "$(API_BASE)/investment-score?lat=$(lat)&lng=$(lng)" \
+	  | jq '{totalScore: .totalScore, grade: .grade, breakdown: (.breakdown | {population: .population, ridership: .ridership, urbanArea: .urbanArea, locationOptimization: .locationOptimization, hazardRisk: .hazardRisk, liquefactionRisk: .liquefactionRisk, embankment: .embankment, disasterHistory: .disasterHistory})}'
 
 ## api-estimate-ridership: 需要スコア補正付き理論価格推定を呼び出す
 ##   使い方: make api-estimate-ridership area=13 city=13113 price=50000000 area_sqm=100 building_age=10 station_minutes=5 ridership_score=A

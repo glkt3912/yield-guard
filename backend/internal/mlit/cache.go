@@ -28,6 +28,12 @@ type cache struct {
 	embankmentEntries          map[string]embankmentCacheEntry
 	urbanRoadEntries           map[string]urbanRoadCacheEntry
 	disasterEntries            map[string]disasterCacheEntry
+	urbanZoningEntries         map[string]urbanZoningCacheEntry
+	liquefactionEntries        map[string]liquefactionCacheEntry
+	floodHazardEntries         map[string]floodHazardCacheEntry
+	stormHazardEntries         map[string]stormHazardCacheEntry
+	tsunamiHazardEntries       map[string]tsunamiHazardCacheEntry
+	landslideHazardEntries     map[string]landslideHazardCacheEntry
 }
 
 func newCache() *cache {
@@ -41,6 +47,12 @@ func newCache() *cache {
 		embankmentEntries:          make(map[string]embankmentCacheEntry),
 		urbanRoadEntries:           make(map[string]urbanRoadCacheEntry),
 		disasterEntries:            make(map[string]disasterCacheEntry),
+		urbanZoningEntries:         make(map[string]urbanZoningCacheEntry),
+		liquefactionEntries:        make(map[string]liquefactionCacheEntry),
+		floodHazardEntries:         make(map[string]floodHazardCacheEntry),
+		stormHazardEntries:         make(map[string]stormHazardCacheEntry),
+		tsunamiHazardEntries:       make(map[string]tsunamiHazardCacheEntry),
+		landslideHazardEntries:     make(map[string]landslideHazardCacheEntry),
 	}
 }
 
@@ -350,6 +362,186 @@ func (c *cache) setDisaster(key string, data []domain.DisasterHistoryItem) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.disasterEntries[key] = disasterCacheEntry{data: data, expiresAt: time.Now().Add(cacheTTL)}
+}
+
+// urbanZoningCacheEntry は都市計画区域/区域区分キャッシュの1エントリ
+type urbanZoningCacheEntry struct {
+	data      []domain.UrbanZoningItem
+	expiresAt time.Time
+}
+
+func (c *cache) getUrbanZoning(key string) ([]domain.UrbanZoningItem, bool) {
+	c.mu.RLock()
+	entry, ok := c.urbanZoningEntries[key]
+	c.mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.urbanZoningEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+	copied := make([]domain.UrbanZoningItem, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+func (c *cache) setUrbanZoning(key string, data []domain.UrbanZoningItem) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.urbanZoningEntries[key] = urbanZoningCacheEntry{data: data, expiresAt: time.Now().Add(cacheTTL)}
+}
+
+// liquefactionCacheEntry は液状化発生傾向図キャッシュの1エントリ
+type liquefactionCacheEntry struct {
+	data      []domain.LiquefactionRiskItem
+	expiresAt time.Time
+}
+
+func (c *cache) getLiquefaction(key string) ([]domain.LiquefactionRiskItem, bool) {
+	c.mu.RLock()
+	entry, ok := c.liquefactionEntries[key]
+	c.mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.liquefactionEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+	copied := make([]domain.LiquefactionRiskItem, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+func (c *cache) setLiquefaction(key string, data []domain.LiquefactionRiskItem) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.liquefactionEntries[key] = liquefactionCacheEntry{data: data, expiresAt: time.Now().Add(cacheTTL)}
+}
+
+// floodHazardCacheEntry は洪水浸水想定区域キャッシュの1エントリ
+type floodHazardCacheEntry struct {
+	data      []domain.FloodHazardItem
+	expiresAt time.Time
+}
+
+func (c *cache) getFloodHazard(key string) ([]domain.FloodHazardItem, bool) {
+	c.mu.RLock()
+	entry, ok := c.floodHazardEntries[key]
+	c.mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.floodHazardEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+	copied := make([]domain.FloodHazardItem, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+func (c *cache) setFloodHazard(key string, data []domain.FloodHazardItem) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.floodHazardEntries[key] = floodHazardCacheEntry{data: data, expiresAt: time.Now().Add(cacheTTL)}
+}
+
+// stormHazardCacheEntry は高潮浸水想定区域キャッシュの1エントリ
+type stormHazardCacheEntry struct {
+	data      []domain.StormHazardItem
+	expiresAt time.Time
+}
+
+func (c *cache) getStormHazard(key string) ([]domain.StormHazardItem, bool) {
+	c.mu.RLock()
+	entry, ok := c.stormHazardEntries[key]
+	c.mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.stormHazardEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+	copied := make([]domain.StormHazardItem, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+func (c *cache) setStormHazard(key string, data []domain.StormHazardItem) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.stormHazardEntries[key] = stormHazardCacheEntry{data: data, expiresAt: time.Now().Add(cacheTTL)}
+}
+
+// tsunamiHazardCacheEntry は津波浸水想定キャッシュの1エントリ
+type tsunamiHazardCacheEntry struct {
+	data      []domain.TsunamiHazardItem
+	expiresAt time.Time
+}
+
+func (c *cache) getTsunamiHazard(key string) ([]domain.TsunamiHazardItem, bool) {
+	c.mu.RLock()
+	entry, ok := c.tsunamiHazardEntries[key]
+	c.mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.tsunamiHazardEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+	copied := make([]domain.TsunamiHazardItem, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+func (c *cache) setTsunamiHazard(key string, data []domain.TsunamiHazardItem) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.tsunamiHazardEntries[key] = tsunamiHazardCacheEntry{data: data, expiresAt: time.Now().Add(cacheTTL)}
+}
+
+// landslideHazardCacheEntry は土砂災害警戒区域キャッシュの1エントリ
+type landslideHazardCacheEntry struct {
+	data      []domain.LandslideHazardItem
+	expiresAt time.Time
+}
+
+func (c *cache) getLandslideHazard(key string) ([]domain.LandslideHazardItem, bool) {
+	c.mu.RLock()
+	entry, ok := c.landslideHazardEntries[key]
+	c.mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.landslideHazardEntries, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+	copied := make([]domain.LandslideHazardItem, len(entry.data))
+	copy(copied, entry.data)
+	return copied, true
+}
+
+func (c *cache) setLandslideHazard(key string, data []domain.LandslideHazardItem) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.landslideHazardEntries[key] = landslideHazardCacheEntry{data: data, expiresAt: time.Now().Add(cacheTTL)}
 }
 
 // cacheKey は LandPriceQuery からキャッシュキーを生成する。

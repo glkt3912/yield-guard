@@ -2032,3 +2032,149 @@ func TestAnalyze_DeadCross_NewWoodFrame(t *testing.T) {
 		t.Errorf("DeadCrossYear = %d, want 23", result.DeadCrossYear)
 	}
 }
+
+// ---- CalcInvestmentScore テスト ----
+
+func TestCalcInvestmentScore_EmptyInput(t *testing.T) {
+	result := CalcInvestmentScore(InvestmentScoreInput{})
+	if result.TotalScore < 0 || result.TotalScore > 100 {
+		t.Errorf("TotalScore out of range: %d", result.TotalScore)
+	}
+	if result.TotalScore != 50 {
+		t.Errorf("empty input should yield base score 50, got %d", result.TotalScore)
+	}
+	if result.Grade != "普通" {
+		t.Errorf("empty input grade = %q, want 普通", result.Grade)
+	}
+	if len(result.Breakdown.RadarData) != 5 {
+		t.Errorf("expected 5 radar categories, got %d", len(result.Breakdown.RadarData))
+	}
+}
+
+func TestCalcInvestmentScore_AllPositive(t *testing.T) {
+	input := InvestmentScoreInput{
+		PopulationItems: []PopulationForecastItem{
+			{Year: 2020, Pop: 1000},
+			{Year: 2050, Pop: 1300}, // +30%
+		},
+		StationRiderships: []StationRidershipResult{
+			{StationName: "渋谷", Passengers: 500_000},
+		},
+		UrbanZoningItems: []UrbanZoningItem{
+			{AreaClassificationJa: "市街化区域"},
+		},
+		LocationItems: []LocationOptimizationItem{
+			{KubunNameJa: "居住誘導区域"},
+		},
+	}
+	result := CalcInvestmentScore(input)
+	if result.TotalScore > 100 {
+		t.Errorf("TotalScore exceeds 100: %d", result.TotalScore)
+	}
+	if result.TotalScore < 90 {
+		t.Errorf("all positive inputs should score high, got %d", result.TotalScore)
+	}
+}
+
+func TestCalcInvestmentScore_AllNegative(t *testing.T) {
+	input := InvestmentScoreInput{
+		PopulationItems: []PopulationForecastItem{
+			{Year: 2020, Pop: 1000},
+			{Year: 2050, Pop: 400}, // -60%
+		},
+		FloodItems: []FloodHazardItem{
+			{DepthRank: 4},
+		},
+		StormItems:    []StormHazardItem{{DepthJa: "5m以上"}},
+		TsunamiItems:  []TsunamiHazardItem{{DepthJa: "3m以上"}},
+		LandslideItems: []LandslideHazardItem{{ZoneCode: 1}},
+		LiquefactionItems: []LiquefactionRiskItem{{TendencyLevel: 1}},
+		EmbankmentItems:   []EmbankmentItem{{Classification: "谷埋め型"}},
+		DisasterItems:     []DisasterHistoryItem{{Name: "浸水域", Year: 2019}},
+	}
+	result := CalcInvestmentScore(input)
+	if result.TotalScore < 0 {
+		t.Errorf("TotalScore below 0: %d", result.TotalScore)
+	}
+	if result.TotalScore > 20 {
+		t.Errorf("all negative inputs should score low, got %d", result.TotalScore)
+	}
+}
+
+func TestCalcPopulationScore_LinearInterpolation(t *testing.T) {
+	tests := []struct {
+		name  string
+		items []PopulationForecastItem
+		want  int
+	}{
+		{"増加30%", []PopulationForecastItem{{Year: 2020, Pop: 100}, {Year: 2050, Pop: 130}}, 15},
+		{"変化なし", []PopulationForecastItem{{Year: 2020, Pop: 100}, {Year: 2050, Pop: 100}}, 0},
+		{"減少50%", []PopulationForecastItem{{Year: 2020, Pop: 100}, {Year: 2050, Pop: 50}}, -15},
+		{"データなし", nil, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			item := calcPopulationScore(tt.items)
+			if item.Score != tt.want {
+				t.Errorf("calcPopulationScore() = %d, want %d", item.Score, tt.want)
+			}
+		})
+	}
+}
+
+func TestCalcRidershipScore_MaxCap(t *testing.T) {
+	riderships := []StationRidershipResult{
+		{StationName: "新宿", Passengers: 500_000},
+	}
+	item := calcRidershipScore(riderships)
+	if item.Score != 20 {
+		t.Errorf("500k passengers should give max score 20, got %d", item.Score)
+	}
+}
+
+func TestCalcLiquefactionScore_Levels(t *testing.T) {
+	tests := []struct {
+		level int
+		want  int
+	}{
+		{1, -10},
+		{2, -10},
+		{3, -5},
+		{4, -5},
+		{5, 0},
+		{6, 0},
+	}
+	for _, tt := range tests {
+		items := []LiquefactionRiskItem{{TendencyLevel: tt.level}}
+		item := calcLiquefactionScore(items)
+		if item.Score != tt.want {
+			t.Errorf("level %d: got %d, want %d", tt.level, item.Score, tt.want)
+		}
+	}
+}
+
+func TestCalcUrbanAreaScore_MarketArea(t *testing.T) {
+	market := []UrbanZoningItem{{AreaClassificationJa: "市街化区域"}}
+	if s := calcUrbanAreaScore(market); s.Score != 10 {
+		t.Errorf("市街化区域 should give +10, got %d", s.Score)
+	}
+	control := []UrbanZoningItem{{AreaClassificationJa: "市街化調整区域"}}
+	if s := calcUrbanAreaScore(control); s.Score != 0 {
+		t.Errorf("市街化調整区域 should give 0, got %d", s.Score)
+	}
+}
+
+func TestCalcHazardScore_Combined(t *testing.T) {
+	flood := []FloodHazardItem{{DepthRank: 3}}
+	storm := []StormHazardItem{{DepthJa: "5m以上"}}
+	tsunami := []TsunamiHazardItem{{DepthJa: "3m以上"}}
+	landslide := []LandslideHazardItem{{ZoneCode: 1}}
+
+	item := calcHazardScore(flood, storm, tsunami, landslide)
+	if item.Score < -20 {
+		t.Errorf("hazard score must not go below -20, got %d", item.Score)
+	}
+	if item.Score != -20 {
+		t.Errorf("all 4 hazards should give -20 (capped), got %d", item.Score)
+	}
+}
