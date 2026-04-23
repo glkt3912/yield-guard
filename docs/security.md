@@ -129,12 +129,18 @@ Artifact Registry の無料枠（0.5 GB/月）を超えないよう、最新 5 �
 | `VERCEL_FRONTEND_URL` | Variable | `TF_VAR_vercel_frontend_url`（CORS 許可オリジン） |
 | `NOTIFICATION_EMAIL` | Variable | `TF_VAR_notification_email`（Cloud Monitoring アラート通知先） |
 
+> `TF_VAR_env`（`"prod"`）・`TF_VAR_region`（`"asia-northeast1"`）はワークフロー内にハードコードされており、Secrets / Variables の設定は不要。
+
 Variable（非機密）は `gh variable set`、Secret（機密）は `gh secret set` または GitHub UI で設定する。
 
 ```bash
 # Variable の設定例
 gh variable set NOTIFICATION_EMAIL --body "your@email.com"
 gh variable set VERCEL_FRONTEND_URL --body "https://your-app.vercel.app"
+
+# Secret の設定例
+gh secret set GCP_PROJECT_ID --body "your-gcp-project-id"
+gh secret set MLIT_API_KEY --body "your-mlit-api-key"
 ```
 
 ---
