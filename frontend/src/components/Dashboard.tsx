@@ -9,6 +9,7 @@ import { DeadCrossChart } from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
 import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
+import RenovationPanel from "@/components/RenovationPanel";
 import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode, LoanMethod } from "@/types/investment";
 import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks } from "@/lib/api";
 import { ShieldAlert, Info, FileDown, Share2, Check } from "lucide-react";
@@ -289,6 +290,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 )}
               </>
             )}
+            <RenovationPanel />
           </section>
         </div>
       </main>
