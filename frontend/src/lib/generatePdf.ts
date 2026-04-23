@@ -3,6 +3,7 @@ import type {
   InvestmentResult,
   YearlyResult,
 } from "@/types/investment";
+import { fmtYen, fmtPct, fmtDate, sanitize } from "./pdf/format";
 
 const C = {
   primary: "#1a56db",
@@ -15,26 +16,6 @@ const C = {
   muted: "#64748b",
   white: "#ffffff",
 } as const;
-
-// Sanitize string values before embedding in PDF content to prevent injection
-function s(v: string | number | undefined): string {
-  if (v === undefined || v === null) return "";
-  return String(v).replace(/[<>&"'\\]/g, "");
-}
-
-function fmt(v: number): string {
-  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}百万円`;
-  return `${v.toLocaleString("ja-JP")}円`;
-}
-
-function pct(v: number): string {
-  return `${(v * 100).toFixed(2)}%`;
-}
-
-function today(): string {
-  const d = new Date();
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-}
 
 // TTF subset served from our own domain — pdfmake's pdfkit does not support woff2
 const FONTS = {
@@ -58,7 +39,7 @@ function infoRow(label: string, value: string) {
   return {
     columns: [
       { text: label, width: "40%", color: C.muted, fontSize: 9 },
-      { text: s(value), width: "60%", bold: true, fontSize: 9, alignment: "right" as const },
+      { text: sanitize(value), width: "60%", bold: true, fontSize: 9, alignment: "right" as const },
     ],
     marginBottom: 3,
   };
@@ -101,7 +82,7 @@ function hLineTable(body: unknown[][]) {
 function twoCol(label: string, value: string, bold = false, color?: string) {
   return [
     { text: label, fontSize: 8, bold, color: color ? undefined : C.text },
-    { text: s(value), fontSize: 8, bold, color: color ?? C.text, alignment: "right" as const },
+    { text: sanitize(value), fontSize: 8, bold, color: color ?? C.text, alignment: "right" as const },
   ];
 }
 
@@ -133,7 +114,7 @@ export async function downloadReportPDF(
     },
   };
 
-  const date = today();
+  const date = fmtDate();
   const year1 = result.yearlyResults[0];
   const dscr =
     year1?.annualLoanPayment > 0 ? year1.annualRent / year1.annualLoanPayment : 0;
@@ -192,21 +173,21 @@ export async function downloadReportPDF(
       { text: "Real Estate Investment Analysis Report", fontSize: 12, color: C.muted, marginBottom: 24 },
 
       { text: "物件概要", fontSize: 9, bold: true, color: C.muted, marginBottom: 8 },
-      infoRow("物件価格（土地）", fmt(input.landPrice)),
-      infoRow("建物費用", fmt(input.buildingCost)),
+      infoRow("物件価格（土地）", fmtYen(input.landPrice)),
+      infoRow("建物費用", fmtYen(input.buildingCost)),
       infoRow("築年数", input.buildingAge === 0 ? "新築" : `${input.buildingAge}年`),
-      infoRow("構造", s(input.buildingType)),
+      infoRow("構造", sanitize(input.buildingType)),
       ...(input.stationMinutes > 0 ? [infoRow("最寄り駅徒歩", `${input.stationMinutes}分`)] : []),
-      infoRow("月額賃料", fmt(input.monthlyRent)),
-      infoRow("想定空室率", pct(input.vacancyRate)),
-      infoRow("ローン金額", fmt(input.loanAmount)),
-      infoRow("ローン金利", pct(input.annualLoanRate)),
+      infoRow("月額賃料", fmtYen(input.monthlyRent)),
+      infoRow("想定空室率", fmtPct(input.vacancyRate)),
+      infoRow("ローン金額", fmtYen(input.loanAmount)),
+      infoRow("ローン金利", fmtPct(input.annualLoanRate)),
       infoRow("ローン期間", `${input.loanYears}年`),
 
       { text: "分析情報", fontSize: 9, bold: true, color: C.muted, marginBottom: 8, marginTop: 16 },
       infoRow("分析実施日", date),
-      infoRow("総投資額", fmt(result.totalInvestment)),
-      infoRow("表面利回り", pct(result.grossYield)),
+      infoRow("総投資額", fmtYen(result.totalInvestment)),
+      infoRow("表面利回り", fmtPct(result.grossYield)),
 
       // ── Page 2: Summary ────────────────────────────────────────────
       sectionTitle("P1 - 投資サマリー", true),
@@ -239,12 +220,12 @@ export async function downloadReportPDF(
 
       subTitle(`出口戦略（${input.holdingYears}年後売却）`),
       hLineTable([
-        twoCol("想定売却価格", fmt(result.exitSalePrice)),
-        twoCol("譲渡所得税", fmt(result.exitTransferTax)),
-        twoCol("売却手取り", fmt(result.exitNetProceeds)),
+        twoCol("想定売却価格", fmtYen(result.exitSalePrice)),
+        twoCol("譲渡所得税", fmtYen(result.exitTransferTax)),
+        twoCol("売却手取り", fmtYen(result.exitNetProceeds)),
         twoCol(
           "トータルエクイティ（CF累積＋売却益）",
-          fmt(result.exitTotalEquity),
+          fmtYen(result.exitTotalEquity),
           true,
           result.exitTotalEquity >= 0 ? C.safe : C.danger
         ),
@@ -269,13 +250,13 @@ export async function downloadReportPDF(
             ],
             ...cfRows.map((r, idx) => [
               tdCell(`${r.year}年`, idx, { align: "left" }),
-              tdCell(fmt(r.annualRent), idx),
-              tdCell(fmt(r.annualLoanPayment), idx),
-              tdCell(fmt(r.annualExpenses), idx),
-              tdCell(fmt(r.cashFlow), idx, { color: r.cashFlow < 0 ? C.danger : C.text }),
-              tdCell(fmt(r.afterTaxCashFlow), idx, { color: r.afterTaxCashFlow < 0 ? C.danger : C.text }),
-              tdCell(fmt(r.cumulativeCashFlow), idx, { color: r.cumulativeCashFlow < 0 ? C.danger : C.text }),
-              tdCell(fmt(r.remainingLoanBalance), idx),
+              tdCell(fmtYen(r.annualRent), idx),
+              tdCell(fmtYen(r.annualLoanPayment), idx),
+              tdCell(fmtYen(r.annualExpenses), idx),
+              tdCell(fmtYen(r.cashFlow), idx, { color: r.cashFlow < 0 ? C.danger : C.text }),
+              tdCell(fmtYen(r.afterTaxCashFlow), idx, { color: r.afterTaxCashFlow < 0 ? C.danger : C.text }),
+              tdCell(fmtYen(r.cumulativeCashFlow), idx, { color: r.cumulativeCashFlow < 0 ? C.danger : C.text }),
+              tdCell(fmtYen(r.remainingLoanBalance), idx),
             ]),
           ],
         },
@@ -299,8 +280,8 @@ export async function downloadReportPDF(
                     thCell("判定", "center"),
                   ],
                   ...result.stressScenarios.map((sc, idx) => [
-                    tdCell(s(sc.label), idx, { align: "left" }),
-                    tdCell(fmt(sc.totalCashFlow), idx, {
+                    tdCell(sanitize(sc.label), idx, { align: "left" }),
+                    tdCell(fmtYen(sc.totalCashFlow), idx, {
                       color: sc.totalCashFlow < 0 ? C.danger : C.text,
                     }),
                     tdCell(sc.dscr.toFixed(2), idx, {
@@ -329,36 +310,36 @@ export async function downloadReportPDF(
             sectionTitle("P4 - 取得コスト内訳", true),
             subTitle("初期投資内訳"),
             hLineTable([
-              twoCol("土地価格", fmt(input.landPrice)),
-              twoCol("建物費用", fmt(input.buildingCost)),
-              twoCol("諸経費合計", fmt(result.miscExpenses)),
-              twoCol("総投資額", fmt(result.totalInvestment), true, C.primary),
+              twoCol("土地価格", fmtYen(input.landPrice)),
+              twoCol("建物費用", fmtYen(input.buildingCost)),
+              twoCol("諸経費合計", fmtYen(result.miscExpenses)),
+              twoCol("総投資額", fmtYen(result.totalInvestment), true, C.primary),
             ]),
             subTitle("取得時諸経費の明細"),
             hLineTable([
-              twoCol("仲介手数料（税込）", fmt(result.acquisitionCosts.brokerageFee)),
-              twoCol("印紙税", fmt(result.acquisitionCosts.stampDuty)),
-              twoCol("登録免許税", fmt(result.acquisitionCosts.registrationTax)),
-              twoCol("不動産取得税（概算）", fmt(result.acquisitionCosts.realEstateAcquisitionTax)),
+              twoCol("仲介手数料（税込）", fmtYen(result.acquisitionCosts.brokerageFee)),
+              twoCol("印紙税", fmtYen(result.acquisitionCosts.stampDuty)),
+              twoCol("登録免許税", fmtYen(result.acquisitionCosts.registrationTax)),
+              twoCol("不動産取得税（概算）", fmtYen(result.acquisitionCosts.realEstateAcquisitionTax)),
               ...(result.acquisitionCosts.propertyTaxProration > 0
-                ? [twoCol("固定資産税日割り精算", fmt(result.acquisitionCosts.propertyTaxProration))]
+                ? [twoCol("固定資産税日割り精算", fmtYen(result.acquisitionCosts.propertyTaxProration))]
                 : []),
-              twoCol("諸経費合計", fmt(result.acquisitionCosts.total), true, C.primary),
+              twoCol("諸経費合計", fmtYen(result.acquisitionCosts.total), true, C.primary),
             ]),
             ...(result.yearlyResults.length > 0
               ? [
                   subTitle("年間費用の内訳（1年目）"),
                   hLineTable([
                     ...(result.yearlyResults[0].annualLoanPayment > 0
-                      ? [twoCol("ローン返済", fmt(result.yearlyResults[0].annualLoanPayment))]
+                      ? [twoCol("ローン返済", fmtYen(result.yearlyResults[0].annualLoanPayment))]
                       : []),
-                    twoCol("運営経費", fmt(result.yearlyResults[0].annualExpenses)),
+                    twoCol("運営経費", fmtYen(result.yearlyResults[0].annualExpenses)),
                     ...(result.yearlyResults[0].incomeTax > 0
-                      ? [twoCol("所得税", fmt(result.yearlyResults[0].incomeTax))]
+                      ? [twoCol("所得税", fmtYen(result.yearlyResults[0].incomeTax))]
                       : []),
                     twoCol(
-                      "税引後キャッシュフロー（1年目）",
-                      fmt(result.yearlyResults[0].afterTaxCashFlow),
+                      "税引後CF（1年目）",
+                      fmtYen(result.yearlyResults[0].afterTaxCashFlow),
                       true,
                       result.yearlyResults[0].afterTaxCashFlow >= 0 ? C.safe : C.danger
                     ),
