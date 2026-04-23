@@ -761,6 +761,48 @@ func TestCalcStressScenario_DSCRAbove1ButBreakEvenExceedsHolding(t *testing.T) {
 	t.Logf("DSCR=%.4f, BreakEvenYear=%d, IsSafe=%v", result.DSCR, result.BreakEvenYear, result.IsSafe)
 }
 
+// TestCalcStressScenario_DSCRWorstYearVariableRate は、変動金利で後年金利が急上昇する場合に
+// DSCR が初年度ではなく最悪年（最高返済額の年）を反映することを検証する。
+//
+// 設計: 1-4年目 1.5%、5年目以降 4.0% に上昇するスケジュール。
+//   - 初年度返済額は低金利ベースで計算されるため DSCR は高め
+//   - 5年目以降は返済額が増加し DSCR が低下する
+//   - 修正後: result.DSCR は最悪年（5年目以降）の値を反映し、初年度ベースより低くなる
+func TestCalcStressScenario_DSCRWorstYearVariableRate(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:    5_000_000,
+		BuildingCost: 15_000_000,
+		MonthlyRent:  120_000,
+		VacancyRate:  0.05,
+		LoanAmount:   18_000_000,
+		AnnualLoanRate: 0.015, // 初期金利 1.5%
+		LoanYears:    25,
+		ExpenseRate:  0.15,
+		HoldingYears: 10,
+		BuildingType: BuildingTypeRC,
+		RateAdjustmentSchedule: []RateAdjustment{
+			{AfterYear: 5, Rate: 0.04}, // 5年目から 4.0% に急上昇
+		},
+	}
+
+	// 初年度のみの計算で得られる DSCR（旧実装相当）を参照値として計算
+	initRate := resolveRateForYear(input.AnnualLoanRate, 0, input.RateAdjustmentSchedule, 1)
+	monthlyPaymentY1 := calcMonthlyPayment(input.LoanAmount, initRate, input.LoanYears)
+	annualLoanY1 := monthlyPaymentY1 * 12
+	annualRent := input.MonthlyRent * 12 * (1 - input.VacancyRate)
+	annualExpenses := annualRent*input.ExpenseRate + input.AnnualPropertyTax
+	noi := annualRent - annualExpenses
+	dscrYear1 := noi / annualLoanY1
+
+	result := calcStressScenario(input, "変動金利テスト", 0, 0)
+
+	// 最悪年 DSCR は初年度 DSCR より低いはず（5年目以降の高金利による返済増を反映）
+	if result.DSCR >= dscrYear1 {
+		t.Errorf("DSCR(%.4f) >= 初年度DSCR(%.4f): 変動金利上昇が最悪年DSCRに反映されていない", result.DSCR, dscrYear1)
+	}
+	t.Logf("year1DSCR=%.4f, worstDSCR=%.4f, IsSafe=%v", dscrYear1, result.DSCR, result.IsSafe)
+}
+
 func TestDetectUrbanRisks_NilZoning(t *testing.T) {
 	risks := detectUrbanRisks(nil, nil)
 	if len(risks) != 0 {
