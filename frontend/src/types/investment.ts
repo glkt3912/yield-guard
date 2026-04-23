@@ -278,8 +278,8 @@ export interface MonteCarloResult {
   irrPercentiles: Percentiles;
   equityPercentiles: Percentiles;
   deadCrossRate: number;
-  irrHistogram: HistogramBin[];
-  equityHistogram: HistogramBin[];
+  irrHistogram: HistogramBin[] | null;
+  equityHistogram: HistogramBin[] | null;
   successRate: number;
 }
 

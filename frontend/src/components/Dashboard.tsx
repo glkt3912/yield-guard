@@ -113,6 +113,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
     if (!lastInput) return;
     setLoading(true);
     setError(null);
+    setMonteCarloResult(null);
     try {
       const res = await analyze({ ...lastInput, loanMethod: method });
       setResult(res);
