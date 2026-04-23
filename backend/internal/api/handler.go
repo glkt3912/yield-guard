@@ -839,6 +839,129 @@ func (h *Handler) GetInvestmentScore(c *gin.Context) {
 	c.JSON(http.StatusOK, score)
 }
 
+const maxHeatmapTiles = 50
+
+// GetInvestmentScoreHeatmap はバウンディングボックス内の全タイルに対して投資スコアを並列計算して返す。
+// GET /api/investment-score-heatmap?minLat=35.6&maxLat=35.7&minLng=139.6&maxLng=139.7&z=13
+func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
+	minLatStr := c.Query("minLat")
+	maxLatStr := c.Query("maxLat")
+	minLngStr := c.Query("minLng")
+	maxLngStr := c.Query("maxLng")
+	if minLatStr == "" || maxLatStr == "" || minLngStr == "" || maxLngStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "minLat, maxLat, minLng, maxLng は必須パラメータです"})
+		return
+	}
+
+	minLat, err := strconv.ParseFloat(minLatStr, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "minLat の値が不正です"})
+		return
+	}
+	maxLat, err := strconv.ParseFloat(maxLatStr, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "maxLat の値が不正です"})
+		return
+	}
+	minLng, err := strconv.ParseFloat(minLngStr, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "minLng の値が不正です"})
+		return
+	}
+	maxLng, err := strconv.ParseFloat(maxLngStr, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "maxLng の値が不正です"})
+		return
+	}
+
+	if minLat >= maxLat {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "minLat は maxLat より小さい値を指定してください"})
+		return
+	}
+	if minLng >= maxLng {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "minLng は maxLng より小さい値を指定してください"})
+		return
+	}
+	if minLat < 20 || maxLat > 46 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "緯度は日本国内（20〜46）の範囲で指定してください"})
+		return
+	}
+	if minLng < 122 || maxLng > 154 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "経度は日本国内（122〜154）の範囲で指定してください"})
+		return
+	}
+
+	z := 13
+	if zStr := c.Query("z"); zStr != "" {
+		zVal, err := strconv.Atoi(zStr)
+		if err != nil || zVal < 11 || zVal > 14 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "z は 11〜14 の整数で指定してください"})
+			return
+		}
+		z = zVal
+	}
+
+	// 高緯度 → 小さい y 値のため注意
+	xMin, yMin := mlit.LatLngToTile(maxLat, minLng, z)
+	xMax, yMax := mlit.LatLngToTile(minLat, maxLng, z)
+
+	tileCount := (xMax - xMin + 1) * (yMax - yMin + 1)
+	if tileCount > maxHeatmapTiles {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("タイル数 %d が上限 %d を超えています。ズームレベルを下げるか範囲を狭めてください", tileCount, maxHeatmapTiles),
+		})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	sem := make(chan struct{}, 5)
+	type tileResult struct {
+		tile domain.HeatmapTile
+		err  error
+	}
+	results := make(chan tileResult, tileCount)
+
+	for tx := xMin; tx <= xMax; tx++ {
+		for ty := yMin; ty <= yMax; ty++ {
+			go func(tx, ty int) {
+				sem <- struct{}{}
+				defer func() { <-sem }()
+				score, err := h.calcScoreForTile(ctx, z, tx, ty)
+				if err != nil {
+					results <- tileResult{err: err}
+					return
+				}
+				lat, lng := mlit.TileToLatLng(tx, ty, z)
+				results <- tileResult{tile: domain.HeatmapTile{
+					X:          tx,
+					Y:          ty,
+					Z:          z,
+					CenterLat:  lat,
+					CenterLng:  lng,
+					TotalScore: score.TotalScore,
+					Grade:      score.Grade,
+				}}
+			}(tx, ty)
+		}
+	}
+
+	tiles := make([]domain.HeatmapTile, 0, tileCount)
+	for i := 0; i < tileCount; i++ {
+		r := <-results
+		if r.err != nil {
+			slog.WarnContext(ctx, "calcScoreForTile failed", "error", r.err)
+			continue
+		}
+		tiles = append(tiles, r.tile)
+	}
+
+	c.JSON(http.StatusOK, domain.HeatmapResponse{
+		Tiles:     tiles,
+		TileCount: len(tiles),
+	})
+}
+
 // HealthCheck はサーバーの生存確認
 // GET /health
 func (h *Handler) HealthCheck(c *gin.Context) {
