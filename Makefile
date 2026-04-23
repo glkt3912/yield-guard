@@ -25,7 +25,7 @@ lint:
 	cd backend && golangci-lint run ./...
 	@echo "==> Frontend lint"
 	cd frontend && npm run lint
-	cd frontend && npx tsc --noEmit
+	cd frontend && npm run type-check
 
 ## build: 全ビルドを実行
 build:
