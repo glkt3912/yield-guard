@@ -168,6 +168,13 @@ export async function fetchUrbanRisks(lat: number, lng: number): Promise<UrbanRi
   return handleResponse<UrbanRisk[]>(res);
 }
 
+/** 緯度経度からハザード情報（洪水・高潮・津波・土砂災害）を取得 */
+export async function fetchHazardInfo(lat: number, lng: number): Promise<UrbanRisk[]> {
+  const q = new URLSearchParams({ lat: String(lat), lng: String(lng) });
+  const res = await fetch(`${BASE}/hazard?${q}`);
+  return handleResponse<UrbanRisk[]>(res);
+}
+
 /** 投資シミュレーションを実行 */
 export async function analyze(input: InvestmentInput): Promise<InvestmentResult> {
   const res = await fetch(`${BASE}/investment/analyze`, {

@@ -11,7 +11,7 @@ import CostBreakdown from "@/components/CostBreakdown";
 import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
 import RenovationPanel from "@/components/RenovationPanel";
 import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode, LoanMethod, MonteCarloResult, InvestmentScoreResult } from "@/types/investment";
-import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks, fetchInvestmentScore, simulate } from "@/lib/api";
+import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks, fetchHazardInfo, fetchInvestmentScore, simulate } from "@/lib/api";
 import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
 import { ShieldAlert, Info, FileDown, Share2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const [landAppraisal, setLandAppraisal] = useState<AppraisalComparisonResult | null>(null);
   const [externalUrbanRisks, setExternalUrbanRisks] = useState<UrbanRisk[] | null>(null);
   const [investmentScore, setInvestmentScore] = useState<InvestmentScoreResult | null>(null);
+  const [hazardRisks, setHazardRisks] = useState<UrbanRisk[] | null>(null);
   const [simulationMode, setSimulationMode] = useState<SimulationMode>(
     decoded?.mode ?? "quick"
   );
@@ -136,6 +137,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
     setLandAppraisal(null);
     setExternalUrbanRisks(null);
     setInvestmentScore(null);
+    setHazardRisks(null);
     const { year, quarter, toYear, toQuarter } = getCurrentPeriods();
     try {
       const baseParams = {
@@ -169,16 +171,18 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
       setLandAppraisal(appraisal.status === "fulfilled" ? appraisal.value : null);
 
       if (lat !== undefined && lng !== undefined) {
-        const [ridership, population, urbanRisks, scoreResult] = await Promise.allSettled([
+        const [ridership, population, urbanRisks, scoreResult, hazard] = await Promise.allSettled([
           fetchStationRidership({ lat, lng }),
           fetchPopulationForecast({ lat, lng }),
           fetchUrbanRisks(lat, lng),
           fetchInvestmentScore({ lat, lng }),
+          fetchHazardInfo(lat, lng),
         ]);
         setStationRidership(ridership.status === "fulfilled" ? ridership.value : null);
         setPopulationForecast(population.status === "fulfilled" ? population.value : null);
         setExternalUrbanRisks(urbanRisks.status === "fulfilled" ? urbanRisks.value : null);
         setInvestmentScore(scoreResult.status === "fulfilled" ? scoreResult.value : null);
+        setHazardRisks(hazard.status === "fulfilled" ? hazard.value : null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "相場データの取得に失敗しました。しばらく後に再試行してください");
@@ -286,7 +290,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
 
             {investmentScore && <InvestmentScoreCard score={investmentScore} />}
 
-            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} landAppraisal={landAppraisal} externalUrbanRisks={externalUrbanRisks} />}
+            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} landAppraisal={landAppraisal} externalUrbanRisks={externalUrbanRisks} hazardRisks={hazardRisks} />}
 
             {result && lastInput && (
               <>
