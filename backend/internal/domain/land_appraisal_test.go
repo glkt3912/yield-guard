@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"math"
 	"testing"
 )
 
@@ -105,8 +106,10 @@ func TestCalcRentDeclineHint_DeclineTrend(t *testing.T) {
 	if got.Basis != "land_appraisal" {
 		t.Errorf("expected basis=land_appraisal, got %q", got.Basis)
 	}
-	if got.HintRate <= 0 {
-		t.Errorf("expected positive hintRate, got %v", got.HintRate)
+	// CAGR = (90000/100000)^(1/2) - 1 ≒ -0.05132
+	want := math.Abs(math.Pow(90_000.0/100_000.0, 1.0/2.0) - 1)
+	if math.Abs(got.HintRate-want) > 1e-9 {
+		t.Errorf("hintRate = %v, want %v", got.HintRate, want)
 	}
 }
 

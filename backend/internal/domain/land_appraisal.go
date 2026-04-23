@@ -67,8 +67,12 @@ func CalcRentDeclineHint(itemsByYear map[int][]LandAppraisalItem) RentDeclineHin
 	sort.Slice(medians, func(i, j int) bool { return medians[i].year < medians[j].year })
 
 	if len(medians) < 2 {
-		fallback.DataPointCount = total
-		return fallback
+		return RentDeclineHint{
+			Basis:          "fallback",
+			FallbackUsed:   true,
+			DataPointCount: total,
+			Note:           "取得できた年次が1年分のみのため構造別平均値を推奨します",
+		}
 	}
 
 	first := medians[0]
