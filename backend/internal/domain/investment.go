@@ -70,8 +70,12 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	// 中古物件は簡便法耐用年数を使用（新築は法定耐用年数）
 	usefulLife := CalcResidualUsefulLife(input.BuildingType, input.BuildingAge)
 	annualDepreciation := input.BuildingCost / float64(usefulLife)
-	bookValue := input.BuildingCost
-	decliningRate := 1.5 / float64(usefulLife)
+	// bookValue / decliningRate は定率法のみで使用する（ループをまたいで簿価を追跡）
+	var bookValue, decliningRate float64
+	if input.DepreciationMethod == DepreciationMethodDecliningBalance {
+		bookValue = input.BuildingCost
+		decliningRate = 1.5 / float64(usefulLife)
+	}
 
 	// 年次シミュレーション期間の決定
 	// max(LoanYears, HoldingYears, 35) を採用する理由:
@@ -242,11 +246,11 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	ltvSensitivity := CalcLTVSensitivity(input, nil)
 
 	// IRR / NPV 計算
-	// equity がゼロ以下（オーバーローン）の場合は計算が成立しないため nil/0 を返す
+	// equity がゼロ以下（オーバーローン）または HoldingYears=0 の場合は計算が成立しない
 	equity := totalInvestment - input.LoanAmount
 	var irr *float64
 	var npv float64
-	if equity > 0 {
+	if equity > 0 && input.HoldingYears > 0 {
 		irrCFs := make([]float64, input.HoldingYears)
 		for i := 0; i < input.HoldingYears && i < len(yearlyResults); i++ {
 			irrCFs[i] = yearlyResults[i].AfterTaxCashFlow
