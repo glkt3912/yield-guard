@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -216,6 +217,18 @@ func validateInvestmentInput(in domain.InvestmentInput) error {
 	}
 	if in.RentDeclineRate < 0 || in.RentDeclineRate > 0.2 {
 		return errors.New("rentDeclineRate は 0.0〜0.2 の範囲で指定してください")
+	}
+	// DiscountRate == 0 は「未指定」扱い: Defaults() で 0.05 に補完される
+	if in.DiscountRate < 0 || in.DiscountRate > 0.30 {
+		return errors.New("discountRate は 0〜30% の範囲で指定してください")
+	}
+	if in.PriceDeclineRate < 0 || in.PriceDeclineRate > 0.10 {
+		return errors.New("priceDeclineRate は 0〜10% の範囲で指定してください")
+	}
+	if in.DepreciationMethod != "" &&
+		in.DepreciationMethod != domain.DepreciationMethodStraightLine &&
+		in.DepreciationMethod != domain.DepreciationMethodDecliningBalance {
+		return errors.New("depreciationMethod は \"straight-line\" または \"declining-balance\" を指定してください")
 	}
 	return nil
 }
@@ -555,4 +568,43 @@ func (h *Handler) GetUrbanRisks(c *gin.Context) {
 // GET /health
 func (h *Handler) HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func validateRenovationInput(in domain.RenovationInput) error {
+	if in.PropertyPrice <= 0 {
+		return errors.New("propertyPrice は正の値を指定してください")
+	}
+	if in.AnnualBaseRent < 0 {
+		return errors.New("annualBaseRent は 0 以上を指定してください")
+	}
+	if in.EffectiveTaxRate < 0 || in.EffectiveTaxRate > 1 {
+		return errors.New("effectiveTaxRate は 0.0〜1.0 の範囲で指定してください")
+	}
+	if in.SelfLaborRatePerHour < 0 {
+		return errors.New("selfLaborRatePerHour は 0 以上を指定してください")
+	}
+	if len(in.Items) == 0 {
+		return errors.New("items は 1 件以上指定してください")
+	}
+	for idx, item := range in.Items {
+		if item.Cost <= 0 {
+			return fmt.Errorf("items[%d].cost は正の値を指定してください", idx)
+		}
+	}
+	return nil
+}
+
+// HandleRenovationAnalyze はリフォームROIシミュレーションを実行する
+func (h *Handler) HandleRenovationAnalyze(c *gin.Context) {
+	var input domain.RenovationInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "リクエストの形式が不正です: " + err.Error()})
+		return
+	}
+	if err := validateRenovationInput(input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	result := domain.CalcRenovationROI(input)
+	c.JSON(http.StatusOK, result)
 }

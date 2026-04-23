@@ -89,6 +89,40 @@ accumulatedDepreciation += yearDepreciation
 
 ---
 
+## 定率法による年間減価償却費（`DepreciationMethodDecliningBalance`）
+
+> **根拠**: 法人税法第31条・法人税法施行令第48条の2。個人（所得税法）では建物について**定率法の選択不可**（2007年度改正）。本ツールの定率法実装は法人投資家向けまたは参考計算として提供。
+
+```go
+// DepreciationMethodDecliningBalance の場合のみ使用
+bookValue  := input.BuildingCost          // ループ前に初期化
+decliningRate := 1.5 / float64(usefulLife) // 定率 = 1/耐用年数 × 1.5
+
+// 年次ループ内
+if bookValue > 1.0 {
+    yearDepreciation = bookValue * decliningRate
+    if bookValue-yearDepreciation < 1.0 {
+        yearDepreciation = bookValue - 1.0  // 残存1円以下にしない
+    }
+    bookValue -= yearDepreciation
+}
+```
+
+- **率の根拠**: 旧定率法の `1/耐用年数` に対し、現行（2007年改正後）の定率法は `1/耐用年数 × 250%` が法定。本ツールは `1.5倍` を採用（概算）
+- **収束保証**: `bookValue` が 1円を下回るタイミングで端数を全額計上し、以後ゼロ
+- **定額法との違い**: 初期に償却額が大きく、後半に逓減。デッドクロス発生タイミングが定額法と異なる
+
+### `DepreciationMethod` の切り替え
+
+`InvestmentInput.DepreciationMethod` で制御する（`Defaults()` でデフォルト `"straight-line"`）:
+
+| 値 | 定数 | 挙動 |
+|----|------|------|
+| `"straight-line"` | `DepreciationMethodStraightLine` | 定額法（デフォルト・個人投資家向け） |
+| `"declining-balance"` | `DepreciationMethodDecliningBalance` | 定率法（法人投資家向け参考） |
+
+---
+
 ## デッドクロスの定義と判定ロジック
 
 ### 定義
@@ -105,7 +139,8 @@ accumulatedDepreciation += yearDepreciation
 ### 判定コード
 
 ```go
-inDeadCrossZone := annualPrincipal > 0 && annualPrincipal > yearDepreciation
+// 建物費用=0の場合は減価償却対象資産がなくデッドクロスの概念が適用されないため除外
+inDeadCrossZone := input.BuildingCost > 0 && annualPrincipal > 0 && annualPrincipal > yearDepreciation
 isDeadCrossYear := false
 if deadCrossYear == -1 && inDeadCrossZone {
     deadCrossYear = year
@@ -113,6 +148,7 @@ if deadCrossYear == -1 && inDeadCrossZone {
 }
 ```
 
+- `input.BuildingCost > 0` の条件: 土地のみ投資（建物費用ゼロ）は減価償却資産がないためデッドクロスの概念が適用されない。`BuildingCost = 0` のとき `DeadCrossYear = -1`（発生なし）を返す
 - `annualPrincipal > 0` の条件: ローン完済後（元金返済ゼロ）はデッドクロスから「脱出」
 - `deadCrossYear == -1` の条件: **初年度フラグは初回のみ立てる**
 
@@ -123,9 +159,9 @@ if deadCrossYear == -1 && inDeadCrossZone {
 | `IsDeadCrossYear` | デッドクロス初年度 | 最初の1年のみ |
 | `IsInDeadCrossZone` | デッドクロス継続中 | ゾーン全体（完済まで続く） |
 
-**耐用年数超過後の特殊ケース**: `yearDepreciation = 0` となるため、元金返済が少しでも残っていれば `inDeadCrossZone = true`。
+**耐用年数超過後の特殊ケース**: `yearDepreciation = 0` となるため、元金返済が少しでも残っていれば `inDeadCrossZone = true`（ただし `BuildingCost > 0` の前提条件あり）。
 
-`DeadCrossYear = -1`: 35年以内にデッドクロスが発生しないことを示す。
+`DeadCrossYear = -1`: 35年以内にデッドクロスが発生しないことを示す（`BuildingCost = 0` の場合も含む）。
 
 ---
 

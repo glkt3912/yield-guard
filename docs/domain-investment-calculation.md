@@ -26,6 +26,9 @@
 | `ExitYieldTarget` | float64 | 率 | 売却時目標利回り（NOI / 売却価格） | 0.06 |
 | `VacancyRateDelta` | float64 | 率 | ストレステスト用 空室率上昇分 | — |
 | `LoanRateDelta` | float64 | 率 | ストレステスト用 金利上昇分 | — |
+| `DiscountRate` | float64 | 率 | NPV/IRR計算の割引率（0.05 = 5%）。`0` 指定時は `Defaults()` で 0.05 に補完 | 0.05 |
+| `PriceDeclineRate` | float64 | 率 | 物件価格の年間下落率（0.02 = 年2%）。IRR/NPVのターミナルバリューにのみ反映 | 0 |
+| `DepreciationMethod` | string | — | 減価償却方式: `"straight-line"` または `"declining-balance"` | `"straight-line"` |
 
 **注意**: `VacancyRate`・`ExpenseRate`・`IncomeTaxRate` は 0 が有効値のため `Defaults()` では初期化されない。呼び出し側で必ず指定する。
 
@@ -357,6 +360,8 @@ yearAnnualRent = baseAnnualRent × (1 - RentDeclineRate)^y
 | `StressScenarios` | ストレスシナリオ結果配列（詳細は下記） |
 | `DSCR` | 1年目の DSCR（NOI / 1年目年間ローン返済額）。ローンなしの場合は 0 |
 | `LTVSensitivity` | LTV感度分析結果（LTV=50/60/70/80/90%の5行。`LTVSensitivityRow[]`） |
+| `IRR` | *float64 | — | 内部収益率（自己資金ベースのレバレッジ考慮済み）。equity ≤ 0 または HoldingYears = 0 のとき `null` | — |
+| `NPV` | float64 | 円 | 正味現在価値（`DiscountRate` で割り引いた保有期間CF + ターミナルバリュー - 自己資金） | — |
 
 ---
 
@@ -406,3 +411,105 @@ IsSafe = BreakEvenYear != -1 && BreakEvenYear <= HoldingYears
 ```
 
 DSCR はローン返済額ゼロにより意味をなさないため、BreakEvenYear のみで判定する。
+
+---
+
+## IRR・NPV 計算（`CalcNPV` / `CalcIRR`）
+
+### 前提: 自己資金ベースの計算
+
+IRR・NPVの計算は**自己資金（equity = 総投資額 − ローン金額）**を初期投資として使用する。
+
+- 年次CF: `AfterTaxCashFlow`（ローン返済・税引後の手取り）
+- ターミナルバリュー: `ExitNetProceeds`（売却価格 − 売却費用 − 譲渡税 − ローン残債）
+
+これにより、レバレッジ効果を加味した実質的なリターンが計算される。
+
+### CalcNPV
+
+```
+NPV = Σ(t=1→n) CF_t / (1+r)^t + TV / (1+r)^n − I
+```
+
+- `r` = `DiscountRate`
+- `TV` = ターミナルバリュー（`PriceDeclineRate > 0` の場合は下落補正済み）
+- `I` = 自己資金（equity）
+
+### CalcIRR（二分法）
+
+```
+CalcNPV(cfs, TV, IRR, I) = 0 となる IRR を数値探索
+```
+
+- 探索範囲: −50% 〜 +200%
+- 最大反復: 200回
+- 収束判定: |NPV| < 1円
+- 非収束・equity ≤ 0・HoldingYears = 0 の場合は `null` を返す
+
+### PriceDeclineRate の適用
+
+`PriceDeclineRate > 0` の場合、出口売却価格に複利で下落を反映してターミナルバリューを再計算する。
+
+```
+調整後売却価格 = ExitSalePrice × (1 − PriceDeclineRate)^HoldingYears
+```
+
+既存の `ExitSalePrice` / `ExitNetProceeds` / `ExitTotalEquity` には影響しない（IRR/NPV 専用）。
+
+---
+
+## 修繕費ROI計算（`CalcRenovationROI`）
+
+`backend/internal/domain/renovation.go`
+
+### 入力: `RenovationInput`
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `PropertyPrice` | float64 | 物件取得価格（円） |
+| `AnnualBaseRent` | float64 | リフォーム前年間家賃（円） |
+| `AnnualExpenses` | float64 | 年間経費（円、絶対額） |
+| `EffectiveTaxRate` | float64 | 実効税率（0.0〜1.0） |
+| `SelfLaborRatePerHour` | float64 | セルフリフォーム時給（円/時間） |
+| `Items` | []RenovationItem | 工事項目一覧（1件以上必須） |
+
+**`RenovationItem`**:
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `Name` | string | 部位名（例: "外壁塗装"） |
+| `Cost` | float64 | 工事費（円、正値必須） |
+| `ExpectedMonthlyRentIncrease` | float64 | 期待月額賃料アップ（円） |
+| `IsSelfWork` | bool | セルフリフォームか |
+| `SelfLaborHours` | float64 | 工数（時間） |
+
+### 出力: `RenovationResult`
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `RecoveryYears` | float64 | 修繕費回収期間（年）。家賃アップなしは `0` |
+| `IsRecoverable` | bool | 回収可能か（`AnnualRentIncrease > 0` のとき `true`） |
+| `TaxSavings` | float64 | 節税効果（円）= 修繕費計上額 × 実効税率 |
+| `VirtualLaborCost` | float64 | セルフリフォーム仮想人件費合計（円） |
+| `CapitalExpenditures` | float64 | 資本的支出合計（60万円超の工事） |
+| `RepairExpenses` | float64 | 修繕費合計（60万円以下の工事） |
+| `ActualYield` | float64 | 実質利回り |
+| `TotalRenovationCost` | float64 | リフォーム総費用 |
+| `AnnualRentIncrease` | float64 | 年間家賃アップ額 |
+| `ClassifiedItems` | []ClassifiedRenovationItem | 分類済み工事項目（入力と同数） |
+
+### 計算式
+
+```
+資本的支出判定: item.Cost > 600,000 → 資本的支出（即時経費化不可）
+修繕費判定:    item.Cost ≤ 600,000 → 修繕費（即時費用計上可能）
+
+根拠: 所得税法施行令第181条（1回の修繕費が60万円未満は修繕費として処理可）
+
+回収期間 = TotalRenovationCost / (月間家賃アップ合計 × 12)
+
+節税効果 = RepairExpenses × EffectiveTaxRate
+
+実質利回り = (AnnualBaseRent + AnnualRentIncrease - AnnualExpenses)
+           / (PropertyPrice + TotalRenovationCost)
+```

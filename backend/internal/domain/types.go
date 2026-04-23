@@ -95,6 +95,13 @@ type InvestmentInput struct {
 	// 賃料下落率: 毎年この割合だけ実効賃料が低下する（例: 0.01 = 年1%下落）
 	RentDeclineRate float64 `json:"rentDeclineRate"`
 
+	// 割引率: NPV/IRR計算用 (例: 0.05 = 5%)
+	DiscountRate float64 `json:"discountRate"`
+	// 物件価格下落率: 売却価格に毎年この割合の累乗で下落を反映 (例: 0.02 = 年2%下落)
+	PriceDeclineRate float64 `json:"priceDeclineRate"`
+	// 減価償却方式: "straight-line"（定額法）| "declining-balance"（定率法）
+	DepreciationMethod string `json:"depreciationMethod"`
+
 	// 目標表面利回り（例: 0.08 = 8%）。0 の場合は Defaults() で 0.08 にセットされる。
 	YieldTarget float64 `json:"yieldTarget"`
 
@@ -184,6 +191,12 @@ func (i *InvestmentInput) Defaults() {
 	}
 	if i.LoanMethod == "" {
 		i.LoanMethod = LoanMethodEqualPayment
+	}
+	if i.DiscountRate == 0 {
+		i.DiscountRate = 0.05
+	}
+	if i.DepreciationMethod == "" {
+		i.DepreciationMethod = DepreciationMethodStraightLine
 	}
 }
 
@@ -279,6 +292,9 @@ type InvestmentResult struct {
 	ExitTransferTax float64 `json:"exitTransferTax"` // 譲渡所得税
 	ExitNetProceeds float64 `json:"exitNetProceeds"` // 売却手取り（税・残債控除後）
 	ExitTotalEquity float64 `json:"exitTotalEquity"` // 最終手残り（売却手取り+累積CF）
+
+	IRR *float64 `json:"irr"` // 内部収益率（収束しない場合は null）
+	NPV float64  `json:"npv"` // 正味現在価値
 
 	StressScenarios []StressScenarioResult `json:"stressScenarios"`
 	YieldScenarios  YieldScenarios         `json:"yieldScenarios"`
@@ -405,4 +421,44 @@ type LandPriceComparison struct {
 	DiffFromAverage    float64        `json:"diffFromAverage"`
 	DiffFromMedian     float64        `json:"diffFromMedian"`
 	Assessment         string         `json:"assessment"` // "割安" / "相場" / "割高"
+}
+
+// RenovationItem はリフォーム1工事項目
+type RenovationItem struct {
+	Name                        string  `json:"name"`
+	Cost                        float64 `json:"cost"`
+	ExpectedMonthlyRentIncrease float64 `json:"expectedMonthlyRentIncrease"`
+	IsSelfWork                  bool    `json:"isSelfWork"`
+	SelfLaborHours              float64 `json:"selfLaborHours"`
+}
+
+// ClassifiedRenovationItem は分類付きリフォーム項目
+type ClassifiedRenovationItem struct {
+	RenovationItem
+	IsCapitalExpenditure bool    `json:"isCapitalExpenditure"`
+	VirtualLaborCost     float64 `json:"virtualLaborCost"`
+}
+
+// RenovationInput はリフォームROIシミュレーションの入力値
+type RenovationInput struct {
+	PropertyPrice        float64          `json:"propertyPrice"`
+	AnnualBaseRent       float64          `json:"annualBaseRent"`
+	AnnualExpenses       float64          `json:"annualExpenses"`
+	EffectiveTaxRate     float64          `json:"effectiveTaxRate"`
+	SelfLaborRatePerHour float64          `json:"selfLaborRatePerHour"`
+	Items                []RenovationItem `json:"items"`
+}
+
+// RenovationResult はリフォームROIシミュレーションの結果
+type RenovationResult struct {
+	RecoveryYears       float64                    `json:"recoveryYears"`
+	IsRecoverable       bool                       `json:"isRecoverable"` // 家賃アップがある場合のみ true
+	TaxSavings          float64                    `json:"taxSavings"`
+	VirtualLaborCost    float64                    `json:"virtualLaborCost"`
+	CapitalExpenditures float64                    `json:"capitalExpenditures"`
+	RepairExpenses      float64                    `json:"repairExpenses"`
+	ActualYield         float64                    `json:"actualYield"`
+	TotalRenovationCost float64                    `json:"totalRenovationCost"`
+	AnnualRentIncrease  float64                    `json:"annualRentIncrease"`
+	ClassifiedItems     []ClassifiedRenovationItem `json:"classifiedItems"`
 }

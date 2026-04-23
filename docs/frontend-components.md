@@ -196,6 +196,14 @@ const equityInvested = result.totalInvestment - input.loanAmount
 | `incomeTaxRate` | 0〜60% |
 | `exitYieldTarget` | 0%超〜50% |
 
+**NPV / IRR 設定サブセクション**（詳細モードの 出口戦略 セクション末尾）:
+
+| 入力欄 | フィールド | デフォルト | 備考 |
+|--------|-----------|----------|------|
+| 割引率 | `discountRate` | 5% | step=0.1%、0〜30% |
+| 物件価格下落率 | `priceDeclineRate` | 0% | step=0.1%、0〜10% |
+| 減価償却方式 | `depreciationMethod` | 定額法 | セレクト: 定額法/定率法 |
+
 **ストレステストスライダー**:
 - `vacancyRateDelta`: 0〜30%（空室率の追加シナリオ）
 - `loanRateDelta`: 0〜3%（金利上昇シナリオ）
@@ -386,40 +394,47 @@ CF がマイナスの場合は「赤字転落 ⚠️」バッジを表示。フ�
 
 ---
 
-## PDF生成モジュール
+## PDF生成（generatePdf）
 
-`frontend/src/lib/generatePdf.ts` および `frontend/src/lib/pdf/` 配下のユーティリティ群。
+`frontend/src/lib/generatePdf.ts`
 
-> テストカバレッジ: `src/lib/__tests__/generatePdf.test.ts`（11件）、`src/lib/__tests__/pdfFormat.test.ts`（21件）
+> テストカバレッジ: `src/lib/__tests__/generatePdf.test.ts`（Vitest）— 正常生成・空ストレステスト・取得コストなし・新築・XSSサニタイズ・フォント取得失敗・ファイル名・メタデータ・ヘッダー/フッター の11ケースを検証。`src/lib/__tests__/pdfFormat.test.ts`（21件）
 
-**概要**: `pdfmake` を使いブラウザ側でPDFを生成する関数群。コンポーネントではなく純粋な関数として実装されており、`Dashboard.tsx` のボタンクリックから `downloadReportPDF(input, result)` を呼び出す。日本語表示のため `public/fonts/NotoSansJP-{Regular,Bold}.ttf`（PDF用文字網羅サブセット）を `pdfmake.virtualfs` 経由で読み込む。
+**概要**: `pdfmake ^0.3.7` を使い投資分析結果を PDF ドキュメントとして生成する非同期関数。`Dashboard.tsx` のボタンクリックから `downloadReportPDF(input, result)` を呼び出すとブラウザのダウンロード機能で自動保存される。日本語対応のため Noto Sans JP（TTF）を `/public/fonts/` から `fetch` して `pdfMake.virtualfs` に登録する（pdfmake は woff2 非対応のため TTF を使用）。
 
-### エントリポイント
+**エントリポイント**:
 
-`downloadReportPDF(input: InvestmentInput, result: InvestmentResult): Promise<void>`
+```typescript
+export async function downloadReportPDF(
+  input: InvestmentInput,
+  result: InvestmentResult,
+): Promise<void>
+```
 
-フォントを非同期でフェッチ → pdfmake にセット → PDF定義を構築 → ダウンロード。
+**ユーティリティモジュール**（`frontend/src/lib/pdf/`）:
 
-### PDF構成（5ページ）
+| ファイル | 役割 |
+|---------|------|
+| `format.ts` | `fmtYen`（1万円未満は円・1万円以上は万円・1億円以上は億円、万円未満は四捨五入）・`fmtPct`・`fmtDate`・`sanitize`（XSS除去） |
+| `verdict.ts` | `calcVerdict()` — PASS/CAUTION/REJECT の総合判定・根拠3点・自動コメント生成 |
+| `charts.ts` | `buildCfBarChartSvg`・`buildDeadCrossLineSvg`・`buildCostDonutSvg` — SVG文字列を直接生成（Recharts不使用） |
+
+**PDF構成（5ページ）**:
 
 | ページ | 内容 |
 |--------|------|
 | 表紙 | 物件概要（土地価格・建物費・築年数・構造・月額賃料・ローン情報）・分析日 |
-| P1 投資サマリー | 総合判定バッジ・判定理由・KPI（DSCR/LTV/出口収益）・ストレステスト要約・出口戦略・自動生成コメント |
-| P2 10年キャッシュフロー | SVGバーチャート + 年次テーブル（賃料・ローン返済・経費・税引後CF・累積CF・残債） |
-| P3 ストレステスト結果 | デッドクロス折れ線SVG + 6シナリオ×（総CF・DSCR・回収年・安全フラグ） |
-| P4 取得コスト内訳 | ドーナツSVG + 初期投資内訳・諸経費明細・1年目年間経費 |
+| P1 投資サマリー | 総合判定バッジ（PASS/CAUTION/REJECT）＋根拠3点・KPI 2行×3列（表面利回り・実質利回り・DSCR基本 / DSCR複合・LTV・出口収益）・ストレステスト要約・出口戦略テーブル・自動生成コメント |
+| P2 10年キャッシュフロー | CFバーチャート（SVG）＋ `YearlyResult[]` テーブル。デッドクロスゾーンの年は赤色バー |
+| P3 ストレステスト結果 | デッドクロス折れ線チャート（SVG）＋ 6シナリオ表。`stressScenarios.length > 0` の場合のみ表示 |
+| P4 取得コスト内訳 | コストドーナツチャート（SVG）＋ 初期投資・`AcquisitionCostBreakdown` 明細・1年目年間経費内訳 |
 
-全ページヘッダー（表紙除く）: 「yield-guard 不動産投資分析レポート　{日付}」  
-全ページフッター: 「本資料は yield-guard による試算です。実際の投資判断は専門家にご相談ください。」  `{currentPage} / {pageCount}`
+**ヘッダー/フッター**:
+- 表紙（1ページ目）はヘッダーなし。2ページ目以降は「yield-guard 不動産投資分析レポート」と分析日をヘッダーに表示
+- 全ページフッター: 免責文 ＋ 「現在ページ / 総ページ数」
+- PDFメタデータ（`info`）: `title`・`author`・`subject`・`creator` を設定
 
-### サブモジュール
-
-| ファイル | 役割 |
-|---|---|
-| `pdf/format.ts` | `fmtYen()` / `fmtPct()` / `fmtDate()` / `sanitize()` |
-| `pdf/verdict.ts` | `calcVerdict()` — 総合判定（PASS/CAUTION/REJECT）・理由リスト・自動コメント生成 |
-| `pdf/charts.ts` | `buildCfBarChartSvg()` / `buildDeadCrossLineSvg()` / `buildCostDonutSvg()` |
+**ファイル名**: `yield-guard-report-YYYYMMDD.pdf`（`downloadReportPDF` 内で自動生成）
 
 ### `fmtYen()` 金額フォーマットルール
 
@@ -513,6 +528,11 @@ const breakEvenYear = yearlyResults.find(
 - `exitSalePrice`: 売却価格（NOI基準）
 - `exitNetProceeds`: 売却手取り
 - `exitTotalEquity`: 最終手残り（プラス: 緑, マイナス: 赤）
+
+**IRR / NPV サマリーカード**: 出口サマリーグリッドの下に 2 列カードを追加。
+- `irr` が `null` → "―"（灰色）表示
+- `irr` 正値 → 緑、負値 → 赤
+- `npv` 正値 → 緑、負値 → 赤（`formatMan` でフォーマット）
 
 ---
 
@@ -624,3 +644,32 @@ export const DEFAULT_INPUT: InvestmentInput = {
 
 **`BUILDING_USEFUL_LIFE`**: バックエンドの `UsefulLife()` と対応するフロントエンド側の参照用マップ。
 計算には使用せず、フォームの表示説明（「法定耐用年数: XX年」）に使用。
+
+---
+
+## RenovationPanel
+
+`frontend/src/components/RenovationPanel.tsx`
+
+### 責務
+
+修繕費回収期間シミュレーションのフォーム入力・API呼び出し・結果表示を自己完結で担う。
+`Dashboard` の投資シミュレーション `result` に依存せず、独立した状態を持つ。
+`POST /api/renovation/analyze` を呼び出す。
+
+### 表示構成
+
+1. **グローバル入力**（5フィールド）: 物件取得価格・年間家賃・年間経費・実効税率・セルフリフォーム時給
+2. **工事項目テーブル**（動的行）: 部位名・工事費(万円)・月額賃料アップ・セルフ toggle（ON時に工数欄を表示）・削除ボタン
+3. **「リフォーム分析を実行」ボタン**: items が空または cost ≤ 0 の行があるとフロント側でエラーメッセージを表示
+4. **結果セクション**（`isRecoverable` が true の場合のみ回収タイムラインを表示）:
+   - 4列サマリーカード: 修繕費回収期間 / 節税効果 / 仮想人件費 / 実質利回り
+   - 工事分類テーブル: 各項目を「資本的支出（amber）」または「修繕費（blue）」バッジで表示
+   - 回収タイムラインチャート（Recharts `LineChart`）: 累積賃料増加額（青線）vs リフォーム費用（赤点線）、回収年に緑の `ReferenceLine`。X 軸は最大 50 年でキャップ
+
+### 主な実装詳細
+
+- `recoveryChartData` は `useMemo` でメモ化（`result` 変更時のみ再計算）
+- `updateItem` でセルフ toggle OFF 時に `selfLaborHours = 0` にリセット（仮想人件費の誤計上を防止）
+- テーブル内の入力欄は共通クラス変数 `cellInput` で統一
+- `Dashboard.tsx` では投資シミュレーション結果セクションの末尾に `<RenovationPanel />` を常時表示
