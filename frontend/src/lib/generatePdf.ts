@@ -4,6 +4,8 @@ import type {
   YearlyResult,
 } from "@/types/investment";
 import { fmtYen, fmtPct, fmtDate, sanitize } from "./pdf/format";
+import { calcVerdict } from "./pdf/verdict";
+import { buildCfBarChartSvg, buildDeadCrossLineSvg, buildCostDonutSvg } from "./pdf/charts";
 
 const C = {
   primary: "#1a56db",
@@ -121,6 +123,10 @@ export async function downloadReportPDF(
     year1?.annualLoanPayment > 0 ? year1.annualRent / year1.annualLoanPayment : 0;
   const ltv =
     result.totalInvestment > 0 ? input.loanAmount / result.totalInvestment : 0;
+  const dscrStress = result.stressScenarios.find((sc) => sc.label === "複合ストレス")?.dscr ?? 0;
+  const verdict = calcVerdict(input, result, dscr, dscrStress);
+  const baselineScenario = result.stressScenarios.find((sc) => sc.label === "ベースライン");
+  const stressScenario = result.stressScenarios.find((sc) => sc.label === "複合ストレス");
   // Limit rows to prevent unbounded table generation
   const cfRows: YearlyResult[] = result.yearlyResults.slice(0, Math.min(input.holdingYears, 10));
 
@@ -215,35 +221,118 @@ export async function downloadReportPDF(
       infoRow("総投資額", fmtYen(result.totalInvestment)),
       infoRow("表面利回り", fmtPct(result.grossYield)),
 
-      // ── Page 2: Summary ────────────────────────────────────────────
+      // ── Page 2: Summary (Executive) ────────────────────────────────
       sectionTitle("P1 - 投資サマリー", true),
+
+      // 総合判定バッジ
+      {
+        columns: [
+          {
+            stack: [
+              {
+                text: verdict.label,
+                fontSize: 20,
+                bold: true,
+                color: verdict.color,
+              },
+              {
+                text: verdict.label,
+                fontSize: 8,
+                color: verdict.color,
+                marginTop: 2,
+              },
+            ],
+            width: "30%",
+            margin: [0, 0, 12, 0],
+          },
+          {
+            ul: verdict.reasons,
+            fontSize: 8,
+            color: C.text,
+          },
+        ],
+        marginBottom: 12,
+      },
+
+      // KPI 2行×3列
       {
         columns: [
           kpiBlock("表面利回り", fmtPct(result.grossYield)),
           kpiBlock("実質利回り", fmtPct(result.netYield)),
-          kpiBlock("DSCR 1年目", dscr.toFixed(2), dscr >= 1.0 ? C.safe : C.danger),
-          kpiBlock("LTV", fmtPct(ltv), ltv <= 0.8 ? C.safe : C.danger),
+          kpiBlock("DSCR 基本", dscr.toFixed(2), dscr >= 1.0 ? C.safe : C.danger),
         ],
-        marginBottom: 6,
+        marginBottom: 4,
       },
       {
         columns: [
-          kpiBlock("総投資額", fmtYen(result.totalInvestment)),
-          kpiBlock("月額賃料", `${(input.monthlyRent / 10_000).toFixed(0)}万円/月`),
           kpiBlock(
-            "デッドクロス年",
-            result.deadCrossYear > 0 ? `${result.deadCrossYear}年目` : "なし",
-            result.deadCrossYear > 0 ? C.danger : C.safe
+            "DSCR 複合ストレス",
+            dscrStress > 0 ? dscrStress.toFixed(2) : "－",
+            dscrStress === 0 ? C.muted : dscrStress >= 1.0 ? C.safe : C.danger
           ),
+          kpiBlock("LTV", fmtPct(ltv), ltv <= 0.8 ? C.safe : C.danger),
           kpiBlock(
-            `${(result.yieldTarget * 100).toFixed(0)}%基準`,
-            result.isAboveYieldTarget ? "達成" : "未達",
-            result.isAboveYieldTarget ? C.safe : C.danger
+            "出口Equity",
+            fmtYen(result.exitTotalEquity),
+            result.exitTotalEquity >= 0 ? C.safe : C.danger
           ),
         ],
-        marginBottom: 16,
+        marginBottom: 12,
       },
 
+      // ストレステスト要約（ベースライン vs 複合）
+      ...(baselineScenario && stressScenario
+        ? [
+            subTitle("ストレステスト要約"),
+            {
+              table: {
+                widths: ["*", "auto", "auto", "auto"],
+                body: [
+                  [
+                    thCell("シナリオ", "left"),
+                    thCell("DSCR"),
+                    thCell("総CF"),
+                    thCell("判定", "center"),
+                  ],
+                  [
+                    tdCell("ベースライン", 0, { align: "left" }),
+                    tdCell(baselineScenario.dscr.toFixed(2), 0, {
+                      color: baselineScenario.dscr >= 1.0 ? C.safe : C.danger,
+                    }),
+                    tdCell(fmtYen(baselineScenario.totalCashFlow), 0, {
+                      color: baselineScenario.totalCashFlow < 0 ? C.danger : C.text,
+                    }),
+                    {
+                      text: baselineScenario.isSafe ? "安全" : "危険",
+                      fontSize: 8, bold: true, alignment: "center",
+                      color: baselineScenario.isSafe ? C.safe : C.danger,
+                      fillColor: C.rowEven,
+                    },
+                  ],
+                  [
+                    tdCell("複合ストレス", 1, { align: "left" }),
+                    tdCell(stressScenario.dscr.toFixed(2), 1, {
+                      color: stressScenario.dscr >= 1.0 ? C.safe : C.danger,
+                    }),
+                    tdCell(fmtYen(stressScenario.totalCashFlow), 1, {
+                      color: stressScenario.totalCashFlow < 0 ? C.danger : C.text,
+                    }),
+                    {
+                      text: stressScenario.isSafe ? "安全" : "危険",
+                      fontSize: 8, bold: true, alignment: "center",
+                      color: stressScenario.isSafe ? C.safe : C.danger,
+                      fillColor: C.white,
+                    },
+                  ],
+                ],
+              },
+              layout: tableLayout,
+              marginBottom: 12,
+            },
+          ]
+        : []),
+
+      // 出口戦略
       subTitle(`出口戦略（${input.holdingYears}年後売却）`),
       hLineTable([
         twoCol("想定売却価格", fmtYen(result.exitSalePrice)),
@@ -257,8 +346,19 @@ export async function downloadReportPDF(
         ),
       ]),
 
+      // 自動生成コメント
+      {
+        text: verdict.autoComment,
+        fontSize: 8,
+        color: C.muted,
+        italics: true,
+        marginBottom: 8,
+        marginTop: 4,
+      },
+
       // ── Page 3: Cash Flow ──────────────────────────────────────────
       sectionTitle("P2 - 10年間キャッシュフロー", true),
+      { svg: buildCfBarChartSvg(result.yearlyResults), width: 480, marginBottom: 12 },
       {
         table: {
           headerRows: 1,
@@ -293,6 +393,7 @@ export async function downloadReportPDF(
       ...(result.stressScenarios.length > 0
         ? [
             sectionTitle("P3 - ストレステスト結果", true),
+            { svg: buildDeadCrossLineSvg(result.yearlyResults, result.deadCrossYear), width: 480, marginBottom: 12 },
             {
               table: {
                 headerRows: 1,
@@ -334,6 +435,12 @@ export async function downloadReportPDF(
       ...(result.acquisitionCosts
         ? [
             sectionTitle("P4 - 取得コスト内訳", true),
+            {
+              svg: buildCostDonutSvg(input.landPrice, input.buildingCost, result.acquisitionCosts),
+              width: 200,
+              alignment: "center" as const,
+              marginBottom: 12,
+            },
             subTitle("初期投資内訳"),
             hLineTable([
               twoCol("土地価格", fmtYen(input.landPrice)),
