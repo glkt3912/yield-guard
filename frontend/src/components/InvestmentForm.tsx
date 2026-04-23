@@ -135,6 +135,10 @@ function validateFull(input: InvestmentInput): FormErrors {
     e.yieldTarget = "0%超〜50%の範囲で入力してください";
   if (input.holdingYears < 0 || input.holdingYears > 50)
     e.holdingYears = "0〜50年の範囲で入力してください";
+  if ((input.discountRate ?? 0.05) < 0 || (input.discountRate ?? 0.05) > 0.30)
+    e.discountRate = "0〜30%の範囲で入力してください";
+  if ((input.priceDeclineRate ?? 0) < 0 || (input.priceDeclineRate ?? 0) > 0.10)
+    e.priceDeclineRate = "0〜10%の範囲で入力してください";
   return e;
 }
 
@@ -906,10 +910,12 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Input label="割引率" type="number" suffix="%" step="0.5"
                       value={toPct(input.discountRate ?? 0.05, 1)}
-                      onChange={(e) => setNum("discountRate", fromPct(e.target.value))} />
+                      onChange={(e) => setNum("discountRate", fromPct(e.target.value))}
+                      error={fieldError("discountRate")} />
                     <Input label="物件価格下落率" type="number" suffix="%" step="0.5"
                       value={toPct(input.priceDeclineRate ?? 0, 1)}
-                      onChange={(e) => setNum("priceDeclineRate", fromPct(e.target.value))} />
+                      onChange={(e) => setNum("priceDeclineRate", fromPct(e.target.value))}
+                      error={fieldError("priceDeclineRate")} />
                     <Select
                       label="減価償却方式"
                       value={input.depreciationMethod ?? "straight-line"}

@@ -647,6 +647,8 @@ func CalcIRR(cfs []float64, terminalValue, initialInvestment float64) (*float64,
 }
 
 // calcTerminalValueWithDecline は価格下落率を考慮した売却時ターミナルバリューを計算する
+// 注意: 売却費用・譲渡税の計算ロジックは calcExit と重複している。
+//       税率・仲介手数料率を変更する際は両方を更新すること。
 func calcTerminalValueWithDecline(
 	input InvestmentInput,
 	yearly []YearlyResult,

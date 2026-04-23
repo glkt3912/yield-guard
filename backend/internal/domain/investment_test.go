@@ -1820,16 +1820,13 @@ func TestAnalyzeWithRateSchedule(t *testing.T) {
 
 func TestCalcNPV_Accuracy(t *testing.T) {
 	// 5年間、毎年CF=100,000円、TV=1,000,000円、r=10%、初期投資=500,000円
+	// 手計算:
+	//   PV(CF) = 100000/1.1^1 + ... + 100000/1.1^5 = 379,078.68
+	//   PV(TV) = 1,000,000/1.1^5                  = 620,921.32
+	//   NPV    = 379,078.68 + 620,921.32 - 500,000 = 500,000.00
 	cfs := []float64{100_000, 100_000, 100_000, 100_000, 100_000}
 	npv := CalcNPV(cfs, 1_000_000, 0.10, 500_000)
-	// NPV = 379,079 + 1,000,000/1.1^5 - 500,000 ≈ 699,344円
-	// （手計算値を使う）
-	want := 0.0
-	for i, cf := range cfs {
-		want += cf / math.Pow(1.10, float64(i+1))
-	}
-	want += 1_000_000 / math.Pow(1.10, 5)
-	want -= 500_000
+	const want = 500_000.0
 	if !approxEqual(npv, want, 1.0) {
 		t.Errorf("CalcNPV = %.2f, want %.2f", npv, want)
 	}
