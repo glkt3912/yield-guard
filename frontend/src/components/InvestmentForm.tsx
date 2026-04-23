@@ -271,6 +271,8 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   useEffect(() => {
     if (filteredMunicipalities.length === 1) {
       setCity(filteredMunicipalities[0].id);
+      setRentHint(null);
+      setRentHintError(null);
     }
   }, [filteredMunicipalities]);
 

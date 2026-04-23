@@ -21,20 +21,18 @@ const minDataPointsForHint = 5
 // 総データ件数 < 5 または有効年数 < 2 の場合は fallback を返す。
 // 地価が下落傾向（CAGR < 0）の場合のみ hintRate に絶対値をセットし basis = "land_appraisal" を返す。
 func CalcRentDeclineHint(itemsByYear map[int][]LandAppraisalItem) RentDeclineHint {
-	fallback := RentDeclineHint{
-		Basis:        "fallback",
-		FallbackUsed: true,
-		Note:         "データ不足のため構造別平均値を推奨します",
-	}
-
 	// 総データ件数チェック
 	total := 0
 	for _, items := range itemsByYear {
 		total += len(items)
 	}
 	if total < minDataPointsForHint {
-		fallback.DataPointCount = total
-		return fallback
+		return RentDeclineHint{
+			Basis:          "fallback",
+			FallbackUsed:   true,
+			DataPointCount: total,
+			Note:           "データ不足のため構造別平均値を推奨します",
+		}
 	}
 
 	// 各年の㎡単価中央値を計算

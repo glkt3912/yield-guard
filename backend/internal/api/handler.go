@@ -504,7 +504,6 @@ func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 	}
 	ch := make(chan yearResult, len(years))
 	for _, y := range years {
-		y := y
 		go func() {
 			items, err := h.mlitClient.FetchLandAppraisals(ctx, area, municipality, y, "00")
 			ch <- yearResult{year: y, items: items, err: err}
