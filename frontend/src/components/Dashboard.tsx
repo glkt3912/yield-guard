@@ -14,7 +14,10 @@ import type { InvestmentInput, InvestmentResult, LandPriceComparison, Theoretica
 import { analyze as analyzeOnline, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks, fetchHazardInfo, fetchInvestmentScore, simulate } from "@/lib/api";
 import { analyze as analyzeOffline } from "@/lib/investment";
 import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
+import dynamic from "next/dynamic";
 import { ShieldAlert, Info, FileDown, Share2, Check, SlidersHorizontal, X, WifiOff } from "lucide-react";
+
+const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
 import { Button } from "@/components/ui/button";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { downloadReportPDF } from "@/lib/generatePdf";
@@ -50,6 +53,8 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const [externalUrbanRisks, setExternalUrbanRisks] = useState<UrbanRisk[] | null>(null);
   const [investmentScore, setInvestmentScore] = useState<InvestmentScoreResult | null>(null);
   const [hazardRisks, setHazardRisks] = useState<UrbanRisk[] | null>(null);
+  const [propertyLat, setPropertyLat] = useState<number | undefined>(undefined);
+  const [propertyLng, setPropertyLng] = useState<number | undefined>(undefined);
   const [simulationMode, setSimulationMode] = useState<SimulationMode>(
     decoded?.mode ?? "quick"
   );
@@ -165,6 +170,10 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
     setExternalUrbanRisks(null);
     setInvestmentScore(null);
     setHazardRisks(null);
+    if (lat !== undefined && lng !== undefined) {
+      setPropertyLat(lat);
+      setPropertyLng(lng);
+    }
     const { year, quarter, toYear, toQuarter } = getCurrentPeriods();
     try {
       const baseParams = {
@@ -341,6 +350,8 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             )}
 
             {investmentScore && <InvestmentScoreCard score={investmentScore} />}
+
+            <InvestmentScoreHeatmap centerLat={propertyLat} centerLng={propertyLng} />
 
             {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} landAppraisal={landAppraisal} externalUrbanRisks={externalUrbanRisks} hazardRisks={hazardRisks} />}
 
