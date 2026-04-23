@@ -899,6 +899,28 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                     onChange={(e) => setNum("incomeTaxRate", fromPct(e.target.value))}
                     error={fieldError("incomeTaxRate")} />
                 </div>
+
+                {/* NPV / IRR 設定 */}
+                <div className="mt-4">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">NPV / IRR 設定</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <Input label="割引率" type="number" suffix="%" step="0.5"
+                      value={toPct(input.discountRate ?? 0.05, 1)}
+                      onChange={(e) => setNum("discountRate", fromPct(e.target.value))} />
+                    <Input label="物件価格下落率" type="number" suffix="%" step="0.5"
+                      value={toPct(input.priceDeclineRate ?? 0, 1)}
+                      onChange={(e) => setNum("priceDeclineRate", fromPct(e.target.value))} />
+                    <Select
+                      label="減価償却方式"
+                      value={input.depreciationMethod ?? "straight-line"}
+                      onChange={(e) => setStr("depreciationMethod", e.target.value)}
+                      options={[
+                        { value: "straight-line", label: "定額法" },
+                        { value: "declining-balance", label: "定率法" },
+                      ]}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* 変動金利スケジュール */}
