@@ -13,6 +13,9 @@ const (
 
 	LoanMethodEqualPayment   = "equal-payment"   // 元利均等返済
 	LoanMethodEqualPrincipal = "equal-principal"  // 元金均等返済
+
+	DepreciationMethodStraightLine     = "straight-line"      // 定額法
+	DepreciationMethodDecliningBalance = "declining-balance"  // 定率法
 )
 
 // resolveRateForYear はスケジュールと基準金利から指定年の適用金利を返す。
@@ -63,10 +66,12 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		monthlyPayment = calcMonthlyPayment(input.LoanAmount, currentRate, input.LoanYears)
 	}
 
-	// 減価償却 (定額法)
+	// 減価償却
 	// 中古物件は簡便法耐用年数を使用（新築は法定耐用年数）
 	usefulLife := CalcResidualUsefulLife(input.BuildingType, input.BuildingAge)
 	annualDepreciation := input.BuildingCost / float64(usefulLife)
+	bookValue := input.BuildingCost
+	decliningRate := 1.5 / float64(usefulLife)
 
 	// 年次シミュレーション期間の決定
 	// max(LoanYears, HoldingYears, 35) を採用する理由:
@@ -128,10 +133,21 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		yearAnnualRent := annualRent * declineFactor
 		yearExpenses := yearAnnualRent*input.ExpenseRate + input.AnnualPropertyTax
 
-		// 減価償却は耐用年数内のみ
-		yearDepreciation := 0.0
-		if year <= usefulLife {
-			yearDepreciation = annualDepreciation
+		// 減価償却（定額法または定率法）
+		var yearDepreciation float64
+		switch input.DepreciationMethod {
+		case DepreciationMethodDecliningBalance:
+			if bookValue > 1.0 {
+				yearDepreciation = bookValue * decliningRate
+				if bookValue-yearDepreciation < 1.0 {
+					yearDepreciation = bookValue - 1.0
+				}
+				bookValue -= yearDepreciation
+			}
+		default:
+			if year <= usefulLife {
+				yearDepreciation = annualDepreciation
+			}
 		}
 		accumulatedDepreciation += yearDepreciation
 
@@ -225,6 +241,21 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	yieldScenarios := calcYieldScenarios(input, totalInvestment)
 	ltvSensitivity := CalcLTVSensitivity(input, nil)
 
+	// IRR / NPV 計算
+	equity := totalInvestment - input.LoanAmount
+	irrCFs := make([]float64, input.HoldingYears)
+	for i := 0; i < input.HoldingYears && i < len(yearlyResults); i++ {
+		irrCFs[i] = yearlyResults[i].AfterTaxCashFlow
+	}
+	irrTerminalValue := exitNet
+	if input.PriceDeclineRate > 0 && input.HoldingYears > 0 {
+		decayFactor := math.Pow(1-input.PriceDeclineRate, float64(input.HoldingYears))
+		adjustedSalePrice := exitSalePrice * decayFactor
+		irrTerminalValue = calcTerminalValueWithDecline(input, yearlyResults, adjustedSalePrice, accumulatedDepreciation, miscExpenses)
+	}
+	npv := CalcNPV(irrCFs, irrTerminalValue, input.DiscountRate, equity)
+	irr, _ := CalcIRR(irrCFs, irrTerminalValue, equity)
+
 	return InvestmentResult{
 		TotalInvestment:       totalInvestment,
 		MiscExpenses:          miscExpenses,
@@ -247,6 +278,8 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		YieldScenarios:        yieldScenarios,
 		DSCR:                  dscr,
 		LTVSensitivity:        ltvSensitivity,
+		IRR:                   irr,
+		NPV:                   npv,
 	}
 }
 
@@ -567,6 +600,80 @@ func calcRequiredForTarget(input InvestmentInput, totalInvestment float64) (requ
 		costReduction = excess
 	}
 	return requiredRent, costReduction
+}
+
+// CalcNPV は将来キャッシュフロー・ターミナルバリュー・割引率・初期投資から NPV を計算する
+func CalcNPV(cfs []float64, terminalValue, discountRate, initialInvestment float64) float64 {
+	pv := 0.0
+	for t, cf := range cfs {
+		pv += cf / math.Pow(1+discountRate, float64(t+1))
+	}
+	n := len(cfs)
+	if n > 0 {
+		pv += terminalValue / math.Pow(1+discountRate, float64(n))
+	}
+	return pv - initialInvestment
+}
+
+// CalcIRR は二分法で IRR を求める。収束しない場合は nil と error を返す。
+func CalcIRR(cfs []float64, terminalValue, initialInvestment float64) (*float64, error) {
+	const (
+		lo      = -0.50
+		hi      = 2.00
+		maxIter = 200
+		tol     = 1.0
+	)
+	npvLo := CalcNPV(cfs, terminalValue, lo, initialInvestment)
+	npvHi := CalcNPV(cfs, terminalValue, hi, initialInvestment)
+	if npvLo*npvHi > 0 {
+		return nil, fmt.Errorf("IRR: no root in [%.0f%%, %.0f%%]", lo*100, hi*100)
+	}
+	low, high := lo, hi
+	for i := 0; i < maxIter; i++ {
+		mid := (low + high) / 2
+		npvMid := CalcNPV(cfs, terminalValue, mid, initialInvestment)
+		if math.Abs(npvMid) < tol {
+			v := mid
+			return &v, nil
+		}
+		if npvMid*npvLo < 0 {
+			high = mid
+		} else {
+			low = mid
+			npvLo = npvMid
+		}
+	}
+	return nil, fmt.Errorf("IRR: did not converge after %d iterations", maxIter)
+}
+
+// calcTerminalValueWithDecline は価格下落率を考慮した売却時ターミナルバリューを計算する
+func calcTerminalValueWithDecline(
+	input InvestmentInput,
+	yearly []YearlyResult,
+	adjustedSalePrice float64,
+	accumulatedDepreciation float64,
+	miscExpenses float64,
+) float64 {
+	holdIdx := input.HoldingYears - 1
+	if holdIdx >= len(yearly) {
+		holdIdx = len(yearly) - 1
+	}
+	exitYear := yearly[holdIdx]
+	sellExpenses := (adjustedSalePrice*0.03+60_000) * 1.10
+	bookValueBuilding := math.Max(input.BuildingCost-accumulatedDepreciation, 0)
+	acquisitionCost := input.LandPrice + bookValueBuilding + miscExpenses
+	capGain := adjustedSalePrice - sellExpenses - acquisitionCost
+	var transferTax float64
+	if capGain > 0 {
+		var taxRate float64
+		if input.HoldingYears > 5 {
+			taxRate = longTermTransferTaxRate
+		} else {
+			taxRate = shortTermTransferTaxRate
+		}
+		transferTax = capGain * taxRate
+	}
+	return adjustedSalePrice - sellExpenses - transferTax - exitYear.RemainingLoanBalance
 }
 
 // 譲渡所得税率（所得税＋復興特別所得税＋住民税）
