@@ -48,8 +48,9 @@ function infoRow(label: string, value: string) {
 function kpiBlock(label: string, value: string, color?: string) {
   return {
     stack: [
-      { text: label, fontSize: 7, color: C.muted, marginBottom: 2 },
-      { text: value, fontSize: 15, bold: true, color: color ?? C.primary },
+      // lineHeight: 1 + noWrap prevent pdfmake from splitting CJK glyphs with spurious spaces
+      { text: label, fontSize: 7, color: C.muted, marginBottom: 2, lineHeight: 1, noWrap: true },
+      { text: value, fontSize: 15, bold: true, color: color ?? C.primary, noWrap: true },
     ],
     margin: [0, 0, 6, 6],
   };
@@ -194,8 +195,8 @@ export async function downloadReportPDF(
       {
         columns: [
           kpiBlock("表面利回り", `${(result.grossYield * 100).toFixed(2)}%`),
-          kpiBlock("実効利回り（税引後）", `${(result.netYield * 100).toFixed(2)}%`),
-          kpiBlock("DSCR（1年目）", dscr.toFixed(2), dscr >= 1.0 ? C.safe : C.danger),
+          kpiBlock("実質利回り", `${(result.netYield * 100).toFixed(2)}%`),
+          kpiBlock("DSCR 1年目", dscr.toFixed(2), dscr >= 1.0 ? C.safe : C.danger),
           kpiBlock("LTV", `${(ltv * 100).toFixed(1)}%`, ltv <= 0.8 ? C.safe : C.danger),
         ],
         marginBottom: 6,
@@ -224,7 +225,7 @@ export async function downloadReportPDF(
         twoCol("譲渡所得税", fmtYen(result.exitTransferTax)),
         twoCol("売却手取り", fmtYen(result.exitNetProceeds)),
         twoCol(
-          "トータルエクイティ（CF累積＋売却益）",
+          "トータルエクイティ",
           fmtYen(result.exitTotalEquity),
           true,
           result.exitTotalEquity >= 0 ? C.safe : C.danger
