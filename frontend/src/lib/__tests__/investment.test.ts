@@ -199,23 +199,41 @@ describe("analyze - stress scenarios", () => {
       rateAdjustmentSchedule: [{ afterYear: 5, rate: 0.04 }],
     };
 
-    // 初年度 DSCR の参考値（年-1 レートのみで計算）
+    // year1 相当の DSCR を手計算（参照値）
     const annualRent = input.monthlyRent * 12 * (1 - input.vacancyRate);
     const annualExpenses = annualRent * input.expenseRate + input.annualPropertyTax;
     const noi = annualRent - annualExpenses;
-    const r = analyze(input);
-    const baseline = r.stressScenarios.find((s) => s.label === "ベースライン")!;
-
-    // year1 相当の DSCR を手計算
-    const y1Rate = 0.015;
-    const mr = y1Rate / 12;
+    const mr = input.annualLoanRate / 12;
     const n = input.loanYears * 12;
     const monthlyY1 = (input.loanAmount * mr * Math.pow(1 + mr, n)) / (Math.pow(1 + mr, n) - 1);
     const dscrYear1 = noi / (monthlyY1 * 12);
 
+    const baseline = analyze(input).stressScenarios.find((s) => s.label === "ベースライン")!;
+
     // 最悪年 DSCR は初年度ベースより低い（5年目以降の高金利を反映）
     expect(baseline.dscr).toBeLessThan(dscrYear1);
     expect(baseline.dscr).toBeGreaterThan(0);
+  });
+
+  it("変動金利上昇で初年度DSCR>=1.0でもisSafeがfalseになる", () => {
+    // 初期金利 0.5%（DSCR >= 1.0）→ 5年目に 5.0% 急上昇（最悪年 DSCR < 1.0）
+    const input: InvestmentInput = {
+      ...BASE_INPUT,
+      monthlyRent: 90_000,
+      vacancyRate: 0.05,
+      loanAmount: 16_000_000,
+      annualLoanRate: 0.005,
+      loanYears: 25,
+      expenseRate: 0.10,
+      holdingYears: 10,
+      rateAdjustmentSchedule: [{ afterYear: 5, rate: 0.05 }],
+    };
+
+    const baseline = analyze(input).stressScenarios.find((s) => s.label === "ベースライン")!;
+
+    // 最悪年 DSCR < 1.0 → isSafe = false（旧実装では初年度 DSCR >= 1.0 で true になっていたバグ）
+    expect(baseline.dscr).toBeLessThan(1.0);
+    expect(baseline.isSafe).toBe(false);
   });
 });
 

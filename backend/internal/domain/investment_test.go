@@ -803,6 +803,54 @@ func TestCalcStressScenario_DSCRWorstYearVariableRate(t *testing.T) {
 	t.Logf("year1DSCR=%.4f, worstDSCR=%.4f, IsSafe=%v", dscrYear1, result.DSCR, result.IsSafe)
 }
 
+// TestCalcStressScenario_IsSafeFlipsWithVariableRate は、変動金利上昇によって
+// isSafe が true から false に反転することを検証する。
+//
+// 設計: 初年度 DSCR >= 1.0 だが、5年目に金利急上昇で最悪年 DSCR < 1.0 となるケース。
+//   - 旧実装では初年度 DSCR >= 1.0 かつ黒転達成 → isSafe = true（誤判定）
+//   - 修正後は最悪年 DSCR < 1.0 → isSafe = false（正確な判定）
+func TestCalcStressScenario_IsSafeFlipsWithVariableRate(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:    3_000_000,
+		BuildingCost: 10_000_000,
+		MonthlyRent:  90_000,
+		VacancyRate:  0.05,
+		LoanAmount:   16_000_000,
+		AnnualLoanRate: 0.005, // 初期金利 0.5%（返済額が低く DSCR >= 1.0）
+		LoanYears:    25,
+		ExpenseRate:  0.10,
+		HoldingYears: 10,
+		BuildingType: BuildingTypeRC,
+		RateAdjustmentSchedule: []RateAdjustment{
+			{AfterYear: 5, Rate: 0.05}, // 5年目から 5.0% に急上昇 → 返済額増加で DSCR < 1.0
+		},
+	}
+
+	// 前提: 初年度 DSCR >= 1.0（旧実装では isSafe = true になっていた）
+	initRate := resolveRateForYear(input.AnnualLoanRate, 0, input.RateAdjustmentSchedule, 1)
+	monthlyPaymentY1 := calcMonthlyPayment(input.LoanAmount, initRate, input.LoanYears)
+	annualRent := input.MonthlyRent * 12 * (1 - input.VacancyRate)
+	annualExpenses := annualRent*input.ExpenseRate + input.AnnualPropertyTax
+	noi := annualRent - annualExpenses
+	dscrYear1 := noi / (monthlyPaymentY1 * 12)
+	if dscrYear1 < 1.0 {
+		t.Fatalf("前提条件未充足: 初年度DSCR=%.4f < 1.0（テスト設計を確認）", dscrYear1)
+	}
+
+	result := calcStressScenario(input, "変動金利isSafe反転テスト", 0, 0)
+
+	// 最悪年 DSCR は 1.0 未満であるべき
+	if result.DSCR >= 1.0 {
+		t.Errorf("最悪年DSCR=%.4f >= 1.0: 変動金利上昇が DSCR に反映されていない", result.DSCR)
+	}
+	// isSafe は false であるべき（旧実装では true になっていたバグ）
+	if result.IsSafe {
+		t.Errorf("IsSafe = true, want false: 最悪年DSCR=%.4f < 1.0 なのに安全と判定された", result.DSCR)
+	}
+	t.Logf("year1DSCR=%.4f, worstDSCR=%.4f, IsSafe=%v, BreakEvenYear=%d",
+		dscrYear1, result.DSCR, result.IsSafe, result.BreakEvenYear)
+}
+
 func TestDetectUrbanRisks_NilZoning(t *testing.T) {
 	risks := detectUrbanRisks(nil, nil)
 	if len(risks) != 0 {

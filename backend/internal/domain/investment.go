@@ -330,21 +330,18 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 
 	annualRent := in.MonthlyRent * 12 * (1 - effectiveVacancy)
 	annualExpenses := annualRent*in.ExpenseRate + in.AnnualPropertyTax
+	// noi はシナリオ期間中一定（calcStressScenario は賃料下落率を適用しない簡略計算）
 	noi := annualRent - annualExpenses
 
 	// 初年度の実効金利（スケジュール+ストレスdelta）
 	initRate := resolveRateForYear(in.AnnualLoanRate, rateDelta, in.RateAdjustmentSchedule, 1)
 	var monthlyPayment float64
 	var monthlyPrincipalStress float64
-	var annualLoanPayment float64
 	if in.LoanMethod == LoanMethodEqualPrincipal && in.LoanYears > 0 {
 		totalMonths := in.LoanYears * 12
 		monthlyPrincipalStress = in.LoanAmount / float64(totalMonths)
-		yi, yp := calcYearlyLoanComponentsEqualPrincipal(in.LoanAmount, initRate, monthlyPrincipalStress)
-		annualLoanPayment = yi + yp
 	} else {
 		monthlyPayment = calcMonthlyPayment(in.LoanAmount, initRate, in.LoanYears)
-		annualLoanPayment = monthlyPayment * 12
 	}
 
 	// HoldingYears年間の累積CF（税引前）とブレークイーン年を算出
@@ -408,8 +405,8 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 	}
 
 	isSafe := false
-	if annualLoanPayment == 0 {
-		// 無借金物件はDSCRによる返済リスクがないため、ブレークイーン達成のみで安全と判定
+	if !hasLoanYear {
+		// 保有期間内に返済が発生しない場合（無借金物件等）はブレークイーン達成のみで安全と判定
 		isSafe = breakEvenYear != -1 && breakEvenYear <= holdingYears
 	} else {
 		isSafe = dscr >= 1.0 && breakEvenYear != -1 && breakEvenYear <= holdingYears

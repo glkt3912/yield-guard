@@ -365,24 +365,19 @@ function calcStressScenario(
 
   const annualRent = inInput.monthlyRent * 12 * (1 - effectiveVacancy);
   const annualExpenses = annualRent * inInput.expenseRate + inInput.annualPropertyTax;
+  // noi はシナリオ期間中一定（calcStressScenario は賃料下落率を適用しない簡略計算）
   const noi = annualRent - annualExpenses;
 
   const initRate = resolveRateForYear(inInput.annualLoanRate, rateDelta, inInput.rateAdjustmentSchedule, 1);
 
   let monthlyPayment = 0;
   let monthlyPrincipalStress = 0;
-  let annualLoanPayment = 0;
 
   if (inInput.loanMethod === LOAN_METHOD_EQUAL_PRINCIPAL && inInput.loanYears > 0) {
     const totalMonths = inInput.loanYears * 12;
     monthlyPrincipalStress = inInput.loanAmount / totalMonths;
-    const { interest: yi, principal: yp } = calcYearlyLoanComponentsEqualPrincipal(
-      inInput.loanAmount, initRate, monthlyPrincipalStress,
-    );
-    annualLoanPayment = yi + yp;
   } else {
     monthlyPayment = calcMonthlyPayment(inInput.loanAmount, initRate, inInput.loanYears);
-    annualLoanPayment = monthlyPayment * 12;
   }
 
   // DSCR は各年返済額から算出した保有期間内最悪値（変動金利上昇ケースで正確なリスク評価を行うため）
@@ -440,7 +435,8 @@ function calcStressScenario(
   const dscr = hasLoanYear ? minDSCR : 0;
 
   let isSafe: boolean;
-  if (annualLoanPayment === 0) {
+  if (!hasLoanYear) {
+    // 保有期間内に返済が発生しない場合（無借金物件等）はブレークイーン達成のみで安全と判定
     isSafe = breakEvenYear !== -1 && breakEvenYear <= holdingYears;
   } else {
     isSafe = dscr >= 1.0 && breakEvenYear !== -1 && breakEvenYear <= holdingYears;
