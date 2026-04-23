@@ -9,11 +9,12 @@ import { DeadCrossChart } from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
 import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
-import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode, LoanMethod } from "@/types/investment";
-import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks } from "@/lib/api";
+import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode, LoanMethod, MonteCarloResult } from "@/types/investment";
+import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks, simulate } from "@/lib/api";
 import { ShieldAlert, Info, FileDown, Share2, Check } from "lucide-react";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { downloadReportPDF } from "@/lib/generatePdf";
+import { MonteCarloChart } from "@/components/MonteCarloChart";
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
 function getCurrentPeriods(): { year: number; quarter: number; toYear: number; toQuarter: number } {
@@ -50,6 +51,8 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [loanMethod, setLoanMethod] = useState<LoanMethod>("equal-payment");
   const [copied, setCopied] = useState(false);
+  const [monteCarloResult, setMonteCarloResult] = useState<MonteCarloResult | null>(null);
+  const [monteCarloLoading, setMonteCarloLoading] = useState(false);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -87,6 +90,19 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
       setError(e instanceof Error ? e.message : "シミュレーションに失敗しました");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMonteCarlo = async () => {
+    if (!lastInput) return;
+    setMonteCarloLoading(true);
+    try {
+      const res = await simulate({ base: lastInput, simulations: 1000 });
+      setMonteCarloResult(res);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "モンテカルロシミュレーションに失敗しました");
+    } finally {
+      setMonteCarloLoading(false);
     }
   };
 
@@ -285,6 +301,16 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                     {/* 自己資金 = 総投資額 - ローン金額（ISSUE-22: 投資回収年の正確な計算に使用） */}
                     <CashFlowChart result={result} equityInvested={result.totalInvestment - lastInput.loanAmount} />
                     <DeadCrossChart result={result} />
+                    <div className="flex justify-center">
+                      <button
+                        onClick={handleMonteCarlo}
+                        disabled={monteCarloLoading}
+                        className="rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {monteCarloLoading ? "シミュレーション中…" : "モンテカルロ実行（1,000試行）"}
+                      </button>
+                    </div>
+                    {monteCarloResult && <MonteCarloChart result={monteCarloResult} />}
                   </>
                 )}
               </>
