@@ -35,7 +35,7 @@ describe("Dashboard", () => {
 
   it("初期状態でプレースホルダーが表示される", () => {
     render(<Dashboard />);
-    expect(screen.getByText(/左のフォームから条件を入力して/)).toBeInTheDocument();
+    expect(screen.getByText(/条件を入力してシミュレーションを実行してください/)).toBeInTheDocument();
   });
 
   it("analyzeAPIの応答後にYieldAnalysisが表示される（クイックモード）", async () => {
