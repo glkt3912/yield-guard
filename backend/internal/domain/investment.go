@@ -960,6 +960,97 @@ func BuildUrbanRisksFromAPIs(
 	return risks
 }
 
+// BuildHazardRisks は XKT026–029 ハザード API の結果を UrbanRisk スライスに変換する。
+// 各ハザード種別で最も深刻な 1 件のみを返す（重複排除）。
+func BuildHazardRisks(
+	floods []FloodHazardItem,
+	storms []StormHazardItem,
+	tsunamis []TsunamiHazardItem,
+	landslides []LandslideHazardItem,
+) []UrbanRisk {
+	var risks []UrbanRisk
+
+	// XKT026: 洪水浸水想定区域 — DepthRank >= 3 を ERROR、それ以外を WARNING
+	if len(floods) > 0 {
+		worst := floods[0]
+		for _, f := range floods[1:] {
+			if f.DepthRank > worst.DepthRank {
+				worst = f
+			}
+		}
+		level := UrbanRiskLevelWarning
+		if worst.DepthRank >= 3 {
+			level = UrbanRiskLevelError
+		}
+		desc := fmt.Sprintf("洪水浸水想定区域（深さランク %d）に該当します。大雨・河川氾濫時に浸水リスクがあります。", worst.DepthRank)
+		if worst.RiverName != "" {
+			desc = fmt.Sprintf("洪水浸水想定区域（%s、深さランク %d）に該当します。大雨・河川氾濫時に浸水リスクがあります。", worst.RiverName, worst.DepthRank)
+		}
+		risks = append(risks, UrbanRisk{
+			Code:        "FLOOD_HAZARD",
+			Level:       level,
+			Title:       "洪水浸水想定区域",
+			Description: desc,
+		})
+	}
+
+	// XKT027: 高潮浸水想定区域 — 存在すれば WARNING
+	if len(storms) > 0 {
+		desc := "高潮浸水想定区域に該当します。台風・高波時に浸水リスクがあります。"
+		if storms[0].DepthJa != "" {
+			desc = fmt.Sprintf("高潮浸水想定区域（%s）に該当します。台風・高波時に浸水リスクがあります。", storms[0].DepthJa)
+		}
+		risks = append(risks, UrbanRisk{
+			Code:        "STORM_HAZARD",
+			Level:       UrbanRiskLevelWarning,
+			Title:       "高潮浸水想定区域",
+			Description: desc,
+		})
+	}
+
+	// XKT028: 津波浸水想定区域 — 存在すれば ERROR
+	if len(tsunamis) > 0 {
+		desc := "津波浸水想定区域に該当します。沿岸部の津波・高潮による浸水リスクがあります。"
+		if tsunamis[0].DepthJa != "" {
+			desc = fmt.Sprintf("津波浸水想定区域（%s）に該当します。沿岸部の津波・高潮による浸水リスクがあります。", tsunamis[0].DepthJa)
+		}
+		risks = append(risks, UrbanRisk{
+			Code:        "TSUNAMI_HAZARD",
+			Level:       UrbanRiskLevelError,
+			Title:       "津波浸水想定区域",
+			Description: desc,
+		})
+	}
+
+	// XKT029: 土砂災害警戒区域 — ZoneCode=1（特別警戒）を ERROR、ZoneCode=2（警戒）を WARNING
+	if len(landslides) > 0 {
+		// 最も深刻な ZoneCode（1 < 2、つまり 1 が最重要）を選択
+		worst := landslides[0]
+		for _, l := range landslides[1:] {
+			if l.ZoneCode < worst.ZoneCode {
+				worst = l
+			}
+		}
+		level := UrbanRiskLevelWarning
+		zoneName := "警戒区域"
+		if worst.ZoneCode == 1 {
+			level = UrbanRiskLevelError
+			zoneName = "特別警戒区域"
+		}
+		phenomenonNames := map[int]string{1: "急傾斜地崩壊", 2: "土石流", 3: "地すべり"}
+		pName := phenomenonNames[worst.PhenomenonType]
+		desc := fmt.Sprintf("土砂災害%s（%s）に該当します。大雨時の土砂崩れ・土石流リスクがあります。", zoneName, pName)
+		risks = append(risks, UrbanRisk{
+			Code:        "LANDSLIDE_HAZARD",
+			Level:       level,
+			Title:       "土砂災害警戒区域",
+			Description: desc,
+		})
+	}
+
+	return risks
+}
+
 // modalString は transactions から getter で取得した文字列の最頻値を返す（空文字は除外）
 func modalString(transactions []LandTransaction, getter func(LandTransaction) string) string {
 	counts := make(map[string]int, len(transactions))

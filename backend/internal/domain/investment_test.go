@@ -2178,3 +2178,69 @@ func TestCalcHazardScore_Combined(t *testing.T) {
 		t.Errorf("all 4 hazards should give -20 (capped), got %d", item.Score)
 	}
 }
+
+func TestBuildHazardRisks_Empty(t *testing.T) {
+	risks := BuildHazardRisks(nil, nil, nil, nil)
+	if len(risks) != 0 {
+		t.Errorf("expected 0 risks for empty input, got %d", len(risks))
+	}
+}
+
+func TestBuildHazardRisks_FloodDepthRank(t *testing.T) {
+	// DepthRank < 3 → WARNING
+	risks := BuildHazardRisks([]FloodHazardItem{{DepthRank: 2, RiverName: "荒川"}}, nil, nil, nil)
+	if len(risks) != 1 || risks[0].Code != "FLOOD_HAZARD" {
+		t.Fatalf("unexpected risks: %+v", risks)
+	}
+	if risks[0].Level != UrbanRiskLevelWarning {
+		t.Errorf("DepthRank 2 should be WARNING, got %s", risks[0].Level)
+	}
+
+	// DepthRank >= 3 → ERROR
+	risks = BuildHazardRisks([]FloodHazardItem{{DepthRank: 3}}, nil, nil, nil)
+	if risks[0].Level != UrbanRiskLevelError {
+		t.Errorf("DepthRank 3 should be ERROR, got %s", risks[0].Level)
+	}
+}
+
+func TestBuildHazardRisks_TsunamiAlwaysError(t *testing.T) {
+	risks := BuildHazardRisks(nil, nil, []TsunamiHazardItem{{DepthJa: "3m未満"}}, nil)
+	if len(risks) != 1 || risks[0].Level != UrbanRiskLevelError {
+		t.Errorf("tsunami should always be ERROR, got %+v", risks)
+	}
+}
+
+func TestBuildHazardRisks_LandslideZoneCode(t *testing.T) {
+	// ZoneCode=2 警戒 → WARNING
+	risks := BuildHazardRisks(nil, nil, nil, []LandslideHazardItem{{PhenomenonType: 2, ZoneCode: 2}})
+	if risks[0].Level != UrbanRiskLevelWarning {
+		t.Errorf("ZoneCode 2 should be WARNING, got %s", risks[0].Level)
+	}
+
+	// ZoneCode=1 特別警戒 → ERROR
+	risks = BuildHazardRisks(nil, nil, nil, []LandslideHazardItem{{PhenomenonType: 1, ZoneCode: 1}})
+	if risks[0].Level != UrbanRiskLevelError {
+		t.Errorf("ZoneCode 1 should be ERROR, got %s", risks[0].Level)
+	}
+}
+
+func TestBuildHazardRisks_AllFour(t *testing.T) {
+	risks := BuildHazardRisks(
+		[]FloodHazardItem{{DepthRank: 4}},
+		[]StormHazardItem{{DepthJa: "5m以上"}},
+		[]TsunamiHazardItem{{DepthJa: "3m以上"}},
+		[]LandslideHazardItem{{PhenomenonType: 2, ZoneCode: 1}},
+	)
+	if len(risks) != 4 {
+		t.Errorf("expected 4 risks, got %d", len(risks))
+	}
+	codes := map[string]bool{}
+	for _, r := range risks {
+		codes[r.Code] = true
+	}
+	for _, c := range []string{"FLOOD_HAZARD", "STORM_HAZARD", "TSUNAMI_HAZARD", "LANDSLIDE_HAZARD"} {
+		if !codes[c] {
+			t.Errorf("missing risk code: %s", c)
+		}
+	}
+}
