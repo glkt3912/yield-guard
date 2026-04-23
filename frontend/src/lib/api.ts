@@ -9,6 +9,8 @@ import type {
   PopulationForecastResult,
   AppraisalComparisonResult,
   UrbanRisk,
+  RenovationInput,
+  RenovationResult,
   MonteCarloInput,
   MonteCarloResult,
 } from "@/types/investment";
@@ -173,6 +175,16 @@ export async function analyze(input: InvestmentInput): Promise<InvestmentResult>
     body: JSON.stringify(input),
   });
   return handleResponse<InvestmentResult>(res);
+}
+
+/** リフォームROIシミュレーションを実行 */
+export async function analyzeRenovation(input: RenovationInput): Promise<RenovationResult> {
+  const res = await fetch(`${BASE}/renovation/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return handleResponse<RenovationResult>(res);
 }
 
 /** モンテカルロシミュレーションを実行 */

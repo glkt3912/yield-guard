@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -314,6 +315,80 @@ func TestGetLandPrices_InvalidYear(t *testing.T) {
 func TestGetLandPrices_InvalidQuarter(t *testing.T) {
 	r := newTestRouter(&mockMLITClient{})
 	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/stats?area=13&year=2024&quarter=5&to_year=2024&to_quarter=4", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestHandleRenovationAnalyze_ValidInput(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	body := `{
+		"propertyPrice": 10000000,
+		"annualBaseRent": 1200000,
+		"annualExpenses": 240000,
+		"effectiveTaxRate": 0.30,
+		"selfLaborRatePerHour": 2000,
+		"items": [
+			{"name": "内装", "cost": 300000, "expectedMonthlyRentIncrease": 5000, "isSelfWork": false}
+		]
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/api/renovation/analyze", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var result domain.RenovationResult
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if result.RecoveryYears <= 0 {
+		t.Errorf("RecoveryYears = %.2f, want > 0", result.RecoveryYears)
+	}
+	if !result.IsRecoverable {
+		t.Error("IsRecoverable should be true")
+	}
+	if result.TaxSavings <= 0 {
+		t.Errorf("TaxSavings = %.0f, want > 0", result.TaxSavings)
+	}
+}
+
+func TestHandleRenovationAnalyze_EmptyItems(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	body := `{"propertyPrice": 10000000, "annualBaseRent": 1200000, "annualExpenses": 0, "effectiveTaxRate": 0.3, "selfLaborRatePerHour": 0, "items": []}`
+	req := httptest.NewRequest(http.MethodPost, "/api/renovation/analyze", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestHandleRenovationAnalyze_ZeroPropertyPrice(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	body := `{"propertyPrice": 0, "items": [{"name": "A", "cost": 100000}]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/renovation/analyze", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestHandleRenovationAnalyze_InvalidTaxRate(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{})
+	body := `{"propertyPrice": 10000000, "effectiveTaxRate": 1.5, "items": [{"name": "A", "cost": 100000}]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/renovation/analyze", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
