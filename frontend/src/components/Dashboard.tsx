@@ -61,6 +61,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     return () => {
@@ -68,6 +69,10 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
       if (copiedTimer.current) clearTimeout(copiedTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (mobileFormOpen) closeButtonRef.current?.focus();
+  }, [mobileFormOpen]);
 
   const handleModeChange = (mode: SimulationMode) => {
     if (result) {
@@ -364,10 +369,11 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             onClick={() => setMobileFormOpen(false)}
           />
           {/* Sheet */}
-          <div className="absolute bottom-0 left-0 right-0 max-h-[90dvh] overflow-y-auto rounded-t-2xl bg-background shadow-xl">
+          <div className="absolute bottom-0 left-0 right-0 max-h-[90vh] overflow-y-auto rounded-t-2xl bg-background shadow-xl">
             <div className="sticky top-0 flex items-center justify-between border-b bg-background px-4 py-3">
               <h2 className="text-base font-semibold">投資条件を編集</h2>
               <button
+                ref={closeButtonRef}
                 onClick={() => setMobileFormOpen(false)}
                 className="flex h-[44px] w-[44px] items-center justify-center rounded-full hover:bg-muted transition-colors"
                 aria-label="閉じる"
@@ -385,7 +391,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 loading={loading}
                 simulationMode={simulationMode}
                 onModeChange={handleModeChange}
-                initialInput={decoded?.input}
+                initialInput={lastInput ?? decoded?.input}
                 initialQuickTotalPriceMan={decoded?.quickTotalPriceMan}
               />
             </div>
