@@ -5,6 +5,7 @@ import type {
 } from "@/types/investment";
 import { fmtYen, fmtPct, fmtDate, sanitize } from "./pdf/format";
 import { calcVerdict } from "./pdf/verdict";
+import { buildCfBarChartSvg, buildDeadCrossLineSvg, buildCostDonutSvg } from "./pdf/charts";
 
 const C = {
   primary: "#1a56db",
@@ -358,6 +359,7 @@ export async function downloadReportPDF(
 
       // ── Page 3: Cash Flow ──────────────────────────────────────────
       sectionTitle("P2 - 10年間キャッシュフロー", true),
+      { svg: buildCfBarChartSvg(result.yearlyResults), width: 480, marginBottom: 12 },
       {
         table: {
           headerRows: 1,
@@ -392,6 +394,7 @@ export async function downloadReportPDF(
       ...(result.stressScenarios.length > 0
         ? [
             sectionTitle("P3 - ストレステスト結果", true),
+            { svg: buildDeadCrossLineSvg(result.yearlyResults, result.deadCrossYear), width: 480, marginBottom: 12 },
             {
               table: {
                 headerRows: 1,
@@ -433,6 +436,12 @@ export async function downloadReportPDF(
       ...(result.acquisitionCosts
         ? [
             sectionTitle("P4 - 取得コスト内訳", true),
+            {
+              svg: buildCostDonutSvg(input.landPrice, input.buildingCost, result.acquisitionCosts),
+              width: 200,
+              alignment: "center" as const,
+              marginBottom: 12,
+            },
             subTitle("初期投資内訳"),
             hLineTable([
               twoCol("土地価格", fmtYen(input.landPrice)),

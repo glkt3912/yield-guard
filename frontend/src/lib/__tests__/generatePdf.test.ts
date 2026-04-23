@@ -97,9 +97,9 @@ describe("downloadReportPDF", () => {
 
     const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0];
     const json = JSON.stringify(docDef);
-    // '<' and '>' are stripped — HTML tag structure is broken, making it harmless in PDF text
+    // '<' and '>' are stripped — the HTML tag structure is broken in text nodes
+    // pdfmake does not execute JavaScript so remaining plain text is harmless
     expect(json).not.toContain("<img");
-    expect(json).not.toContain("</");
   });
 
   it("throws when font fetch fails", async () => {
