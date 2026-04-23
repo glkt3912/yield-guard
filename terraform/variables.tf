@@ -34,4 +34,8 @@ variable "vercel_frontend_url" {
 variable "notification_email" {
   description = "Email address for Cloud Monitoring alert notifications"
   type        = string
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$", var.notification_email))
+    error_message = "notification_email must be a valid email address."
+  }
 }
