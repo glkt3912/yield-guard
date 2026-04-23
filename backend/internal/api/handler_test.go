@@ -96,6 +96,25 @@ func (m *mockMLITClient) FetchDisasterHistory(ctx context.Context, z, x, y int) 
 	return []domain.DisasterHistoryItem{}, nil
 }
 
+func (m *mockMLITClient) FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.UrbanZoningItem, error) {
+	return []domain.UrbanZoningItem{}, nil
+}
+func (m *mockMLITClient) FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.LiquefactionRiskItem, error) {
+	return []domain.LiquefactionRiskItem{}, nil
+}
+func (m *mockMLITClient) FetchFloodHazard(ctx context.Context, z, x, y int) ([]domain.FloodHazardItem, error) {
+	return []domain.FloodHazardItem{}, nil
+}
+func (m *mockMLITClient) FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.StormHazardItem, error) {
+	return []domain.StormHazardItem{}, nil
+}
+func (m *mockMLITClient) FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.TsunamiHazardItem, error) {
+	return []domain.TsunamiHazardItem{}, nil
+}
+func (m *mockMLITClient) FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domain.LandslideHazardItem, error) {
+	return []domain.LandslideHazardItem{}, nil
+}
+
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す
 func newTestRouter(client MLITClient) *gin.Engine {
 	h := NewHandler(client)

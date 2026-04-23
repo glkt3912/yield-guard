@@ -25,6 +25,12 @@ type MLITClient interface {
 	FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.EmbankmentItem, error)
 	FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.UrbanRoadItem, error)
 	FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domain.DisasterHistoryItem, error)
+	FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.UrbanZoningItem, error)
+	FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.LiquefactionRiskItem, error)
+	FetchFloodHazard(ctx context.Context, z, x, y int) ([]domain.FloodHazardItem, error)
+	FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.StormHazardItem, error)
+	FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.TsunamiHazardItem, error)
+	FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domain.LandslideHazardItem, error)
 }
 
 type Handler struct {
@@ -562,6 +568,131 @@ func (h *Handler) GetUrbanRisks(c *gin.Context) {
 		risks = []domain.UrbanRisk{}
 	}
 	c.JSON(http.StatusOK, risks)
+}
+
+// GetInvestmentScore は物件の緯度経度から複数 API を並列呼び出しし、投資適地スコアを算出して返す。
+// GET /api/investment-score?lat=35.6762&lng=139.6503
+func (h *Handler) GetInvestmentScore(c *gin.Context) {
+	latStr := c.Query("lat")
+	lngStr := c.Query("lng")
+	if latStr == "" || lngStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
+		return
+	}
+	lat, err := strconv.ParseFloat(latStr, 64)
+	if err != nil || lat < 20 || lat > 46 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は日本国内の緯度（20〜46）で指定してください"})
+		return
+	}
+	lng, err := strconv.ParseFloat(lngStr, 64)
+	if err != nil || lng < 122 || lng > 154 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は日本国内の経度（122〜154）で指定してください"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	z := 14
+	x, y := mlit.LatLngToTile(lat, lng, z)
+
+	type result[T any] struct {
+		data T
+		err  error
+	}
+
+	popCh := make(chan result[[]domain.PopulationForecastItem], 1)
+	ridCh := make(chan result[[]mlit.StationRidership], 1)
+	locCh := make(chan result[[]domain.LocationOptimizationItem], 1)
+	embCh := make(chan result[[]domain.EmbankmentItem], 1)
+	disCh := make(chan result[[]domain.DisasterHistoryItem], 1)
+	zonCh := make(chan result[[]domain.UrbanZoningItem], 1)
+	liqCh := make(chan result[[]domain.LiquefactionRiskItem], 1)
+	floCh := make(chan result[[]domain.FloodHazardItem], 1)
+	stoCh := make(chan result[[]domain.StormHazardItem], 1)
+	tsuCh := make(chan result[[]domain.TsunamiHazardItem], 1)
+	lanCh := make(chan result[[]domain.LandslideHazardItem], 1)
+
+	go func() { d, e := h.mlitClient.FetchPopulationForecast(ctx, z, x, y); popCh <- result[[]domain.PopulationForecastItem]{d, e} }()
+	go func() { d, e := h.mlitClient.FetchStationRidership(ctx, z, x, y); ridCh <- result[[]mlit.StationRidership]{d, e} }()
+	go func() { d, e := h.mlitClient.FetchLocationOptimization(ctx, z, x, y); locCh <- result[[]domain.LocationOptimizationItem]{d, e} }()
+	go func() { d, e := h.mlitClient.FetchEmbankment(ctx, z, x, y); embCh <- result[[]domain.EmbankmentItem]{d, e} }()
+	go func() { d, e := h.mlitClient.FetchDisasterHistory(ctx, z, x, y); disCh <- result[[]domain.DisasterHistoryItem]{d, e} }()
+	go func() { d, e := h.mlitClient.FetchUrbanZoning(ctx, z, x, y); zonCh <- result[[]domain.UrbanZoningItem]{d, e} }()
+	go func() { d, e := h.mlitClient.FetchLiquefaction(ctx, z, x, y); liqCh <- result[[]domain.LiquefactionRiskItem]{d, e} }()
+	go func() { d, e := h.mlitClient.FetchFloodHazard(ctx, z, x, y); floCh <- result[[]domain.FloodHazardItem]{d, e} }()
+	go func() { d, e := h.mlitClient.FetchStormHazard(ctx, z, x, y); stoCh <- result[[]domain.StormHazardItem]{d, e} }()
+	go func() { d, e := h.mlitClient.FetchTsunamiHazard(ctx, z, x, y); tsuCh <- result[[]domain.TsunamiHazardItem]{d, e} }()
+	go func() { d, e := h.mlitClient.FetchLandslideHazard(ctx, z, x, y); lanCh <- result[[]domain.LandslideHazardItem]{d, e} }()
+
+	input := domain.InvestmentScoreInput{}
+
+	if r := <-popCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchPopulationForecast failed", "error", r.err)
+	} else {
+		input.PopulationItems = r.data
+	}
+	if r := <-ridCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchStationRidership failed", "error", r.err)
+	} else {
+		input.StationRiderships = make([]domain.StationRidershipResult, 0, len(r.data))
+		for _, s := range r.data {
+			score := domain.CalcRidershipDemandScore(s.Passengers)
+			input.StationRiderships = append(input.StationRiderships, domain.StationRidershipResult{
+				StationName: s.StationName,
+				LineName:    s.LineName,
+				Passengers:  s.Passengers,
+				DemandScore: score,
+				Correction:  domain.RidershipCorrectionFactor(score),
+			})
+		}
+	}
+	if r := <-locCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchLocationOptimization failed", "error", r.err)
+	} else {
+		input.LocationItems = r.data
+	}
+	if r := <-embCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchEmbankment failed", "error", r.err)
+	} else {
+		input.EmbankmentItems = r.data
+	}
+	if r := <-disCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchDisasterHistory failed", "error", r.err)
+	} else {
+		input.DisasterItems = r.data
+	}
+	if r := <-zonCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchUrbanZoning failed", "error", r.err)
+	} else {
+		input.UrbanZoningItems = r.data
+	}
+	if r := <-liqCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchLiquefaction failed", "error", r.err)
+	} else {
+		input.LiquefactionItems = r.data
+	}
+	if r := <-floCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchFloodHazard failed", "error", r.err)
+	} else {
+		input.FloodItems = r.data
+	}
+	if r := <-stoCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchStormHazard failed", "error", r.err)
+	} else {
+		input.StormItems = r.data
+	}
+	if r := <-tsuCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchTsunamiHazard failed", "error", r.err)
+	} else {
+		input.TsunamiItems = r.data
+	}
+	if r := <-lanCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchLandslideHazard failed", "error", r.err)
+	} else {
+		input.LandslideItems = r.data
+	}
+
+	score := domain.CalcInvestmentScore(input)
+	c.JSON(http.StatusOK, score)
 }
 
 // HealthCheck はサーバーの生存確認
