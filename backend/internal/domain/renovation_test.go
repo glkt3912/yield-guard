@@ -113,6 +113,25 @@ func TestCalcRenovationROI_ZeroRentIncrease(t *testing.T) {
 	if result.RecoveryYears != 0 {
 		t.Errorf("RecoveryYears = %.2f, want 0 (no rent increase → no recovery)", result.RecoveryYears)
 	}
+	if result.IsRecoverable {
+		t.Error("IsRecoverable should be false when annualRentIncrease = 0")
+	}
+}
+
+func TestCalcRenovationROI_IsRecoverable(t *testing.T) {
+	withRent := RenovationInput{
+		Items: []RenovationItem{{Name: "内装", Cost: 300_000, ExpectedMonthlyRentIncrease: 5_000}},
+	}
+	if !CalcRenovationROI(withRent).IsRecoverable {
+		t.Error("IsRecoverable should be true when rent increase > 0")
+	}
+
+	noRent := RenovationInput{
+		Items: []RenovationItem{{Name: "補修", Cost: 200_000, ExpectedMonthlyRentIncrease: 0}},
+	}
+	if CalcRenovationROI(noRent).IsRecoverable {
+		t.Error("IsRecoverable should be false when rent increase = 0")
+	}
 }
 
 func TestCalcRenovationROI_ZeroDenominator(t *testing.T) {

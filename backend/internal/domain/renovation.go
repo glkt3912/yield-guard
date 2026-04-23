@@ -48,6 +48,7 @@ func CalcRenovationROI(input RenovationInput) RenovationResult {
 
 	return RenovationResult{
 		RecoveryYears:       recoveryYears,
+		IsRecoverable:       annualRentIncrease > 0,
 		TaxSavings:          taxSavings,
 		VirtualLaborCost:    virtualLaborCost,
 		CapitalExpenditures: capitalExpenditures,

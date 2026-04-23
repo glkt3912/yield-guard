@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { analyzeRenovation } from "@/lib/api";
 import type { RenovationInput, RenovationItem, RenovationResult } from "@/types/investment";
 import { DEFAULT_RENOVATION_INPUT } from "@/types/investment";
@@ -84,20 +85,18 @@ export default function RenovationPanel() {
     }
   }
 
-  const recoveryChartData = (() => {
-    if (!result) return [];
+  const recoveryChartData = useMemo(() => {
+    if (!result || !result.isRecoverable) return [];
     const maxYears = Math.min(Math.ceil(result.recoveryYears) + 2, 50);
     return Array.from({ length: maxYears + 1 }, (_, i) => ({
       year: `${i}年`,
       累積賃料増加額: Math.round((result.annualRentIncrease * i) / 10_000),
       リフォーム費用: Math.round(result.totalRenovationCost / 10_000),
     }));
-  })();
+  }, [result]);
 
   const recoveryYearLabel =
-    result && result.annualRentIncrease > 0
-      ? `${Math.ceil(result.recoveryYears)}年`
-      : null;
+    result?.isRecoverable ? `${Math.ceil(result.recoveryYears)}年` : null;
 
   return (
     <Card>
@@ -107,54 +106,44 @@ export default function RenovationPanel() {
       <CardContent className="space-y-6">
         {/* Global inputs */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div>
-            <label className="text-xs text-muted-foreground block mb-1">物件取得価格（万円）</label>
-            <input
-              type="number"
-              className="w-full rounded border px-2 py-1 text-sm"
-              value={globals.propertyPrice / 10_000}
-              onChange={(e) => updateGlobal("propertyPrice", Number(e.target.value) * 10_000)}
-            />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground block mb-1">リフォーム前年間家賃（万円）</label>
-            <input
-              type="number"
-              className="w-full rounded border px-2 py-1 text-sm"
-              value={globals.annualBaseRent / 10_000}
-              onChange={(e) => updateGlobal("annualBaseRent", Number(e.target.value) * 10_000)}
-            />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground block mb-1">年間経費（万円）</label>
-            <input
-              type="number"
-              className="w-full rounded border px-2 py-1 text-sm"
-              value={globals.annualExpenses / 10_000}
-              onChange={(e) => updateGlobal("annualExpenses", Number(e.target.value) * 10_000)}
-            />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground block mb-1">実効税率（%）</label>
-            <input
-              type="number"
-              step="1"
-              min="0"
-              max="100"
-              className="w-full rounded border px-2 py-1 text-sm"
-              value={Math.round(globals.effectiveTaxRate * 100)}
-              onChange={(e) => updateGlobal("effectiveTaxRate", Number(e.target.value) / 100)}
-            />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground block mb-1">セルフリフォーム時給（円）</label>
-            <input
-              type="number"
-              className="w-full rounded border px-2 py-1 text-sm"
-              value={globals.selfLaborRatePerHour}
-              onChange={(e) => updateGlobal("selfLaborRatePerHour", Number(e.target.value))}
-            />
-          </div>
+          <Input
+            label="物件取得価格"
+            type="number"
+            suffix="万円"
+            value={globals.propertyPrice / 10_000}
+            onChange={(e) => updateGlobal("propertyPrice", Number(e.target.value) * 10_000)}
+          />
+          <Input
+            label="リフォーム前年間家賃"
+            type="number"
+            suffix="万円"
+            value={globals.annualBaseRent / 10_000}
+            onChange={(e) => updateGlobal("annualBaseRent", Number(e.target.value) * 10_000)}
+          />
+          <Input
+            label="年間経費"
+            type="number"
+            suffix="万円"
+            value={globals.annualExpenses / 10_000}
+            onChange={(e) => updateGlobal("annualExpenses", Number(e.target.value) * 10_000)}
+          />
+          <Input
+            label="実効税率"
+            type="number"
+            suffix="%"
+            step="1"
+            min="0"
+            max="100"
+            value={Math.round(globals.effectiveTaxRate * 100)}
+            onChange={(e) => updateGlobal("effectiveTaxRate", Number(e.target.value) / 100)}
+          />
+          <Input
+            label="セルフリフォーム時給"
+            type="number"
+            suffix="円"
+            value={globals.selfLaborRatePerHour}
+            onChange={(e) => updateGlobal("selfLaborRatePerHour", Number(e.target.value))}
+          />
         </div>
 
         {/* Items table */}
@@ -222,13 +211,16 @@ export default function RenovationPanel() {
                     </td>
                     <td className="py-1">
                       {items.length > 1 && (
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`工事項目${i + 1}を削除`}
                           onClick={() => removeItem(i)}
-                          className="text-muted-foreground hover:text-destructive text-xs px-1"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                         >
                           ×
-                        </button>
+                        </Button>
                       )}
                     </td>
                   </tr>
@@ -236,19 +228,22 @@ export default function RenovationPanel() {
               </tbody>
             </table>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="工事項目を追加"
             onClick={addItem}
-            className="mt-2 text-xs text-primary hover:underline"
+            className="mt-2 text-xs text-primary"
           >
-            + 行を追加
-          </button>
+            ＋ 行を追加
+          </Button>
         </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         <Button onClick={handleSubmit} disabled={loading} className="w-full sm:w-auto">
-          {loading ? "計算中..." : "シミュレーション実行"}
+          {loading ? "計算中..." : "リフォーム分析を実行"}
         </Button>
 
         {/* Results */}
@@ -259,7 +254,7 @@ export default function RenovationPanel() {
               <div className="rounded-md border p-3 text-center">
                 <p className="text-xs text-muted-foreground">修繕費回収期間</p>
                 <p className="text-lg font-bold">
-                  {result.annualRentIncrease > 0
+                  {result.isRecoverable
                     ? `${result.recoveryYears.toFixed(1)}年`
                     : "回収不可"}
                 </p>
@@ -322,7 +317,7 @@ export default function RenovationPanel() {
             </div>
 
             {/* Recovery timeline chart */}
-            {result.annualRentIncrease > 0 && (
+            {result.isRecoverable && (
               <div>
                 <p className="text-sm font-semibold mb-2">回収タイムライン</p>
                 <ResponsiveContainer width="100%" height={220}>

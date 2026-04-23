@@ -304,6 +304,7 @@ export interface RenovationInput {
 
 export interface RenovationResult {
   recoveryYears: number;
+  isRecoverable: boolean;
   taxSavings: number;
   virtualLaborCost: number;
   capitalExpenditures: number;

@@ -436,6 +436,7 @@ type RenovationInput struct {
 // RenovationResult はリフォームROIシミュレーションの結果
 type RenovationResult struct {
 	RecoveryYears       float64                    `json:"recoveryYears"`
+	IsRecoverable       bool                       `json:"isRecoverable"` // 家賃アップがある場合のみ true
 	TaxSavings          float64                    `json:"taxSavings"`
 	VirtualLaborCost    float64                    `json:"virtualLaborCost"`
 	CapitalExpenditures float64                    `json:"capitalExpenditures"`
