@@ -67,9 +67,10 @@ resource "google_project_iam_member" "deployer_sa_admin" {
 }
 
 resource "google_project_iam_member" "deployer_ar_repo_admin" {
-  # Required to set IAM policies on Artifact Registry repositories.
+  # artifactregistry.admin is required to update repository metadata (cleanup_policies etc.)
+  # via terraform apply. repoAdmin does not include artifactregistry.repositories.update.
   project = var.project_id
-  role    = "roles/artifactregistry.repoAdmin"
+  role    = "roles/artifactregistry.admin"
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
