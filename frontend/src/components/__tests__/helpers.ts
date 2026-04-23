@@ -117,6 +117,8 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
     },
     dscr: 1.2,
     ltvSensitivity: [],
+    irr: 0.07,
+    npv: 1_200_000,
     ...overrides,
   };
 }

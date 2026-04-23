@@ -217,6 +217,18 @@ func validateInvestmentInput(in domain.InvestmentInput) error {
 	if in.RentDeclineRate < 0 || in.RentDeclineRate > 0.2 {
 		return errors.New("rentDeclineRate は 0.0〜0.2 の範囲で指定してください")
 	}
+	// DiscountRate == 0 は「未指定」扱い: Defaults() で 0.05 に補完される
+	if in.DiscountRate < 0 || in.DiscountRate > 0.30 {
+		return errors.New("discountRate は 0〜30% の範囲で指定してください")
+	}
+	if in.PriceDeclineRate < 0 || in.PriceDeclineRate > 0.10 {
+		return errors.New("priceDeclineRate は 0〜10% の範囲で指定してください")
+	}
+	if in.DepreciationMethod != "" &&
+		in.DepreciationMethod != domain.DepreciationMethodStraightLine &&
+		in.DepreciationMethod != domain.DepreciationMethodDecliningBalance {
+		return errors.New("depreciationMethod は \"straight-line\" または \"declining-balance\" を指定してください")
+	}
 	return nil
 }
 
