@@ -66,14 +66,14 @@ export function calcResidualUsefulLife(buildingType: BuildingType, buildingAge: 
 
 function applyDefaults(input: InvestmentInput): InvestmentInput {
   const i = { ...input };
-  if (!i.miscExpenseRate) i.miscExpenseRate = 0.07;
-  if (!i.holdingYears) i.holdingYears = 10;
-  if (!i.exitYieldTarget) i.exitYieldTarget = 0.06;
-  if (!i.yieldTarget) i.yieldTarget = 0.08;
-  if (!i.loanYears) i.loanYears = 35;
+  if (i.miscExpenseRate == null || i.miscExpenseRate === 0) i.miscExpenseRate = 0.07;
+  if (i.holdingYears == null || i.holdingYears === 0) i.holdingYears = 10;
+  if (i.exitYieldTarget == null || i.exitYieldTarget === 0) i.exitYieldTarget = 0.06;
+  if (i.yieldTarget == null || i.yieldTarget === 0) i.yieldTarget = 0.08;
+  if (i.loanYears == null || i.loanYears === 0) i.loanYears = 35;
   if (!i.buildingType) i.buildingType = "木造";
   if (!i.loanMethod) i.loanMethod = LOAN_METHOD_EQUAL_PAYMENT;
-  if (!i.discountRate) i.discountRate = 0.05;
+  if (i.discountRate == null || i.discountRate === 0) i.discountRate = 0.05;
   if (!i.depreciationMethod) i.depreciationMethod = DEPRECIATION_STRAIGHT_LINE;
   if (!i.rateAdjustmentSchedule) i.rateAdjustmentSchedule = [];
   return i;
