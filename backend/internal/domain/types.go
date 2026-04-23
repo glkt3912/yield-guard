@@ -406,3 +406,42 @@ type LandPriceComparison struct {
 	DiffFromMedian     float64        `json:"diffFromMedian"`
 	Assessment         string         `json:"assessment"` // "割安" / "相場" / "割高"
 }
+
+// RenovationItem はリフォーム1工事項目
+type RenovationItem struct {
+	Name                        string  `json:"name"`
+	Cost                        float64 `json:"cost"`
+	ExpectedMonthlyRentIncrease float64 `json:"expectedMonthlyRentIncrease"`
+	IsSelfWork                  bool    `json:"isSelfWork"`
+	SelfLaborHours              float64 `json:"selfLaborHours"`
+}
+
+// ClassifiedRenovationItem は分類付きリフォーム項目
+type ClassifiedRenovationItem struct {
+	RenovationItem
+	IsCapitalExpenditure bool    `json:"isCapitalExpenditure"`
+	VirtualLaborCost     float64 `json:"virtualLaborCost"`
+}
+
+// RenovationInput はリフォームROIシミュレーションの入力値
+type RenovationInput struct {
+	PropertyPrice        float64          `json:"propertyPrice"`
+	AnnualBaseRent       float64          `json:"annualBaseRent"`
+	AnnualExpenses       float64          `json:"annualExpenses"`
+	EffectiveTaxRate     float64          `json:"effectiveTaxRate"`
+	SelfLaborRatePerHour float64          `json:"selfLaborRatePerHour"`
+	Items                []RenovationItem `json:"items"`
+}
+
+// RenovationResult はリフォームROIシミュレーションの結果
+type RenovationResult struct {
+	RecoveryYears       float64                    `json:"recoveryYears"`
+	TaxSavings          float64                    `json:"taxSavings"`
+	VirtualLaborCost    float64                    `json:"virtualLaborCost"`
+	CapitalExpenditures float64                    `json:"capitalExpenditures"`
+	RepairExpenses      float64                    `json:"repairExpenses"`
+	ActualYield         float64                    `json:"actualYield"`
+	TotalRenovationCost float64                    `json:"totalRenovationCost"`
+	AnnualRentIncrease  float64                    `json:"annualRentIncrease"`
+	ClassifiedItems     []ClassifiedRenovationItem `json:"classifiedItems"`
+}
