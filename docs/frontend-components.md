@@ -386,31 +386,47 @@ CF がマイナスの場合は「赤字転落 ⚠️」バッジを表示。フ�
 
 ---
 
-## ReportPDF
+## PDF生成（generatePdf）
 
-`frontend/src/components/ReportPDF.tsx`
+`frontend/src/lib/generatePdf.ts`
 
-> テストカバレッジ: `ReportPDF.test.tsx`（Vitest + RTL）— 通常レンダリング・空のストレステスト・固定資産税日割りあり・新築・デッドクロスありの5ケースを検証。
+> テストカバレッジ: `src/lib/__tests__/generatePdf.test.ts`（Vitest）— 正常生成・空ストレステスト・取得コストなし・新築・XSSサニタイズ・フォント取得失敗・ファイル名・メタデータ・ヘッダー/フッター の11ケースを検証。
 
-**概要**: `@react-pdf/renderer` を使い投資分析結果を PDF ドキュメントとして生成するコンポーネント。ブラウザ専用（`next/dynamic` + `ssr: false` で読み込む）。日本語文字化け防止のため Noto Sans JP を Google Fonts CDN から `Font.register()` で埋め込む。
+**概要**: `pdfmake ^0.3.7` を使い投資分析結果を PDF ドキュメントとして生成する非同期関数。`Dashboard.tsx` のボタンクリックから `downloadReportPDF(input, result)` を呼び出すとブラウザのダウンロード機能で自動保存される。日本語対応のため Noto Sans JP（TTF）を `/public/fonts/` から `fetch` して `pdfMake.virtualfs` に登録する（pdfmake は woff2 非対応のため TTF を使用）。
 
-**props**:
-- `input: InvestmentInput` — 物件情報・ローン条件等
-- `result: InvestmentResult` — 分析結果（`yieldScenarios`, `stressScenarios`, `yearlyResults` 等）
+**エントリポイント**:
 
-**PDF 構成（5ページ）**:
+```typescript
+export async function downloadReportPDF(
+  input: InvestmentInput,
+  result: InvestmentResult,
+): Promise<void>
+```
+
+**ユーティリティモジュール**（`frontend/src/lib/pdf/`）:
+
+| ファイル | 役割 |
+|---------|------|
+| `format.ts` | `fmtYen`（億/百万/円の3段階・Math.round済み）・`fmtPct`・`fmtDate`・`sanitize`（XSS除去） |
+| `verdict.ts` | `calcVerdict()` — PASS/CAUTION/REJECT の総合判定・根拠3点・自動コメント生成 |
+| `charts.ts` | `buildCfBarChartSvg`・`buildDeadCrossLineSvg`・`buildCostDonutSvg` — SVG文字列を直接生成（Recharts不使用） |
+
+**PDF構成（5ページ）**:
 
 | ページ | 内容 |
 |--------|------|
 | 表紙 | 物件概要（土地価格・建物費・築年数・構造・月額賃料・ローン情報）・分析日 |
-| P1 投資サマリー | 表面利回り・実質利回り・DSCR（1年目）・LTV・出口戦略内訳 |
-| P2 10年キャッシュフロー表 | `YearlyResult[]` から生成。年次賃料・ローン返済・経費・税引後CF・累積CF・残債。マイナス値は赤色 |
-| P3 ストレステスト結果 | 6シナリオ×（総CF・DSCR・黒字転換年・安全フラグ）。`stressScenarios.length > 0` の場合のみレンダリング |
-| P4 取得コスト内訳 | 初期投資・`AcquisitionCostBreakdown` 明細・1年目年間経費内訳 |
+| P1 投資サマリー | 総合判定バッジ（PASS/CAUTION/REJECT）＋根拠3点・KPI 2行×3列（表面利回り・実質利回り・DSCR基本 / DSCR複合・LTV・出口Equity）・ストレステスト要約・出口戦略テーブル・自動生成コメント |
+| P2 10年キャッシュフロー | CFバーチャート（SVG）＋ `YearlyResult[]` テーブル。デッドクロスゾーンの年は赤色バー |
+| P3 ストレステスト結果 | デッドクロス折れ線チャート（SVG）＋ 6シナリオ表。`stressScenarios.length > 0` の場合のみ表示 |
+| P4 取得コスト内訳 | コストドーナツチャート（SVG）＋ 初期投資・`AcquisitionCostBreakdown` 明細・1年目年間経費内訳 |
 
-全ページフッター: 「本資料は yield-guard による試算です。実際の投資判断は専門家にご相談ください。」
+**ヘッダー/フッター**:
+- 表紙（P1）はヘッダーなし。P2以降は「yield-guard 不動産投資分析レポート」と分析日をヘッダーに表示
+- 全ページフッター: 免責文 ＋ 「現在ページ / 総ページ数」
+- PDFメタデータ（`info`）: `title`・`author`・`subject`・`creator` を設定
 
-**ファイル名**: `yield-guard-report-YYYYMMDD.pdf`（`Dashboard.tsx` の `PDFDownloadLink` で指定）
+**ファイル名**: `yield-guard-report-YYYYMMDD.pdf`（`downloadReportPDF` 内で自動生成）
 
 ---
 
