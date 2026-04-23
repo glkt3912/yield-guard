@@ -11,9 +11,10 @@ import CostBreakdown from "@/components/CostBreakdown";
 import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
 import RenovationPanel from "@/components/RenovationPanel";
 import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode, LoanMethod, MonteCarloResult, InvestmentScoreResult } from "@/types/investment";
-import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks, fetchHazardInfo, fetchInvestmentScore, simulate } from "@/lib/api";
+import { analyze as analyzeOnline, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks, fetchHazardInfo, fetchInvestmentScore, simulate } from "@/lib/api";
+import { analyze as analyzeOffline } from "@/lib/investment";
 import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
-import { ShieldAlert, Info, FileDown, Share2, Check, SlidersHorizontal, X } from "lucide-react";
+import { ShieldAlert, Info, FileDown, Share2, Check, SlidersHorizontal, X, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { downloadReportPDF } from "@/lib/generatePdf";
@@ -59,9 +60,23 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const [monteCarloResult, setMonteCarloResult] = useState<MonteCarloResult | null>(null);
   const [monteCarloLoading, setMonteCarloLoading] = useState(false);
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Network status detection
+  useEffect(() => {
+    setIsOnline(navigator.onLine);
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -90,7 +105,10 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
     setMonteCarloResult(null);
     const inputWithMethod = { ...input, loanMethod };
     try {
-      const res = await analyze(inputWithMethod);
+      // When offline, fall back to client-side calculation
+      const res = isOnline === false
+        ? analyzeOffline(inputWithMethod)
+        : await analyzeOnline(inputWithMethod);
       setResult(res);
       setLastInput(inputWithMethod);
 
@@ -125,7 +143,10 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
     setError(null);
     setMonteCarloResult(null);
     try {
-      const res = await analyze({ ...lastInput, loanMethod: method });
+      const updatedInput = { ...lastInput, loanMethod: method };
+      const res = isOnline === false
+        ? analyzeOffline(updatedInput)
+        : await analyzeOnline(updatedInput);
       setResult(res);
       setLastInput((prev) => prev ? { ...prev, loanMethod: method } : prev);
     } catch (e) {
@@ -248,10 +269,18 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 {pdfGenerating ? "生成中..." : "PDFレポート出力"}
               </button>
             )}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="h-2 w-2 rounded-full bg-green-400" />
-              <span className="hidden sm:inline">国交省API使用</span>
-            </div>
+            {isOnline === true && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="h-2 w-2 rounded-full bg-green-400" />
+                <span className="hidden sm:inline">国交省API使用</span>
+              </div>
+            )}
+            {isOnline === false && (
+              <div className="flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+                <WifiOff className="h-3.5 w-3.5" />
+                オフライン
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -267,6 +296,15 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           <div className="mb-4 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
             <Info className="h-4 w-4 shrink-0" />
             モードを切り替えたため、結果をクリアしました。再度シミュレーションを実行してください。
+          </div>
+        )}
+
+        {isOnline === false && (
+          <div className="mb-4 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <WifiOff className="h-4 w-4 shrink-0" />
+            <span>
+              <strong>オフラインモード：</strong>シミュレーションはデバイス内で計算されます。「相場を取得」はネットワーク接続が回復するまで使用できません。
+            </span>
           </div>
         )}
 
@@ -286,6 +324,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
               onModeChange={handleModeChange}
               initialInput={decoded?.input}
               initialQuickTotalPriceMan={decoded?.quickTotalPriceMan}
+              isOnline={isOnline}
             />
           </aside>
 
