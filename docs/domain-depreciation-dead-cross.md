@@ -89,6 +89,40 @@ accumulatedDepreciation += yearDepreciation
 
 ---
 
+## 定率法による年間減価償却費（`DepreciationMethodDecliningBalance`）
+
+> **根拠**: 法人税法第31条・法人税法施行令第48条の2。個人（所得税法）では建物について**定率法の選択不可**（2007年度改正）。本ツールの定率法実装は法人投資家向けまたは参考計算として提供。
+
+```go
+// DepreciationMethodDecliningBalance の場合のみ使用
+bookValue  := input.BuildingCost          // ループ前に初期化
+decliningRate := 1.5 / float64(usefulLife) // 定率 = 1/耐用年数 × 1.5
+
+// 年次ループ内
+if bookValue > 1.0 {
+    yearDepreciation = bookValue * decliningRate
+    if bookValue-yearDepreciation < 1.0 {
+        yearDepreciation = bookValue - 1.0  // 残存1円以下にしない
+    }
+    bookValue -= yearDepreciation
+}
+```
+
+- **率の根拠**: 旧定率法の `1/耐用年数` に対し、現行（2007年改正後）の定率法は `1/耐用年数 × 250%` が法定。本ツールは `1.5倍` を採用（概算）
+- **収束保証**: `bookValue` が 1円を下回るタイミングで端数を全額計上し、以後ゼロ
+- **定額法との違い**: 初期に償却額が大きく、後半に逓減。デッドクロス発生タイミングが定額法と異なる
+
+### `DepreciationMethod` の切り替え
+
+`InvestmentInput.DepreciationMethod` で制御する（`Defaults()` でデフォルト `"straight-line"`）:
+
+| 値 | 定数 | 挙動 |
+|----|------|------|
+| `"straight-line"` | `DepreciationMethodStraightLine` | 定額法（デフォルト・個人投資家向け） |
+| `"declining-balance"` | `DepreciationMethodDecliningBalance` | 定率法（法人投資家向け参考） |
+
+---
+
 ## デッドクロスの定義と判定ロジック
 
 ### 定義
