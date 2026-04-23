@@ -101,10 +101,11 @@ resource "google_storage_bucket_iam_member" "deployer_tfstate_admin" {
   member = "serviceAccount:${google_service_account.deployer.email}"
 }
 
-resource "google_project_iam_member" "deployer_monitoring_admin" {
+resource "google_project_iam_member" "deployer_monitoring_editor" {
   # Required to manage Cloud Monitoring dashboards, alert policies, and notification channels via terraform apply.
+  # monitoring.editor covers CRUD for dashboards/alerts/channels without IAM management (unlike monitoring.admin).
   project = var.project_id
-  role    = "roles/monitoring.admin"
+  role    = "roles/monitoring.editor"
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
