@@ -242,16 +242,15 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
         | ratio
         | condition val() > 0.5
       EOT
-      duration = "600s"
+      # 30分継続で判定: 再起動直後のキャッシュリセット（約10分）による誤検知を抑制 (#270)
+      # notification_rate_limit はログベースアラート専用のため MQL アラートには使用不可
+      duration = "1800s"
     }
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "3600s"
-    notification_rate_limit {
-      period = "3600s"
-    }
   }
 }
 
