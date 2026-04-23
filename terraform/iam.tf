@@ -101,6 +101,13 @@ resource "google_storage_bucket_iam_member" "deployer_tfstate_admin" {
   member = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+resource "google_project_iam_member" "deployer_monitoring_admin" {
+  # Required to manage Cloud Monitoring dashboards, alert policies, and notification channels via terraform apply.
+  project = var.project_id
+  role    = "roles/monitoring.admin"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 # --- Runtime SA permissions (Cloud Run only) ---
 
 resource "google_secret_manager_secret_iam_member" "mlit_accessor" {
