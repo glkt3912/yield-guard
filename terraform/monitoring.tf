@@ -178,7 +178,7 @@ resource "google_monitoring_alert_policy" "mlit_latency" {
 
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
-    auto_close = "1800s"
+    auto_close = "3600s"
   }
 }
 
@@ -209,7 +209,7 @@ resource "google_monitoring_alert_policy" "cloudrun_error_rate" {
 
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
-    auto_close = "1800s"
+    auto_close = "3600s"
   }
 }
 
@@ -265,6 +265,6 @@ resource "google_monitoring_alert_policy" "cloudrun_max_instances" {
 
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
-    auto_close = "1800s"
+    auto_close = "3600s"
   }
 }
