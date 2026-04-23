@@ -274,7 +274,7 @@ export async function downloadReportPDF(
           kpiBlock("LTV", fmtPct(ltv), ltv <= 0.8 ? C.safe : C.danger),
           kpiBlock(
             "出口Equity",
-            fmt(result.exitTotalEquity),
+            fmtYen(result.exitTotalEquity),
             result.exitTotalEquity >= 0 ? C.safe : C.danger
           ),
         ],
@@ -300,7 +300,7 @@ export async function downloadReportPDF(
                     tdCell(baselineScenario.dscr.toFixed(2), 0, {
                       color: baselineScenario.dscr >= 1.0 ? C.safe : C.danger,
                     }),
-                    tdCell(fmt(baselineScenario.totalCashFlow), 0, {
+                    tdCell(fmtYen(baselineScenario.totalCashFlow), 0, {
                       color: baselineScenario.totalCashFlow < 0 ? C.danger : C.text,
                     }),
                     {
@@ -315,7 +315,7 @@ export async function downloadReportPDF(
                     tdCell(stressScenario.dscr.toFixed(2), 1, {
                       color: stressScenario.dscr >= 1.0 ? C.safe : C.danger,
                     }),
-                    tdCell(fmt(stressScenario.totalCashFlow), 1, {
+                    tdCell(fmtYen(stressScenario.totalCashFlow), 1, {
                       color: stressScenario.totalCashFlow < 0 ? C.danger : C.text,
                     }),
                     {
