@@ -704,30 +704,9 @@ func (h *Handler) GetHazardInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, risks)
 }
 
-// GetInvestmentScore は物件の緯度経度から複数 API を並列呼び出しし、投資適地スコアを算出して返す。
-// GET /api/investment-score?lat=35.6762&lng=139.6503
-func (h *Handler) GetInvestmentScore(c *gin.Context) {
-	latStr := c.Query("lat")
-	lngStr := c.Query("lng")
-	if latStr == "" || lngStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
-		return
-	}
-	lat, err := strconv.ParseFloat(latStr, 64)
-	if err != nil || lat < 20 || lat > 46 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は日本国内の緯度（20〜46）で指定してください"})
-		return
-	}
-	lng, err := strconv.ParseFloat(lngStr, 64)
-	if err != nil || lng < 122 || lng > 154 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は日本国内の経度（122〜154）で指定してください"})
-		return
-	}
-
-	ctx := c.Request.Context()
-	z := 14
-	x, y := mlit.LatLngToTile(lat, lng, z)
-
+// calcScoreForTile は指定タイル座標に対して 11 API を並列取得し投資適地スコアを返す。
+// 全 API が失敗した場合でもゼロ値スコアを返す（部分失敗は警告ログのみ）。
+func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.InvestmentScoreResult, error) {
 	type result[T any] struct {
 		data T
 		err  error
@@ -825,7 +804,38 @@ func (h *Handler) GetInvestmentScore(c *gin.Context) {
 		input.LandslideItems = r.data
 	}
 
-	score := domain.CalcInvestmentScore(input)
+	return domain.CalcInvestmentScore(input), nil
+}
+
+// GetInvestmentScore は物件の緯度経度から複数 API を並列呼び出しし、投資適地スコアを算出して返す。
+// GET /api/investment-score?lat=35.6762&lng=139.6503
+func (h *Handler) GetInvestmentScore(c *gin.Context) {
+	latStr := c.Query("lat")
+	lngStr := c.Query("lng")
+	if latStr == "" || lngStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
+		return
+	}
+	lat, err := strconv.ParseFloat(latStr, 64)
+	if err != nil || lat < 20 || lat > 46 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は日本国内の緯度（20〜46）で指定してください"})
+		return
+	}
+	lng, err := strconv.ParseFloat(lngStr, 64)
+	if err != nil || lng < 122 || lng > 154 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は日本国内の経度（122〜154）で指定してください"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	z := 14
+	x, y := mlit.LatLngToTile(lat, lng, z)
+
+	score, err := h.calcScoreForTile(ctx, z, x, y)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, score)
 }
 
