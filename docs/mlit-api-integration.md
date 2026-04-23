@@ -987,3 +987,259 @@ type DisasterHistoryFeatureProps struct {
     DisasterSource   string `json:"disaster_source"`
 }
 ```
+
+---
+
+## XKT001 都市計画区域/区域区分API
+
+### エンドポイント（タイル座標形式）
+
+```
+GET /ex-api/external/XKT001?response_format=geojson&z={z}&x={x}&y={y}
+```
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `response_format` | ○ | `"geojson"` 固定 |
+| `z` | ○ | ズームレベル 11〜15 |
+| `x` / `y` | ○ | WebMercator タイル座標 |
+
+### GeoJSONレスポンス フィールド
+
+| フィールド名 | 型 | 説明 | 例 |
+|------------|----|----|-----|
+| `area_classification_ja` | string | 区域区分名 | "市街化区域"、"市街化調整区域" |
+| `kubun_id` | int | 区分コード | 21 |
+| `prefecture` | string | 都道府県名 | 北海道 |
+| `city_code` | string | 市区町村コード | 01100 |
+| `city_name` | string | 市区町村名 | 札幌市 |
+| `decision_date` | string | 設定年月日 | - |
+| `decision_classification` | string | 設定区分 | - |
+| `decision_maker` | string | 設定者名 | - |
+| `notice_number` | string | 告示番号 | - |
+| `first_decision_date` | string | 当初決定日 | - |
+| `notice_number_s` | string | 告示番号（当初） | - |
+
+### リスク判定方針
+
+- `area_classification_ja` が "市街化区域" を含み "調整" を含まない → 投資適地スコア +10点
+- それ以外 → 0点
+
+### 型定義
+
+```go
+type UrbanZoningProperties struct {
+    AreaClassificationJa string `json:"area_classification_ja"`
+    KubunID              int    `json:"kubun_id"`
+    Prefecture           string `json:"prefecture"`
+    CityCode             string `json:"city_code"`
+    CityName             string `json:"city_name"`
+}
+```
+
+---
+
+## XKT025 液状化発生傾向図API
+
+### エンドポイント（タイル座標形式）
+
+```
+GET /ex-api/external/XKT025?response_format=geojson&z={z}&x={x}&y={y}
+```
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `response_format` | ○ | `"geojson"` 固定 |
+| `z` | ○ | ズームレベル 11〜15 |
+| `x` / `y` | ○ | WebMercator タイル座標 |
+
+### GeoJSONレスポンス フィールド
+
+| フィールド名 | 型 | 説明 | 例 |
+|------------|----|----|-----|
+| `liquefaction_tendency_level` | int | 液状化発生傾向（6段階: 低値ほど高リスク） | 5 |
+| `note` | string | 傾向説明 | "液状化しにくい" |
+| `mesh_code` | string | メッシュコード | "5339359931" |
+| `topographic_classification_code` | int | 微地形区分コード（28区分） | 9 |
+| `topographic_classification_name_ja` | string | 微地形区分名称 | "ローム台地" |
+
+### リスク判定方針
+
+- `liquefaction_tendency_level` ≤ 2 → −10点（非常に高リスク）
+- `liquefaction_tendency_level` ≤ 4 → −5点（中程度リスク）
+- `liquefaction_tendency_level` ≥ 5 → 0点（低リスク）
+
+### 型定義
+
+```go
+type LiquefactionProperties struct {
+    LiquefactionTendencyLevel int    `json:"liquefaction_tendency_level"`
+    Note                      string `json:"note"`
+    MeshCode                  string `json:"mesh_code"`
+}
+```
+
+---
+
+## XKT026 洪水浸水想定区域API
+
+### エンドポイント（タイル座標形式）
+
+```
+GET /ex-api/external/XKT026?response_format=geojson&z={z}&x={x}&y={y}
+```
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `response_format` | ○ | `"geojson"` 固定 |
+| `z` | ○ | ズームレベル 14〜15 |
+| `x` / `y` | ○ | WebMercator タイル座標 |
+
+### GeoJSONレスポンス フィールド
+
+| フィールド名 | 型 | 説明 | 例 |
+|------------|----|----|-----|
+| `A31a_205` | int | 浸水深ランク（高いほど深い） | 1 |
+| `A31a_202` | string | 河川名 | 庄川 |
+| `A31a_201` | string | 河川番号 | 8404090001 |
+| `A31a_203` | string | 河川管理番号 | 84 |
+| `A31a_204` | string | 河川管理者 | 北陸地方整備局 |
+
+### リスク判定方針
+
+- `A31a_205` ≥ 3 → −5点（深刻な洪水リスク）
+- `A31a_205` ≥ 1 → −3点（洪水リスクあり）
+
+### 型定義
+
+```go
+type FloodHazardProperties struct {
+    DepthRank    int    `json:"A31a_205"`
+    RiverName    string `json:"A31a_202"`
+    RiverManager string `json:"A31a_204"`
+}
+```
+
+---
+
+## XKT027 高潮浸水想定区域API
+
+### エンドポイント（タイル座標形式）
+
+```
+GET /ex-api/external/XKT027?response_format=geojson&z={z}&x={x}&y={y}
+```
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `response_format` | ○ | `"geojson"` 固定 |
+| `z` | ○ | ズームレベル 13〜15 |
+| `x` / `y` | ○ | WebMercator タイル座標 |
+
+### GeoJSONレスポンス フィールド
+
+| フィールド名 | 型 | 説明 | 例 |
+|------------|----|----|-----|
+| `A49_003` | string | 浸水深区分 | "5m以上10m未満" |
+| `A49_001` | string | 都道府県名 | 三重県 |
+| `A49_002` | string | 都道府県コード | 24 |
+| `target_year` | int | 対象年 | 2021 |
+
+### リスク判定方針
+
+- フィーチャが1件以上存在 → −5点（高潮リスクあり）
+
+### 型定義
+
+```go
+type StormHazardProperties struct {
+    DepthJa    string `json:"A49_003"`
+    Prefecture string `json:"A49_001"`
+    TargetYear int    `json:"target_year"`
+}
+```
+
+---
+
+## XKT028 津波浸水想定API
+
+### エンドポイント（タイル座標形式）
+
+```
+GET /ex-api/external/XKT028?response_format=geojson&z={z}&x={x}&y={y}
+```
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `response_format` | ○ | `"geojson"` 固定 |
+| `z` | ○ | ズームレベル 14〜15 |
+| `x` / `y` | ○ | WebMercator タイル座標 |
+
+### GeoJSONレスポンス フィールド
+
+| フィールド名 | 型 | 説明 | 例 |
+|------------|----|----|-----|
+| `A40_003` | string | 津波浸水深区分 | "3m以上～5m未満" |
+| `A40_001` | string | 都道府県名 | 東京都 |
+| `A40_002` | string | 都道府県コード | 13 |
+| `target_year` | int | 対象年 | 2023 |
+
+### リスク判定方針
+
+- フィーチャが1件以上存在 → −5点（津波リスクあり）
+
+### 型定義
+
+```go
+type TsunamiHazardProperties struct {
+    DepthJa    string `json:"A40_003"`
+    Prefecture string `json:"A40_001"`
+    TargetYear int    `json:"target_year"`
+}
+```
+
+---
+
+## XKT029 土砂災害警戒区域API
+
+### エンドポイント（タイル座標形式）
+
+```
+GET /ex-api/external/XKT029?response_format=geojson&z={z}&x={x}&y={y}
+```
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `response_format` | ○ | `"geojson"` 固定 |
+| `z` | ○ | ズームレベル 11〜15 |
+| `x` / `y` | ○ | WebMercator タイル座標 |
+
+### GeoJSONレスポンス フィールド
+
+| フィールド名 | 型 | 説明 | 例 |
+|------------|----|----|-----|
+| `A33_001` | int | 現象種類（1=急傾斜地崩壊, 2=土石流, 3=地すべり） | 1 |
+| `A33_002` | int | 区域区分（1=特別警戒区域, 2=警戒区域） | 1 |
+| `A33_003` | string | 都道府県コード | 34 |
+| `A33_004` | string | 区域番号 | Ⅱ-1-4279-1 |
+| `A33_005` | string | 区域名 | 才ノ原1543(4279-1) |
+| `A33_006` | string | 所在地 | 広島市安佐北区 |
+| `A33_007` | string | 公示日 | 2018/03/15 |
+| `A33_008` | int | 特別警戒未指定フラグ | 0 |
+
+### リスク判定方針
+
+- `A33_002` == 1（特別警戒区域） → −5点
+- `A33_002` == 2（警戒区域） → −3点
+
+### 型定義
+
+```go
+type LandslideHazardProperties struct {
+    PhenomenonType  int    `json:"A33_001"`
+    ZoneCode        int    `json:"A33_002"`
+    PrefectureCode  string `json:"A33_003"`
+    ZoneNumber      string `json:"A33_004"`
+    SpecialZoneFlag int    `json:"A33_008"`
+}
+```
