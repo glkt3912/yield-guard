@@ -170,7 +170,7 @@ resource "google_monitoring_alert_policy" "mlit_latency" {
         | align delta(5m)
         | every 5m
         | percentile(99)
-        | condition val() > 15
+        | condition val() > 15 "s"
       EOT
       duration = "300s"
     }
