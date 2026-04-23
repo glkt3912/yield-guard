@@ -3,7 +3,7 @@ import type {
   InvestmentResult,
   YearlyResult,
 } from "@/types/investment";
-import { fmtYen, fmtPct, fmtDate, sanitize } from "./pdf/format";
+import { fmtYen, fmtPct, fmtDate, fmtYears, sanitize } from "./pdf/format";
 import { calcVerdict } from "./pdf/verdict";
 import { buildCfBarChartSvg, buildDeadCrossLineSvg, buildCostDonutSvg } from "./pdf/charts";
 
@@ -167,33 +167,23 @@ export async function downloadReportPDF(
       subject: `物件分析 ${date}`,
       creator: "yield-guard",
     },
-    header: (currentPage: number) => {
+    header: (currentPage: number, pageCount: number) => {
       if (currentPage === 1) return null;
       return {
         columns: [
-          { text: "yield-guard 不動産投資分析レポート", fontSize: 7, color: C.muted, margin: [36, 16, 0, 0] },
-          { text: date, fontSize: 7, color: C.muted, alignment: "right" as const, margin: [0, 16, 36, 0] },
+          { text: "yield-guard 不動産投資分析レポート", fontSize: 7, color: C.muted, width: "*" },
+          { text: date, fontSize: 7, color: C.muted, alignment: "center" as const, width: "*" },
+          { text: `${currentPage} / ${pageCount}`, fontSize: 7, color: C.muted, alignment: "right" as const, width: "*" },
         ],
+        margin: [36, 16, 36, 0],
       };
     },
-    footer: (currentPage: number, pageCount: number) => ({
-      columns: [
-        {
-          text: "本資料は yield-guard による試算です。実際の投資判断は専門家にご相談ください。",
-          fontSize: 7,
-          color: C.muted,
-          width: "*",
-          margin: [36, 4, 0, 0],
-        },
-        {
-          text: `${currentPage} / ${pageCount}`,
-          fontSize: 7,
-          color: C.muted,
-          width: "auto",
-          alignment: "right" as const,
-          margin: [0, 4, 36, 0],
-        },
-      ],
+    footer: () => ({
+      text: "本資料は yield-guard による試算です。実際の投資判断は専門家にご相談ください。",
+      fontSize: 7,
+      color: C.muted,
+      alignment: "center" as const,
+      margin: [36, 4, 36, 0],
     }),
     content: [
       // ── Page 1: Cover ──────────────────────────────────────────────
@@ -209,14 +199,14 @@ export async function downloadReportPDF(
       { text: "物件概要", fontSize: 9, bold: true, color: C.muted, marginBottom: 8 },
       infoRow("物件価格（土地）", fmtYen(input.landPrice)),
       infoRow("建物費用", fmtYen(input.buildingCost)),
-      infoRow("築年数", input.buildingAge === 0 ? "新築" : `${input.buildingAge}年`),
+      infoRow("築年数", input.buildingAge === 0 ? "新築" : fmtYears(input.buildingAge)),
       infoRow("構造", sanitize(input.buildingType)),
       ...(input.stationMinutes > 0 ? [infoRow("最寄り駅徒歩", `${input.stationMinutes}分`)] : []),
       infoRow("月額賃料", fmtYen(input.monthlyRent)),
       infoRow("想定空室率", fmtPct(input.vacancyRate)),
       infoRow("ローン金額", fmtYen(input.loanAmount)),
       infoRow("ローン金利", fmtPct(input.annualLoanRate)),
-      infoRow("ローン期間", `${input.loanYears}年`),
+      infoRow("ローン期間", fmtYears(input.loanYears)),
 
       { text: "分析情報", fontSize: 9, bold: true, color: C.muted, marginBottom: 8, marginTop: 16 },
       infoRow("分析実施日", date),
@@ -236,12 +226,7 @@ export async function downloadReportPDF(
                 fontSize: 20,
                 bold: true,
                 color: verdict.color,
-              },
-              {
-                text: verdict.label,
-                fontSize: 8,
-                color: verdict.color,
-                marginTop: 2,
+                noWrap: true,
               },
             ],
             width: "30%",
@@ -335,7 +320,7 @@ export async function downloadReportPDF(
         : []),
 
       // 出口戦略
-      subTitle(`出口戦略（${input.holdingYears}年後売却）`),
+      subTitle(`出口戦略（${fmtYears(input.holdingYears)}後売却）`),
       hLineTable([
         twoCol("想定売却価格", fmtYen(result.exitSalePrice)),
         twoCol("譲渡所得税", fmtYen(result.exitTransferTax)),
@@ -377,7 +362,7 @@ export async function downloadReportPDF(
               thCell("残債"),
             ],
             ...cfRows.map((r, idx) => [
-              tdCell(`${r.year}年`, idx, { align: "left" }),
+              tdCell(fmtYears(r.year), idx, { align: "left" }),
               tdCell(fmtYen(r.annualRent), idx),
               tdCell(fmtYen(r.annualLoanPayment), idx),
               tdCell(fmtYen(r.annualExpenses), idx),
@@ -416,7 +401,7 @@ export async function downloadReportPDF(
                     tdCell(sc.dscr.toFixed(2), idx, {
                       color: sc.dscr < 1.0 ? C.danger : C.text,
                     }),
-                    tdCell(sc.breakEvenYear > 0 ? `${sc.breakEvenYear}年` : "－", idx),
+                    tdCell(sc.breakEvenYear > 0 ? fmtYears(sc.breakEvenYear) : "－", idx),
                     {
                       text: sc.isSafe ? "安全" : "危険",
                       fontSize: 8,

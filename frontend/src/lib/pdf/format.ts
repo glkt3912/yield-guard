@@ -26,6 +26,11 @@ export function fmtDate(): string {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
 }
 
+/** 年数を整数で表示（例: 10.0 → "10年"） */
+export function fmtYears(v: number): string {
+  return `${Math.round(v)}年`;
+}
+
 /** PDFに埋め込む前の文字列サニタイズ（< > & " ' \ を除去） */
 export function sanitize(v: string | number | undefined | null): string {
   if (v == null) return "";
