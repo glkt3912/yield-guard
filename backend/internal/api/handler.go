@@ -196,6 +196,7 @@ func validateInvestmentInput(in domain.InvestmentInput) error {
 	if in.RentDeclineRate < 0 || in.RentDeclineRate > 0.2 {
 		return errors.New("rentDeclineRate は 0.0〜0.2 の範囲で指定してください")
 	}
+	// DiscountRate == 0 は「未指定」扱い: Defaults() で 0.05 に補完される
 	if in.DiscountRate < 0 || in.DiscountRate > 0.30 {
 		return errors.New("discountRate は 0〜30% の範囲で指定してください")
 	}

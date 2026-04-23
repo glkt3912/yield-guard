@@ -1920,7 +1920,7 @@ func TestAnalyze_PriceDeclineRate_Zero(t *testing.T) {
 	withoutField := Analyze(noField)
 
 	if withZero.IRR == nil || withoutField.IRR == nil {
-		return // 収束しない場合はスキップ
+		t.Skip("IRR did not converge for test input — adjust inputs if this consistently skips")
 	}
 	if !approxEqual(*withZero.IRR, *withoutField.IRR, 0.0001) {
 		t.Errorf("PriceDeclineRate=0 IRR %.4f != no-field IRR %.4f", *withZero.IRR, *withoutField.IRR)
@@ -1950,10 +1950,33 @@ func TestAnalyze_PriceDeclineRate_NonZero(t *testing.T) {
 	declineResult := Analyze(withDecline)
 
 	if zeroDecline.IRR == nil || declineResult.IRR == nil {
-		return
+		t.Skip("IRR did not converge for test input")
 	}
 	if *declineResult.IRR >= *zeroDecline.IRR {
 		t.Errorf("price decline IRR (%.4f) should be lower than zero-decline IRR (%.4f)",
 			*declineResult.IRR, *zeroDecline.IRR)
+	}
+}
+
+func TestAnalyze_OverLoan_IRRNil(t *testing.T) {
+	// オーバーローン（ローン額 > 総投資額）の場合、equity <= 0 なので IRR/NPV は計算不能
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    5_000_000,
+		MonthlyRent:     100_000,
+		LoanAmount:      15_000_000, // 総投資額（≈11M）を超えるオーバーローン
+		AnnualLoanRate:  0.02,
+		LoanYears:       35,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+	input.Defaults()
+	result := Analyze(input)
+
+	if result.IRR != nil {
+		t.Errorf("expected IRR=nil for over-loan case, got %v", *result.IRR)
+	}
+	if result.NPV != 0 {
+		t.Errorf("expected NPV=0 for over-loan case, got %.2f", result.NPV)
 	}
 }

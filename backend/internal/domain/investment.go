@@ -242,19 +242,24 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	ltvSensitivity := CalcLTVSensitivity(input, nil)
 
 	// IRR / NPV 計算
+	// equity がゼロ以下（オーバーローン）の場合は計算が成立しないため nil/0 を返す
 	equity := totalInvestment - input.LoanAmount
-	irrCFs := make([]float64, input.HoldingYears)
-	for i := 0; i < input.HoldingYears && i < len(yearlyResults); i++ {
-		irrCFs[i] = yearlyResults[i].AfterTaxCashFlow
+	var irr *float64
+	var npv float64
+	if equity > 0 {
+		irrCFs := make([]float64, input.HoldingYears)
+		for i := 0; i < input.HoldingYears && i < len(yearlyResults); i++ {
+			irrCFs[i] = yearlyResults[i].AfterTaxCashFlow
+		}
+		irrTerminalValue := exitNet
+		if input.PriceDeclineRate > 0 && input.HoldingYears > 0 {
+			decayFactor := math.Pow(1-input.PriceDeclineRate, float64(input.HoldingYears))
+			adjustedSalePrice := exitSalePrice * decayFactor
+			irrTerminalValue = calcTerminalValueWithDecline(input, yearlyResults, adjustedSalePrice, accumulatedDepreciation, miscExpenses)
+		}
+		npv = CalcNPV(irrCFs, irrTerminalValue, input.DiscountRate, equity)
+		irr, _ = CalcIRR(irrCFs, irrTerminalValue, equity)
 	}
-	irrTerminalValue := exitNet
-	if input.PriceDeclineRate > 0 && input.HoldingYears > 0 {
-		decayFactor := math.Pow(1-input.PriceDeclineRate, float64(input.HoldingYears))
-		adjustedSalePrice := exitSalePrice * decayFactor
-		irrTerminalValue = calcTerminalValueWithDecline(input, yearlyResults, adjustedSalePrice, accumulatedDepreciation, miscExpenses)
-	}
-	npv := CalcNPV(irrCFs, irrTerminalValue, input.DiscountRate, equity)
-	irr, _ := CalcIRR(irrCFs, irrTerminalValue, equity)
 
 	return InvestmentResult{
 		TotalInvestment:       totalInvestment,
