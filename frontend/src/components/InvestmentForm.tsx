@@ -8,7 +8,8 @@ import { Slider } from "@/components/ui/slider";
 import type { InvestmentInput, BuildingType, SimulationMode, RateAdjustment } from "@/types/investment";
 import { DEFAULT_INPUT, QUICK_MODE_DEFAULTS } from "@/types/investment";
 import { formatPct } from "@/lib/utils";
-import { fetchMunicipalities, type Municipality } from "@/lib/api";
+import { fetchMunicipalities, fetchRentDeclineHint, type Municipality } from "@/lib/api";
+import type { RentDeclineHint } from "@/types/investment";
 import { Search, Calculator, Info, AlertTriangle, ShieldCheck, Zap, SlidersHorizontal, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { ZONING_TYPES, ZONING_META, type ZoningType } from "@/lib/zoning";
 
@@ -183,6 +184,11 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   // 変動金利スケジュール
   const [rateScheduleEnabled, setRateScheduleEnabled] = useState(false);
 
+  // 賃料下落率参考値
+  const [rentHint, setRentHint] = useState<RentDeclineHint | null>(null);
+  const [rentHintLoading, setRentHintLoading] = useState(false);
+  const [rentHintError, setRentHintError] = useState<string | null>(null);
+
   // 按分ヘルパーの状態
   const [showBuildingHelper, setShowBuildingHelper] = useState(false);
   const [taxAmount, setTaxAmount] = useState("");
@@ -285,6 +291,23 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   };
   const setStr = (key: keyof InvestmentInput, value: string) =>
     setInput((prev) => ({ ...prev, [key]: value }));
+
+  const handleFetchRentHint = useCallback(async () => {
+    setRentHintLoading(true);
+    setRentHintError(null);
+    setRentHint(null);
+    try {
+      const hint = await fetchRentDeclineHint({ area, municipality: city || undefined });
+      setRentHint(hint);
+      if (!hint.fallbackUsed && hint.hintRate > 0) {
+        setNum("rentDeclineRate", hint.hintRate);
+      }
+    } catch (e) {
+      setRentHintError(e instanceof Error ? e.message : "参考値の取得に失敗しました");
+    } finally {
+      setRentHintLoading(false);
+    }
+  }, [area, city]);
 
   const handleCashPurchaseToggle = (checked: boolean) => {
     setIsCashPurchase(checked);
@@ -779,6 +802,28 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                     <p className="text-xs text-muted-foreground mt-1">
                       建物構造から自動設定（例: 木造1%/年）
                     </p>
+                    <div className="mt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!area || rentHintLoading}
+                        onClick={handleFetchRentHint}
+                        className="text-xs h-7 px-2"
+                      >
+                        {rentHintLoading ? "取得中…" : "地域の参考値を取得"}
+                      </Button>
+                      {rentHintError && (
+                        <p className="text-xs text-destructive mt-1">{rentHintError}</p>
+                      )}
+                      {rentHint && !rentHintError && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {rentHint.fallbackUsed
+                            ? "データ不足のため地域参考値なし。構造別平均値を推奨します"
+                            : `地価公示より参考値: ${toPct(rentHint.hintRate, 1)}%/年（${rentHint.dataPointCount}件）`}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

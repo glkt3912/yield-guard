@@ -14,6 +14,7 @@ import type {
   MonteCarloInput,
   MonteCarloResult,
   InvestmentScoreResult,
+  RentDeclineHint,
 } from "@/types/investment";
 
 const BASE = "/api";
@@ -159,6 +160,17 @@ export async function fetchLandAppraisals(params: {
   if (params.city) q.set("city", params.city);
   const res = await fetch(`${BASE}/land-appraisals?${q}`);
   return handleResponse<AppraisalComparisonResult>(res);
+}
+
+/** 地価公示データから賃料下落率参考値を取得 */
+export async function fetchRentDeclineHint(params: {
+  area: string;
+  municipality?: string;
+}): Promise<RentDeclineHint> {
+  const q = new URLSearchParams({ area: params.area });
+  if (params.municipality) q.set("municipality", params.municipality);
+  const res = await fetch(`${BASE}/investment/rent-decline-hint?${q}`);
+  return handleResponse<RentDeclineHint>(res);
 }
 
 /** 緯度経度から都市計画リスクを一括取得 */
