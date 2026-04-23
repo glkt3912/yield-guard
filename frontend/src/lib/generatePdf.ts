@@ -153,14 +153,39 @@ export async function downloadReportPDF(
 
   const docDef = {
     pageSize: "A4",
-    pageMargins: [36, 36, 36, 48],
+    pageMargins: [36, 52, 36, 48],
     defaultStyle: { font: "NotoSansJP", fontSize: 9, color: C.text },
-    footer: () => ({
-      text: "本資料は yield-guard による試算です。実際の投資判断は専門家にご相談ください。",
-      fontSize: 7,
-      color: C.muted,
-      alignment: "center",
-      margin: [36, 4],
+    info: {
+      title: "不動産投資分析レポート",
+      author: "yield-guard",
+      subject: `物件分析 ${date}`,
+      creator: "yield-guard",
+    },
+    header: (currentPage: number) => {
+      if (currentPage === 1) return null;
+      return {
+        columns: [
+          { text: "yield-guard 不動産投資分析レポート", fontSize: 7, color: C.muted, margin: [36, 16, 0, 0] },
+          { text: date, fontSize: 7, color: C.muted, alignment: "right" as const, margin: [0, 16, 36, 0] },
+        ],
+      };
+    },
+    footer: (currentPage: number, pageCount: number) => ({
+      columns: [
+        {
+          text: "本資料は yield-guard による試算です。実際の投資判断は専門家にご相談ください。",
+          fontSize: 7,
+          color: C.muted,
+          margin: [36, 4, 0, 0],
+        },
+        {
+          text: `${currentPage} / ${pageCount}`,
+          fontSize: 7,
+          color: C.muted,
+          alignment: "right" as const,
+          margin: [0, 4, 36, 0],
+        },
+      ],
     }),
     content: [
       // ── Page 1: Cover ──────────────────────────────────────────────
