@@ -1864,8 +1864,8 @@ func TestAnalyze_DeadCross_NewWoodFrame(t *testing.T) {
 	}
 	result := Analyze(in)
 	// 新築木造35年1.5%では1年目の元金返済≒285,000円 < 減価償却≒454,545円
-	// デッドクロスは10年以降（または発生しない場合もある）
-	if result.DeadCrossYear > 0 && result.DeadCrossYear <= 5 {
-		t.Errorf("DeadCrossYear = %d: 新築木造35年1.5%%ではデッドクロスは6年以降のはず", result.DeadCrossYear)
+	// 両者が逆転するのは23年目（実計算値）
+	if result.DeadCrossYear != 23 {
+		t.Errorf("DeadCrossYear = %d, want 23", result.DeadCrossYear)
 	}
 }

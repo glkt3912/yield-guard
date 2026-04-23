@@ -20,7 +20,7 @@ export function fmtDate(): string {
 }
 
 /** PDFに埋め込む前の文字列サニタイズ（< > & " ' \ を除去） */
-export function sanitize(v: string | number | undefined): string {
-  if (v === undefined || v === null) return "";
+export function sanitize(v: string | number | undefined | null): string {
+  if (v == null) return "";
   return String(v).replace(/[<>&"'\\]/g, "");
 }

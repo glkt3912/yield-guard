@@ -38,7 +38,7 @@ async function loadFont(key: FontKey): Promise<Uint8Array> {
 function infoRow(label: string, value: string) {
   return {
     columns: [
-      { text: label, width: "40%", color: C.muted, fontSize: 9 },
+      { text: label, width: "40%", color: C.muted, fontSize: 9, noWrap: true },
       { text: sanitize(value), width: "60%", bold: true, fontSize: 9, alignment: "right" as const },
     ],
     marginBottom: 3,
@@ -82,7 +82,7 @@ function hLineTable(body: unknown[][]) {
 
 function twoCol(label: string, value: string, bold = false, color?: string) {
   return [
-    { text: label, fontSize: 8, bold, color: color ? undefined : C.text },
+    { text: label, fontSize: 8, bold, color: color ? undefined : C.text, noWrap: true },
     { text: sanitize(value), fontSize: 8, bold, color: color ?? C.text, alignment: "right" as const },
   ];
 }
