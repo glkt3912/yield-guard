@@ -19,6 +19,9 @@ import { Button } from "@/components/ui/button";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { downloadReportPDF } from "@/lib/generatePdf";
 import { MonteCarloChart } from "@/components/MonteCarloChart";
+import dynamic from "next/dynamic";
+
+const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
 
 /** 直近2年分の期間（国交省API形式: YYYYQ） */
 function getCurrentPeriods(): { year: number; quarter: number; toYear: number; toQuarter: number } {
@@ -50,6 +53,8 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const [externalUrbanRisks, setExternalUrbanRisks] = useState<UrbanRisk[] | null>(null);
   const [investmentScore, setInvestmentScore] = useState<InvestmentScoreResult | null>(null);
   const [hazardRisks, setHazardRisks] = useState<UrbanRisk[] | null>(null);
+  const [propertyLat, setPropertyLat] = useState<number | undefined>(undefined);
+  const [propertyLng, setPropertyLng] = useState<number | undefined>(undefined);
   const [simulationMode, setSimulationMode] = useState<SimulationMode>(
     decoded?.mode ?? "quick"
   );
@@ -165,6 +170,10 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
     setExternalUrbanRisks(null);
     setInvestmentScore(null);
     setHazardRisks(null);
+    if (lat !== undefined && lng !== undefined) {
+      setPropertyLat(lat);
+      setPropertyLng(lng);
+    }
     const { year, quarter, toYear, toQuarter } = getCurrentPeriods();
     try {
       const baseParams = {
@@ -341,6 +350,10 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             )}
 
             {investmentScore && <InvestmentScoreCard score={investmentScore} />}
+
+            {propertyLat !== undefined && (
+              <InvestmentScoreHeatmap centerLat={propertyLat} centerLng={propertyLng} />
+            )}
 
             {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} landAppraisal={landAppraisal} externalUrbanRisks={externalUrbanRisks} hazardRisks={hazardRisks} />}
 

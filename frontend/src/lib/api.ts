@@ -15,6 +15,7 @@ import type {
   MonteCarloResult,
   InvestmentScoreResult,
   RentDeclineHint,
+  HeatmapResponse,
 } from "@/types/investment";
 
 const BASE = "/api";
@@ -217,6 +218,25 @@ export async function fetchInvestmentScore(params: {
     lng: String(params.lng),
   });
   const res = await fetch(`${BASE}/investment-score?${p}`);
+  return handleResponse(res);
+}
+
+/** エリア内全タイルの投資スコアをまとめて取得 */
+export async function fetchInvestmentScoreHeatmap(params: {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+  z: number;
+}): Promise<HeatmapResponse> {
+  const p = new URLSearchParams({
+    minLat: String(params.minLat),
+    maxLat: String(params.maxLat),
+    minLng: String(params.minLng),
+    maxLng: String(params.maxLng),
+    z: String(params.z),
+  });
+  const res = await fetch(`${BASE}/investment-score-heatmap?${p}`);
   return handleResponse(res);
 }
 

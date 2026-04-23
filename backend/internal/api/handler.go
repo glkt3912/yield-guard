@@ -704,30 +704,12 @@ func (h *Handler) GetHazardInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, risks)
 }
 
-// GetInvestmentScore は物件の緯度経度から複数 API を並列呼び出しし、投資適地スコアを算出して返す。
-// GET /api/investment-score?lat=35.6762&lng=139.6503
-func (h *Handler) GetInvestmentScore(c *gin.Context) {
-	latStr := c.Query("lat")
-	lngStr := c.Query("lng")
-	if latStr == "" || lngStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
-		return
+// calcScoreForTile は指定タイル座標に対して 11 API を並列取得し投資適地スコアを返す。
+// 個別 API の失敗は警告ログのみでスキップする。コンテキストキャンセル時はエラーを返す。
+func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.InvestmentScoreResult, error) {
+	if err := ctx.Err(); err != nil {
+		return domain.InvestmentScoreResult{}, err
 	}
-	lat, err := strconv.ParseFloat(latStr, 64)
-	if err != nil || lat < 20 || lat > 46 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は日本国内の緯度（20〜46）で指定してください"})
-		return
-	}
-	lng, err := strconv.ParseFloat(lngStr, 64)
-	if err != nil || lng < 122 || lng > 154 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は日本国内の経度（122〜154）で指定してください"})
-		return
-	}
-
-	ctx := c.Request.Context()
-	z := 14
-	x, y := mlit.LatLngToTile(lat, lng, z)
-
 	type result[T any] struct {
 		data T
 		err  error
@@ -825,8 +807,172 @@ func (h *Handler) GetInvestmentScore(c *gin.Context) {
 		input.LandslideItems = r.data
 	}
 
-	score := domain.CalcInvestmentScore(input)
+	return domain.CalcInvestmentScore(input), nil
+}
+
+// GetInvestmentScore は物件の緯度経度から複数 API を並列呼び出しし、投資適地スコアを算出して返す。
+// GET /api/investment-score?lat=35.6762&lng=139.6503
+func (h *Handler) GetInvestmentScore(c *gin.Context) {
+	latStr := c.Query("lat")
+	lngStr := c.Query("lng")
+	if latStr == "" || lngStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
+		return
+	}
+	lat, err := strconv.ParseFloat(latStr, 64)
+	if err != nil || lat < 20 || lat > 46 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は日本国内の緯度（20〜46）で指定してください"})
+		return
+	}
+	lng, err := strconv.ParseFloat(lngStr, 64)
+	if err != nil || lng < 122 || lng > 154 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は日本国内の経度（122〜154）で指定してください"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	z := 14
+	x, y := mlit.LatLngToTile(lat, lng, z)
+
+	score, err := h.calcScoreForTile(ctx, z, x, y)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, score)
+}
+
+const maxHeatmapTiles = 50
+
+// GetInvestmentScoreHeatmap はバウンディングボックス内の全タイルに対して投資スコアを並列計算して返す。
+// GET /api/investment-score-heatmap?minLat=35.6&maxLat=35.7&minLng=139.6&maxLng=139.7&z=13
+func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
+	minLatStr := c.Query("minLat")
+	maxLatStr := c.Query("maxLat")
+	minLngStr := c.Query("minLng")
+	maxLngStr := c.Query("maxLng")
+	if minLatStr == "" || maxLatStr == "" || minLngStr == "" || maxLngStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "minLat, maxLat, minLng, maxLng は必須パラメータです"})
+		return
+	}
+
+	minLat, err := strconv.ParseFloat(minLatStr, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "minLat の値が不正です"})
+		return
+	}
+	maxLat, err := strconv.ParseFloat(maxLatStr, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "maxLat の値が不正です"})
+		return
+	}
+	minLng, err := strconv.ParseFloat(minLngStr, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "minLng の値が不正です"})
+		return
+	}
+	maxLng, err := strconv.ParseFloat(maxLngStr, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "maxLng の値が不正です"})
+		return
+	}
+
+	if minLat >= maxLat {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "minLat は maxLat より小さい値を指定してください"})
+		return
+	}
+	if minLng >= maxLng {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "minLng は maxLng より小さい値を指定してください"})
+		return
+	}
+	if minLat < 20 || maxLat > 46 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "緯度は日本国内（20〜46）の範囲で指定してください"})
+		return
+	}
+	if minLng < 122 || maxLng > 154 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "経度は日本国内（122〜154）の範囲で指定してください"})
+		return
+	}
+
+	z := 13
+	if zStr := c.Query("z"); zStr != "" {
+		zVal, err := strconv.Atoi(zStr)
+		if err != nil || zVal < 11 || zVal > 14 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "z は 11〜14 の整数で指定してください"})
+			return
+		}
+		z = zVal
+	}
+
+	// 高緯度 → 小さい y 値のため注意
+	xMin, yMin := mlit.LatLngToTile(maxLat, minLng, z)
+	xMax, yMax := mlit.LatLngToTile(minLat, maxLng, z)
+
+	tileCount := (xMax - xMin + 1) * (yMax - yMin + 1)
+	if tileCount > maxHeatmapTiles {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("タイル数 %d が上限 %d を超えています。ズームレベルを下げるか範囲を狭めてください", tileCount, maxHeatmapTiles),
+		})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	sem := make(chan struct{}, 5)
+	type tileResult struct {
+		tile domain.HeatmapTile
+		err  error
+	}
+	results := make(chan tileResult, tileCount)
+
+	for tx := xMin; tx <= xMax; tx++ {
+		for ty := yMin; ty <= yMax; ty++ {
+			go func(tx, ty int) {
+				defer func() {
+					if r := recover(); r != nil {
+						results <- tileResult{err: fmt.Errorf("panic in calcScoreForTile: %v", r)}
+					}
+				}()
+				select {
+				case <-ctx.Done():
+					results <- tileResult{err: ctx.Err()}
+					return
+				case sem <- struct{}{}:
+				}
+				defer func() { <-sem }()
+				score, err := h.calcScoreForTile(ctx, z, tx, ty)
+				if err != nil {
+					results <- tileResult{err: err}
+					return
+				}
+				lat, lng := mlit.TileToLatLng(tx, ty, z)
+				results <- tileResult{tile: domain.HeatmapTile{
+					X:          tx,
+					Y:          ty,
+					Z:          z,
+					CenterLat:  lat,
+					CenterLng:  lng,
+					TotalScore: score.TotalScore,
+					Grade:      score.Grade,
+				}}
+			}(tx, ty)
+		}
+	}
+
+	tiles := make([]domain.HeatmapTile, 0, tileCount)
+	for i := 0; i < tileCount; i++ {
+		r := <-results
+		if r.err != nil {
+			slog.WarnContext(ctx, "calcScoreForTile failed", "error", r.err)
+			continue
+		}
+		tiles = append(tiles, r.tile)
+	}
+
+	c.JSON(http.StatusOK, domain.HeatmapResponse{
+		Tiles:     tiles,
+		TileCount: len(tiles),
+	})
 }
 
 // HealthCheck はサーバーの生存確認

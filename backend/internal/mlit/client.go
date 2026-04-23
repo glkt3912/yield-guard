@@ -237,6 +237,16 @@ func LatLngToTile(lat, lng float64, z int) (x, y int) {
 	return x, y
 }
 
+// TileToLatLng returns the center lat/lng of a Web Mercator tile.
+// Uses x+0.5 and y+0.5 to target the tile center, not the NW corner.
+func TileToLatLng(x, y, z int) (lat, lng float64) {
+	n := math.Pow(2, float64(z))
+	lng = (float64(x)+0.5)/n*360.0 - 180.0
+	latRad := math.Atan(math.Sinh(math.Pi * (1.0 - 2.0*(float64(y)+0.5)/n)))
+	lat = latRad * 180.0 / math.Pi
+	return
+}
+
 // FetchStationRidership はタイル座標で XKT015 を呼び出し駅別乗降客数を取得する。
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchStationRidership(ctx context.Context, z, x, y int) ([]StationRidership, error) {
