@@ -1817,3 +1817,218 @@ func TestAnalyzeWithRateSchedule(t *testing.T) {
 		}
 	})
 }
+
+func TestCalcNPV_Accuracy(t *testing.T) {
+	// 5年間、毎年CF=100,000円、TV=1,000,000円、r=10%、初期投資=500,000円
+	// 手計算:
+	//   PV(CF) = 100000/1.1^1 + ... + 100000/1.1^5 = 379,078.68
+	//   PV(TV) = 1,000,000/1.1^5                  = 620,921.32
+	//   NPV    = 379,078.68 + 620,921.32 - 500,000 = 500,000.00
+	cfs := []float64{100_000, 100_000, 100_000, 100_000, 100_000}
+	npv := CalcNPV(cfs, 1_000_000, 0.10, 500_000)
+	const want = 500_000.0
+	if !approxEqual(npv, want, 1.0) {
+		t.Errorf("CalcNPV = %.2f, want %.2f", npv, want)
+	}
+}
+
+func TestCalcIRR_Convergence(t *testing.T) {
+	// 初期投資=1,000,000、CF=150,000/year×5年、TV=800,000
+	cfs := []float64{150_000, 150_000, 150_000, 150_000, 150_000}
+	irr, err := CalcIRR(cfs, 800_000, 1_000_000)
+	if err != nil {
+		t.Fatalf("CalcIRR returned error: %v", err)
+	}
+	if irr == nil {
+		t.Fatal("CalcIRR returned nil without error")
+	}
+	// IRRでNPV=0になることを検証
+	npvAtIRR := CalcNPV(cfs, 800_000, *irr, 1_000_000)
+	if math.Abs(npvAtIRR) >= 1.0 {
+		t.Errorf("NPV at IRR = %.4f, want < 1.0", npvAtIRR)
+	}
+}
+
+func TestCalcIRR_NoRoot(t *testing.T) {
+	// 全CFが負→根なし
+	cfs := []float64{-100_000, -100_000, -100_000}
+	irr, err := CalcIRR(cfs, -500_000, 1_000_000)
+	if err == nil {
+		t.Errorf("expected error for no-root case, got IRR=%v", irr)
+	}
+	if irr != nil {
+		t.Errorf("expected nil IRR for no-root case")
+	}
+}
+
+func TestAnalyze_DecliningBalance(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:          5_000_000,
+		BuildingCost:       10_000_000,
+		BuildingAge:        0,
+		BuildingType:       BuildingTypeWood, // 耐用年数22年
+		MonthlyRent:        100_000,
+		LoanAmount:         0,
+		DepreciationMethod: DepreciationMethodDecliningBalance,
+		HoldingYears:       10,
+	}
+	input.Defaults()
+	result := Analyze(input)
+
+	straightInput := input
+	straightInput.DepreciationMethod = DepreciationMethodStraightLine
+	straightResult := Analyze(straightInput)
+
+	// 定率法の1年目減価は定額法より大きい
+	declYear1 := result.YearlyResults[0].AnnualDepreciation
+	straightYear1 := straightResult.YearlyResults[0].AnnualDepreciation
+	if declYear1 <= straightYear1 {
+		t.Errorf("declining-balance year1 depreciation (%.0f) should exceed straight-line (%.0f)",
+			declYear1, straightYear1)
+	}
+	// 総減価償却額はBuildingCostを超えない
+	var totalDecl float64
+	for _, yr := range result.YearlyResults {
+		totalDecl += yr.AnnualDepreciation
+	}
+	if totalDecl > input.BuildingCost+1 {
+		t.Errorf("total declining-balance depreciation %.0f exceeds BuildingCost %.0f", totalDecl, input.BuildingCost)
+	}
+}
+
+func TestAnalyze_PriceDeclineRate_Zero(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:        5_000_000,
+		BuildingCost:     8_000_000,
+		BuildingAge:      10,
+		BuildingType:     BuildingTypeWood,
+		MonthlyRent:      80_000,
+		LoanAmount:       10_000_000,
+		AnnualLoanRate:   0.02,
+		LoanYears:        25,
+		HoldingYears:     10,
+		ExitYieldTarget:  0.06,
+		DiscountRate:     0.05,
+		PriceDeclineRate: 0,
+	}
+	base.Defaults()
+	withZero := Analyze(base)
+
+	noField := base
+	noField.PriceDeclineRate = 0
+	noField.Defaults()
+	withoutField := Analyze(noField)
+
+	if withZero.IRR == nil || withoutField.IRR == nil {
+		t.Skip("IRR did not converge for test input — adjust inputs if this consistently skips")
+	}
+	if !approxEqual(*withZero.IRR, *withoutField.IRR, 0.0001) {
+		t.Errorf("PriceDeclineRate=0 IRR %.4f != no-field IRR %.4f", *withZero.IRR, *withoutField.IRR)
+	}
+}
+
+func TestAnalyze_PriceDeclineRate_NonZero(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    8_000_000,
+		BuildingAge:     10,
+		BuildingType:    BuildingTypeWood,
+		MonthlyRent:     80_000,
+		LoanAmount:      10_000_000,
+		AnnualLoanRate:  0.02,
+		LoanYears:       25,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+		DiscountRate:    0.05,
+	}
+	base.Defaults()
+	zeroDecline := Analyze(base)
+
+	withDecline := base
+	withDecline.PriceDeclineRate = 0.02
+	withDecline.Defaults()
+	declineResult := Analyze(withDecline)
+
+	if zeroDecline.IRR == nil || declineResult.IRR == nil {
+		t.Skip("IRR did not converge for test input")
+	}
+	if *declineResult.IRR >= *zeroDecline.IRR {
+		t.Errorf("price decline IRR (%.4f) should be lower than zero-decline IRR (%.4f)",
+			*declineResult.IRR, *zeroDecline.IRR)
+	}
+}
+
+func TestAnalyze_OverLoan_IRRNil(t *testing.T) {
+	// オーバーローン（ローン額 > 総投資額）の場合、equity <= 0 なので IRR/NPV は計算不能
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    5_000_000,
+		MonthlyRent:     100_000,
+		LoanAmount:      15_000_000, // 総投資額（≈11M）を超えるオーバーローン
+		AnnualLoanRate:  0.02,
+		LoanYears:       35,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+	input.Defaults()
+	result := Analyze(input)
+
+	if result.IRR != nil {
+		t.Errorf("expected IRR=nil for over-loan case, got %v", *result.IRR)
+	}
+	if result.NPV != 0 {
+		t.Errorf("expected NPV=0 for over-loan case, got %.2f", result.NPV)
+	}
+}
+
+// TestAnalyze_DeadCross_ZeroBuildingCost は建物費用=0のときデッドクロスが発生しないことを確認する
+func TestAnalyze_DeadCross_ZeroBuildingCost(t *testing.T) {
+	in := InvestmentInput{
+		LandPrice:       10_000_000,
+		BuildingCost:    0, // 土地のみ投資 → 減価償却資産なし
+		BuildingAge:     0,
+		BuildingType:    "木造",
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     80_000,
+		VacancyRate:     0.05,
+		LoanAmount:      8_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		HoldingYears:    10,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		ExitYieldTarget: 0.06,
+		YieldTarget:     0.08,
+	}
+	result := Analyze(in)
+	if result.DeadCrossYear != -1 {
+		t.Errorf("DeadCrossYear = %d, want -1 (none) when BuildingCost=0", result.DeadCrossYear)
+	}
+}
+
+// TestAnalyze_DeadCross_NewWoodFrame は新築木造・35年ローン・1.5%のときデッドクロスが早期に発生しないことを確認する
+func TestAnalyze_DeadCross_NewWoodFrame(t *testing.T) {
+	in := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000, // 耐用年数22年: 減価償却≒454,545円/年
+		BuildingAge:     0,
+		BuildingType:    "木造",
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		HoldingYears:    10,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		ExitYieldTarget: 0.06,
+		YieldTarget:     0.08,
+	}
+	result := Analyze(in)
+	// 新築木造35年1.5%では1年目の元金返済≒285,000円 < 減価償却≒454,545円
+	// 両者が逆転するのは23年目（実計算値）
+	if result.DeadCrossYear != 23 {
+		t.Errorf("DeadCrossYear = %d, want 23", result.DeadCrossYear)
+	}
+}

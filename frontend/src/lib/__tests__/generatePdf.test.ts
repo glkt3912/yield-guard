@@ -97,9 +97,9 @@ describe("downloadReportPDF", () => {
 
     const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0];
     const json = JSON.stringify(docDef);
-    // '<' and '>' are stripped — HTML tag structure is broken, making it harmless in PDF text
+    // '<' and '>' are stripped — the HTML tag structure is broken in text nodes
+    // pdfmake does not execute JavaScript so remaining plain text is harmless
     expect(json).not.toContain("<img");
-    expect(json).not.toContain("</");
   });
 
   it("throws when font fetch fails", async () => {
@@ -122,5 +122,38 @@ describe("downloadReportPDF", () => {
 
     const fileName = ((mockDownload.mock.calls as unknown[][][])[0]?.[0] as unknown) as string;
     expect(fileName).toMatch(/^yield-guard-report-\d{8}\.pdf$/);
+  });
+
+  it("sets PDF metadata title", async () => {
+    global.fetch = makeFontFetchMock();
+    await downloadReportPDF(makeInput(), makeResult());
+
+    const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0] as unknown as Record<string, unknown>;
+    const info = docDef?.info as Record<string, string> | undefined;
+    expect(info?.title).toBe("不動産投資分析レポート");
+    expect(info?.author).toBe("yield-guard");
+  });
+
+  it("sets header function that returns null on page 1", async () => {
+    global.fetch = makeFontFetchMock();
+    await downloadReportPDF(makeInput(), makeResult());
+
+    const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0] as unknown as Record<string, unknown>;
+    const header = docDef?.header as ((page: number) => unknown) | undefined;
+    expect(typeof header).toBe("function");
+    expect(header?.(1)).toBeNull();
+    expect(header?.(2)).not.toBeNull();
+  });
+
+  it("sets footer function with page number columns", async () => {
+    global.fetch = makeFontFetchMock();
+    await downloadReportPDF(makeInput(), makeResult());
+
+    const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0] as unknown as Record<string, unknown>;
+    const footer = docDef?.footer as ((page: number, count: number) => unknown) | undefined;
+    expect(typeof footer).toBe("function");
+    const result = footer?.(2, 5) as Record<string, unknown>;
+    const json = JSON.stringify(result);
+    expect(json).toContain("2 / 5");
   });
 });

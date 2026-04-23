@@ -95,6 +95,13 @@ type InvestmentInput struct {
 	// 賃料下落率: 毎年この割合だけ実効賃料が低下する（例: 0.01 = 年1%下落）
 	RentDeclineRate float64 `json:"rentDeclineRate"`
 
+	// 割引率: NPV/IRR計算用 (例: 0.05 = 5%)
+	DiscountRate float64 `json:"discountRate"`
+	// 物件価格下落率: 売却価格に毎年この割合の累乗で下落を反映 (例: 0.02 = 年2%下落)
+	PriceDeclineRate float64 `json:"priceDeclineRate"`
+	// 減価償却方式: "straight-line"（定額法）| "declining-balance"（定率法）
+	DepreciationMethod string `json:"depreciationMethod"`
+
 	// 目標表面利回り（例: 0.08 = 8%）。0 の場合は Defaults() で 0.08 にセットされる。
 	YieldTarget float64 `json:"yieldTarget"`
 
@@ -184,6 +191,12 @@ func (i *InvestmentInput) Defaults() {
 	}
 	if i.LoanMethod == "" {
 		i.LoanMethod = LoanMethodEqualPayment
+	}
+	if i.DiscountRate == 0 {
+		i.DiscountRate = 0.05
+	}
+	if i.DepreciationMethod == "" {
+		i.DepreciationMethod = DepreciationMethodStraightLine
 	}
 }
 
@@ -279,6 +292,9 @@ type InvestmentResult struct {
 	ExitTransferTax float64 `json:"exitTransferTax"` // 譲渡所得税
 	ExitNetProceeds float64 `json:"exitNetProceeds"` // 売却手取り（税・残債控除後）
 	ExitTotalEquity float64 `json:"exitTotalEquity"` // 最終手残り（売却手取り+累積CF）
+
+	IRR *float64 `json:"irr"` // 内部収益率（収束しない場合は null）
+	NPV float64  `json:"npv"` // 正味現在価値
 
 	StressScenarios []StressScenarioResult `json:"stressScenarios"`
 	YieldScenarios  YieldScenarios         `json:"yieldScenarios"`

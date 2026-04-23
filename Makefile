@@ -1,14 +1,16 @@
-.PHONY: dev test lint build help \
+.PHONY: dev test lint build clean help \
         mlit-land-prices mlit-municipalities mlit-station-ridership mlit-population-forecast mlit-land-appraisals \
         api-station-ridership api-estimate-ridership api-population-forecast api-land-appraisals \
         integration integration-population integration-land-appraisals
 
 ## dev: バックエンド・フロントエンドの開発サーバーを起動
 dev:
-	@echo "==> Starting backend..."
-	cd backend && set -a; . ../.env 2>/dev/null; set +a; go run ./cmd/server &
-	@echo "==> Starting frontend..."
-	cd frontend && npm run dev -- --webpack
+	@trap 'kill 0' INT TERM EXIT; \
+	echo "==> Starting backend..."; \
+	(cd backend && set -a; . ../.env 2>/dev/null; set +a; go run ./cmd/server) & \
+	echo "==> Starting frontend..."; \
+	(cd frontend && npm run dev -- --webpack) & \
+	wait
 
 ## test: 全テストを実行
 test:
@@ -23,7 +25,7 @@ lint:
 	cd backend && golangci-lint run ./...
 	@echo "==> Frontend lint"
 	cd frontend && npm run lint
-	cd frontend && npx tsc --noEmit
+	cd frontend && npm run type-check
 
 ## build: 全ビルドを実行
 build:
@@ -31,6 +33,12 @@ build:
 	cd backend && go build -o yield-guard-server ./cmd/server
 	@echo "==> Frontend build"
 	cd frontend && npm run build
+
+## clean: ビルド成果物を削除
+clean:
+	rm -f backend/yield-guard-server
+	rm -rf frontend/.next
+	rm -rf frontend/out
 
 ## docker-up: Dockerコンテナをビルドして起動
 docker-up:

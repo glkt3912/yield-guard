@@ -77,6 +77,9 @@ export interface InvestmentInput {
   yieldTarget: number;        // 目標表面利回り（例: 0.08 = 8%）
   loanMethod?: LoanMethod;    // 返済方式（省略時 = equal-payment）
   rateAdjustmentSchedule: RateAdjustment[]; // 変動金利スケジュール（空=固定金利）
+  discountRate?: number;           // 割引率（NPV/IRR計算用、例: 0.05 = 5%）
+  priceDeclineRate?: number;       // 物件価格下落率（例: 0.02 = 年2%下落）
+  depreciationMethod?: "straight-line" | "declining-balance"; // 減価償却方式
 }
 
 export interface YearlyResult {
@@ -150,6 +153,8 @@ export interface InvestmentResult {
   yieldScenarios: YieldScenarios;
   dscr: number;                        // 1年目 DSCR（NOI / 年間返済額）
   ltvSensitivity: LTVSensitivityRow[]; // LTV 感度分析（50%〜90%）
+  irr: number | null;                  // 内部収益率（収束しない場合は null）
+  npv: number;                         // 正味現在価値
 }
 
 export interface LandTransaction {
@@ -246,6 +251,9 @@ export const DEFAULT_INPUT: InvestmentInput = {
   yieldTarget: 0.08,
   loanMethod: "equal-payment",
   rateAdjustmentSchedule: [],
+  discountRate: 0.05,
+  priceDeclineRate: 0,
+  depreciationMethod: "straight-line" as const,
 };
 
 export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
@@ -258,6 +266,37 @@ export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
 };
 
 export type SimulationMode = "quick" | "full";
+
+export interface Percentiles {
+  p10: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p90: number;
+}
+
+export interface HistogramBin {
+  min: number;
+  max: number;
+  count: number;
+}
+
+export interface MonteCarloResult {
+  simulationCount: number;
+  irrPercentiles: Percentiles;
+  equityPercentiles: Percentiles;
+  deadCrossRate: number;
+  irrHistogram: HistogramBin[] | null;
+  equityHistogram: HistogramBin[] | null;
+  successRate: number;
+}
+
+export interface MonteCarloInput {
+  base: InvestmentInput;
+  simulations?: number;
+  vacancyRateSigma?: number;
+  loanRateSigma?: number;
+}
 
 export const QUICK_MODE_DEFAULTS: Partial<InvestmentInput> = {
   landArea:          100,
