@@ -1,5 +1,10 @@
 # ─────────────────────────────────────────────────────
 # 予算アラート (#256)
+# 前提: Deployer SA に請求アカウントレベルの roles/billing.costsManager が必要。
+# Terraform 管理外のため初回のみ手動付与:
+#   gcloud billing accounts add-iam-policy-binding <BILLING_ACCOUNT_ID> \
+#     --member="serviceAccount:<deployer-sa-email>" \
+#     --role="roles/billing.costsManager"
 # ─────────────────────────────────────────────────────
 resource "google_billing_budget" "monthly" {
   billing_account = var.billing_account_id
