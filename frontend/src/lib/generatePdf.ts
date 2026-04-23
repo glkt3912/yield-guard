@@ -219,16 +219,16 @@ export async function downloadReportPDF(
       sectionTitle("P1 - 投資サマリー", true),
       {
         columns: [
-          kpiBlock("表面利回り", `${(result.grossYield * 100).toFixed(2)}%`),
-          kpiBlock("実質利回り", `${(result.netYield * 100).toFixed(2)}%`),
+          kpiBlock("表面利回り", fmtPct(result.grossYield)),
+          kpiBlock("実質利回り", fmtPct(result.netYield)),
           kpiBlock("DSCR 1年目", dscr.toFixed(2), dscr >= 1.0 ? C.safe : C.danger),
-          kpiBlock("LTV", `${(ltv * 100).toFixed(1)}%`, ltv <= 0.8 ? C.safe : C.danger),
+          kpiBlock("LTV", fmtPct(ltv), ltv <= 0.8 ? C.safe : C.danger),
         ],
         marginBottom: 6,
       },
       {
         columns: [
-          kpiBlock("総投資額", `${(result.totalInvestment / 1_000_000).toFixed(1)}百万円`),
+          kpiBlock("総投資額", fmtYen(result.totalInvestment)),
           kpiBlock("月額賃料", `${(input.monthlyRent / 10_000).toFixed(0)}万円/月`),
           kpiBlock(
             "デッドクロス年",

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtYen, fmtPct, fmtPct1, sanitize } from "../pdf/format";
+import { fmtYen, fmtPct, sanitize } from "../pdf/format";
 
 describe("fmtYen", () => {
   it("formats zero as 0円", () => {
@@ -62,12 +62,6 @@ describe("fmtPct", () => {
 
   it("formats 0.015 as 1.50%", () => {
     expect(fmtPct(0.015)).toBe("1.50%");
-  });
-});
-
-describe("fmtPct1", () => {
-  it("formats 0.083 as 8.3%", () => {
-    expect(fmtPct1(0.083)).toBe("8.3%");
   });
 });
 

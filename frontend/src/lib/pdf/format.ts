@@ -13,11 +13,6 @@ export function fmtPct(v: number): string {
   return `${(v * 100).toFixed(2)}%`;
 }
 
-/** 小数第1位パーセント表示（KPI用、例: 8.3%） */
-export function fmtPct1(v: number): string {
-  return `${(v * 100).toFixed(1)}%`;
-}
-
 /** 今日の日付を日本語形式で返す（例: 2026年4月23日） */
 export function fmtDate(): string {
   const d = new Date();
