@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from "react";
 import { MapContainer, TileLayer, Rectangle, Tooltip, useMapEvents } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
 import { fetchInvestmentScoreHeatmap } from "@/lib/api";
 import type { HeatmapTile } from "@/types/investment";
 
@@ -24,15 +23,20 @@ function tileBounds(x: number, y: number, z: number): [[number, number], [number
   return [[lat2, lng1], [lat1, lng2]];
 }
 
-function AnalyzeButton({ onAnalyze, loading }: { onAnalyze: (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => void; loading: boolean }) {
+type AnalyzeBounds = { minLat: number; maxLat: number; minLng: number; maxLng: number; z: number };
+
+function AnalyzeButton({ onAnalyze, loading }: { onAnalyze: (bounds: AnalyzeBounds) => void; loading: boolean }) {
   const map = useMapEvents({});
   const handleClick = useCallback(() => {
     const b = map.getBounds();
+    // ズームが高すぎるとタイル数が上限50を超えるため13でキャップ
+    const z = Math.min(map.getZoom(), 13);
     onAnalyze({
       minLat: b.getSouth(),
       maxLat: b.getNorth(),
       minLng: b.getWest(),
       maxLng: b.getEast(),
+      z,
     });
   }, [map, onAnalyze]);
 
@@ -61,11 +65,11 @@ export default function InvestmentScoreHeatmap({ centerLat = 35.6812, centerLng 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAnalyze = useCallback(async (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => {
+  const handleAnalyze = useCallback(async (bounds: AnalyzeBounds) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchInvestmentScoreHeatmap({ ...bounds, z: 13 });
+      const data = await fetchInvestmentScoreHeatmap(bounds);
       setTiles(data.tiles);
     } catch (e) {
       setError(e instanceof Error ? e.message : "取得失敗");

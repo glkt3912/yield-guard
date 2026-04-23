@@ -351,7 +351,9 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
 
             {investmentScore && <InvestmentScoreCard score={investmentScore} />}
 
-            <InvestmentScoreHeatmap centerLat={propertyLat} centerLng={propertyLng} />
+            {propertyLat !== undefined && (
+              <InvestmentScoreHeatmap centerLat={propertyLat} centerLng={propertyLng} />
+            )}
 
             {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} landAppraisal={landAppraisal} externalUrbanRisks={externalUrbanRisks} hazardRisks={hazardRisks} />}
 
