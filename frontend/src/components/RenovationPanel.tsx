@@ -73,6 +73,10 @@ export default function RenovationPanel() {
       setError("工事項目を1件以上追加してください");
       return;
     }
+    if (items.some((item) => item.cost <= 0)) {
+      setError("工事費は正の値を入力してください");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
