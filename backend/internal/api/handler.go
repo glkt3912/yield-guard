@@ -570,6 +570,89 @@ func (h *Handler) GetUrbanRisks(c *gin.Context) {
 	c.JSON(http.StatusOK, risks)
 }
 
+// GetHazardInfo は物件の緯度経度から洪水・高潮・津波・土砂災害のハザード情報を返す。
+// GET /api/hazard?lat=35.6895&lng=139.6917
+func (h *Handler) GetHazardInfo(c *gin.Context) {
+	latStr := c.Query("lat")
+	lngStr := c.Query("lng")
+	if latStr == "" || lngStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
+		return
+	}
+	lat, err := strconv.ParseFloat(latStr, 64)
+	if err != nil || lat < 20 || lat > 46 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は日本国内の緯度（20〜46）で指定してください"})
+		return
+	}
+	lng, err := strconv.ParseFloat(lngStr, 64)
+	if err != nil || lng < 122 || lng > 154 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は日本国内の経度（122〜154）で指定してください"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	z := 14
+	x, y := mlit.LatLngToTile(lat, lng, z)
+
+	type apiResult[T any] struct {
+		data []T
+		err  error
+	}
+	floCh := make(chan apiResult[domain.FloodHazardItem], 1)
+	stmCh := make(chan apiResult[domain.StormHazardItem], 1)
+	tsuCh := make(chan apiResult[domain.TsunamiHazardItem], 1)
+	lsCh := make(chan apiResult[domain.LandslideHazardItem], 1)
+
+	go func() {
+		d, e := h.mlitClient.FetchFloodHazard(ctx, z, x, y)
+		floCh <- apiResult[domain.FloodHazardItem]{d, e}
+	}()
+	go func() {
+		d, e := h.mlitClient.FetchStormHazard(ctx, z, x, y)
+		stmCh <- apiResult[domain.StormHazardItem]{d, e}
+	}()
+	go func() {
+		d, e := h.mlitClient.FetchTsunamiHazard(ctx, z, x, y)
+		tsuCh <- apiResult[domain.TsunamiHazardItem]{d, e}
+	}()
+	go func() {
+		d, e := h.mlitClient.FetchLandslideHazard(ctx, z, x, y)
+		lsCh <- apiResult[domain.LandslideHazardItem]{d, e}
+	}()
+
+	var floods []domain.FloodHazardItem
+	var storms []domain.StormHazardItem
+	var tsunamis []domain.TsunamiHazardItem
+	var landslides []domain.LandslideHazardItem
+
+	if r := <-floCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchFloodHazard failed", "z", z, "x", x, "y", y, "error", r.err)
+	} else {
+		floods = r.data
+	}
+	if r := <-stmCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchStormHazard failed", "z", z, "x", x, "y", y, "error", r.err)
+	} else {
+		storms = r.data
+	}
+	if r := <-tsuCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchTsunamiHazard failed", "z", z, "x", x, "y", y, "error", r.err)
+	} else {
+		tsunamis = r.data
+	}
+	if r := <-lsCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchLandslideHazard failed", "z", z, "x", x, "y", y, "error", r.err)
+	} else {
+		landslides = r.data
+	}
+
+	risks := domain.BuildHazardRisks(floods, storms, tsunamis, landslides)
+	if risks == nil {
+		risks = []domain.UrbanRisk{}
+	}
+	c.JSON(http.StatusOK, risks)
+}
+
 // GetInvestmentScore は物件の緯度経度から複数 API を並列呼び出しし、投資適地スコアを算出して返す。
 // GET /api/investment-score?lat=35.6762&lng=139.6503
 func (h *Handler) GetInvestmentScore(c *gin.Context) {

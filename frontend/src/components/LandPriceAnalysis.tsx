@@ -41,6 +41,7 @@ interface Props {
   populationForecast?: PopulationForecastResult | null;
   landAppraisal?: AppraisalComparisonResult | null;
   externalUrbanRisks?: UrbanRisk[] | null;
+  hazardRisks?: UrbanRisk[] | null;
 }
 
 const ASSESSMENT_BADGE: Record<string, "success" | "warning" | "danger"> = {
@@ -78,7 +79,7 @@ const RIDERSHIP_SCORE_LABEL: Record<string, { label: string; color: string }> = 
   E: { label: "E（極小駅）", color: "text-red-700" },
 };
 
-export function LandPriceAnalysis({ comparison, input, theoreticalPrice, stationRidership, populationForecast, landAppraisal, externalUrbanRisks }: Props) {
+export function LandPriceAnalysis({ comparison, input, theoreticalPrice, stationRidership, populationForecast, landAppraisal, externalUrbanRisks, hazardRisks }: Props) {
   const { stats, assessment, inputPricePerTsubo, diffFromMedian } = comparison;
 
   const allUrbanRisks: UrbanRisk[] = [
@@ -152,6 +153,31 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice, station
               </p>
               <p className="text-xs mt-0.5">以下の結果は参考値としてご確認ください。</p>
             </div>
+          </div>
+        )}
+
+        {/* 割安リスク警告: 中央値比 -15% 以下の割安物件にハザード情報を表示 */}
+        {assessment === "割安" && diffFromMedian <= -0.15 && hazardRisks && hazardRisks.length > 0 && (
+          <div className="rounded-md border-2 border-orange-300 bg-orange-50 p-3 space-y-2">
+            <p className="text-xs font-semibold text-orange-900 flex items-center gap-1.5">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              割安の背景にリスクがある可能性があります
+            </p>
+            {hazardRisks.map((risk) => {
+              const style = RISK_STYLE[risk.level];
+              return (
+                <div
+                  key={risk.code}
+                  className={`flex items-start gap-2 rounded border ${style.border} ${style.bg} px-3 py-2`}
+                >
+                  {style.icon}
+                  <div>
+                    <p className={`text-xs font-semibold ${style.text}`}>{risk.title}</p>
+                    <p className={`text-xs mt-0.5 ${style.text}`}>{risk.description}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
