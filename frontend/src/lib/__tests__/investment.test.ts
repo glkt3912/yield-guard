@@ -82,8 +82,8 @@ describe("calcResidualUsefulLife", () => {
     expect(calcResidualUsefulLife("木造", 30)).toBe(4);
   });
 
-  it("築100年木造 (大幅超過): 最低2年", () => {
-    // floor(22*0.2)=4年だが、22年は完全に超えているので同じルール
+  it("築100年木造 (大幅超過): floor(22*0.2)=4年", () => {
+    // 法定耐用年数を大幅超過した場合も floor(22*0.2)=4年
     expect(calcResidualUsefulLife("木造", 100)).toBe(4);
   });
 
