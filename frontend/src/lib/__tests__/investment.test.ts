@@ -188,6 +188,35 @@ describe("analyze - stress scenarios", () => {
     expect(baseline).toBeDefined();
     expect(baseline!.dscr).toBeGreaterThan(0);
   });
+
+  it("変動金利で後年金利が急上昇するとき最悪年DSCRを返す（初年度より低い）", () => {
+    // 1-4年: 1.5%、5年目以降: 4.0% に急上昇するスケジュール
+    const input: InvestmentInput = {
+      ...BASE_INPUT,
+      annualLoanRate: 0.015,
+      loanAmount: 18_000_000,
+      loanYears: 25,
+      rateAdjustmentSchedule: [{ afterYear: 5, rate: 0.04 }],
+    };
+
+    // 初年度 DSCR の参考値（年-1 レートのみで計算）
+    const annualRent = input.monthlyRent * 12 * (1 - input.vacancyRate);
+    const annualExpenses = annualRent * input.expenseRate + input.annualPropertyTax;
+    const noi = annualRent - annualExpenses;
+    const r = analyze(input);
+    const baseline = r.stressScenarios.find((s) => s.label === "ベースライン")!;
+
+    // year1 相当の DSCR を手計算
+    const y1Rate = 0.015;
+    const mr = y1Rate / 12;
+    const n = input.loanYears * 12;
+    const monthlyY1 = (input.loanAmount * mr * Math.pow(1 + mr, n)) / (Math.pow(1 + mr, n) - 1);
+    const dscrYear1 = noi / (monthlyY1 * 12);
+
+    // 最悪年 DSCR は初年度ベースより低い（5年目以降の高金利を反映）
+    expect(baseline.dscr).toBeLessThan(dscrYear1);
+    expect(baseline.dscr).toBeGreaterThan(0);
+  });
 });
 
 // ─── analyze: yield scenarios ────────────────────────────────────────────────
