@@ -347,13 +347,8 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 		annualLoanPayment = monthlyPayment * 12
 	}
 
-	// DSCR = NOI / 初年度年間ローン返済額
-	dscr := 0.0
-	if annualLoanPayment > 0 {
-		dscr = noi / annualLoanPayment
-	}
-
 	// HoldingYears年間の累積CF（税引前）とブレークイーン年を算出
+	// DSCR は各年返済額から算出した保有期間内最悪値（変動金利上昇ケースで正確なリスク評価を行うため）
 	holdingYears := in.HoldingYears
 	if holdingYears <= 0 {
 		holdingYears = 10
@@ -364,6 +359,8 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 	remainingBalance := in.LoanAmount
 	currentRate := initRate
 	curMonthlyPayment := monthlyPayment
+	minDSCR := math.MaxFloat64
+	hasLoanYear := false
 	for y := 1; y <= holdingYears; y++ {
 		// 変動金利スケジュール適用（元利均等のみ月次返済額を再計算）
 		if y > 1 && len(in.RateAdjustmentSchedule) > 0 {
@@ -392,12 +389,22 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 				remainingBalance = 0
 			}
 		}
+		if yearLoan > 0 {
+			hasLoanYear = true
+			if yearDSCR := noi / yearLoan; yearDSCR < minDSCR {
+				minDSCR = yearDSCR
+			}
+		}
 		cf := annualRent - yearLoan - annualExpenses
 		totalCF += cf
 		cumCF += cf
 		if breakEvenYear == -1 && cumCF > 0 {
 			breakEvenYear = y
 		}
+	}
+	dscr := 0.0
+	if hasLoanYear {
+		dscr = minDSCR
 	}
 
 	isSafe := false
