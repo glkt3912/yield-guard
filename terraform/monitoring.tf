@@ -43,7 +43,7 @@ resource "google_monitoring_dashboard" "yield_guard" {
                 plotType   = "LINE"
                 targetAxis = "Y1"
               }]
-              yAxis = { label = "秒" scale = "LINEAR" }
+              yAxis = { label = "秒", scale = "LINEAR" }
             }
           }
         },
@@ -89,7 +89,7 @@ resource "google_monitoring_dashboard" "yield_guard" {
                   targetAxis     = "Y1"
                 }
               ]
-              yAxis = { label = "req/s" scale = "LINEAR" }
+              yAxis = { label = "req/s", scale = "LINEAR" }
             }
           }
         },
@@ -116,7 +116,7 @@ resource "google_monitoring_dashboard" "yield_guard" {
                 plotType   = "STACKED_BAR"
                 targetAxis = "Y1"
               }]
-              yAxis = { label = "req/s" scale = "LINEAR" }
+              yAxis = { label = "req/s", scale = "LINEAR" }
             }
           }
         },
@@ -143,7 +143,7 @@ resource "google_monitoring_dashboard" "yield_guard" {
                 plotType   = "LINE"
                 targetAxis = "Y1"
               }]
-              yAxis = { label = "req/s" scale = "LINEAR" }
+              yAxis = { label = "req/s", scale = "LINEAR" }
             }
           }
         }
