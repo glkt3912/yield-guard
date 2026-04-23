@@ -196,6 +196,14 @@ const equityInvested = result.totalInvestment - input.loanAmount
 | `incomeTaxRate` | 0〜60% |
 | `exitYieldTarget` | 0%超〜50% |
 
+**NPV / IRR 設定サブセクション**（詳細モードの 出口戦略 セクション末尾）:
+
+| 入力欄 | フィールド | デフォルト | 備考 |
+|--------|-----------|----------|------|
+| 割引率 | `discountRate` | 5% | step=0.1%、0〜30% |
+| 物件価格下落率 | `priceDeclineRate` | 0% | step=0.1%、0〜10% |
+| 減価償却方式 | `depreciationMethod` | 定額法 | セレクト: 定額法/定率法 |
+
 **ストレステストスライダー**:
 - `vacancyRateDelta`: 0〜30%（空室率の追加シナリオ）
 - `loanRateDelta`: 0〜3%（金利上昇シナリオ）
@@ -502,6 +510,11 @@ const breakEvenYear = yearlyResults.find(
 - `exitNetProceeds`: 売却手取り
 - `exitTotalEquity`: 最終手残り（プラス: 緑, マイナス: 赤）
 
+**IRR / NPV サマリーカード**: 出口サマリーグリッドの下に 2 列カードを追加。
+- `irr` が `null` → "―"（灰色）表示
+- `irr` 正値 → 緑、負値 → 赤
+- `npv` 正値 → 緑、負値 → 赤（`formatMan` でフォーマット）
+
 ---
 
 ## DeadCrossChart
@@ -612,3 +625,32 @@ export const DEFAULT_INPUT: InvestmentInput = {
 
 **`BUILDING_USEFUL_LIFE`**: バックエンドの `UsefulLife()` と対応するフロントエンド側の参照用マップ。
 計算には使用せず、フォームの表示説明（「法定耐用年数: XX年」）に使用。
+
+---
+
+## RenovationPanel
+
+`frontend/src/components/RenovationPanel.tsx`
+
+### 責務
+
+修繕費回収期間シミュレーションのフォーム入力・API呼び出し・結果表示を自己完結で担う。
+`Dashboard` の投資シミュレーション `result` に依存せず、独立した状態を持つ。
+`POST /api/renovation/analyze` を呼び出す。
+
+### 表示構成
+
+1. **グローバル入力**（5フィールド）: 物件取得価格・年間家賃・年間経費・実効税率・セルフリフォーム時給
+2. **工事項目テーブル**（動的行）: 部位名・工事費(万円)・月額賃料アップ・セルフ toggle（ON時に工数欄を表示）・削除ボタン
+3. **「リフォーム分析を実行」ボタン**: items が空または cost ≤ 0 の行があるとフロント側でエラーメッセージを表示
+4. **結果セクション**（`isRecoverable` が true の場合のみ回収タイムラインを表示）:
+   - 4列サマリーカード: 修繕費回収期間 / 節税効果 / 仮想人件費 / 実質利回り
+   - 工事分類テーブル: 各項目を「資本的支出（amber）」または「修繕費（blue）」バッジで表示
+   - 回収タイムラインチャート（Recharts `LineChart`）: 累積賃料増加額（青線）vs リフォーム費用（赤点線）、回収年に緑の `ReferenceLine`。X 軸は最大 50 年でキャップ
+
+### 主な実装詳細
+
+- `recoveryChartData` は `useMemo` でメモ化（`result` 変更時のみ再計算）
+- `updateItem` でセルフ toggle OFF 時に `selfLaborHours = 0` にリセット（仮想人件費の誤計上を防止）
+- テーブル内の入力欄は共通クラス変数 `cellInput` で統一
+- `Dashboard.tsx` では投資シミュレーション結果セクションの末尾に `<RenovationPanel />` を常時表示
