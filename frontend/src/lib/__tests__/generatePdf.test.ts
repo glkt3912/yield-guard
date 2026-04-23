@@ -128,7 +128,7 @@ describe("downloadReportPDF", () => {
     global.fetch = makeFontFetchMock();
     await downloadReportPDF(makeInput(), makeResult());
 
-    const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0] as Record<string, unknown>;
+    const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0] as unknown as Record<string, unknown>;
     const info = docDef?.info as Record<string, string> | undefined;
     expect(info?.title).toBe("不動産投資分析レポート");
     expect(info?.author).toBe("yield-guard");
@@ -138,7 +138,7 @@ describe("downloadReportPDF", () => {
     global.fetch = makeFontFetchMock();
     await downloadReportPDF(makeInput(), makeResult());
 
-    const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0] as Record<string, unknown>;
+    const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0] as unknown as Record<string, unknown>;
     const header = docDef?.header as ((page: number) => unknown) | undefined;
     expect(typeof header).toBe("function");
     expect(header?.(1)).toBeNull();
@@ -149,7 +149,7 @@ describe("downloadReportPDF", () => {
     global.fetch = makeFontFetchMock();
     await downloadReportPDF(makeInput(), makeResult());
 
-    const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0] as Record<string, unknown>;
+    const docDef = (mockCreatePdf.mock.calls as unknown[][][])[0]?.[0] as unknown as Record<string, unknown>;
     const footer = docDef?.footer as ((page: number, count: number) => unknown) | undefined;
     expect(typeof footer).toBe("function");
     const result = footer?.(2, 5) as Record<string, unknown>;
