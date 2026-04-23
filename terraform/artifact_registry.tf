@@ -27,4 +27,13 @@ resource "google_artifact_registry_repository" "backend" {
       older_than = "2592000s" # 30日
     }
   }
+
+  cleanup_policies {
+    id     = "delete-untagged"
+    action = "DELETE"
+    condition {
+      tag_state  = "UNTAGGED"
+      older_than = "604800s" # 7日
+    }
+  }
 }

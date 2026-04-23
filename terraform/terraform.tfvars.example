@@ -32,3 +32,4 @@ mlit_api_key         = "your-mlit-api-key"
 app_internal_api_key = "generate with: openssl rand -hex 32"
 vercel_frontend_url  = "https://your-app.vercel.app"
 notification_email   = "your@email.com"
+billing_account_id   = "XXXXXX-XXXXXX-XXXXXX"  # gcloud billing accounts list で確認
