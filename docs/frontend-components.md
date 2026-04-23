@@ -16,6 +16,7 @@ page.tsx
         ├── CostBreakdown          (result.acquisitionCosts + yearlyResults を受け取り表示)
         ├── CashFlowChart          (result + equityInvested を受け取り表示)
         ├── DeadCrossChart         (result を受け取り表示)
+        ├── MonteCarloChart        (monteCarloResult を受け取り確率分布を表示。ボタン押下後のみ表示)
         └── ReportPDF              (result + lastInput を受け取り PDF 生成。SSR無効)
 ```
 
@@ -519,6 +520,29 @@ const deadCrossEndYear = yearlyResults.slice(0, 35)
 
 ---
 
+## MonteCarloChart
+
+`frontend/src/components/MonteCarloChart.tsx`
+
+**props**:
+- `result: MonteCarloResult`
+
+**表示内容**:
+- サマリーバッジ（3つ）: IRR正値達成率 / デッドクロス発生率 / IRR中央値。閾値（達成率≥50%・発生率<30%・中央値≥0%）で緑/赤を切り替え
+- IRR 分布ヒストグラム（20ビン棒グラフ）: IRR≥0 → 青（`#60a5fa`）、IRR<0 → 赤（`#fca5a5`）。`irrHistogram` が `null` の場合はフォールバック文言を表示
+- 最終純資産分布ヒストグラム（20ビン棒グラフ）: 純資産≥0 → 緑（`#34d399`）、<0 → 赤（`#fca5a5`）
+- パーセンタイル表: P10（悲観）〜P90（楽観）の IRR・最終純資産を表示
+
+**表示タイミング**:
+- `full` モードかつ `POST /api/investment/analyze` 実行後に「モンテカルロ実行（1,000試行）」ボタンが出現
+- ボタン押下で `POST /api/investment/simulate` を呼び出し、レスポンス受信後に本コンポーネントが描画される
+- `handleAnalyze` / `handleLoanMethodChange` が再実行されると `monteCarloResult` がリセットされ非表示に戻る
+
+**フォーマット**:
+- `formatPct(v, 1)` / `formatMan(v, 0)` を `lib/utils` から流用
+
+---
+
 ## APIクライアント（`lib/api.ts`）
 
 | 関数 | エンドポイント | 説明 |
@@ -529,6 +553,7 @@ const deadCrossEndYear = yearlyResults.slice(0, 35)
 | `fetchStationRidership({lat, lng, z?})` | `GET /api/station-ridership` | 物件緯度経度から周辺駅の乗降客数・需要スコア（XKT015） |
 | `fetchPopulationForecast({lat, lng, z?})` | `GET /api/population-forecast` | 物件緯度経度から将来推計人口・人口減少シナリオ（XKT013） |
 | `analyze(input)` | `POST /api/investment/analyze` | 投資シミュレーション |
+| `simulate(input)` | `POST /api/investment/simulate` | モンテカルロ・シミュレーション |
 | `fetchMunicipalities(area)` | `GET /api/municipalities` | 市区町村一覧（XIT002） |
 | `fetchPrefectures()` | `GET /api/prefectures` | 都道府県一覧 |
 

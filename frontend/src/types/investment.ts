@@ -259,6 +259,37 @@ export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
 
 export type SimulationMode = "quick" | "full";
 
+export interface Percentiles {
+  p10: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p90: number;
+}
+
+export interface HistogramBin {
+  min: number;
+  max: number;
+  count: number;
+}
+
+export interface MonteCarloResult {
+  simulationCount: number;
+  irrPercentiles: Percentiles;
+  equityPercentiles: Percentiles;
+  deadCrossRate: number;
+  irrHistogram: HistogramBin[] | null;
+  equityHistogram: HistogramBin[] | null;
+  successRate: number;
+}
+
+export interface MonteCarloInput {
+  base: InvestmentInput;
+  simulations?: number;
+  vacancyRateSigma?: number;
+  loanRateSigma?: number;
+}
+
 export const QUICK_MODE_DEFAULTS: Partial<InvestmentInput> = {
   landArea:          100,
   buildingAge:       0,
