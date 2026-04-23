@@ -279,3 +279,46 @@ export const QUICK_MODE_DEFAULTS: Partial<InvestmentInput> = {
   loanMethod:               "equal-payment",
   rateAdjustmentSchedule:  [],
 };
+
+export interface RenovationItem {
+  name: string;
+  cost: number;
+  expectedMonthlyRentIncrease: number;
+  isSelfWork: boolean;
+  selfLaborHours: number;
+}
+
+export interface ClassifiedRenovationItem extends RenovationItem {
+  isCapitalExpenditure: boolean;
+  virtualLaborCost: number;
+}
+
+export interface RenovationInput {
+  propertyPrice: number;
+  annualBaseRent: number;
+  annualExpenses: number;
+  effectiveTaxRate: number;
+  selfLaborRatePerHour: number;
+  items: RenovationItem[];
+}
+
+export interface RenovationResult {
+  recoveryYears: number;
+  taxSavings: number;
+  virtualLaborCost: number;
+  capitalExpenditures: number;
+  repairExpenses: number;
+  actualYield: number;
+  totalRenovationCost: number;
+  annualRentIncrease: number;
+  classifiedItems: ClassifiedRenovationItem[];
+}
+
+export const DEFAULT_RENOVATION_INPUT: RenovationInput = {
+  propertyPrice: 10_000_000,
+  annualBaseRent: 1_200_000,
+  annualExpenses: 240_000,
+  effectiveTaxRate: 0.30,
+  selfLaborRatePerHour: 2_000,
+  items: [],
+};
