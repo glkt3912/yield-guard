@@ -591,6 +591,62 @@ const deadCrossEndYear = yearlyResults.slice(0, 35)
 
 ---
 
+## InvestmentScoreHeatmap
+
+`frontend/src/components/InvestmentScoreHeatmap.tsx`
+
+エリア別の投資適地スコアをLeaflet地図上にヒートマップ（色付き矩形オーバーレイ）で表示するコンポーネント。
+
+**表示条件**: `Dashboard` 内で `propertyLat !== undefined` の場合のみレンダリング（物件の緯度経度取得後に表示）。
+
+**props**:
+- `centerLat?: number` — 地図の初期中心緯度（省略時: 35.6812 = 東京）
+- `centerLng?: number` — 地図の初期中心経度（省略時: 139.7671 = 東京）
+
+**インポート方法**（SSR回避のため dynamic import 必須）:
+```tsx
+const InvestmentScoreHeatmap = dynamic(
+  () => import("./InvestmentScoreHeatmap"),
+  { ssr: false }
+);
+```
+
+**操作フロー**:
+1. 地図（OpenStreetMap）をパン・ズームして分析したいエリアに移動
+2. 右上の「このエリアを分析」ボタンをクリック
+3. `map.getBounds()` で現在の表示範囲を取得し `GET /api/investment-score-heatmap` を呼び出す
+4. 各タイルをスコアに応じた色の矩形で描画。ホバーでグレード・スコアを表示
+
+**ズームとタイル数の制御**:
+
+送信する `z` は `Math.min(map.getZoom(), 13)` でキャップ。ズームが高すぎると 50 タイル上限エラーになるため。
+
+**スコア配色**:
+
+| スコア | 色 | グレード |
+|--------|-----|---------|
+| 80 以上 | `#22c55e`（緑） | 優良 |
+| 65〜79 | `#86efac`（薄緑） | 良好 |
+| 50〜64 | `#fde68a`（黄） | 普通 |
+| 35〜49 | `#fdba74`（橙） | 注意 |
+| 34 以下 | `#f87171`（赤） | 要注意 |
+
+矩形の `fillOpacity: 0.4`、`weight: 0.5` で地図タイルが透けて見える設計。
+
+**内部コンポーネント**:
+
+`AnalyzeButton` — `useMapEvents` フックを使い Leaflet コンテキスト内でボタンを実装（`MapContainer` の外側には配置できないため内部コンポーネントに分離）。
+
+**`tileBounds(x, y, z)`**:
+
+タイル番号から地図上の矩形の4隅を計算するユーティリティ。`centerLat/centerLng`（タイル中心）ではなく、端点から矩形を描くため独自に計算。
+
+**Leaflet CSS**:
+
+`import "leaflet/dist/leaflet.css"` は `src/app/globals.css` に一元管理（`@import "leaflet/dist/leaflet.css"`）。コンポーネント内でのインポートは不要。
+
+---
+
 ## APIクライアント（`lib/api.ts`）
 
 | 関数 | エンドポイント | 説明 |
@@ -600,6 +656,8 @@ const deadCrossEndYear = yearlyResults.slice(0, 35)
 | `estimateLandPrice(params)` | `GET /api/land-prices/estimate` | 理論価格推定（築年数・駅距離・需要スコア補正） |
 | `fetchStationRidership({lat, lng, z?})` | `GET /api/station-ridership` | 物件緯度経度から周辺駅の乗降客数・需要スコア（XKT015） |
 | `fetchPopulationForecast({lat, lng, z?})` | `GET /api/population-forecast` | 物件緯度経度から将来推計人口・人口減少シナリオ（XKT013） |
+| `fetchInvestmentScore({lat, lng})` | `GET /api/investment-score` | 投資適地スコア（1点） |
+| `fetchInvestmentScoreHeatmap({minLat, maxLat, minLng, maxLng, z})` | `GET /api/investment-score-heatmap` | viewport 内全タイルの投資スコア一括取得 |
 | `analyze(input)` | `POST /api/investment/analyze` | 投資シミュレーション |
 | `simulate(input)` | `POST /api/investment/simulate` | モンテカルロ・シミュレーション |
 | `fetchMunicipalities(area)` | `GET /api/municipalities` | 市区町村一覧（XIT002） |
