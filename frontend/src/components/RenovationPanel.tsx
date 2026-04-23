@@ -20,6 +20,8 @@ import type { RenovationInput, RenovationItem, RenovationResult } from "@/types/
 import { DEFAULT_RENOVATION_INPUT } from "@/types/investment";
 import { formatMan, formatPct } from "@/lib/utils";
 
+const cellInput = "rounded border border-input bg-background px-2 py-0.5 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
 function emptyItem(): RenovationItem {
   return {
     name: "",
@@ -172,7 +174,7 @@ export default function RenovationPanel() {
                       <input
                         type="text"
                         placeholder="例：内装"
-                        className="w-full rounded border px-2 py-0.5 text-sm"
+                        className={`w-full ${cellInput}`}
                         value={item.name}
                         onChange={(e) => updateItem(i, "name", e.target.value)}
                       />
@@ -181,7 +183,7 @@ export default function RenovationPanel() {
                       <input
                         type="number"
                         min="0"
-                        className="w-20 rounded border px-2 py-0.5 text-sm text-right"
+                        className={`w-20 text-right ${cellInput}`}
                         value={item.cost / 10_000}
                         onChange={(e) => updateItem(i, "cost", Number(e.target.value) * 10_000)}
                       />
@@ -190,7 +192,7 @@ export default function RenovationPanel() {
                       <input
                         type="number"
                         min="0"
-                        className="w-24 rounded border px-2 py-0.5 text-sm text-right"
+                        className={`w-24 text-right ${cellInput}`}
                         value={item.expectedMonthlyRentIncrease}
                         onChange={(e) => updateItem(i, "expectedMonthlyRentIncrease", Number(e.target.value))}
                       />
@@ -207,7 +209,7 @@ export default function RenovationPanel() {
                         <input
                           type="number"
                           min="0"
-                          className="w-16 rounded border px-2 py-0.5 text-sm text-right"
+                          className={`w-16 text-right ${cellInput}`}
                           value={item.selfLaborHours}
                           onChange={(e) => updateItem(i, "selfLaborHours", Number(e.target.value))}
                         />

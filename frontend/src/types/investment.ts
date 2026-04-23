@@ -320,6 +320,6 @@ export const DEFAULT_RENOVATION_INPUT: RenovationInput = {
   annualBaseRent: 1_200_000,
   annualExpenses: 240_000,
   effectiveTaxRate: 0.30,
-  selfLaborRatePerHour: 2_000,
+  selfLaborRatePerHour: 0,
   items: [],
 };
