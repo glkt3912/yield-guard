@@ -113,6 +113,32 @@ Artifact Registry の無料枠（0.5 GB/月）を超えないよう、最新 5 �
 
 ---
 
+## Terraform CI（terraform-ci.yml）
+
+`.github/workflows/terraform-ci.yml` は PR 時に `terraform fmt` / `validate` / `tflint` / `plan` を実行し、`workflow_dispatch` の `apply: true` 指定時のみ `terraform apply` を行う。
+
+### 参照する Secrets / Variables
+
+| 名前 | 種別 | 用途 |
+|------|------|------|
+| `GCP_PROJECT_ID` | Secret | `TF_VAR_project_id`（GCP プロジェクト ID） |
+| `MLIT_API_KEY` | Secret | `TF_VAR_mlit_api_key` |
+| `APP_INTERNAL_API_KEY` | Secret | `TF_VAR_app_internal_api_key` |
+| `WIF_PROVIDER` | Secret | OIDC 認証用 WIF プロバイダー |
+| `SA_EMAIL` | Secret | OIDC 認証用 deployer SA |
+| `VERCEL_FRONTEND_URL` | Variable | `TF_VAR_vercel_frontend_url`（CORS 許可オリジン） |
+| `NOTIFICATION_EMAIL` | Variable | `TF_VAR_notification_email`（Cloud Monitoring アラート通知先） |
+
+Variable（非機密）は `gh variable set`、Secret（機密）は `gh secret set` または GitHub UI で設定する。
+
+```bash
+# Variable の設定例
+gh variable set NOTIFICATION_EMAIL --body "your@email.com"
+gh variable set VERCEL_FRONTEND_URL --body "https://your-app.vercel.app"
+```
+
+---
+
 ## フロントエンド GitHub Actions デプロイ
 
 `.github/workflows/frontend-ci.yml` の `deploy` ジョブは以下のセキュリティ設計を採用している。
