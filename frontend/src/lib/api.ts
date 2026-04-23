@@ -227,14 +227,14 @@ export async function fetchInvestmentScoreHeatmap(params: {
   maxLat: number;
   minLng: number;
   maxLng: number;
-  z?: number;
+  z: number;
 }): Promise<HeatmapResponse> {
   const p = new URLSearchParams({
     minLat: String(params.minLat),
     maxLat: String(params.maxLat),
     minLng: String(params.minLng),
     maxLng: String(params.maxLng),
-    z: String(params.z ?? 13),
+    z: String(params.z),
   });
   const res = await fetch(`${BASE}/investment-score-heatmap?${p}`);
   return handleResponse(res);
