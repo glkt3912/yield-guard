@@ -20,3 +20,8 @@ resource "google_project_service" "apis" {
   # API を無効化しないことで他リソースへの影響を防ぐ
   disable_on_destroy = false
 }
+
+resource "google_project_service" "cloudbilling" {
+  service            = "cloudbilling.googleapis.com"
+  disable_on_destroy = false
+}

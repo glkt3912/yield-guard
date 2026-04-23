@@ -31,6 +31,11 @@ variable "vercel_frontend_url" {
   type        = string
 }
 
+variable "billing_account_id" {
+  description = "GCP billing account ID for budget alerts (format: XXXXXX-XXXXXX-XXXXXX)"
+  type        = string
+}
+
 variable "notification_email" {
   description = "Email address for Cloud Monitoring alert notifications"
   type        = string
