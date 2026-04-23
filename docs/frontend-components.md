@@ -17,7 +17,7 @@ page.tsx
         ├── CashFlowChart          (result + equityInvested を受け取り表示)
         ├── DeadCrossChart         (result を受け取り表示)
         ├── MonteCarloChart        (monteCarloResult を受け取り確率分布を表示。ボタン押下後のみ表示)
-        └── ReportPDF              (result + lastInput を受け取り PDF 生成。SSR無効)
+        └── (PDF出力はコンポーネントではなく downloadReportPDF() で処理)
 ```
 
 `Dashboard` が `result: InvestmentResult | null`、`comparison: LandPriceComparison | null`、`populationForecast: PopulationForecastResult | null` を管理する。
@@ -42,7 +42,7 @@ page.tsx
 
 **「PDFレポート出力」ボタン**:
 
-`result && lastInput` が両方存在する場合のみヘッダーにボタンを表示。`@react-pdf/renderer` の `PDFDownloadLink` を `next/dynamic(..., { ssr: false })` でクライアント専用モジュールとして読み込む。ファイル名: `yield-guard-report-YYYYMMDD.pdf`。
+`result && lastInput` が両方存在する場合のみヘッダーにボタンを表示。クリックで `downloadReportPDF(lastInput, result)` を呼び出し、`pdfmake` がクライアント側でPDFを生成してダウンロードする。ファイル名: `yield-guard-report-YYYYMMDD.pdf`。
 
 **`handleFetchLandPrices(area, city, lat?, lng?)`**:
 
@@ -386,31 +386,59 @@ CF がマイナスの場合は「赤字転落 ⚠️」バッジを表示。フ�
 
 ---
 
-## ReportPDF
+## PDF生成モジュール
 
-`frontend/src/components/ReportPDF.tsx`
+`frontend/src/lib/generatePdf.ts` および `frontend/src/lib/pdf/` 配下のユーティリティ群。
 
-> テストカバレッジ: `ReportPDF.test.tsx`（Vitest + RTL）— 通常レンダリング・空のストレステスト・固定資産税日割りあり・新築・デッドクロスありの5ケースを検証。
+> テストカバレッジ: `src/lib/__tests__/generatePdf.test.ts`（11件）、`src/lib/__tests__/pdfFormat.test.ts`（21件）
 
-**概要**: `@react-pdf/renderer` を使い投資分析結果を PDF ドキュメントとして生成するコンポーネント。ブラウザ専用（`next/dynamic` + `ssr: false` で読み込む）。日本語文字化け防止のため Noto Sans JP を Google Fonts CDN から `Font.register()` で埋め込む。
+**概要**: `pdfmake` を使いブラウザ側でPDFを生成する関数群。コンポーネントではなく純粋な関数として実装されており、`Dashboard.tsx` のボタンクリックから `downloadReportPDF(input, result)` を呼び出す。日本語表示のため `public/fonts/NotoSansJP-{Regular,Bold}.ttf`（PDF用文字網羅サブセット）を `pdfmake.virtualfs` 経由で読み込む。
 
-**props**:
-- `input: InvestmentInput` — 物件情報・ローン条件等
-- `result: InvestmentResult` — 分析結果（`yieldScenarios`, `stressScenarios`, `yearlyResults` 等）
+### エントリポイント
 
-**PDF 構成（5ページ）**:
+`downloadReportPDF(input: InvestmentInput, result: InvestmentResult): Promise<void>`
+
+フォントを非同期でフェッチ → pdfmake にセット → PDF定義を構築 → ダウンロード。
+
+### PDF構成（5ページ）
 
 | ページ | 内容 |
 |--------|------|
 | 表紙 | 物件概要（土地価格・建物費・築年数・構造・月額賃料・ローン情報）・分析日 |
-| P1 投資サマリー | 表面利回り・実質利回り・DSCR（1年目）・LTV・出口戦略内訳 |
-| P2 10年キャッシュフロー表 | `YearlyResult[]` から生成。年次賃料・ローン返済・経費・税引後CF・累積CF・残債。マイナス値は赤色 |
-| P3 ストレステスト結果 | 6シナリオ×（総CF・DSCR・黒字転換年・安全フラグ）。`stressScenarios.length > 0` の場合のみレンダリング |
-| P4 取得コスト内訳 | 初期投資・`AcquisitionCostBreakdown` 明細・1年目年間経費内訳 |
+| P1 投資サマリー | 総合判定バッジ・判定理由・KPI（DSCR/LTV/出口収益）・ストレステスト要約・出口戦略・自動生成コメント |
+| P2 10年キャッシュフロー | SVGバーチャート + 年次テーブル（賃料・ローン返済・経費・税引後CF・累積CF・残債） |
+| P3 ストレステスト結果 | デッドクロス折れ線SVG + 6シナリオ×（総CF・DSCR・回収年・安全フラグ） |
+| P4 取得コスト内訳 | ドーナツSVG + 初期投資内訳・諸経費明細・1年目年間経費 |
 
-全ページフッター: 「本資料は yield-guard による試算です。実際の投資判断は専門家にご相談ください。」
+全ページヘッダー（表紙除く）: 「yield-guard 不動産投資分析レポート　{日付}」  
+全ページフッター: 「本資料は yield-guard による試算です。実際の投資判断は専門家にご相談ください。」  `{currentPage} / {pageCount}`
 
-**ファイル名**: `yield-guard-report-YYYYMMDD.pdf`（`Dashboard.tsx` の `PDFDownloadLink` で指定）
+### サブモジュール
+
+| ファイル | 役割 |
+|---|---|
+| `pdf/format.ts` | `fmtYen()` / `fmtPct()` / `fmtDate()` / `sanitize()` |
+| `pdf/verdict.ts` | `calcVerdict()` — 総合判定（PASS/CAUTION/REJECT）・理由リスト・自動コメント生成 |
+| `pdf/charts.ts` | `buildCfBarChartSvg()` / `buildDeadCrossLineSvg()` / `buildCostDonutSvg()` |
+
+### `fmtYen()` 金額フォーマットルール
+
+| 金額範囲 | 表示形式 | 例 |
+|---|---|---|
+| 1万円未満 | 円（カンマ区切り） | `9,999円` |
+| 1万円以上〜1億円未満 | 万円（万円未満は四捨五入） | `88万円`、`9500万円` |
+| 万換算で10,000万以上になる場合 | 億円に繰り上げ | `99,999,999円 → 1.0億円` |
+| 1億円以上 | 億円（小数1桁） | `1.5億円` |
+
+### フォントサブセット管理
+
+`public/fonts/NotoSansJP-{Regular,Bold}.ttf` はPDF出力で使われる全文字を網羅したサブセット（各 ≈265 KB）。  
+PDF文言に新しい漢字を追加した場合は `NEEDED_TEXT` に追記の上、再生成スクリプトを実行する:
+
+```bash
+cd frontend
+python3 scripts/regenerate-pdf-fonts.py
+```
 
 ---
 
