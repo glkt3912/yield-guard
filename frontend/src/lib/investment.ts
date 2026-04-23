@@ -385,8 +385,7 @@ function calcStressScenario(
     annualLoanPayment = monthlyPayment * 12;
   }
 
-  const dscr = annualLoanPayment > 0 ? noi / annualLoanPayment : 0;
-
+  // DSCR は各年返済額から算出した保有期間内最悪値（変動金利上昇ケースで正確なリスク評価を行うため）
   let holdingYears = inInput.holdingYears;
   if (holdingYears <= 0) holdingYears = 10;
 
@@ -396,6 +395,8 @@ function calcStressScenario(
   let remainingBalance = inInput.loanAmount;
   let currentRate = initRate;
   let curMonthlyPayment = monthlyPayment;
+  let minDSCR = Infinity;
+  let hasLoanYear = false;
 
   for (let y = 1; y <= holdingYears; y++) {
     if (y > 1 && inInput.rateAdjustmentSchedule.length > 0) {
@@ -424,12 +425,19 @@ function calcStressScenario(
       }
       if (remainingBalance < 0) remainingBalance = 0;
     }
+    if (yearLoan > 0) {
+      hasLoanYear = true;
+      const yearDSCR = noi / yearLoan;
+      if (yearDSCR < minDSCR) minDSCR = yearDSCR;
+    }
 
     const cf = annualRent - yearLoan - annualExpenses;
     totalCF += cf;
     cumCF += cf;
     if (breakEvenYear === -1 && cumCF > 0) breakEvenYear = y;
   }
+
+  const dscr = hasLoanYear ? minDSCR : 0;
 
   let isSafe: boolean;
   if (annualLoanPayment === 0) {
