@@ -64,7 +64,9 @@ func MonteCarloSimulate(input MonteCarloInput) MonteCarloResult {
 		input.LoanRateSigma = defaultLoanRateSigma
 	}
 
-	rng := rand.New(rand.NewSource(42)) //nolint:gosec // 再現性確保のため固定シード
+	// 同一入力に対して決定的な結果を保証するため固定シードを使用。
+	// 毎回異なる分布が必要な場合は rand.NewSource(time.Now().UnixNano()) に変更すること。
+	rng := rand.New(rand.NewSource(42)) //nolint:gosec
 
 	irrs := make([]float64, 0, input.Simulations)
 	equities := make([]float64, 0, input.Simulations)
