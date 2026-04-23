@@ -13,7 +13,7 @@ import RenovationPanel from "@/components/RenovationPanel";
 import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode, LoanMethod, MonteCarloResult, InvestmentScoreResult } from "@/types/investment";
 import { analyze, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks, fetchHazardInfo, fetchInvestmentScore, simulate } from "@/lib/api";
 import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
-import { ShieldAlert, Info, FileDown, Share2, Check } from "lucide-react";
+import { ShieldAlert, Info, FileDown, Share2, Check, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { downloadReportPDF } from "@/lib/generatePdf";
@@ -58,6 +58,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const [copied, setCopied] = useState(false);
   const [monteCarloResult, setMonteCarloResult] = useState<MonteCarloResult | null>(null);
   const [monteCarloLoading, setMonteCarloLoading] = useState(false);
+  const [mobileFormOpen, setMobileFormOpen] = useState(false);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -201,18 +202,18 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-white px-6 py-4 shadow-sm">
+      <header className="border-b bg-white px-4 py-3 shadow-sm lg:px-6 lg:py-4">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
-          <ShieldAlert className="h-7 w-7 text-primary" />
+          <ShieldAlert className="h-6 w-6 text-primary lg:h-7 lg:w-7" />
           <div>
-            <h1 className="text-xl font-bold text-foreground">Yield-Guard</h1>
+            <h1 className="text-lg font-bold text-foreground lg:text-xl">Yield-Guard</h1>
             <p className="text-xs text-muted-foreground">不動産投資リスク可視化ツール</p>
           </div>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2 lg:gap-3">
             {result && lastInput && (
               <button
                 onClick={handleShare}
-                className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-muted transition-colors"
+                className="hidden items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-muted transition-colors lg:flex"
                 title="この条件をクリップボードにコピー"
               >
                 {copied ? (
@@ -236,7 +237,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                     setPdfGenerating(false);
                   }
                 }}
-                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-primary/90 disabled:opacity-60"
+                className="hidden items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-primary/90 disabled:opacity-60 lg:flex"
               >
                 <FileDown className="h-3.5 w-3.5" />
                 {pdfGenerating ? "生成中..." : "PDFレポート出力"}
@@ -244,13 +245,13 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             )}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="h-2 w-2 rounded-full bg-green-400" />
-              国交省API使用
+              <span className="hidden sm:inline">国交省API使用</span>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6">
+      <main className="mx-auto max-w-7xl px-4 py-4 lg:py-6">
         {error && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             ⚠ {error}
@@ -264,10 +265,16 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           </div>
         )}
 
+        {/* Desktop: side-by-side layout (form left, results right) */}
+        {/* Mobile: results-first layout (results on top, form hidden in bottom sheet) */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[400px_1fr]">
-          <aside>
+          {/* Form: hidden on mobile (shown in bottom sheet), visible on desktop */}
+          <aside className="hidden lg:block">
             <InvestmentForm
-              onAnalyze={handleAnalyze}
+              onAnalyze={(input, quickTotalMan) => {
+                setMobileFormOpen(false);
+                return handleAnalyze(input, quickTotalMan);
+              }}
               onFetchLandPrices={handleFetchLandPrices}
               loading={loading}
               simulationMode={simulationMode}
@@ -279,11 +286,12 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
 
           <section className="space-y-6">
             {!result && !comparison && (
-              <div className="flex h-80 items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/20">
+              <div className="flex h-64 items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/20 lg:h-80">
                 <div className="text-center text-muted-foreground">
-                  <ShieldAlert className="mx-auto mb-3 h-12 w-12 opacity-30" />
-                  <p className="text-sm font-medium">左のフォームから条件を入力して</p>
-                  <p className="text-sm">シミュレーションを実行してください</p>
+                  <ShieldAlert className="mx-auto mb-3 h-10 w-10 opacity-30 lg:h-12 lg:w-12" />
+                  <p className="text-sm font-medium">条件を入力してシミュレーションを実行してください</p>
+                  <p className="mt-1 text-xs lg:hidden">下の「条件を編集」ボタンから入力できます</p>
+                  <p className="mt-1 hidden text-sm lg:block">左のフォームから条件を入力してください</p>
                 </div>
               </div>
             )}
@@ -334,6 +342,56 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           </section>
         </div>
       </main>
+
+      {/* Mobile: floating "条件を編集" button */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 lg:hidden">
+        <button
+          onClick={() => setMobileFormOpen(true)}
+          className="flex min-h-[44px] items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white shadow-lg hover:bg-primary/90 active:scale-95 transition-transform"
+          aria-label="条件を編集"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          条件を編集
+        </button>
+      </div>
+
+      {/* Mobile: bottom sheet overlay */}
+      {mobileFormOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="投資条件入力">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setMobileFormOpen(false)}
+          />
+          {/* Sheet */}
+          <div className="absolute bottom-0 left-0 right-0 max-h-[90dvh] overflow-y-auto rounded-t-2xl bg-background shadow-xl">
+            <div className="sticky top-0 flex items-center justify-between border-b bg-background px-4 py-3">
+              <h2 className="text-base font-semibold">投資条件を編集</h2>
+              <button
+                onClick={() => setMobileFormOpen(false)}
+                className="flex h-[44px] w-[44px] items-center justify-center rounded-full hover:bg-muted transition-colors"
+                aria-label="閉じる"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="px-4 py-4">
+              <InvestmentForm
+                onAnalyze={(input, quickTotalMan) => {
+                  setMobileFormOpen(false);
+                  return handleAnalyze(input, quickTotalMan);
+                }}
+                onFetchLandPrices={handleFetchLandPrices}
+                loading={loading}
+                simulationMode={simulationMode}
+                onModeChange={handleModeChange}
+                initialInput={decoded?.input}
+                initialQuickTotalPriceMan={decoded?.quickTotalPriceMan}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

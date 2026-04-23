@@ -6,6 +6,59 @@ import type { InvestmentInput, InvestmentResult, PopulationForecastResult, Stres
 import { formatMan, formatPct, formatYen } from "@/lib/utils";
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Users } from "lucide-react";
 
+/** Mobile 2×2 KPI grid showing the 4 most important metrics at a glance */
+function MobileKpiGrid({ result, isGood, targetPct, yieldPct, netYieldPct }: {
+  result: InvestmentResult;
+  isGood: boolean;
+  targetPct: number;
+  yieldPct: number;
+  netYieldPct: number;
+}) {
+  const firstYearCF = result.yearlyResults[0]?.afterTaxCashFlow ?? 0;
+  const kpis = [
+    {
+      label: "表面利回り",
+      value: `${yieldPct.toFixed(2)}%`,
+      sub: isGood ? `目標${targetPct}%超え` : `目標${targetPct}%未満`,
+      color: isGood ? "text-green-600" : "text-red-600",
+      bg: isGood ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200",
+    },
+    {
+      label: "実質利回り",
+      value: `${netYieldPct.toFixed(2)}%`,
+      sub: "空室・経費控除後",
+      color: "text-foreground",
+      bg: "bg-muted/40 border-border",
+    },
+    {
+      label: "総投資額",
+      value: formatMan(result.totalInvestment),
+      sub: "諸経費込み",
+      color: "text-primary",
+      bg: "bg-muted/40 border-border",
+    },
+    {
+      label: "1年目税引後CF",
+      value: formatYen(firstYearCF),
+      sub: "年間キャッシュフロー",
+      color: firstYearCF >= 0 ? "text-green-600" : "text-red-600",
+      bg: firstYearCF >= 0 ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:hidden">
+      {kpis.map((kpi) => (
+        <div key={kpi.label} className={`rounded-xl border p-3 ${kpi.bg}`}>
+          <p className="text-xs text-muted-foreground">{kpi.label}</p>
+          <p className={`mt-1 text-xl font-bold leading-tight ${kpi.color}`}>{kpi.value}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{kpi.sub}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface Props {
   result: InvestmentResult;
   input: InvestmentInput;
@@ -29,31 +82,40 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Mobile: 2×2 KPI grid (hidden on desktop) */}
+      <MobileKpiGrid
+        result={result}
+        isGood={isGood}
+        targetPct={targetPct}
+        yieldPct={yieldPct}
+        netYieldPct={netYieldPct}
+      />
+
       {/* メイン利回り表示 */}
       <Card className={`border-2 ${isGood ? "border-green-400" : "border-red-400"}`}>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">表面利回り（満室想定年収 / 総投資額）</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground sm:text-sm">表面利回り（満室想定年収 / 総投資額）</p>
               <div className="flex items-end gap-2">
-                <span className={`text-5xl font-bold ${isGood ? "text-green-600" : "text-red-600"}`}>
+                <span className={`text-4xl font-bold sm:text-5xl ${isGood ? "text-green-600" : "text-red-600"}`}>
                   {yieldPct.toFixed(2)}
                 </span>
-                <span className="mb-2 text-2xl font-semibold text-muted-foreground">%</span>
+                <span className="mb-1 text-xl font-semibold text-muted-foreground sm:mb-2 sm:text-2xl">%</span>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
                 実質利回り（空室・経費控除後）：{netYieldPct.toFixed(2)}%
               </p>
             </div>
-            <div className="flex flex-col items-center gap-2">
+            <div className="ml-3 flex flex-col items-center gap-2 shrink-0">
               {isGood ? (
                 <>
-                  <CheckCircle className="h-12 w-12 text-green-500" />
+                  <CheckCircle className="h-10 w-10 text-green-500 sm:h-12 sm:w-12" />
                   <Badge variant="success">{targetPct}%超え ✓</Badge>
                 </>
               ) : (
                 <>
-                  <AlertTriangle className="h-12 w-12 text-red-500" />
+                  <AlertTriangle className="h-10 w-10 text-red-500 sm:h-12 sm:w-12" />
                   <Badge variant="danger">{targetPct}%未満 ✗</Badge>
                 </>
               )}

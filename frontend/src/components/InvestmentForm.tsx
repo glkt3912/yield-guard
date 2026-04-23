@@ -499,6 +499,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   <Input
                     label="物件価格（土地＋建物の総額）"
                     type="number"
+                    inputMode="numeric"
                     suffix="万円"
                     value={quickTotalPriceMan}
                     onChange={(e) => {
@@ -509,7 +510,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   />
                   <p className="text-xs text-muted-foreground mt-1">内部で土地70%・建物30%に按分して計算します</p>
                 </div>
-                <Input label="想定月額賃料" type="number" suffix="円"
+                <Input label="想定月額賃料" type="number" inputMode="numeric" suffix="円"
                   value={String(input.monthlyRent)}
                   onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
                   error={fieldError("monthlyRent")} />
@@ -540,7 +541,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                       )}
                       {showCustomLoan && (
                         <div className="space-y-1">
-                          <Input label="ローン金額" type="number" suffix="万円"
+                          <Input label="ローン金額" type="number" inputMode="numeric" suffix="万円"
                             value={toMan(input.loanAmount)}
                             onChange={(e) => setNum("loanAmount", fromMan(e.target.value))}
                             error={fieldError("loanAmount")} />
@@ -556,7 +557,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                     </>
                   )}
                 </div>
-                <Input label="目標利回り" type="number" suffix="%" step="0.5"
+                <Input label="目標利回り" type="number" inputMode="decimal" suffix="%" step="0.5"
                   value={toPct(input.yieldTarget, 1)}
                   onChange={(e) => setNum("yieldTarget", fromPct(e.target.value))}
                   error={fieldError("yieldTarget")} />
@@ -642,6 +643,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   <label className="text-sm font-medium text-foreground">緯度（任意）</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     placeholder="例: 35.6762"
                     step="0.0001"
                     value={propertyLat}
@@ -654,6 +656,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   <label className="text-sm font-medium text-foreground">経度（任意）</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     placeholder="例: 139.6503"
                     step="0.0001"
                     value={propertyLng}
@@ -692,15 +695,15 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
               <div>
                 <p className="text-sm font-semibold text-foreground mb-3">物件情報</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Input label="土地取得価格" type="number" suffix="万円"
+                  <Input label="土地取得価格" type="number" inputMode="numeric" suffix="万円"
                     value={toMan(input.landPrice)}
                     onChange={(e) => setNum("landPrice", fromMan(e.target.value))}
                     error={fieldError("landPrice")} />
-                  <Input label="土地面積" type="number" suffix="m²"
+                  <Input label="土地面積" type="number" inputMode="decimal" suffix="m²"
                     value={String(input.landArea)}
                     onChange={(e) => setNum("landArea", parseFloat(e.target.value) || 0)} />
                   <div className="sm:col-span-2">
-                    <Input label="建物価格" type="number" suffix="万円"
+                    <Input label="建物価格" type="number" inputMode="numeric" suffix="万円"
                       value={toMan(input.buildingCost)}
                       onChange={(e) => setNum("buildingCost", fromMan(e.target.value))}
                       error={fieldError("buildingCost")} />
@@ -720,7 +723,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                           <p className="font-medium text-xs mb-1">① 消費税額から計算（最も確実）</p>
                           <div className="flex gap-2 items-end">
                             <div className="flex-1">
-                              <Input label="消費税額" type="number" suffix="万円"
+                              <Input label="消費税額" type="number" inputMode="numeric" suffix="万円"
                                 value={taxAmount} onChange={(e) => setTaxAmount(e.target.value)} />
                             </div>
                             <Button type="button" variant="outline" size="sm" className="mb-0 shrink-0"
@@ -737,11 +740,11 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                         <div>
                           <p className="font-medium text-xs mb-1">② 固定資産税評価額の比率で按分</p>
                           <div className="grid grid-cols-3 gap-2">
-                            <Input label="土地評価額" type="number" suffix="万円"
+                            <Input label="土地評価額" type="number" inputMode="numeric" suffix="万円"
                               value={landAssess} onChange={(e) => setLandAssess(e.target.value)} />
-                            <Input label="建物評価額" type="number" suffix="万円"
+                            <Input label="建物評価額" type="number" inputMode="numeric" suffix="万円"
                               value={buildingAssess} onChange={(e) => setBuildingAssess(e.target.value)} />
-                            <Input label="購入総額" type="number" suffix="万円"
+                            <Input label="購入総額" type="number" inputMode="numeric" suffix="万円"
                               value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} />
                           </div>
                           <Button type="button" variant="outline" size="sm" className="mt-2"
@@ -759,10 +762,10 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                       </div>
                     )}
                   </div>
-                  <Input label="築年数" type="number" suffix="年（0=新築）"
+                  <Input label="築年数" type="number" inputMode="numeric" suffix="年（0=新築）"
                     value={String(input.buildingAge)}
                     onChange={(e) => setNum("buildingAge", parseInt(e.target.value) || 0)} />
-                  <Input label="最寄り駅徒歩" type="number" suffix="分（0=未入力）"
+                  <Input label="最寄り駅徒歩" type="number" inputMode="numeric" suffix="分（0=未入力）"
                     value={String(input.stationMinutes)}
                     onChange={(e) => setNum("stationMinutes", parseInt(e.target.value) || 0)} />
                   <Select label="建物構造" value={input.buildingType}
@@ -787,22 +790,22 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
               <div className="border-t pt-4">
                 <p className="text-sm font-semibold text-foreground mb-3">収益条件</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Input label="想定月額賃料" type="number" suffix="円"
+                  <Input label="想定月額賃料" type="number" inputMode="numeric" suffix="円"
                     value={String(input.monthlyRent)}
                     onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
                     error={fieldError("monthlyRent")} />
-                  <Input label="現況空室率" type="number" suffix="%" step="1"
+                  <Input label="現況空室率" type="number" inputMode="numeric" suffix="%" step="1"
                     value={toPct(input.actualVacancyRate, 0)}
                     onChange={(e) => setNum("actualVacancyRate", fromPct(e.target.value))} />
-                  <Input label="想定空室率（長期）" type="number" suffix="%" step="1"
+                  <Input label="想定空室率（長期）" type="number" inputMode="numeric" suffix="%" step="1"
                     value={toPct(input.vacancyRate, 0)}
                     onChange={(e) => setNum("vacancyRate", fromPct(e.target.value))}
                     error={fieldError("vacancyRate")} />
-                  <Input label="運営経費率※" type="number" suffix="%" step="1"
+                  <Input label="運営経費率※" type="number" inputMode="numeric" suffix="%" step="1"
                     value={toPct(input.expenseRate, 0)}
                     onChange={(e) => setNum("expenseRate", fromPct(e.target.value))}
                     error={fieldError("expenseRate")} />
-                  <Input label="諸経費率" type="number" suffix="%" step="0.5"
+                  <Input label="諸経費率" type="number" inputMode="decimal" suffix="%" step="0.5"
                     value={toPct(input.miscExpenseRate, 1)}
                     onChange={(e) => setNum("miscExpenseRate", fromPct(e.target.value))}
                     error={fieldError("miscExpenseRate")} />
@@ -864,17 +867,17 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   </label>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <Input label="ローン金額" type="number" suffix="万円"
+                  <Input label="ローン金額" type="number" inputMode="numeric" suffix="万円"
                     value={toMan(input.loanAmount)}
                     onChange={(e) => { if (!isCashPurchase) setNum("loanAmount", fromMan(e.target.value)); }}
                     error={fieldError("loanAmount")}
                     disabled={isCashPurchase} />
-                  <Input label="年利" type="number" suffix="%" step="0.01"
+                  <Input label="年利" type="number" inputMode="decimal" suffix="%" step="0.01"
                     value={toPct(input.annualLoanRate)}
                     onChange={(e) => { if (!isCashPurchase) setNum("annualLoanRate", fromPct(e.target.value)); }}
                     error={fieldError("annualLoanRate")}
                     disabled={isCashPurchase} />
-                  <Input label="返済期間" type="number" suffix="年"
+                  <Input label="返済期間" type="number" inputMode="numeric" suffix="年"
                     value={String(input.loanYears)}
                     onChange={(e) => { if (!isCashPurchase) setNum("loanYears", parseInt(e.target.value) || 0); }}
                     error={fieldError("loanYears")}
@@ -886,19 +889,19 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
               <div className="border-t pt-4">
                 <p className="text-sm font-semibold text-foreground mb-3">出口戦略</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <Input label="売却予定年数" type="number" suffix="年後"
+                  <Input label="売却予定年数" type="number" inputMode="numeric" suffix="年後"
                     value={String(input.holdingYears)}
                     onChange={(e) => setNum("holdingYears", parseInt(e.target.value) || 10)}
                     error={fieldError("holdingYears")} />
-                  <Input label="売却時目標利回り（実質）" type="number" suffix="%" step="0.5"
+                  <Input label="売却時目標利回り（実質）" type="number" inputMode="decimal" suffix="%" step="0.5"
                     value={toPct(input.exitYieldTarget, 1)}
                     onChange={(e) => setNum("exitYieldTarget", fromPct(e.target.value))}
                     error={fieldError("exitYieldTarget")} />
-                  <Input label="目標表面利回り" type="number" suffix="%" step="0.5"
+                  <Input label="目標表面利回り" type="number" inputMode="decimal" suffix="%" step="0.5"
                     value={toPct(input.yieldTarget, 1)}
                     onChange={(e) => setNum("yieldTarget", fromPct(e.target.value))}
                     error={fieldError("yieldTarget")} />
-                  <Input label="所得税率（実効）" type="number" suffix="%" step="1"
+                  <Input label="所得税率（実効）" type="number" inputMode="numeric" suffix="%" step="1"
                     value={toPct(input.incomeTaxRate, 0)}
                     onChange={(e) => setNum("incomeTaxRate", fromPct(e.target.value))}
                     error={fieldError("incomeTaxRate")} />
@@ -908,11 +911,11 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                 <div className="mt-4">
                   <p className="text-xs font-semibold text-muted-foreground mb-2">NPV / IRR 設定</p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <Input label="割引率" type="number" suffix="%" step="0.1"
+                    <Input label="割引率" type="number" inputMode="decimal" suffix="%" step="0.1"
                       value={toPct(input.discountRate ?? 0.05, 1)}
                       onChange={(e) => setNum("discountRate", fromPct(e.target.value))}
                       error={fieldError("discountRate")} />
-                    <Input label="物件価格下落率" type="number" suffix="%" step="0.1"
+                    <Input label="物件価格下落率" type="number" inputMode="decimal" suffix="%" step="0.1"
                       value={toPct(input.priceDeclineRate ?? 0, 1)}
                       onChange={(e) => setNum("priceDeclineRate", fromPct(e.target.value))}
                       error={fieldError("priceDeclineRate")} />
@@ -966,6 +969,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                           <Input
                             label={i === 0 ? "開始年" : ""}
                             type="number"
+                            inputMode="numeric"
                             suffix="年目〜"
                             min="2"
                             max={String(maxYear)}
@@ -977,6 +981,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                           <Input
                             label={i === 0 ? "適用金利" : ""}
                             type="number"
+                            inputMode="decimal"
                             suffix="%"
                             min="0.1"
                             max="30"
