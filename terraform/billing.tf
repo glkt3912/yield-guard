@@ -29,4 +29,6 @@ resource "google_billing_budget" "monthly" {
     ]
     disable_default_iam_recipients = true
   }
+
+  depends_on = [google_project_service.billingbudgets]
 }
