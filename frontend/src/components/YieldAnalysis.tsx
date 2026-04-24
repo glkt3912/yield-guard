@@ -193,7 +193,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
             </table>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            ※ DSCR（借債返済カバー率）= NOI / 年間ローン返済額。1.0以上が銀行審査の目安。黒転年は保有期間内での累積CF黒転年度。
+            ※ DSCR（借債返済カバー率）= NOI / 年間ローン返済額（保有期間内の最悪年）。1.0以上が銀行審査の目安。黒転年は保有期間内での累積CF黒転年度。
           </p>
 
           {/* 人口減少シナリオ */}

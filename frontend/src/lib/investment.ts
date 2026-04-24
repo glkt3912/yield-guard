@@ -365,28 +365,22 @@ function calcStressScenario(
 
   const annualRent = inInput.monthlyRent * 12 * (1 - effectiveVacancy);
   const annualExpenses = annualRent * inInput.expenseRate + inInput.annualPropertyTax;
+  // noi はシナリオ期間中一定（calcStressScenario は賃料下落率を適用しない簡略計算）
   const noi = annualRent - annualExpenses;
 
   const initRate = resolveRateForYear(inInput.annualLoanRate, rateDelta, inInput.rateAdjustmentSchedule, 1);
 
   let monthlyPayment = 0;
   let monthlyPrincipalStress = 0;
-  let annualLoanPayment = 0;
 
   if (inInput.loanMethod === LOAN_METHOD_EQUAL_PRINCIPAL && inInput.loanYears > 0) {
     const totalMonths = inInput.loanYears * 12;
     monthlyPrincipalStress = inInput.loanAmount / totalMonths;
-    const { interest: yi, principal: yp } = calcYearlyLoanComponentsEqualPrincipal(
-      inInput.loanAmount, initRate, monthlyPrincipalStress,
-    );
-    annualLoanPayment = yi + yp;
   } else {
     monthlyPayment = calcMonthlyPayment(inInput.loanAmount, initRate, inInput.loanYears);
-    annualLoanPayment = monthlyPayment * 12;
   }
 
-  const dscr = annualLoanPayment > 0 ? noi / annualLoanPayment : 0;
-
+  // DSCR は各年返済額から算出した保有期間内最悪値（変動金利上昇ケースで正確なリスク評価を行うため）
   let holdingYears = inInput.holdingYears;
   if (holdingYears <= 0) holdingYears = 10;
 
@@ -396,6 +390,8 @@ function calcStressScenario(
   let remainingBalance = inInput.loanAmount;
   let currentRate = initRate;
   let curMonthlyPayment = monthlyPayment;
+  let minDSCR = Infinity;
+  let hasLoanYear = false;
 
   for (let y = 1; y <= holdingYears; y++) {
     if (y > 1 && inInput.rateAdjustmentSchedule.length > 0) {
@@ -424,6 +420,11 @@ function calcStressScenario(
       }
       if (remainingBalance < 0) remainingBalance = 0;
     }
+    if (yearLoan > 0) {
+      hasLoanYear = true;
+      const yearDSCR = noi / yearLoan;
+      if (yearDSCR < minDSCR) minDSCR = yearDSCR;
+    }
 
     const cf = annualRent - yearLoan - annualExpenses;
     totalCF += cf;
@@ -431,8 +432,11 @@ function calcStressScenario(
     if (breakEvenYear === -1 && cumCF > 0) breakEvenYear = y;
   }
 
+  const dscr = hasLoanYear ? minDSCR : 0;
+
   let isSafe: boolean;
-  if (annualLoanPayment === 0) {
+  if (!hasLoanYear) {
+    // 保有期間内に返済が発生しない場合（無借金物件等）はブレークイーン達成のみで安全と判定
     isSafe = breakEvenYear !== -1 && breakEvenYear <= holdingYears;
   } else {
     isSafe = dscr >= 1.0 && breakEvenYear !== -1 && breakEvenYear <= holdingYears;
