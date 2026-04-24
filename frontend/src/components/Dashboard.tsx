@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { encodeUrlParams, decodeUrlParams } from "@/lib/urlParams";
 import { InvestmentForm } from "@/components/InvestmentForm";
 import { YieldAnalysis } from "@/components/YieldAnalysis";
-import { CashFlowChart } from "@/components/CashFlowChart";
-import { DeadCrossChart } from "@/components/DeadCrossChart";
+import CashFlowChart from "@/components/CashFlowChart";
+import DeadCrossChart from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
 import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
@@ -32,6 +32,31 @@ function getCurrentPeriods(): { year: number; quarter: number; toYear: number; t
   return { year: toYear - 2, quarter: 1, toYear, toQuarter };
 }
 
+/** 分析結果系のstateをまとめたオブジェクト型 */
+interface AnalysisResult {
+  result: InvestmentResult | null;
+  comparison: LandPriceComparison | null;
+  theoreticalPrice: TheoreticalPriceResult | null;
+  stationRidership: StationRidershipResult[] | null;
+  populationForecast: PopulationForecastResult | null;
+  landAppraisal: AppraisalComparisonResult | null;
+  externalUrbanRisks: UrbanRisk[] | null;
+  investmentScore: InvestmentScoreResult | null;
+  hazardRisks: UrbanRisk[] | null;
+}
+
+const INITIAL_ANALYSIS_RESULT: AnalysisResult = {
+  result: null,
+  comparison: null,
+  theoreticalPrice: null,
+  stationRidership: null,
+  populationForecast: null,
+  landAppraisal: null,
+  externalUrbanRisks: null,
+  investmentScore: null,
+  hazardRisks: null,
+};
+
 interface DashboardProps {
   initialParams?: URLSearchParams | null;
 }
@@ -42,18 +67,13 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   // Decode URL params once on mount
   const decoded = initialParams ? decodeUrlParams(initialParams) : null;
 
-  const [result, setResult] = useState<InvestmentResult | null>(null);
-  const [comparison, setComparison] = useState<LandPriceComparison | null>(null);
-  const [theoreticalPrice, setTheoreticalPrice] = useState<TheoreticalPriceResult | null>(null);
+  // Analysis results consolidated into a single state object to avoid cascading re-renders
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult>(INITIAL_ANALYSIS_RESULT);
+
+  // UI states remain as individual useState calls
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastInput, setLastInput] = useState<InvestmentInput | null>(null);
-  const [stationRidership, setStationRidership] = useState<StationRidershipResult[] | null>(null);
-  const [populationForecast, setPopulationForecast] = useState<PopulationForecastResult | null>(null);
-  const [landAppraisal, setLandAppraisal] = useState<AppraisalComparisonResult | null>(null);
-  const [externalUrbanRisks, setExternalUrbanRisks] = useState<UrbanRisk[] | null>(null);
-  const [investmentScore, setInvestmentScore] = useState<InvestmentScoreResult | null>(null);
-  const [hazardRisks, setHazardRisks] = useState<UrbanRisk[] | null>(null);
   const [propertyLat, setPropertyLat] = useState<number | undefined>(undefined);
   const [propertyLng, setPropertyLng] = useState<number | undefined>(undefined);
   const [simulationMode, setSimulationMode] = useState<SimulationMode>(
@@ -70,6 +90,9 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Destructure for ergonomic use in JSX
+  const { result, comparison, theoreticalPrice, stationRidership, populationForecast, landAppraisal, externalUrbanRisks, investmentScore, hazardRisks } = analysisResult;
 
   // Network status detection
   useEffect(() => {
@@ -102,7 +125,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
       noticeTimer.current = setTimeout(() => setModeNotice(false), 4000);
     }
     setSimulationMode(mode);
-    setResult(null);
+    setAnalysisResult((prev) => ({ ...prev, result: null }));
   };
 
   const handleAnalyze = async (input: InvestmentInput, quickTotalMan?: string) => {
@@ -115,7 +138,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
       const res = isOnline === false
         ? analyzeOffline(inputWithMethod)
         : await analyzeOnline(inputWithMethod);
-      setResult(res);
+      setAnalysisResult((prev) => ({ ...prev, result: res }));
       setLastInput(inputWithMethod);
 
       // Update URL with current simulation conditions
@@ -153,7 +176,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
       const res = isOnline === false
         ? analyzeOffline(updatedInput)
         : await analyzeOnline(updatedInput);
-      setResult(res);
+      setAnalysisResult((prev) => ({ ...prev, result: res }));
       setLastInput((prev) => prev ? { ...prev, loanMethod: method } : prev);
     } catch (e) {
       setError(e instanceof Error ? e.message : "シミュレーションに失敗しました");
@@ -165,12 +188,15 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const handleFetchLandPrices = async (area: string, city: string, lat?: number, lng?: number) => {
     setLoading(true);
     setError(null);
-    setStationRidership(null);
-    setPopulationForecast(null);
-    setLandAppraisal(null);
-    setExternalUrbanRisks(null);
-    setInvestmentScore(null);
-    setHazardRisks(null);
+    setAnalysisResult((prev) => ({
+      ...prev,
+      stationRidership: null,
+      populationForecast: null,
+      landAppraisal: null,
+      externalUrbanRisks: null,
+      investmentScore: null,
+      hazardRisks: null,
+    }));
     if (lat !== undefined && lng !== undefined) {
       setPropertyLat(lat);
       setPropertyLng(lng);
@@ -188,24 +214,29 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
         areaSqm: lastInput?.landArea ?? 0,
       };
       const comp = await compareLandPrice(baseParams);
-      setComparison(comp);
+      setAnalysisResult((prev) => ({ ...prev, comparison: comp }));
 
+      let est: TheoreticalPriceResult | null = null;
       if (lastInput && lastInput.landArea > 0) {
         try {
-          const est = await estimateLandPrice({
+          est = await estimateLandPrice({
             ...baseParams,
             buildingAge: lastInput.buildingAge,
             stationMinutes: lastInput.stationMinutes,
           });
-          setTheoreticalPrice(est);
         } catch {
-          setTheoreticalPrice(null);
+          est = null;
         }
       }
+      setAnalysisResult((prev) => ({ ...prev, theoreticalPrice: est }));
+
       const [appraisal] = await Promise.allSettled([
         fetchLandAppraisals({ area, year: toYear, city: city || undefined }),
       ]);
-      setLandAppraisal(appraisal.status === "fulfilled" ? appraisal.value : null);
+      setAnalysisResult((prev) => ({
+        ...prev,
+        landAppraisal: appraisal.status === "fulfilled" ? appraisal.value : null,
+      }));
 
       if (lat !== undefined && lng !== undefined) {
         const [ridership, population, urbanRisks, scoreResult, hazard] = await Promise.allSettled([
@@ -215,11 +246,14 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           fetchInvestmentScore({ lat, lng }),
           fetchHazardInfo(lat, lng),
         ]);
-        setStationRidership(ridership.status === "fulfilled" ? ridership.value : null);
-        setPopulationForecast(population.status === "fulfilled" ? population.value : null);
-        setExternalUrbanRisks(urbanRisks.status === "fulfilled" ? urbanRisks.value : null);
-        setInvestmentScore(scoreResult.status === "fulfilled" ? scoreResult.value : null);
-        setHazardRisks(hazard.status === "fulfilled" ? hazard.value : null);
+        setAnalysisResult((prev) => ({
+          ...prev,
+          stationRidership: ridership.status === "fulfilled" ? ridership.value : null,
+          populationForecast: population.status === "fulfilled" ? population.value : null,
+          externalUrbanRisks: urbanRisks.status === "fulfilled" ? urbanRisks.value : null,
+          investmentScore: scoreResult.status === "fulfilled" ? scoreResult.value : null,
+          hazardRisks: hazard.status === "fulfilled" ? hazard.value : null,
+        }));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "相場データの取得に失敗しました。しばらく後に再試行してください");
