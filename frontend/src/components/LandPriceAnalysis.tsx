@@ -259,18 +259,18 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice, station
         {comparison.stats && comparison.stats.count >= 3 &&
           input?.landArea && input.landArea > 0 &&
           input?.monthlyRent && input.monthlyRent > 0 && (() => {
+            const userYield = (input.landPrice + input.buildingCost) > 0
+              ? input.monthlyRent * 12 / (input.landPrice + input.buildingCost)
+              : 0;
             const benchmark = calcYieldBenchmark({
               medianTsubo: stats.medianTsubo,
               minTsubo: stats.minTsubo,
               maxTsubo: stats.maxTsubo,
               landAreaSqm: input.landArea,
-              landPrice: input.landPrice,
               monthlyRent: input.monthlyRent,
               buildingCost: input.buildingCost,
+              userYield,
             });
-            const userYield = (input.landPrice + input.buildingCost) > 0
-              ? input.monthlyRent * 12 / (input.landPrice + input.buildingCost)
-              : 0;
             const judgmentColors: Record<string, string> = {
               "realistic": "bg-green-100 text-green-800",
               "slightly-high": "bg-yellow-100 text-yellow-800",
