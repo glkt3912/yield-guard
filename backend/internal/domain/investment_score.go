@@ -20,7 +20,7 @@ type InvestmentScoreInput struct {
 	StormItems           []StormHazardItem
 	TsunamiItems         []TsunamiHazardItem
 	LandslideItems       []LandslideHazardItem
-	LandPriceChangeRate  float64 // 坪単価の変化率（0=データなし）
+	LandPriceChangeRate  float64 // 坪単価の変化率（HasLandPriceTrend=false の場合は未使用）
 	HasLandPriceTrend    bool    // true のときのみ地価トレンドスコアを加算
 }
 
