@@ -414,7 +414,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 シミュレーション
               </button>
               <button
-                onClick={() => setActiveTab("area-discovery")}
+                onClick={() => { setActiveTab("area-discovery"); setSelectedMunicipalityMsg(null); }}
                 className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
                   activeTab === "area-discovery"
                     ? "bg-white shadow-sm text-foreground"

@@ -1121,10 +1121,10 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 			transactions, fetchErr := h.mlitClient.FetchLandPrices(ctx, mlit.LandPriceQuery{
 				Area:      prefecture,
 				City:      m.ID,
-				Year:      toYear,
-				Quarter:   4,
-				ToYear:    fromYear,
-				ToQuarter: 1,
+				Year:      fromYear,
+				Quarter:   1,
+				ToYear:    toYear,
+				ToQuarter: 4,
 			})
 
 			item := domain.AreaDiscoveryItem{
@@ -1147,26 +1147,19 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 			item.TransactionCount = stats.Count
 			item.DataSufficient = stats.Count >= 3
 
-			// 利回り達成難易度: 目標利回りとエリア推定利回りを比較
-			// 推定利回り = 年間家賃想定 / 総投資額想定
-			// 総投資額想定 = medianTsubo × (budget の 60% を土地と仮定してtsubo換算) + 建物費(budget×40%)
-			// budget が未指定の場合は medianTsubo × 30坪 + 1000万 で試算
-			var estimatedTotalInvestment float64
+			// 利回り達成難易度: 予算（または中央坪単価×30坪+建物代）に対して目標利回りが必要とする月額家賃を試算し、
+			// 1坪あたり月額賃料の現実性で判定する
+			var totalCostEst float64
 			if budget > 0 {
-				estimatedTotalInvestment = budget
+				totalCostEst = budget
 			} else {
-				estimatedTotalInvestment = stats.MedianTsubo*30 + 10_000_000
+				totalCostEst = stats.MedianTsubo*30 + 10_000_000
 			}
-			_ = estimatedTotalInvestment // 将来拡張用
-
-			// 代わりに: 指定予算でこのエリアの中央坪単価の物件を買った場合の坪単価比率で難易度判定
-			landCostAtMedian := stats.MedianTsubo * 30 // 30坪想定
-			buildingCost := 10_000_000.0
-			typicalTotalCost := landCostAtMedian + buildingCost
-			annualRentNeeded := typicalTotalCost * targetYield
-			// 月額家賃 = annualRentNeeded / 12 が現実的か（1坪あたり月1万円以内が目安）
+			annualRentNeeded := totalCostEst * targetYield
+			// 1坪あたり月額賃料が現実的か判定（目安: 8,000円以下=達成可能, 15,000円超=困難）
 			monthlyRentNeeded := annualRentNeeded / 12
-			rentPerTsubo := monthlyRentNeeded / 30
+			areaTsubo := 30.0
+			rentPerTsubo := monthlyRentNeeded / areaTsubo
 			if rentPerTsubo <= 8000 {
 				item.YieldDifficulty = "achievable"
 				item.YieldDifficultyLabel = "達成可能"
