@@ -704,7 +704,7 @@ func (h *Handler) GetHazardInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, risks)
 }
 
-// calcScoreForTile は指定タイル座標に対して 11 API を並列取得し投資適地スコアを返す。
+// calcScoreForTile は指定タイル座標に対して複数 API を並列取得し投資適地スコアを返す。
 // 個別 API の失敗は警告ログのみでスキップする。コンテキストキャンセル時はエラーを返す。
 func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.InvestmentScoreResult, error) {
 	if err := ctx.Err(); err != nil {
@@ -738,6 +738,29 @@ func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.Inv
 	go func() { d, e := h.mlitClient.FetchStormHazard(ctx, z, x, y); stoCh <- result[[]domain.StormHazardItem]{d, e} }()
 	go func() { d, e := h.mlitClient.FetchTsunamiHazard(ctx, z, x, y); tsuCh <- result[[]domain.TsunamiHazardItem]{d, e} }()
 	go func() { d, e := h.mlitClient.FetchLandslideHazard(ctx, z, x, y); lanCh <- result[[]domain.LandslideHazardItem]{d, e} }()
+
+	// 地価トレンド: タイル中心座標→都道府県コードを逆引きし、新旧2期間を並列取得する
+	centerLat, centerLng := mlit.TileToLatLng(x, y, z)
+	prefCode := domain.PrefCodeFromLatLng(centerLat, centerLng)
+	type landResult struct {
+		stats domain.LandPriceStats
+		err   error
+	}
+	recentLandCh := make(chan landResult, 1)
+	oldLandCh := make(chan landResult, 1)
+	if prefCode != "" {
+		go func() {
+			tx, e := h.mlitClient.FetchLandPrices(ctx, mlit.LandPriceQuery{Area: prefCode, Year: 2023, Quarter: 1, ToYear: 2024, ToQuarter: 4})
+			recentLandCh <- landResult{domain.CalcLandPriceStats(tx), e}
+		}()
+		go func() {
+			tx, e := h.mlitClient.FetchLandPrices(ctx, mlit.LandPriceQuery{Area: prefCode, Year: 2021, Quarter: 1, ToYear: 2022, ToQuarter: 4})
+			oldLandCh <- landResult{domain.CalcLandPriceStats(tx), e}
+		}()
+	} else {
+		recentLandCh <- landResult{}
+		oldLandCh <- landResult{}
+	}
 
 	input := domain.InvestmentScoreInput{}
 
@@ -805,6 +828,17 @@ func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.Inv
 		slog.WarnContext(ctx, "FetchLandslideHazard failed", "error", r.err)
 	} else {
 		input.LandslideItems = r.data
+	}
+
+	recentLand := <-recentLandCh
+	oldLand := <-oldLandCh
+	if recentLand.err != nil {
+		slog.WarnContext(ctx, "FetchLandPrices (recent) failed", "error", recentLand.err)
+	} else if oldLand.err != nil {
+		slog.WarnContext(ctx, "FetchLandPrices (old) failed", "error", oldLand.err)
+	} else if recentLand.stats.MedianTsubo > 0 && oldLand.stats.MedianTsubo > 0 {
+		input.LandPriceChangeRate = (recentLand.stats.MedianTsubo - oldLand.stats.MedianTsubo) / oldLand.stats.MedianTsubo
+		input.HasLandPriceTrend = true
 	}
 
 	return domain.CalcInvestmentScore(input), nil
@@ -897,11 +931,17 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 	z := 13
 	if zStr := c.Query("z"); zStr != "" {
 		zVal, err := strconv.Atoi(zStr)
-		if err != nil || zVal < 11 || zVal > 14 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "z は 11〜14 の整数で指定してください"})
+		if err != nil || zVal < 11 || zVal > 15 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "z は 11〜15 の整数で指定してください"})
 			return
 		}
 		z = zVal
+	}
+
+	// z=15 の高解像度モードはタイル上限を 25 に縮小する
+	maxTiles := maxHeatmapTiles
+	if z == 15 {
+		maxTiles = 25
 	}
 
 	// 高緯度 → 小さい y 値のため注意
@@ -909,9 +949,9 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 	xMax, yMax := mlit.LatLngToTile(minLat, maxLng, z)
 
 	tileCount := (xMax - xMin + 1) * (yMax - yMin + 1)
-	if tileCount > maxHeatmapTiles {
+	if tileCount > maxTiles {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("タイル数 %d が上限 %d を超えています。ズームレベルを下げるか範囲を狭めてください", tileCount, maxHeatmapTiles),
+			"error": fmt.Sprintf("タイル数 %d が上限 %d を超えています。ズームレベルを下げるか範囲を狭めてください", tileCount, maxTiles),
 		})
 		return
 	}
