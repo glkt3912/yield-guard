@@ -414,7 +414,6 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                           input={lastInput}
                           acquisitionCosts={result.acquisitionCosts}
                           yearlyResults={result.yearlyResults}
-                          loanAmount={lastInput.loanAmount}
                         />
                       </div>
                     )}

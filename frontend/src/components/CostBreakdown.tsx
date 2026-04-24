@@ -8,7 +8,6 @@ interface Props {
   input: InvestmentInput;
   acquisitionCosts: AcquisitionCostBreakdown;
   yearlyResults: YearlyResult[];
-  loanAmount: number;
 }
 
 const fmt = (n: number) =>
@@ -21,7 +20,7 @@ const COLORS = [
   "#8b5cf6", "#06b6d4", "#f97316",
 ];
 
-export default function CostBreakdown({ input, acquisitionCosts, yearlyResults, loanAmount }: Props) {
+export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }: Props) {
   // 初期投資の内訳（miscExpenses は別軸の概算値のため表示しない）
   const initialCostItems = [
     { name: "土地", value: input.landPrice },
@@ -47,9 +46,9 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults, 
 
   const totalInitial = initialCostItems.reduce((s, i) => s + i.value, 0);
 
-  const downPayment = input.landPrice + input.buildingCost - loanAmount;
+  const downPayment = input.landPrice + input.buildingCost - input.loanAmount;
   const emergencyReserve = input.monthlyRent * 3;
-  const minimumRequired = downPayment + acquisitionCosts.total;
+  const minimumRequired = Math.max(0, downPayment) + acquisitionCosts.total;
   const propertyValue = input.landPrice + input.buildingCost;
   const downPaymentRatio = propertyValue > 0 ? downPayment / propertyValue : 0;
 
