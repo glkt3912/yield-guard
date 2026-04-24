@@ -104,6 +104,7 @@ yield-guard/
 - `DeadCrossChart.tsx` — dead-cross visualization
 - `CashFlowChart.tsx` — stress-test cash flow
 - `CostBreakdown.tsx` — cost breakdown
+- `WatchlistPanel.tsx` — property watchlist (localStorage persistence)
 
 ## Conventions
 

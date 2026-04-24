@@ -121,7 +121,16 @@ make docker-up         # backend :8080 + frontend :3000 を一括起動
 
 ### ローカル開発
 
-**バックエンド**
+Makefile の便利ターゲットを使うと片方だけ起動できる:
+
+```bash
+make backend    # バックエンドのみ起動（:8080）
+make frontend   # フロントエンドのみ起動（:3000）
+make install    # フロントエンド依存関係インストール（npm install）
+make logs       # Docker ログ表示（未起動時は案内メッセージ）
+```
+
+**バックエンド（手動）**
 
 ```bash
 cd backend

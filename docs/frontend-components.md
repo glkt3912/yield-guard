@@ -17,6 +17,8 @@ page.tsx
         ├── CashFlowChart          (result + equityInvested を受け取り表示)
         ├── DeadCrossChart         (result を受け取り表示)
         ├── MonteCarloChart        (monteCarloResult を受け取り確率分布を表示。ボタン押下後のみ表示)
+        ├── RenovationPanel        (自己完結・独立状態管理)
+        ├── WatchlistPanel         (自己完結・localStorage 永続化)
         └── (PDF出力はコンポーネントではなく downloadReportPDF() で処理)
 ```
 
@@ -126,7 +128,8 @@ const equityInvested = result.totalInvestment - input.loanAmount
 | 状態 | ドロップダウン表示 |
 |------|-----------------|
 | 取得中 | 「読み込み中...」（disabled） |
-| 取得失敗 / データなし | 「（全市区町村）」のみ |
+| 取得失敗 | 「（全市区町村）」のみ + ドロップダウン直下に `muniError` を赤文字表示 |
+| データなし | 「（全市区町村）」のみ |
 | フィルタ一致なし | 「該当なし」（disabled） |
 | フィルタあり・複数一致 | 絞り込み結果 + 件数表示 |
 | フィルタなし | 「（全市区町村）」+ 全市区町村名 |
@@ -708,6 +711,51 @@ export const DEFAULT_INPUT: InvestmentInput = {
 
 **`BUILDING_USEFUL_LIFE`**: バックエンドの `UsefulLife()` と対応するフロントエンド側の参照用マップ。
 計算には使用せず、フォームの表示説明（「法定耐用年数: XX年」）に使用。
+
+---
+
+## WatchlistPanel
+
+`frontend/src/components/WatchlistPanel.tsx`
+
+### 責務
+
+物件候補を手動で登録し、`localStorage`（キー: `yg_watchlist`）に永続化するウォッチリスト機能を提供する。バックエンドAPIへの依存なし。`Dashboard` の `RenovationPanel` 直下に常時表示。
+
+### データ構造
+
+```typescript
+// types/investment.ts
+export type WatchlistStatus = "検討中" | "見送り" | "購入済み";
+
+export interface WatchlistItem {
+  id: string;        // crypto.randomUUID() または Date.now() で生成
+  name: string;      // 物件名（必須）
+  memo: string;      // メモ（任意）
+  status: WatchlistStatus;
+  addedAt: string;   // ISO 8601
+}
+```
+
+### 機能
+
+- 物件名 + メモ入力・追加ボタン（空白は追加不可、Enter キー対応）
+- ステータス変更ドロップダウン（検討中 / 見送り / 購入済み）
+- 削除ボタン（`Trash2` アイコン）
+- ステータスバッジの色分け: 検討中=青・見送り=グレー・購入済み=緑
+
+### localStorage 永続化
+
+```typescript
+// lazy initializer で初期値を直接ロード（saveItems([]) による消去バグを回避）
+const [items, setItems] = useState<WatchlistItem[]>(loadItems);
+
+useEffect(() => {
+  saveItems(items);
+}, [items]);
+```
+
+`useState(loadItems)` の lazy initializer を使うことで、初回レンダリング時に `saveItems([])` が誤って発火してデータを消去するバグを防ぐ。`loadItems` は SSR 安全のため `typeof window === "undefined"` チェックを内包している。
 
 ---
 
