@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { CashFlowChart } from "@/components/CashFlowChart";
+import CashFlowChart from "@/components/CashFlowChart";
 import { makeResult, makeYearlyResult } from "./helpers";
 
 describe("CashFlowChart", () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { DeadCrossChart } from "@/components/DeadCrossChart";
+import DeadCrossChart from "@/components/DeadCrossChart";
 import { makeResult } from "./helpers";
 
 describe("DeadCrossChart", () => {

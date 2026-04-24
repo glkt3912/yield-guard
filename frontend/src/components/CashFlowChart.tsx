@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ReferenceLine, ResponsiveContainer, Cell,
@@ -15,33 +15,42 @@ interface Props {
   equityInvested: number;
 }
 
-export function CashFlowChart({ result, equityInvested }: Props) {
+function CashFlowChart({ result, equityInvested }: Props) {
   const { yearlyResults, exitTotalEquity, exitSalePrice, exitNetProceeds } = result;
 
-  const data = yearlyResults.slice(0, 35).map((y) => ({
-    year: `${y.year}年`,
-    税引後CF: Math.round(y.afterTaxCashFlow / 10_000),
-    // 自己資金を初期コストとして加算した累積CF（ISSUE-22）
-    累積CF: Math.round((y.cumulativeCashFlow - equityInvested) / 10_000),
-    isDeadCrossZone: y.isInDeadCrossZone,
-    effectiveRate: y.effectiveRate,
-  }));
+  const data = useMemo(
+    () =>
+      yearlyResults.slice(0, 35).map((y) => ({
+        year: `${y.year}年`,
+        税引後CF: Math.round(y.afterTaxCashFlow / 10_000),
+        // 自己資金を初期コストとして加算した累積CF（ISSUE-22）
+        累積CF: Math.round((y.cumulativeCashFlow - equityInvested) / 10_000),
+        isDeadCrossZone: y.isInDeadCrossZone,
+        effectiveRate: y.effectiveRate,
+      })),
+    [yearlyResults, equityInvested],
+  );
 
   // 自己資金を回収した年（累積CF - 自己資金 >= 0）
-  const breakEvenYear = yearlyResults.find(
-    (y) => y.cumulativeCashFlow - equityInvested >= 0
-  )?.year ?? null;
+  const breakEvenYear = useMemo(
+    () =>
+      yearlyResults.find((y) => y.cumulativeCashFlow - equityInvested >= 0)?.year ?? null,
+    [yearlyResults, equityInvested],
+  );
 
   // 金利が変化した年のリスト（2年目以降で前年から変化した年）
-  const rateChangeYears: { year: string; rate: number }[] = [];
-  for (let i = 1; i < Math.min(yearlyResults.length, 35); i++) {
-    if (yearlyResults[i].effectiveRate !== yearlyResults[i - 1].effectiveRate) {
-      rateChangeYears.push({
-        year: `${yearlyResults[i].year}年`,
-        rate: yearlyResults[i].effectiveRate,
-      });
+  const rateChangeYears = useMemo(() => {
+    const changes: { year: string; rate: number }[] = [];
+    for (let i = 1; i < Math.min(yearlyResults.length, 35); i++) {
+      if (yearlyResults[i].effectiveRate !== yearlyResults[i - 1].effectiveRate) {
+        changes.push({
+          year: `${yearlyResults[i].year}年`,
+          rate: yearlyResults[i].effectiveRate,
+        });
+      }
     }
-  }
+    return changes;
+  }, [yearlyResults]);
 
   return (
     <Card>
@@ -132,3 +141,5 @@ export function CashFlowChart({ result, equityInvested }: Props) {
     </Card>
   );
 }
+
+export default React.memo(CashFlowChart);
