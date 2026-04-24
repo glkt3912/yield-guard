@@ -464,19 +464,20 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 | `label` | string | シナリオ名（上表参照） |
 | `interestRateDelta` | float64 | 基準金利からの上昇幅（例: `0.02` = +2%） |
 | `vacancyRateDelta` | float64 | 基準空室率からの上昇幅（例: `0.10` = +10%） |
-| `totalCashFlow` | float64 | 保有期間の税引前累積キャッシュフロー（円） |
-| `dscr` | float64 | DSCR（Debt Service Coverage Ratio）。ローンなしの場合は `0` |
-| `breakEvenYear` | int | 累積CF黒字転換年（保有期間内に未達なら `-1`） |
+| `totalCashFlow` | float64 | 保有期間の税引後累積キャッシュフロー（円）。減価償却は省略した保守的近似 |
+| `dscr` | float64 | 保有期間内の最悪年 DSCR（賃料下落率を年次適用した yearNOI / 年間ローン返済額）。ローンなしの場合は `0` |
+| `breakEvenYear` | int | 累積**税引後**CF黒字転換年（保有期間内に未達なら `-1`） |
 | `isSafe` | bool | 安全判定フラグ（下記参照） |
 
 **DSCR（負債返済カバレッジ比率）の計算式:**
 
 ```
-NOI = 年間実効賃料収入 × (1 − 空室率) − 経費 − 固定資産税
-DSCR = NOI / 年間ローン返済額
+NOI(y) = 年間実効賃料 × (1 − RentDeclineRate)^(y−1) − 経費 − 固定資産税
+DSCR   = min{ NOI(y) / 年間ローン返済額(y) }  // 保有期間内の最悪年
 ```
 
-DSCR が 1.0 以上であれば NOI だけでローン返済を賄える状態（銀行融資審査の基準値）。
+DSCR が 1.0 以上であれば NOI だけでローン返済を賄える状態（銀行融資審査の最低ライン）。  
+実務基準は 1.2 以上。UI バッジは `≥1.2`: 緑（安全）/ `1.0〜1.2`: 黄（注意）/ `<1.0`: 赤（危険）で表示。
 
 **`isSafe` の判定ロジック:**
 

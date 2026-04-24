@@ -377,8 +377,8 @@ yearAnnualRent = baseAnnualRent × (1 - RentDeclineRate)^y
 | `InterestRateDelta` | float64 | 金利上昇幅（率。例: 0.01 = +1%） |
 | `VacancyRateDelta` | float64 | 空室率上昇幅（率。例: 0.10 = +10%pt） |
 | `TotalCashFlow` | float64 | `HoldingYears` 期間の税引後累積キャッシュフロー（円） |
-| `DSCR` | float64 | 負債返済カバレッジ比率（= 年間NOI / 年間ローン返済額）。ローンなしの場合は 0 |
-| `BreakEvenYear` | int | 累積CFが初めてプラスに転じる年次（1-indexed）。期間内に達成できない場合は `-1` |
+| `DSCR` | float64 | 保有期間内の最悪年 DSCR（賃料下落率を年次適用した yearNOI / 年間ローン返済額の最小値）。ローンなしの場合は 0 |
+| `BreakEvenYear` | int | 累積**税引後**CFが初めてプラスに転じる年次（1-indexed）。期間内に達成できない場合は `-1` |
 | `IsSafe` | bool | 安全判定フラグ（判定ロジックは下記参照） |
 
 ### 6 つのデフォルトシナリオ
@@ -400,9 +400,11 @@ yearAnnualRent = baseAnnualRent × (1 - RentDeclineRate)^y
 IsSafe = DSCR >= 1.0 && BreakEvenYear != -1 && BreakEvenYear <= HoldingYears
 ```
 
-- `DSCR >= 1.0`: 年間NOIがローン返済額を上回っている（債務返済能力あり）
-- `BreakEvenYear != -1`: 保有期間内に累積CFが黒字転換する
+- `DSCR >= 1.0`: 保有期間内の最悪年においても NOI がローン返済額を上回っている（債務返済能力あり）
+- `BreakEvenYear != -1`: 保有期間内に累積**税引後**CFが黒字転換する
 - `BreakEvenYear <= HoldingYears`: 黒字転換が出口売却年以内に収まる
+
+> **注意**: UI バッジの「安全」表示は `IsSafe` ではなく DSCR 値を直接使用し、実務基準の 1.2 を閾値とする（`IsSafe` の閾値定義 1.0 は変更しない）。
 
 **ローンなし（`LoanAmount == 0`）の場合:**
 
