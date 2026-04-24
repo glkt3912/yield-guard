@@ -53,54 +53,53 @@ export default function NegotiationPanel({
 }: Props) {
   const askingPropertyPrice = input.landPrice + input.buildingCost;
 
-  // Max purchase price = max total investment / (1 + miscExpenseRate)
+  // Max purchase price derived from existing requiredCostReduction field
   const maxTotalInvestment = result.totalInvestment - result.requiredCostReduction;
-  const maxPropertyPrice =
-    input.miscExpenseRate > -1
-      ? maxTotalInvestment / (1 + input.miscExpenseRate)
-      : maxTotalInvestment;
+  const maxPropertyPrice = maxTotalInvestment / (1 + input.miscExpenseRate);
 
   const diffFromAsking = maxPropertyPrice - askingPropertyPrice;
   const diffPct =
     askingPropertyPrice > 0 ? (diffFromAsking / askingPropertyPrice) * 100 : 0;
+  // Property price discount needed (positive = need to negotiate down)
+  const discountNeeded = diffFromAsking < 0 ? -diffFromAsking : 0;
 
-  // Market-implied property price from land transaction data
+  // Market-implied property price: median land tsubo × area + building cost
   const marketLandValue =
     comparison && input.landArea > 0
       ? comparison.stats.medianTsubo * (input.landArea / TSUBO_PER_SQM)
       : null;
-  const marketPropertyPrice =
+  const rawMarketPrice =
     marketLandValue !== null ? marketLandValue + input.buildingCost : null;
-  const marketDiff =
-    marketPropertyPrice !== null ? askingPropertyPrice - marketPropertyPrice : null;
-  const marketDiffPct =
-    marketPropertyPrice !== null && marketPropertyPrice > 0
-      ? (marketDiff! / marketPropertyPrice) * 100
+  const marketData =
+    rawMarketPrice !== null && rawMarketPrice > 0
+      ? {
+          price: rawMarketPrice,
+          diff: askingPropertyPrice - rawMarketPrice,
+          pct: ((askingPropertyPrice - rawMarketPrice) / rawMarketPrice) * 100,
+        }
       : null;
 
-  // Theoretical price from estimate endpoint
-  const theoreticalPropertyPrice = theoreticalPrice?.theoreticalPriceJPY ?? null;
-  const theoreticalDiff =
-    theoreticalPropertyPrice !== null
-      ? askingPropertyPrice - theoreticalPropertyPrice
-      : null;
-  const theoreticalDiffPct =
-    theoreticalPropertyPrice !== null && theoreticalPropertyPrice > 0
-      ? (theoreticalDiff! / theoreticalPropertyPrice) * 100
+  // Theoretical price from /api/land-prices/estimate
+  const theoreticalPriceJPY = theoreticalPrice?.theoreticalPriceJPY ?? null;
+  const theoreticalData =
+    theoreticalPriceJPY !== null && theoreticalPriceJPY > 0
+      ? {
+          price: theoreticalPriceJPY,
+          diff: askingPropertyPrice - theoreticalPriceJPY,
+          pct: ((askingPropertyPrice - theoreticalPriceJPY) / theoreticalPriceJPY) * 100,
+        }
       : null;
 
-  // Negotiation range: between theoretical/market lower bound and max purchase price
+  // Negotiation range: min/max across all available price anchors
   const rangeAnchors = [
-    theoreticalPropertyPrice,
-    marketPropertyPrice,
+    theoreticalData?.price ?? null,
+    marketData?.price ?? null,
     maxPropertyPrice,
   ].filter((v): v is number => v !== null && v > 0);
   const rangeLow = rangeAnchors.length > 0 ? Math.min(...rangeAnchors) : null;
   const rangeHigh = rangeAnchors.length > 0 ? Math.max(...rangeAnchors) : null;
 
-  const showNegotiationSection =
-    (comparison !== null && marketPropertyPrice !== null) ||
-    theoreticalPropertyPrice !== null;
+  const showNegotiationSection = marketData !== null || theoreticalData !== null;
 
   return (
     <Card className="rounded-xl shadow-sm">
@@ -138,9 +137,9 @@ export default function NegotiationPanel({
               ) : (
                 <p className="text-sm text-muted-foreground">—</p>
               )}
-              {askingPropertyPrice > 0 && diffFromAsking < 0 && (
+              {discountNeeded > 0 && (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  値引き必要額: {formatYen(Math.abs(diffFromAsking))}
+                  値引き必要額: {formatYen(discountNeeded)}
                 </p>
               )}
             </div>
@@ -178,42 +177,42 @@ export default function NegotiationPanel({
                     </td>
                     <td className="py-2 pl-4" />
                   </tr>
-                  {marketPropertyPrice !== null && marketDiff !== null && marketDiffPct !== null && (
+                  {marketData !== null && (
                     <tr>
                       <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">
                         市場取引実勢
                       </td>
                       <td className="py-2 font-semibold">
-                        {formatYen(marketPropertyPrice)}
+                        {formatYen(marketData.price)}
                       </td>
                       <td className="py-2 pl-4">
-                        <DiffBadge diff={marketDiff} pct={marketDiffPct} />
+                        <DiffBadge diff={marketData.diff} pct={marketData.pct} />
                       </td>
                     </tr>
                   )}
-                  {theoreticalPropertyPrice !== null && theoreticalDiff !== null && theoreticalDiffPct !== null && (
+                  {theoreticalData !== null && (
                     <tr>
                       <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">
                         理論価格
                       </td>
                       <td className="py-2 font-semibold">
-                        {formatYen(theoreticalPropertyPrice)}
+                        {formatYen(theoreticalData.price)}
                       </td>
                       <td className="py-2 pl-4">
-                        <DiffBadge diff={theoreticalDiff} pct={theoreticalDiffPct} />
+                        <DiffBadge diff={theoreticalData.diff} pct={theoreticalData.pct} />
                       </td>
                     </tr>
                   )}
-                  {result.requiredCostReduction > 0 && (
+                  {discountNeeded > 0 && askingPropertyPrice > 0 && (
                     <tr>
                       <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">
                         目標利回り達成に必要な値引き
                       </td>
                       <td className="py-2 font-semibold text-red-600">
-                        {formatYen(result.requiredCostReduction)}
+                        {formatYen(discountNeeded)}
                       </td>
                       <td className="py-2 pl-4 text-red-600 text-sm">
-                        ({formatPct(-result.requiredCostReduction / result.totalInvestment)})
+                        ({formatPct(discountNeeded / askingPropertyPrice)})
                       </td>
                     </tr>
                   )}
