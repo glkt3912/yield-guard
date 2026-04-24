@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 import { GLOSSARY } from "@/lib/glossary";
 
@@ -15,7 +15,7 @@ export function TermTooltip({ term, children }: Props) {
   if (!entry) return <>{children}</>;
 
   return (
-    <TooltipProvider>
+    <>
       <Tooltip open={open} onOpenChange={setOpen}>
         <TooltipTrigger asChild>
           <span
@@ -39,6 +39,6 @@ export function TermTooltip({ term, children }: Props) {
           <p className="mt-0.5 text-muted-foreground">💡 {entry.tip}</p>
         </div>
       )}
-    </TooltipProvider>
+    </>
   );
 }
