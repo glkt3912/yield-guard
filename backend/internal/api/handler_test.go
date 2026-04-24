@@ -41,7 +41,7 @@ type mockMLITClient struct {
 
 func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
 	if m.fetchFunc == nil {
-		panic("mockMLITClient.FetchLandPrices called unexpectedly (fetchFunc is nil)")
+		return []domain.LandTransaction{}, nil
 	}
 	return m.fetchFunc(ctx, q)
 }

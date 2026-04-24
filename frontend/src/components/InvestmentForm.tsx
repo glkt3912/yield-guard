@@ -100,6 +100,8 @@ interface Props {
   initialInput?: Partial<InvestmentInput>;
   initialQuickTotalPriceMan?: string;
   isOnline?: boolean | null;
+  externalLat?: number;
+  externalLng?: number;
 }
 
 function getPeriodLabel(): string {
@@ -156,12 +158,19 @@ function validateQuick(quickTotalPriceMan: string, input: InvestmentInput): Form
   return e;
 }
 
-export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulationMode, onModeChange, initialInput, initialQuickTotalPriceMan, isOnline = null }: Props) {
+export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulationMode, onModeChange, initialInput, initialQuickTotalPriceMan, isOnline = null, externalLat, externalLng }: Props) {
   const [input, setInput] = useState<InvestmentInput>({ ...DEFAULT_INPUT, ...initialInput });
   const [area, setArea] = useState("10");
   const [city, setCity] = useState("");
   const [propertyLat, setPropertyLat] = useState("");
   const [propertyLng, setPropertyLng] = useState("");
+
+  useEffect(() => {
+    if (externalLat !== undefined && externalLng !== undefined) {
+      setPropertyLat(externalLat.toFixed(6));
+      setPropertyLng(externalLng.toFixed(6));
+    }
+  }, [externalLat, externalLng]);
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [muniLoading, setMuniLoading] = useState(false);
   const [muniFilter, setMuniFilter] = useState("");

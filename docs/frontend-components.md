@@ -602,6 +602,7 @@ const deadCrossEndYear = yearlyResults.slice(0, 35)
 **props**:
 - `centerLat?: number` — 地図の初期中心緯度（省略時: 35.6812 = 東京）
 - `centerLng?: number` — 地図の初期中心経度（省略時: 139.7671 = 東京）
+- `onTileSelect?: (lat: number, lng: number) => void` — タイルクリック時のコールバック。渡すと各タイルがクリック可能になり、クリックで `centerLat/centerLng` を親に通知する
 
 **インポート方法**（SSR回避のため dynamic import 必須）:
 ```tsx
@@ -616,10 +617,15 @@ const InvestmentScoreHeatmap = dynamic(
 2. 右上の「このエリアを分析」ボタンをクリック
 3. `map.getBounds()` で現在の表示範囲を取得し `GET /api/investment-score-heatmap` を呼び出す
 4. 各タイルをスコアに応じた色の矩形で描画。ホバーでグレード・スコアを表示
+5. `onTileSelect` が渡されている場合はタイルをクリックするとその中心座標を親コンポーネントへ通知（`InvestmentForm` の緯度経度欄に自動入力）
 
 **ズームとタイル数の制御**:
 
-送信する `z` は `Math.min(map.getZoom(), 13)` でキャップ。ズームが高すぎると 50 タイル上限エラーになるため。
+送信する `z` は `Math.min(map.getZoom(), 15)` でキャップ。バックエンドでタイル上限が z≤14: 50、z=15: 25 に設定されている。
+
+**ヘッダー注記**:
+
+タイトル直下に「スコアは需要・安全性の評価です。表面利回りとは別軸の指標です。」を常時表示。スコアと利回りの混同を防ぐため。
 
 **スコア配色**:
 

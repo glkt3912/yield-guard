@@ -4,21 +4,24 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 )
 
 // InvestmentScoreInput は CalcInvestmentScore への入力パラメータ
 type InvestmentScoreInput struct {
-	PopulationItems   []PopulationForecastItem
-	StationRiderships []StationRidershipResult
-	LocationItems     []LocationOptimizationItem
-	EmbankmentItems   []EmbankmentItem
-	DisasterItems     []DisasterHistoryItem
-	UrbanZoningItems  []UrbanZoningItem
-	LiquefactionItems []LiquefactionRiskItem
-	FloodItems        []FloodHazardItem
-	StormItems        []StormHazardItem
-	TsunamiItems      []TsunamiHazardItem
-	LandslideItems    []LandslideHazardItem
+	PopulationItems      []PopulationForecastItem
+	StationRiderships    []StationRidershipResult
+	LocationItems        []LocationOptimizationItem
+	EmbankmentItems      []EmbankmentItem
+	DisasterItems        []DisasterHistoryItem
+	UrbanZoningItems     []UrbanZoningItem
+	LiquefactionItems    []LiquefactionRiskItem
+	FloodItems           []FloodHazardItem
+	StormItems           []StormHazardItem
+	TsunamiItems         []TsunamiHazardItem
+	LandslideItems       []LandslideHazardItem
+	LandPriceChangeRate  float64 // 坪単価の変化率（HasLandPriceTrend=false の場合は未使用）
+	HasLandPriceTrend    bool    // true のときのみ地価トレンドスコアを加算
 }
 
 // CalcInvestmentScore は複数 MLIT API の結果を統合して投資適地スコアを算出する。
@@ -32,9 +35,10 @@ func CalcInvestmentScore(input InvestmentScoreInput) InvestmentScoreResult {
 	liquefaction := calcLiquefactionScore(input.LiquefactionItems)
 	embankment := calcEmbankmentScore(input.EmbankmentItems)
 	disaster := calcDisasterScore(input.DisasterItems)
+	landTrend := calcLandPriceTrendScore(input.LandPriceChangeRate, input.HasLandPriceTrend)
 
 	total := 50 + pop.Score + ridership.Score + urbanArea.Score + locationOpt.Score +
-		hazard.Score + liquefaction.Score + embankment.Score + disaster.Score
+		hazard.Score + liquefaction.Score + embankment.Score + disaster.Score + landTrend.Score
 	if total > 100 {
 		total = 100
 	}
@@ -54,6 +58,7 @@ func CalcInvestmentScore(input InvestmentScoreInput) InvestmentScoreResult {
 			LiquefactionRisk: liquefaction,
 			Embankment:       embankment,
 			DisasterHistory:  disaster,
+			LandPriceTrend:   landTrend,
 			RadarData:        buildRadarData(pop.Score, ridership.Score, urbanArea.Score, locationOpt.Score, hazard.Score, liquefaction.Score, embankment.Score, disaster.Score),
 		},
 	}
@@ -96,7 +101,7 @@ func calcPopulationScore(items []PopulationForecastItem) ScoreItem {
 }
 
 // calcRidershipScore は XKT015 の最大乗降客数から 0〜+20 点を算出する。
-// 5万人/日以上で満点。
+// 20万人/日以上で満点。
 func calcRidershipScore(riderships []StationRidershipResult) ScoreItem {
 	if len(riderships) == 0 {
 		return ScoreItem{Score: 0, Label: "交通利便性", Description: "駅データなし"}
@@ -109,7 +114,7 @@ func calcRidershipScore(riderships []StationRidershipResult) ScoreItem {
 			topStation = s.StationName
 		}
 	}
-	raw := float64(maxPassengers) / 50_000.0 * 20.0
+	raw := float64(maxPassengers) / 200_000.0 * 20.0
 	score := int(math.Min(math.Round(raw), 20))
 	desc := fmt.Sprintf("%s %s人/日", topStation, formatPassengers(maxPassengers))
 	return ScoreItem{Score: score, Label: "交通利便性", Description: desc}
@@ -242,17 +247,25 @@ func calcEmbankmentScore(items []EmbankmentItem) ScoreItem {
 	return ScoreItem{Score: -5, Label: "大規模盛土", Description: desc}
 }
 
-// calcDisasterScore は XST001 の災害履歴から 0 or -10 点を算出する。
+// calcDisasterScore は XST001 の災害履歴から年数に応じた段階評価を算出する。
+// 10年以内: -10、30年以内: -5、30年超: -2。年不明: -10（最悪ケース）。
+// 複数履歴がある場合は最も厳しいスコアを採用する。
 func calcDisasterScore(items []DisasterHistoryItem) ScoreItem {
 	if len(items) == 0 {
 		return ScoreItem{Score: 0, Label: "災害履歴", Description: "災害履歴なし"}
 	}
+	currentYear := time.Now().Year()
+	minScore := 0
 	names := make([]string, 0, len(items))
 	seen := make(map[string]bool)
 	for _, d := range items {
 		if d.Name != "" && !seen[d.Name] {
 			names = append(names, d.Name)
 			seen[d.Name] = true
+		}
+		s := disasterScoreByYear(d.Year, currentYear)
+		if s < minScore {
+			minScore = s
 		}
 	}
 	var desc string
@@ -261,7 +274,23 @@ func calcDisasterScore(items []DisasterHistoryItem) ScoreItem {
 	} else {
 		desc = "過去の災害記録あり"
 	}
-	return ScoreItem{Score: -10, Label: "災害履歴", Description: desc}
+	return ScoreItem{Score: minScore, Label: "災害履歴", Description: desc}
+}
+
+// disasterScoreByYear は発生年から年数重み付けスコアを返す。
+func disasterScoreByYear(year, currentYear int) int {
+	if year == 0 {
+		return -10
+	}
+	yearsAgo := currentYear - year
+	switch {
+	case yearsAgo <= 10:
+		return -10
+	case yearsAgo <= 30:
+		return -5
+	default:
+		return -2
+	}
 }
 
 // buildRadarData はレーダーチャート用の5カテゴリ正規化スコアを生成する（0〜100）。
@@ -298,4 +327,36 @@ func formatPassengers(n int) string {
 		return fmt.Sprintf("%.1f万", float64(n)/10_000)
 	}
 	return fmt.Sprintf("%d", n)
+}
+
+// calcLandPriceTrendScore は坪単価変化率から ±10 点を算出する。
+// HasLandPriceTrend が false の場合はデータなし扱いで 0 点を返す。
+func calcLandPriceTrendScore(changeRate float64, hasData bool) ScoreItem {
+	if !hasData {
+		return ScoreItem{Score: 0, Label: "地価トレンド", Description: "地価データなし"}
+	}
+	pct := changeRate * 100
+	var score int
+	switch {
+	case pct > 10:
+		score = 10
+	case pct > 5:
+		score = 5
+	case pct >= -5:
+		score = 0
+	case pct >= -10:
+		score = -5
+	default:
+		score = -10
+	}
+	var trend string
+	switch {
+	case pct > 0:
+		trend = "上昇"
+	case pct < 0:
+		trend = "下落"
+	default:
+		trend = "横ばい"
+	}
+	return ScoreItem{Score: score, Label: "地価トレンド", Description: fmt.Sprintf("坪単価%s（約%+.1f%%）", trend, pct)}
 }

@@ -2296,12 +2296,77 @@ func TestCalcPopulationScore_LinearInterpolation(t *testing.T) {
 }
 
 func TestCalcRidershipScore_MaxCap(t *testing.T) {
+	// 20万人以上で満点（上限20点）
 	riderships := []StationRidershipResult{
 		{StationName: "新宿", Passengers: 500_000},
 	}
 	item := calcRidershipScore(riderships)
 	if item.Score != 20 {
 		t.Errorf("500k passengers should give max score 20, got %d", item.Score)
+	}
+}
+
+func TestCalcRidershipScore_Threshold(t *testing.T) {
+	tests := []struct {
+		name       string
+		passengers int
+		wantScore  int
+	}{
+		{"200k = max", 200_000, 20},
+		{"100k = half", 100_000, 10},
+		{"50k = quarter", 50_000, 5},
+		{"0 passengers", 0, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			item := calcRidershipScore([]StationRidershipResult{{StationName: "駅", Passengers: tt.passengers}})
+			if item.Score != tt.wantScore {
+				t.Errorf("passengers %d: got %d, want %d", tt.passengers, item.Score, tt.wantScore)
+			}
+		})
+	}
+}
+
+func TestCalcDisasterScore_YearWeighted(t *testing.T) {
+	// 年不明（Year=0）→ 最悪ケース -10
+	items := []DisasterHistoryItem{{Name: "浸水域", Year: 0}}
+	if s := calcDisasterScore(items); s.Score != -10 {
+		t.Errorf("unknown year: want -10, got %d", s.Score)
+	}
+
+	// 空リスト→ 0
+	if s := calcDisasterScore(nil); s.Score != 0 {
+		t.Errorf("no disaster: want 0, got %d", s.Score)
+	}
+
+	// 複数履歴があるとき最悪スコアを採用する
+	mixed := []DisasterHistoryItem{
+		{Name: "浸水域", Year: 1980}, // 46年前 → -2
+		{Name: "がけ崩れ", Year: 0},  // 年不明 → -10
+	}
+	if s := calcDisasterScore(mixed); s.Score != -10 {
+		t.Errorf("mixed: want -10 (worst), got %d", s.Score)
+	}
+}
+
+func TestDisasterScoreByYear(t *testing.T) {
+	currentYear := 2026
+	cases := []struct {
+		year int
+		want int
+	}{
+		{currentYear - 5, -10},  // 5年前 → -10
+		{currentYear - 10, -10}, // ちょうど10年 → -10
+		{currentYear - 15, -5},  // 15年前 → -5
+		{currentYear - 30, -5},  // ちょうど30年 → -5
+		{currentYear - 35, -2},  // 35年前 → -2
+		{0, -10},                // 年不明 → -10
+	}
+	for _, c := range cases {
+		got := disasterScoreByYear(c.year, currentYear)
+		if got != c.want {
+			t.Errorf("year %d (currentYear %d): got %d, want %d", c.year, currentYear, got, c.want)
+		}
 	}
 }
 

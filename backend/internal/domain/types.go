@@ -438,6 +438,7 @@ type ScoreBreakdown struct {
 	LiquefactionRisk ScoreItem    `json:"liquefactionRisk"`
 	Embankment       ScoreItem    `json:"embankment"`
 	DisasterHistory  ScoreItem    `json:"disasterHistory"`
+	LandPriceTrend   ScoreItem    `json:"landPriceTrend"`
 	RadarData        []RadarPoint `json:"radarData"`
 }
 
