@@ -242,8 +242,8 @@ type StressScenarioResult struct {
 	VacancyRateDelta  float64 `json:"vacancyRateDelta"`
 	TotalCashFlow     float64 `json:"totalCashFlow"`
 	DSCR              float64 `json:"dscr"`
-	BreakEvenYear     int     `json:"breakEvenYear"` // 累積CFが正転する年（-1=なし）
-	IsSafe            bool    `json:"isSafe"`        // DSCR >= 1.0 && BreakEvenYear <= HoldingYears
+	BreakEvenYear     int     `json:"breakEvenYear"` // 累積税引後CFが初めて正転する年（-1=なし）
+	IsSafe            bool    `json:"isSafe"`        // DSCR >= 1.0 && BreakEvenYear <= HoldingYears（UIバッジは1.2閾値、フラグ定義は変更しない）
 }
 
 // YieldScenario は1つの空室シナリオにおける利回り結果

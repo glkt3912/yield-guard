@@ -462,9 +462,8 @@ describe("calcStressScenario - rent decline and after-tax CF", () => {
 
     // 税なしは年1から黒転
     expect(s0.breakEvenYear).toBe(1);
-    // 税ありは afterTaxCF < 0 → 黒転なし（-1）または遅延
-    if (s1.breakEvenYear !== -1) {
-      expect(s1.breakEvenYear).toBeGreaterThan(s0.breakEvenYear);
-    }
+    // 税ありは incomeTax(40%) が CF を超えるため afterTaxCF < 0 → 保有期間中に黒転しない
+    // 数値設定（77,000円・15M・2%・30y）で afterTaxCF < 0 が確定するため -1 を直接検証する
+    expect(s1.breakEvenYear).toBe(-1);
   });
 });

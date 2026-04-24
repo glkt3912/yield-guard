@@ -922,13 +922,14 @@ func TestCalcStressScenario_AfterTaxCFDelaysBreakEven(t *testing.T) {
 	r1 := calcStressScenario(withTax, "税40%", 0, 0)
 
 	// 税なしは初年度から CF > 0 → breakEven = 1
-	if r0.BreakEvenYear == -1 {
-		t.Fatal("税なしで黒転しない: テスト設計を確認（yearNOI がローン返済額を下回っている）")
+	if r0.BreakEvenYear != 1 {
+		t.Fatalf("税なし: breakEvenYear = %d, want 1（yearNOI がローン返済額を上回っていない）", r0.BreakEvenYear)
 	}
-	// 税ありは incomeTax が CF を超えるため afterTaxCF < 0 → 黒転なし or 大幅遅延
-	if r1.BreakEvenYear != -1 && r1.BreakEvenYear <= r0.BreakEvenYear {
-		t.Errorf("税40%%の黒転年(%d) <= 税なし黒転年(%d): 税引後CFが正しく反映されていない",
-			r1.BreakEvenYear, r0.BreakEvenYear)
+	// 税ありは incomeTax(40%) が CF を超えるため afterTaxCF < 0 → 保有期間中に黒転しない
+	// 数値設定（77,000円・15M・2%・30y）で afterTaxCF < 0 が確定するため -1 を直接検証する
+	if r1.BreakEvenYear != -1 {
+		t.Errorf("税40%%: breakEvenYear = %d, want -1（afterTaxCF < 0 なのに黒転年が存在する）",
+			r1.BreakEvenYear)
 	}
 	t.Logf("noTax breakEven=%d, withTax breakEven=%d", r0.BreakEvenYear, r1.BreakEvenYear)
 }

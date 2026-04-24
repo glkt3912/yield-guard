@@ -420,6 +420,8 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 		dscr = minDSCR
 	}
 
+	// BreakEvenYear は税引後 cumCF が初めて正転した年（#312）
+	// IsSafe の DSCR 閾値は 1.0 のまま維持（UI バッジは別途 1.2 で表示、#313）
 	isSafe := false
 	if !hasLoanYear {
 		// 保有期間内に返済が発生しない場合（無借金物件等）はブレークイーン達成のみで安全と判定
