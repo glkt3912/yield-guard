@@ -264,6 +264,7 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice, station
               minTsubo: stats.minTsubo,
               maxTsubo: stats.maxTsubo,
               landAreaSqm: input.landArea,
+              landPrice: input.landPrice,
               monthlyRent: input.monthlyRent,
               buildingCost: input.buildingCost,
             });

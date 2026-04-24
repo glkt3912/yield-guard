@@ -16,7 +16,7 @@ export function TermTooltip({ term, children }: Props) {
 
   return (
     <TooltipProvider>
-      <Tooltip>
+      <Tooltip open={open} onOpenChange={setOpen}>
         <TooltipTrigger asChild>
           <span
             className="inline-flex items-center gap-0.5 cursor-help border-b border-dashed border-muted-foreground/50"

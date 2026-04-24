@@ -11,7 +11,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     tip: "対策: 繰上返済 or 保有10年以内の早期売却",
   },
   dscr: {
-    title: "DSCR（借債返済カバー率）",
+    title: "DSCR（借入金償還余裕率）",
     body: "NOI ÷ 年間ローン返済額。1.0未満では家賃収入だけでローンを払えない状態です。",
     tip: "銀行審査では通常1.2〜1.3以上が最低ライン",
   },
