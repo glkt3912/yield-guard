@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { downloadReportPDF } from "@/lib/generatePdf";
 import { MonteCarloChart } from "@/components/MonteCarloChart";
+import NegotiationPanel from "@/components/NegotiationPanel";
 import dynamic from "next/dynamic";
 
 const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
@@ -361,6 +362,12 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
               <>
                 <CriticalErrorBanner errors={result.criticalErrors} />
                 <YieldAnalysis result={result} input={lastInput} populationForecast={populationForecast} />
+                <NegotiationPanel
+                  result={result}
+                  input={lastInput}
+                  comparison={comparison}
+                  theoreticalPrice={theoreticalPrice}
+                />
                 <LoanOptimizationPanel
                   result={result}
                   loanMethod={loanMethod}
