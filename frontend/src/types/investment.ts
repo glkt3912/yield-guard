@@ -415,3 +415,13 @@ export interface HeatmapResponse {
   tiles: HeatmapTile[];
   tileCount: number;
 }
+
+export type WatchlistStatus = "検討中" | "見送り" | "購入済み";
+
+export interface WatchlistItem {
+  id: string;
+  name: string;
+  memo: string;
+  status: WatchlistStatus;
+  addedAt: string; // ISO 8601
+}

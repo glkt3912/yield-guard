@@ -20,6 +20,7 @@ import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { downloadReportPDF } from "@/lib/generatePdf";
 import { MonteCarloChart } from "@/components/MonteCarloChart";
 import NegotiationPanel from "@/components/NegotiationPanel";
+import WatchlistPanel from "@/components/WatchlistPanel";
 import dynamic from "next/dynamic";
 
 const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
@@ -412,6 +413,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
               </>
             )}
             <RenovationPanel />
+            <WatchlistPanel />
           </section>
         </div>
       </main>
