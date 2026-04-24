@@ -1,9 +1,16 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { InvestmentForm } from "@/components/InvestmentForm";
 import { DEFAULT_INPUT, QUICK_MODE_DEFAULTS } from "@/types/investment";
 import type { SimulationMode } from "@/types/investment";
+
+vi.mock("@/lib/api", () => ({
+  fetchMunicipalities: vi.fn().mockResolvedValue([]),
+  fetchRentDeclineHint: vi.fn(),
+}));
+
+import * as api from "@/lib/api";
 
 function renderForm(mode: SimulationMode = "full") {
   const onAnalyze = vi.fn().mockResolvedValue(undefined);
@@ -22,6 +29,11 @@ function renderForm(mode: SimulationMode = "full") {
 }
 
 describe("InvestmentForm", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.fetchMunicipalities).mockResolvedValue([]);
+  });
+
   it("シミュレーション実行ボタンをクリックすると onAnalyze が呼ばれる", async () => {
     const onAnalyze = vi.fn().mockResolvedValue(undefined);
     const onFetchLandPrices = vi.fn().mockResolvedValue(undefined);
@@ -277,6 +289,38 @@ describe("InvestmentForm", () => {
       expect(screen.getByLabelText(/物件価格（土地＋建物の総額）/)).toHaveValue(3000);
       expect(screen.getByLabelText(/想定月額賃料/)).toHaveValue(150000);
       vi.unstubAllGlobals();
+    });
+  });
+
+  describe("市区町村フェッチエラー", () => {
+    it("詳細モードで市区町村の取得に失敗するとエラーメッセージが表示される", async () => {
+      vi.mocked(api.fetchMunicipalities).mockRejectedValue(new Error("ネットワークエラー"));
+      renderForm("full");
+      await waitFor(() => {
+        expect(screen.getByText("ネットワークエラー")).toBeInTheDocument();
+      });
+    });
+
+    it("fetchMunicipalities がError以外を投げた場合もフォールバックメッセージが表示される", async () => {
+      vi.mocked(api.fetchMunicipalities).mockRejectedValue("unknown");
+      renderForm("full");
+      await waitFor(() => {
+        expect(screen.getByText("市区町村の取得に失敗しました")).toBeInTheDocument();
+      });
+    });
+
+    it("都道府県を変更すると前のエラーがクリアされる", async () => {
+      vi.mocked(api.fetchMunicipalities)
+        .mockRejectedValueOnce(new Error("ネットワークエラー"))
+        .mockResolvedValueOnce([]);
+      renderForm("full");
+      await waitFor(() => {
+        expect(screen.getByText("ネットワークエラー")).toBeInTheDocument();
+      });
+      await userEvent.selectOptions(screen.getByLabelText("都道府県"), "13");
+      await waitFor(() => {
+        expect(screen.queryByText("ネットワークエラー")).not.toBeInTheDocument();
+      });
     });
   });
 });
