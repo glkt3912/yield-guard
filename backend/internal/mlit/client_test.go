@@ -391,12 +391,12 @@ func TestCache_TTLExpiry(t *testing.T) {
 	data := []domain.LandTransaction{{Period: "2024年第1四半期", TradePrice: 10_000_000}}
 
 	// 有効期限を過去に設定して直接注入
-	c.mu.Lock()
-	c.entries[key] = cacheEntry{
+	c.land.mu.Lock()
+	c.land.entries[key] = cacheEntry{
 		data:      data,
 		expiresAt: time.Now().Add(-1 * time.Second), // 1秒前に期限切れ
 	}
-	c.mu.Unlock()
+	c.land.mu.Unlock()
 
 	_, ok := c.get(key)
 	if ok {
@@ -404,9 +404,9 @@ func TestCache_TTLExpiry(t *testing.T) {
 	}
 
 	// TTL切れエントリは get 後に削除されていること（メモリリーク対策）
-	c.mu.RLock()
-	_, stillExists := c.entries[key]
-	c.mu.RUnlock()
+	c.land.mu.RLock()
+	_, stillExists := c.land.entries[key]
+	c.land.mu.RUnlock()
 	if stillExists {
 		t.Error("expected expired entry to be deleted from map, but it still exists")
 	}
