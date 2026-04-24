@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/domain"
@@ -493,7 +494,8 @@ func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 	}
 
 	municipality := c.Query("municipality")
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
 
 	// XCT001 の対応年（2022〜2026）を並列取得
 	years := []int{2022, 2023, 2024, 2025, 2026}
