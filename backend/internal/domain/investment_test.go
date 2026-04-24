@@ -851,6 +851,88 @@ func TestCalcStressScenario_IsSafeFlipsWithVariableRate(t *testing.T) {
 		dscrYear1, result.DSCR, result.IsSafe, result.BreakEvenYear)
 }
 
+// TestCalcStressScenario_RentDeclineLowersDSCR は、RentDeclineRate > 0 の場合に
+// DSCR が下落率ゼロのケースより低くなることを検証する（#311）。
+//
+// 設計: 3% の賃料下落率を設定し、変動金利上昇スケジュールも加えることで
+// 保有期間後半に yearNOI と yearLoan の両方が悪化するケースを再現する。
+func TestCalcStressScenario_RentDeclineLowersDSCR(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:    5_000_000,
+		BuildingCost: 15_000_000,
+		MonthlyRent:  130_000,
+		VacancyRate:  0.05,
+		LoanAmount:   18_000_000,
+		AnnualLoanRate: 0.015,
+		LoanYears:    25,
+		ExpenseRate:  0.20,
+		IncomeTaxRate: 0.33,
+		HoldingYears: 10,
+		BuildingType: BuildingTypeRC,
+		RateAdjustmentSchedule: []RateAdjustment{
+			{AfterYear: 5, Rate: 0.03},
+		},
+	}
+
+	withoutDecline := base
+	withoutDecline.RentDeclineRate = 0
+
+	withDecline := base
+	withDecline.RentDeclineRate = 0.03
+
+	r0 := calcStressScenario(withoutDecline, "下落なし", 0, 0)
+	r1 := calcStressScenario(withDecline, "下落3%", 0, 0)
+
+	if r1.DSCR >= r0.DSCR {
+		t.Errorf("RentDeclineRate=3%% の DSCR(%.4f) >= 下落なし DSCR(%.4f): 賃料下落が反映されていない",
+			r1.DSCR, r0.DSCR)
+	}
+	t.Logf("noDeclineDSCR=%.4f, declineDSCR=%.4f", r0.DSCR, r1.DSCR)
+}
+
+// TestCalcStressScenario_AfterTaxCFDelaysBreakEven は、IncomeTaxRate > 0 の場合に
+// 税引後 CF ベースの黒転が税引前より悪化（遅延または未達）することを検証する（#312）。
+//
+// 設計: yearNOI がローン返済額をわずかに上回る（CF > 0）一方、
+// 利息控除後の課税所得×税率がそのCFを上回るよう貸出額を調整する。
+// 等払い方式・金利 2%・30年では初年度利息 ≈ L×2%、yearNOI ≈ 0.050L となるよう設定し、
+// noTax: breakEven=1、withTax: afterTaxCF < 0 → breakEven=-1 となることを確認する。
+func TestCalcStressScenario_AfterTaxCFDelaysBreakEven(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:    5_000_000,
+		BuildingCost: 15_000_000,
+		MonthlyRent:  77_000, // yearNOI ≈ 746k: CF > 0 だが incomeTax(40%) が CF を超える
+		VacancyRate:  0.05,
+		LoanAmount:   15_000_000,
+		AnnualLoanRate: 0.02,
+		LoanYears:    30,
+		ExpenseRate:  0.15,
+		HoldingYears: 15,
+		BuildingType: BuildingTypeRC,
+		RentDeclineRate: 0,
+	}
+
+	noTax := base
+	noTax.IncomeTaxRate = 0
+
+	withTax := base
+	withTax.IncomeTaxRate = 0.40
+
+	r0 := calcStressScenario(noTax, "税なし", 0, 0)
+	r1 := calcStressScenario(withTax, "税40%", 0, 0)
+
+	// 税なしは初年度から CF > 0 → breakEven = 1
+	if r0.BreakEvenYear == -1 {
+		t.Fatal("税なしで黒転しない: テスト設計を確認（yearNOI がローン返済額を下回っている）")
+	}
+	// 税ありは incomeTax が CF を超えるため afterTaxCF < 0 → 黒転なし or 大幅遅延
+	if r1.BreakEvenYear != -1 && r1.BreakEvenYear <= r0.BreakEvenYear {
+		t.Errorf("税40%%の黒転年(%d) <= 税なし黒転年(%d): 税引後CFが正しく反映されていない",
+			r1.BreakEvenYear, r0.BreakEvenYear)
+	}
+	t.Logf("noTax breakEven=%d, withTax breakEven=%d", r0.BreakEvenYear, r1.BreakEvenYear)
+}
+
 func TestDetectUrbanRisks_NilZoning(t *testing.T) {
 	risks := detectUrbanRisks(nil, nil)
 	if len(risks) != 0 {
