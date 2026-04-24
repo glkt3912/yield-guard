@@ -132,6 +132,7 @@ func NewRouter(h *Handler) *gin.Engine {
 		api.GET("/hazard", h.GetHazardInfo)
 		api.GET("/investment-score", h.GetInvestmentScore)
 		api.GET("/investment-score-heatmap", analyzeRL.middleware(), h.GetInvestmentScoreHeatmap)
+		api.GET("/area-discovery", h.HandleAreaDiscovery)
 	}
 
 	return r
