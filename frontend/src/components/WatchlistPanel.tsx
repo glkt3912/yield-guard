@@ -41,17 +41,11 @@ function formatDate(iso: string): string {
 }
 
 export default function WatchlistPanel() {
-  const [items, setItems] = useState<WatchlistItem[]>([]);
+  const [items, setItems] = useState<WatchlistItem[]>(loadItems);
   const [nameInput, setNameInput] = useState("");
   const [memoInput, setMemoInput] = useState("");
   const [nameError, setNameError] = useState("");
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    setItems(loadItems());
-  }, []);
-
-  // Persist to localStorage whenever items change
   useEffect(() => {
     saveItems(items);
   }, [items]);
