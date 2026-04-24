@@ -328,10 +328,8 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 		effectiveVacancy = 1
 	}
 
+	// 初年度賃料（空室率調整済み）— 賃料下落はループ内で年次適用
 	annualRent := in.MonthlyRent * 12 * (1 - effectiveVacancy)
-	annualExpenses := annualRent*in.ExpenseRate + in.AnnualPropertyTax
-	// noi はシナリオ期間中一定（calcStressScenario は賃料下落率を適用しない簡略計算）
-	noi := annualRent - annualExpenses
 
 	// 初年度の実効金利（スケジュール+ストレスdelta）
 	initRate := resolveRateForYear(in.AnnualLoanRate, rateDelta, in.RateAdjustmentSchedule, 1)
@@ -344,7 +342,7 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 		monthlyPayment = calcMonthlyPayment(in.LoanAmount, initRate, in.LoanYears)
 	}
 
-	// HoldingYears年間の累積CF（税引前）とブレークイーン年を算出
+	// HoldingYears年間の累積CF（税引後）とブレークイーン年を算出
 	// DSCR は各年返済額から算出した保有期間内最悪値（変動金利上昇ケースで正確なリスク評価を行うため）
 	holdingYears := in.HoldingYears
 	if holdingYears <= 0 {
@@ -372,29 +370,47 @@ func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta 
 		}
 
 		yearLoan := 0.0
+		yearInterest := 0.0
 		if remainingBalance > 0 && y <= in.LoanYears {
 			if in.LoanMethod == LoanMethodEqualPrincipal {
 				yi, yp := calcYearlyLoanComponentsEqualPrincipal(remainingBalance, currentRate, monthlyPrincipalStress)
 				yearLoan = yi + yp
+				yearInterest = yi
 				remainingBalance -= yp
 			} else {
+				annInterest, annPrincipal := calcYearlyLoanComponents(remainingBalance, currentRate, curMonthlyPayment)
 				yearLoan = curMonthlyPayment * 12
-				_, annPrincipal := calcYearlyLoanComponents(remainingBalance, currentRate, curMonthlyPayment)
+				yearInterest = annInterest
 				remainingBalance -= annPrincipal
 			}
 			if remainingBalance < 0 {
 				remainingBalance = 0
 			}
 		}
+
+		// 賃料下落率を年次適用（Analyze() の declineFactor と同じロジック、1-indexed なので y-1 を指数に使用）
+		declineFactor := math.Pow(1-in.RentDeclineRate, float64(y-1))
+		yearRent := annualRent * declineFactor
+		yearExpenses := yearRent*in.ExpenseRate + in.AnnualPropertyTax
+		yearNOI := yearRent - yearExpenses
+
 		if yearLoan > 0 {
 			hasLoanYear = true
-			if yearDSCR := noi / yearLoan; yearDSCR < minDSCR {
+			if yearDSCR := yearNOI / yearLoan; yearDSCR < minDSCR {
 				minDSCR = yearDSCR
 			}
 		}
-		cf := annualRent - yearLoan - annualExpenses
-		totalCF += cf
-		cumCF += cf
+
+		cf := yearNOI - yearLoan
+		// 減価償却は省略した保守的近似（簡略ストレス計算のため過大に税を見積もる）
+		taxableIncome := yearNOI - yearInterest
+		incomeTax := 0.0
+		if taxableIncome > 0 {
+			incomeTax = taxableIncome * in.IncomeTaxRate
+		}
+		afterTaxCF := cf - incomeTax
+		totalCF += afterTaxCF
+		cumCF += afterTaxCF
 		if breakEvenYear == -1 && cumCF > 0 {
 			breakEvenYear = y
 		}
