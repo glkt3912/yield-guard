@@ -941,10 +941,16 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 		z = zVal
 	}
 
-	// z=15 の高解像度モードはタイル上限を 25 に縮小する
-	maxTiles := maxHeatmapTiles
-	if z == 15 {
-		maxTiles = 25
+	// ズームレベルに応じてタイル数上限を決定
+	// z=11-12: 20, z=13-14: 30, z=15: 50
+	var maxTiles int
+	switch {
+	case z <= 12:
+		maxTiles = 20
+	case z <= 14:
+		maxTiles = 30
+	default:
+		maxTiles = maxHeatmapTiles
 	}
 
 	// 高緯度 → 小さい y 値のため注意
@@ -954,7 +960,7 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 	tileCount := (xMax - xMin + 1) * (yMax - yMin + 1)
 	if tileCount > maxTiles {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("タイル数 %d が上限 %d を超えています。ズームレベルを下げるか範囲を狭めてください", tileCount, maxTiles),
+			"error": fmt.Sprintf("too many tiles: max %d for zoom level %d", maxTiles, z),
 		})
 		return
 	}
