@@ -24,6 +24,8 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Turbopack (Next.js 16 default) と PWA プラグインの webpack 設定の衝突を解消する
+  turbopack: {},
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL ?? "http://localhost:8080";
     return [
