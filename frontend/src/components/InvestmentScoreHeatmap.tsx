@@ -29,8 +29,8 @@ function AnalyzeButton({ onAnalyze, loading }: { onAnalyze: (bounds: AnalyzeBoun
   const map = useMapEvents({});
   const handleClick = useCallback(() => {
     const b = map.getBounds();
-    // ズームが高すぎるとタイル数が上限50を超えるため13でキャップ
-    const z = Math.min(map.getZoom(), 13);
+    // z=15 は上限25タイル、z≤14 は上限50タイル（バックエンドで強制）
+    const z = Math.min(map.getZoom(), 15);
     onAnalyze({
       minLat: b.getSouth(),
       maxLat: b.getNorth(),
@@ -58,9 +58,10 @@ function AnalyzeButton({ onAnalyze, loading }: { onAnalyze: (bounds: AnalyzeBoun
 interface Props {
   centerLat?: number;
   centerLng?: number;
+  onTileSelect?: (lat: number, lng: number) => void;
 }
 
-export default function InvestmentScoreHeatmap({ centerLat = 35.6812, centerLng = 139.7671 }: Props) {
+export default function InvestmentScoreHeatmap({ centerLat = 35.6812, centerLng = 139.7671, onTileSelect }: Props) {
   const [tiles, setTiles] = useState<HeatmapTile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +81,8 @@ export default function InvestmentScoreHeatmap({ centerLat = 35.6812, centerLng 
 
   return (
     <div className="rounded-lg border bg-card p-4">
-      <h3 className="text-lg font-semibold mb-3">エリア別投資スコア</h3>
+      <h3 className="text-lg font-semibold mb-1">エリア別投資スコア</h3>
+      <p className="text-xs text-muted-foreground mb-3">スコアは需要・安全性の評価です。表面利回りとは別軸の指標です。</p>
       {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
       <div style={{ height: 480 }}>
         <MapContainer
@@ -102,10 +104,15 @@ export default function InvestmentScoreHeatmap({ centerLat = 35.6812, centerLng 
                 fillColor: scoreToColor(tile.totalScore),
                 fillOpacity: 0.4,
                 weight: 0.5,
+                ...(onTileSelect ? { className: "cursor-pointer" } : {}),
               }}
+              eventHandlers={onTileSelect ? {
+                click: () => onTileSelect(tile.centerLat, tile.centerLng),
+              } : undefined}
             >
               <Tooltip sticky>
                 {tile.grade} / スコア {tile.totalScore}
+                {onTileSelect && <><br /><span className="text-xs">クリックで座標を入力</span></>}
               </Tooltip>
             </Rectangle>
           ))}
