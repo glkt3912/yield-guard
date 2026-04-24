@@ -64,7 +64,7 @@ Copy `.env.example` → `.env` (project root).
 | `GET` | `/api/urban-risks` | Urban planning risks (tile coords) |
 | `GET` | `/api/hazard` | Hazard info: flood/storm/tsunami/landslide (tile coords) |
 | `GET` | `/api/investment-score` | Investment suitability score (tile coords) |
-| `GET` | `/api/investment-score-heatmap` | Batch investment scores for viewport bbox (minLat, maxLat, minLng, maxLng, z) |
+| `GET` | `/api/investment-score-heatmap` | Batch investment scores for viewport bbox (minLat, maxLat, minLng, maxLng, z=11-15) |
 
 ## Directory structure
 
