@@ -1156,6 +1156,7 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 				totalCostEst = stats.MedianTsubo*30 + 10_000_000
 			}
 			annualRentNeeded := totalCostEst * targetYield
+
 			// 1坪あたり月額賃料が現実的か判定（目安: 8,000円以下=達成可能, 15,000円超=困難）
 			monthlyRentNeeded := annualRentNeeded / 12
 			areaTsubo := 30.0
@@ -1171,7 +1172,7 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 				item.YieldDifficultyLabel = "困難"
 			}
 
-			item.LandPriceTrend = "安定" // デフォルト（appraisalデータなしの場合）
+			item.LandPriceTrend = "データなし"
 			results[idx] = result{item: item}
 		}(i, municipalities[i])
 	}
