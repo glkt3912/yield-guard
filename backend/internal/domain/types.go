@@ -547,3 +547,21 @@ type HeatmapResponse struct {
 	Tiles     []HeatmapTile `json:"tiles"`
 	TileCount int           `json:"tileCount"`
 }
+
+// AreaDiscoveryItem は市区町村ごとの投資適性サマリー
+type AreaDiscoveryItem struct {
+	MunicipalityCode     string  `json:"municipalityCode"`
+	MunicipalityName     string  `json:"municipalityName"`
+	MedianTsubo          float64 `json:"medianTsubo"`          // 坪単価中央値（円）
+	TransactionCount     int     `json:"transactionCount"`     // 取引件数
+	YieldDifficulty      string  `json:"yieldDifficulty"`      // "achievable" | "slightly-difficult" | "difficult"
+	YieldDifficultyLabel string  `json:"yieldDifficultyLabel"` // 日本語ラベル
+	LandPriceTrend       string  `json:"landPriceTrend"`       // "上昇" | "安定" | "下落" | "不明"
+	DataSufficient       bool    `json:"dataSufficient"`       // 取引件数3件以上
+}
+
+// AreaDiscoveryResponse は /api/area-discovery のレスポンス
+type AreaDiscoveryResponse struct {
+	Items      []AreaDiscoveryItem `json:"items"`
+	Prefecture string              `json:"prefecture"`
+}

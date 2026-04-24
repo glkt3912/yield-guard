@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -1054,6 +1056,149 @@ func validateRenovationInput(in domain.RenovationInput) error {
 		}
 	}
 	return nil
+}
+
+// HandleAreaDiscovery は都道府県内の市区町村を土地価格データで評価しランキング返却
+// GET /api/area-discovery?prefecture=13&budget=50000000&yield=0.07
+func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
+	prefecture := c.Query("prefecture")
+	if prefecture == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "prefecture は必須パラメータです"})
+		return
+	}
+	budgetStr := c.Query("budget")
+	yieldStr := c.Query("yield")
+
+	budget := 0.0
+	targetYield := 0.08
+	if budgetStr != "" {
+		if v, err := strconv.ParseFloat(budgetStr, 64); err == nil && v > 0 {
+			budget = v
+		}
+	}
+	if yieldStr != "" {
+		if v, err := strconv.ParseFloat(yieldStr, 64); err == nil && v > 0 {
+			targetYield = v
+		}
+	}
+
+	ctx := c.Request.Context()
+
+	// 市区町村一覧取得
+	municipalities, err := h.mlitClient.FetchMunicipalities(ctx, prefecture)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "市区町村一覧の取得に失敗しました"})
+		return
+	}
+
+	// 最新2年の土地取引データを並列取得
+	now := time.Now()
+	toYear := now.Year()
+	fromYear := toYear - 2
+
+	type result struct {
+		item domain.AreaDiscoveryItem
+		err  error
+	}
+
+	// 上位30市区町村に絞る（全件だとタイムアウトリスク）
+	limit := 30
+	if len(municipalities) < limit {
+		limit = len(municipalities)
+	}
+
+	results := make([]result, limit)
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 5) // 並列5件上限
+
+	for i := 0; i < limit; i++ {
+		wg.Add(1)
+		go func(idx int, m mlit.Municipality) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			transactions, fetchErr := h.mlitClient.FetchLandPrices(ctx, mlit.LandPriceQuery{
+				Area:      prefecture,
+				City:      m.ID,
+				Year:      fromYear,
+				Quarter:   1,
+				ToYear:    toYear,
+				ToQuarter: 4,
+			})
+
+			item := domain.AreaDiscoveryItem{
+				MunicipalityCode: m.ID,
+				MunicipalityName: m.Name,
+			}
+
+			if fetchErr != nil || len(transactions) == 0 {
+				item.DataSufficient = false
+				item.LandPriceTrend = "不明"
+				item.YieldDifficulty = "difficult"
+				item.YieldDifficultyLabel = "データ不足"
+				results[idx] = result{item: item}
+				return
+			}
+
+			stats := domain.CalcLandPriceStats(transactions)
+
+			item.MedianTsubo = stats.MedianTsubo
+			item.TransactionCount = stats.Count
+			item.DataSufficient = stats.Count >= 3
+
+			// 利回り達成難易度: 予算（または中央坪単価×30坪+建物代）に対して目標利回りが必要とする月額家賃を試算し、
+			// 1坪あたり月額賃料の現実性で判定する
+			var totalCostEst float64
+			if budget > 0 {
+				totalCostEst = budget
+			} else {
+				totalCostEst = stats.MedianTsubo*30 + 10_000_000
+			}
+			annualRentNeeded := totalCostEst * targetYield
+
+			// 1坪あたり月額賃料が現実的か判定（目安: 8,000円以下=達成可能, 15,000円超=困難）
+			monthlyRentNeeded := annualRentNeeded / 12
+			areaTsubo := 30.0
+			rentPerTsubo := monthlyRentNeeded / areaTsubo
+			if rentPerTsubo <= 8000 {
+				item.YieldDifficulty = "achievable"
+				item.YieldDifficultyLabel = "達成可能"
+			} else if rentPerTsubo <= 15000 {
+				item.YieldDifficulty = "slightly-difficult"
+				item.YieldDifficultyLabel = "やや困難"
+			} else {
+				item.YieldDifficulty = "difficult"
+				item.YieldDifficultyLabel = "困難"
+			}
+
+			item.LandPriceTrend = "データなし"
+			results[idx] = result{item: item}
+		}(i, municipalities[i])
+	}
+	wg.Wait()
+
+	items := make([]domain.AreaDiscoveryItem, 0, limit)
+	for _, r := range results {
+		if r.err == nil {
+			items = append(items, r.item)
+		}
+	}
+
+	// 達成可能 → やや困難 → 困難 の順、同一難易度内は取引件数降順
+	sort.Slice(items, func(i, j int) bool {
+		difficultyOrder := map[string]int{"achievable": 0, "slightly-difficult": 1, "difficult": 2}
+		di, dj := difficultyOrder[items[i].YieldDifficulty], difficultyOrder[items[j].YieldDifficulty]
+		if di != dj {
+			return di < dj
+		}
+		return items[i].TransactionCount > items[j].TransactionCount
+	})
+
+	c.JSON(http.StatusOK, domain.AreaDiscoveryResponse{
+		Items:      items,
+		Prefecture: prefecture,
+	})
 }
 
 // HandleRenovationAnalyze はリフォームROIシミュレーションを実行する

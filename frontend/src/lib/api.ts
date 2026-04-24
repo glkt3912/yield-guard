@@ -240,6 +240,35 @@ export async function fetchInvestmentScoreHeatmap(params: {
   return handleResponse(res);
 }
 
+export interface AreaDiscoveryItem {
+  municipalityCode: string;
+  municipalityName: string;
+  medianTsubo: number;
+  transactionCount: number;
+  yieldDifficulty: "achievable" | "slightly-difficult" | "difficult";
+  yieldDifficultyLabel: string;
+  landPriceTrend: string;
+  dataSufficient: boolean;
+}
+
+export interface AreaDiscoveryResponse {
+  items: AreaDiscoveryItem[];
+  prefecture: string;
+}
+
+/** エリア発見モード — 予算・目標利回りから候補エリアをランキング取得 */
+export async function fetchAreaDiscovery(params: {
+  prefecture: string;
+  budget?: number;
+  yield?: number;
+}): Promise<AreaDiscoveryResponse> {
+  const q = new URLSearchParams({ prefecture: params.prefecture });
+  if (params.budget) q.set("budget", String(params.budget));
+  if (params.yield) q.set("yield", String(params.yield));
+  const res = await fetch(`${BASE}/area-discovery?${q}`);
+  return handleResponse<AreaDiscoveryResponse>(res);
+}
+
 /** モンテカルロシミュレーションを実行 */
 export async function simulate(input: MonteCarloInput): Promise<MonteCarloResult> {
   const res = await fetch(`${BASE}/investment/simulate`, {
