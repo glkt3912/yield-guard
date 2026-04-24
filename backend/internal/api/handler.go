@@ -832,10 +832,13 @@ func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.Inv
 
 	recentLand := <-recentLandCh
 	oldLand := <-oldLandCh
-	if recentLand.err != nil {
-		slog.WarnContext(ctx, "FetchLandPrices (recent) failed", "error", recentLand.err)
-	} else if oldLand.err != nil {
-		slog.WarnContext(ctx, "FetchLandPrices (old) failed", "error", oldLand.err)
+	if recentLand.err != nil || oldLand.err != nil {
+		if recentLand.err != nil {
+			slog.WarnContext(ctx, "FetchLandPrices (recent) failed", "error", recentLand.err)
+		}
+		if oldLand.err != nil {
+			slog.WarnContext(ctx, "FetchLandPrices (old) failed", "error", oldLand.err)
+		}
 	} else if recentLand.stats.MedianTsubo > 0 && oldLand.stats.MedianTsubo > 0 {
 		input.LandPriceChangeRate = (recentLand.stats.MedianTsubo - oldLand.stats.MedianTsubo) / oldLand.stats.MedianTsubo
 		input.HasLandPriceTrend = true
