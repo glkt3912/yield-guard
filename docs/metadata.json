@@ -1,12 +1,12 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-24T12:00:00",
+  "lastUpdated": "2026-04-24T15:00:00",
   "documents": [
     {
       "id": "overview",
       "path": "docs/overview.md",
       "title": "プロジェクト概要とアーキテクチャ",
-      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック（OpenTelemetry SDK / opentelemetry-operations-go 含む）・ディレクトリ構成・起動手順・計算の制約と免責事項。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY/GOOGLE_CLOUD_PROJECT）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。GOOGLE_CLOUD_PROJECT 設定時は Cloud Trace / Cloud Monitoring へ OTel データを送信、未設定時は stdout。PWA対応（@ducanh2912/next-pwa・manifest.ts）を含む。フロントエンド（Vercel）・バックエンド（Cloud Run）のデプロイフローも記載。",
+      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック（OpenTelemetry SDK / opentelemetry-operations-go 含む）・ディレクトリ構成・起動手順・計算の制約と免責事項。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY/GOOGLE_CLOUD_PROJECT）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。GOOGLE_CLOUD_PROJECT 設定時は Cloud Trace / Cloud Monitoring へ OTel データを送信、未設定時は stdout。PWA対応（@ducanh2912/next-pwa・manifest.ts）を含む。フロントエンド（Vercel）・バックエンド（Cloud Run）のデプロイフローも記載。Makefile 便利ターゲット: make backend（バックエンドのみ起動）・make frontend（フロントエンドのみ起動）・make install（npm install）・make logs（Docker ログ表示、未起動時は案内メッセージ）を追加済み。",
       "tags": [
         "概要",
         "アーキテクチャ",
@@ -54,7 +54,7 @@
         "frontend-ci.yml",
         "deploy-backend.yml"
       ],
-      "updatedAt": "2026-04-22"
+      "updatedAt": "2026-04-24"
     },
     {
       "id": "architecture",
@@ -996,7 +996,7 @@
       "id": "frontend-components",
       "path": "docs/frontend-components.md",
       "title": "フロントエンドコンポーネント仕様",
-      "description": "Dashboard・InvestmentForm・YieldAnalysis・LoanOptimizationPanel・CostBreakdown・CashFlowChart・DeadCrossChart・MonteCarloChart・LandPriceAnalysis・InvestmentScoreHeatmap の責務・props・表示ロジック。PDF生成: generatePdf.ts の downloadReportPDF() が pdfmake を使って5ページのPDFをブラウザダウンロード。pdf/verdict.ts の calcVerdict() が PASS/CAUTION/REJECT 判定と根拠3点・自動コメントを生成。pdf/charts.ts が CFバー・デッドクロス折れ線・コストドーナツのSVGを直接生成（Recharts不使用）。pdf/format.ts が fmtYen（万円統一: 1万円未満は円・1万円以上は万円・1億円以上は億円、万円未満は四捨五入）・fmtPct・fmtDate・sanitize を提供。フォントは public/fonts/NotoSansJP-{Regular,Bold}.ttf（PDF用漢字網羅サブセット ≈265KB）を virtualfs 経由でロード。出口収益・売却後総収益ラベルに統一済み。フォントサブセット再生成: frontend/scripts/regenerate-pdf-fonts.py。MonteCarloChart（新規）: full モードかつ analyze 実行後に「モンテカルロ実行」ボタンが出現し POST /api/investment/simulate を呼び出す。IRRヒストグラム（20ビン・正負で色分け）・最終純資産ヒストグラム・P10〜P90パーセンタイル表・IRR正値達成率/デッドクロス発生率/IRR中央値のサマリーバッジを表示。LoanOptimizationPanel（新規）: DSCR緑/赤バッジ・LTV感度分析テーブル（50〜90%の5行）・返済方式セレクタ（元利均等/元金均等）。LandPriceAnalysis に地価公示2軸比較セクション追加（XCT001）。InvestmentForm はクイック（3項目）と詳細（4セクション）の2モード。RenovationPanel（新規）: POST /api/renovation/analyze を呼び出す自己完結コンポーネント。動的工事項目テーブル・セルフリフォームtoggle・分類テーブル・Recharts LineChart 回収タイムライン（50年キャップ・useMemo・ReferenceLine）。CashFlowChart に IRR/NPV 2列サマリーカードを追加（null→\"―\"、正/負で緑/赤）。InvestmentForm に NPV/IRR 設定サブセクション（割引率/物件価格下落率/減価償却方式）を追加。InvestmentScoreHeatmap（新規）: Leaflet.js + react-leaflet で OSM 地図を表示し viewport 内タイルを一括スコア取得してスコア別色矩形オーバーレイを描画。propertyLat !== undefined の条件下で Dashboard に表示。AnalyzeButton（useMapEvents）で地図範囲を取得し fetchInvestmentScoreHeatmap を呼び出す。z=Math.min(map.getZoom(),15)でキャップ（z=15時はバックエンドでタイル上限25）。onTileSelect コールバックを渡すとタイルクリックで centerLat/centerLng を親へ通知しフォーム緯度経度欄に自動入力。InvestmentForm の externalLat/externalLng props（useEffect で内部 state に同期）経由で座標連携。ヘッダー直下に「スコアは需要・安全性の評価。表面利回りとは別軸」の注記を常時表示。Leaflet CSS は globals.css に一元管理（@import leaflet/dist/leaflet.css）。dynamic import + ssr:false で SSR 回避。",
+      "description": "Dashboard・InvestmentForm・YieldAnalysis・LoanOptimizationPanel・CostBreakdown・CashFlowChart・DeadCrossChart・MonteCarloChart・LandPriceAnalysis・InvestmentScoreHeatmap・RenovationPanel・WatchlistPanel の責務・props・表示ロジック。PDF生成: generatePdf.ts の downloadReportPDF() が pdfmake を使って5ページのPDFをブラウザダウンロード。pdf/verdict.ts の calcVerdict() が PASS/CAUTION/REJECT 判定と根拠3点・自動コメントを生成。pdf/charts.ts が CFバー・デッドクロス折れ線・コストドーナツのSVGを直接生成（Recharts不使用）。pdf/format.ts が fmtYen（万円統一: 1万円未満は円・1万円以上は万円・1億円以上は億円、万円未満は四捨五入）・fmtPct・fmtDate・sanitize を提供。フォントは public/fonts/NotoSansJP-{Regular,Bold}.ttf（PDF用漢字網羅サブセット ≈265KB）を virtualfs 経由でロード。出口収益・売却後総収益ラベルに統一済み。フォントサブセット再生成: frontend/scripts/regenerate-pdf-fonts.py。MonteCarloChart（新規）: full モードかつ analyze 実行後に「モンテカルロ実行」ボタンが出現し POST /api/investment/simulate を呼び出す。IRRヒストグラム（20ビン・正負で色分け）・最終純資産ヒストグラム・P10〜P90パーセンタイル表・IRR正値達成率/デッドクロス発生率/IRR中央値のサマリーバッジを表示。LoanOptimizationPanel（新規）: DSCR緑/赤バッジ・LTV感度分析テーブル（50〜90%の5行）・返済方式セレクタ（元利均等/元金均等）。LandPriceAnalysis に地価公示2軸比較セクション追加（XCT001）。InvestmentForm はクイック（3項目）と詳細（4セクション）の2モード。市区町村フェッチ失敗時は muniError state にメッセージをセットしドロップダウン直下に赤文字表示（都道府県切替時にクリア）。RenovationPanel（新規）: POST /api/renovation/analyze を呼び出す自己完結コンポーネント。動的工事項目テーブル・セルフリフォームtoggle・分類テーブル・Recharts LineChart 回収タイムライン（50年キャップ・useMemo・ReferenceLine）。WatchlistPanel（新規）: localStorage（キー yg_watchlist）に物件候補を永続化する自己完結コンポーネント。WatchlistItem型（id/name/memo/status/addedAt）・WatchlistStatus型（検討中/見送り/購入済み）。useState(loadItems) の lazy initializer で初期値をロード（saveItems([]) によるデータ消去バグを回避）。ステータスバッジ色分け（検討中=青・見送り=グレー・購入済み=緑）・Enter キー対応・aria-label アクセシビリティ対応。CashFlowChart に IRR/NPV 2列サマリーカードを追加（null→\"―\"、正/負で緑/赤）。InvestmentForm に NPV/IRR 設定サブセクション（割引率/物件価格下落率/減価償却方式）を追加。InvestmentScoreHeatmap（新規）: Leaflet.js + react-leaflet で OSM 地図を表示し viewport 内タイルを一括スコア取得してスコア別色矩形オーバーレイを描画。propertyLat !== undefined の条件下で Dashboard に表示。AnalyzeButton（useMapEvents）で地図範囲を取得し fetchInvestmentScoreHeatmap を呼び出す。z=Math.min(map.getZoom(),15)でキャップ（z=15時はバックエンドでタイル上限25）。onTileSelect コールバックを渡すとタイルクリックで centerLat/centerLng を親へ通知しフォーム緯度経度欄に自動入力。InvestmentForm の externalLat/externalLng props（useEffect で内部 state に同期）経由で座標連携。ヘッダー直下に「スコアは需要・安全性の評価。表面利回りとは別軸」の注記を常時表示。Leaflet CSS は globals.css に一元管理（@import leaflet/dist/leaflet.css）。dynamic import + ssr:false で SSR 回避。",
       "tags": [
         "フロントエンド",
         "コンポーネント",
@@ -1240,7 +1240,7 @@
         "setPropertyLat",
         "setPropertyLng"
       ],
-      "updatedAt": "2026-04-23"
+      "updatedAt": "2026-04-24"
     }
   ]
 }
