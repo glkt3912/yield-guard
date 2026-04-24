@@ -416,3 +416,54 @@ describe("analyze - vacancy rate stress test", () => {
     expect(stressed.yearlyResults[0].annualRent).toBeLessThan(base.yearlyResults[0].annualRent);
   });
 });
+
+// ─── stress scenario: rent decline and after-tax CF (#311, #312) ──────────────
+
+describe("calcStressScenario - rent decline and after-tax CF", () => {
+  it("RentDeclineRate > 0 のとき DSCR が下落率なしより低くなる (#311)", () => {
+    const base: InvestmentInput = {
+      ...BASE_INPUT,
+      monthlyRent: 130_000,
+      loanAmount: 18_000_000,
+      loanYears: 25,
+      expenseRate: 0.20,
+      incomeTaxRate: 0.33,
+      holdingYears: 10,
+      rateAdjustmentSchedule: [{ afterYear: 5, rate: 0.03 }],
+    };
+    const r0 = analyze({ ...base, rentDeclineRate: 0 });
+    const r1 = analyze({ ...base, rentDeclineRate: 0.03 });
+
+    const baseline0 = r0.stressScenarios.find((s) => s.label === "ベースライン")!;
+    const baseline1 = r1.stressScenarios.find((s) => s.label === "ベースライン")!;
+
+    expect(baseline1.dscr).toBeLessThan(baseline0.dscr);
+  });
+
+  it("IncomeTaxRate > 0 のとき税引後CF基準の黒転が税なしより悪化（遅延またはなし）する (#312)", () => {
+    // yearNOI がローン返済額をわずかに上回る（CF > 0）が、
+    // incomeTax(40%) がそのCFを超えるよう設定 → afterTaxCF < 0 → 黒転なし
+    const base: InvestmentInput = {
+      ...BASE_INPUT,
+      monthlyRent: 77_000,
+      vacancyRate: 0.05,
+      loanAmount: 15_000_000,
+      annualLoanRate: 0.02,
+      loanYears: 30,
+      expenseRate: 0.15,
+      holdingYears: 15,
+      rentDeclineRate: 0,
+    };
+    const r0 = analyze({ ...base, incomeTaxRate: 0 });
+    const r1 = analyze({ ...base, incomeTaxRate: 0.40 });
+
+    const s0 = r0.stressScenarios.find((s) => s.label === "ベースライン")!;
+    const s1 = r1.stressScenarios.find((s) => s.label === "ベースライン")!;
+
+    // 税なしは年1から黒転
+    expect(s0.breakEvenYear).toBe(1);
+    // 税ありは incomeTax(40%) が CF を超えるため afterTaxCF < 0 → 保有期間中に黒転しない
+    // 数値設定（77,000円・15M・2%・30y）で afterTaxCF < 0 が確定するため -1 を直接検証する
+    expect(s1.breakEvenYear).toBe(-1);
+  });
+});

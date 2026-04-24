@@ -363,10 +363,8 @@ function calcStressScenario(
   let effectiveVacancy = inInput.vacancyRate + vacDelta;
   if (effectiveVacancy > 1) effectiveVacancy = 1;
 
+  // 初年度賃料（空室率調整済み）— 賃料下落はループ内で年次適用
   const annualRent = inInput.monthlyRent * 12 * (1 - effectiveVacancy);
-  const annualExpenses = annualRent * inInput.expenseRate + inInput.annualPropertyTax;
-  // noi はシナリオ期間中一定（calcStressScenario は賃料下落率を適用しない簡略計算）
-  const noi = annualRent - annualExpenses;
 
   const initRate = resolveRateForYear(inInput.annualLoanRate, rateDelta, inInput.rateAdjustmentSchedule, 1);
 
@@ -406,29 +404,45 @@ function calcStressScenario(
     }
 
     let yearLoan = 0;
+    let yearInterest = 0;
     if (remainingBalance > 0 && y <= inInput.loanYears) {
       if (inInput.loanMethod === LOAN_METHOD_EQUAL_PRINCIPAL) {
         const { interest: yi, principal: yp } = calcYearlyLoanComponentsEqualPrincipal(
           remainingBalance, currentRate, monthlyPrincipalStress,
         );
         yearLoan = yi + yp;
+        yearInterest = yi;
         remainingBalance -= yp;
       } else {
+        const { interest: annInterest, principal: annPrincipal } = calcYearlyLoanComponents(
+          remainingBalance, currentRate, curMonthlyPayment,
+        );
         yearLoan = curMonthlyPayment * 12;
-        const { principal: annPrincipal } = calcYearlyLoanComponents(remainingBalance, currentRate, curMonthlyPayment);
+        yearInterest = annInterest;
         remainingBalance -= annPrincipal;
       }
       if (remainingBalance < 0) remainingBalance = 0;
     }
+
+    // 賃料下落率を年次適用（Analyze() の declineFactor と同じロジック、1-indexed なので y-1 を指数に使用）
+    const declineFactor = Math.pow(1 - inInput.rentDeclineRate, y - 1);
+    const yearRent = annualRent * declineFactor;
+    const yearExpenses = yearRent * inInput.expenseRate + inInput.annualPropertyTax;
+    const yearNOI = yearRent - yearExpenses;
+
     if (yearLoan > 0) {
       hasLoanYear = true;
-      const yearDSCR = noi / yearLoan;
+      const yearDSCR = yearNOI / yearLoan;
       if (yearDSCR < minDSCR) minDSCR = yearDSCR;
     }
 
-    const cf = annualRent - yearLoan - annualExpenses;
-    totalCF += cf;
-    cumCF += cf;
+    const cf = yearNOI - yearLoan;
+    // 減価償却は省略した保守的近似（簡略ストレス計算のため過大に税を見積もる）
+    const taxableIncome = yearNOI - yearInterest;
+    const incomeTax = taxableIncome > 0 ? taxableIncome * inInput.incomeTaxRate : 0;
+    const afterTaxCF = cf - incomeTax;
+    totalCF += afterTaxCF;
+    cumCF += afterTaxCF;
     if (breakEvenYear === -1 && cumCF > 0) breakEvenYear = y;
   }
 

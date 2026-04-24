@@ -162,7 +162,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                 {stressScenarios.map((s) => {
                   const isCompound = s.label === "複合ストレス";
                   const rowBg = isCompound ? "bg-orange-50" : "";
-                  const safeBadge = s.isSafe
+                  const safeBadge = s.dscr >= 1.2
                     ? <Badge variant="success">安全</Badge>
                     : s.dscr >= 1.0
                       ? <Badge variant="warning">注意</Badge>
@@ -179,7 +179,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                       <td className="py-2 text-right">
                         {s.vacancyRateDelta !== 0 ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%` : "±0"}
                       </td>
-                      <td className={`py-2 text-right font-medium ${s.dscr >= 1.0 ? "text-green-600" : "text-red-600"}`}>
+                      <td className={`py-2 text-right font-medium ${s.dscr >= 1.2 ? "text-green-600" : s.dscr >= 1.0 ? "text-yellow-600" : "text-red-600"}`}>
                         {s.dscr.toFixed(2)}
                       </td>
                       <td className="py-2 text-right text-muted-foreground">
@@ -193,7 +193,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
             </table>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            ※ DSCR（借債返済カバー率）= NOI / 年間ローン返済額（保有期間内の最悪年）。1.0以上が銀行審査の目安。黒転年は保有期間内での累積CF黒転年度。
+            ※ DSCR（借債返済カバー率）= NOI（賃料下落・空室調整済み）/ 年間ローン返済額（保有期間内の最悪年）。1.2以上が実務基準、1.0以上が銀行審査の最低ライン（<span className="text-green-600">緑≥1.2</span>・<span className="text-yellow-600">黄1.0〜1.2</span>・<span className="text-red-600">赤&lt;1.0</span>）。黒転年は累積CF黒転年度（税引後）。年間CFがプラスに転じた年であり、自己資金の回収年ではありません。
           </p>
 
           {/* 人口減少シナリオ */}
