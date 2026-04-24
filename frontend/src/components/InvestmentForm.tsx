@@ -173,6 +173,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   }, [externalLat, externalLng]);
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [muniLoading, setMuniLoading] = useState(false);
+  const [muniError, setMuniError] = useState<string | null>(null);
   const [muniFilter, setMuniFilter] = useState("");
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const [zoningType, setZoningType] = useState<ZoningType>("");
@@ -252,14 +253,16 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
 
   const loadMunicipalities = useCallback(async (areaCode: string) => {
     setMuniLoading(true);
+    setMuniError(null);
     setCity("");
     setMuniFilter("");
     try {
       const data = await fetchMunicipalities(areaCode);
       setMunicipalities(data);
       if (data.length > 0) setCity(data[0].id);
-    } catch {
+    } catch (e) {
       setMunicipalities([]);
+      setMuniError(e instanceof Error ? e.message : "市区町村の取得に失敗しました");
     } finally {
       setMuniLoading(false);
     }
@@ -501,6 +504,9 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                         : filteredMunicipalities.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)
                       }
                     </select>
+                    {muniError && (
+                      <p className="text-xs text-destructive">{muniError}</p>
+                    )}
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -679,6 +685,9 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                         ))
                     }
                   </select>
+                  {muniError && (
+                    <p className="text-xs text-destructive">{muniError}</p>
+                  )}
                   {muniFilter.trim() && filteredMunicipalities.length > 0 && (
                     <p className="text-xs text-muted-foreground">{filteredMunicipalities.length}件該当</p>
                   )}
