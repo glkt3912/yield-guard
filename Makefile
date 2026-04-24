@@ -1,4 +1,4 @@
-.PHONY: dev test lint build clean help \
+.PHONY: dev backend frontend install logs test lint build clean help \
         mlit-land-prices mlit-municipalities mlit-station-ridership mlit-population-forecast mlit-land-appraisals \
         mlit-urban-zoning mlit-liquefaction mlit-flood-hazard mlit-storm-hazard mlit-tsunami-hazard mlit-landslide-hazard \
         api-station-ridership api-estimate-ridership api-population-forecast api-land-appraisals api-investment-score \
@@ -24,6 +24,26 @@ dev:
 	echo "==> Starting frontend..."; \
 	(cd frontend && npm run dev) & \
 	wait
+
+## backend: バックエンド開発サーバーのみ起動
+backend:
+	cd backend && go run ./cmd/server
+
+## frontend: フロントエンド開発サーバーのみ起動
+frontend:
+	cd frontend && npm run dev
+
+## install: フロントエンド依存関係をインストール
+install:
+	cd frontend && npm install
+
+## logs: Dockerコンテナのログを表示（未起動の場合は案内）
+logs:
+	@if docker compose ps --quiet 2>/dev/null | grep -q .; then \
+	  docker compose logs -f; \
+	else \
+	  echo "Docker コンテナが起動していません。先に 'make docker-up' を実行してください。"; \
+	fi
 
 ## test: 全テストを実行
 test:
