@@ -374,6 +374,7 @@ export interface ScoreBreakdown {
   liquefactionRisk: ScoreItem;
   embankment: ScoreItem;
   disasterHistory: ScoreItem;
+  landPriceTrend: ScoreItem;
   radarData: RadarPoint[];
 }
 
