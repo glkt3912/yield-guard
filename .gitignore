@@ -1,9 +1,7 @@
 frontend/node_modules
 frontend/.next
 
-# PWA ビルド生成物
-frontend/public/sw.js
-frontend/public/sw.js.map
+# PWA ビルド生成物（Workbox自動生成ファイル）
 frontend/public/workbox-*.js
 frontend/public/workbox-*.js.map
 frontend/public/swe-worker-*.js
