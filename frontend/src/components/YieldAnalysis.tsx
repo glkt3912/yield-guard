@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import type { InvestmentInput, InvestmentResult, PopulationForecastResult, StressScenarioResult, YieldScenarios } from "@/types/investment";
 import { formatMan, formatPct, formatYen } from "@/lib/utils";
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Users } from "lucide-react";
+import { TermTooltip } from "@/components/ui/TermTooltip";
 
 /** Mobile 2×2 KPI grid showing the 4 most important metrics at a glance */
 function MobileKpiGrid({ result, isGood, targetPct, yieldPct, netYieldPct }: {
@@ -104,7 +105,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                 <span className="mb-1 text-xl font-semibold text-muted-foreground sm:mb-2 sm:text-2xl">%</span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-                実質利回り（空室・経費控除後）：{netYieldPct.toFixed(2)}%
+                <TermTooltip term="netYield">実質利回り</TermTooltip>（空室・経費控除後）：{netYieldPct.toFixed(2)}%
               </p>
             </div>
             <div className="ml-3 flex flex-col items-center gap-2 shrink-0">
@@ -153,7 +154,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                   <th className="pb-2 text-left font-medium">シナリオ</th>
                   <th className="pb-2 text-right font-medium">金利△</th>
                   <th className="pb-2 text-right font-medium">空室△</th>
-                  <th className="pb-2 text-right font-medium">DSCR</th>
+                  <th className="pb-2 text-right font-medium"><TermTooltip term="dscr">DSCR</TermTooltip></th>
                   <th className="pb-2 text-right font-medium">黒転年</th>
                   <th className="pb-2 text-right font-medium">判定</th>
                 </tr>
@@ -193,7 +194,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
             </table>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            ※ DSCR（借債返済カバー率）= NOI（賃料下落・空室調整済み）/ 年間ローン返済額（保有期間内の最悪年）。1.2以上が実務基準、1.0以上が銀行審査の最低ライン（<span className="text-green-600">緑≥1.2</span>・<span className="text-yellow-600">黄1.0〜1.2</span>・<span className="text-red-600">赤&lt;1.0</span>）。黒転年は累積CF黒転年度（税引後）。年間CFがプラスに転じた年であり、自己資金の回収年ではありません。
+            ※ <TermTooltip term="dscr">DSCR</TermTooltip> = <TermTooltip term="noi">NOI</TermTooltip>（賃料下落・空室調整済み）/ 年間ローン返済額（保有期間内の最悪年）。1.2以上が実務基準、1.0以上が銀行審査の最低ライン（<span className="text-green-600">緑≥1.2</span>・<span className="text-yellow-600">黄1.0〜1.2</span>・<span className="text-red-600">赤&lt;1.0</span>）。黒転年は累積CF黒転年度（税引後）。年間CFがプラスに転じた年であり、自己資金の回収年ではありません。
           </p>
 
           {/* 人口減少シナリオ */}
@@ -217,7 +218,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                   <div className={`text-right font-medium ${popNetYield * 100 >= 8 ? "text-green-600" : "text-red-600"}`}>
                     {(result.grossYield * (1 - popV) * 100).toFixed(2)}%
                   </div>
-                  <div className="text-muted-foreground">実質利回り</div>
+                  <div className="text-muted-foreground"><TermTooltip term="netYield">実質利回り</TermTooltip></div>
                   <div className="text-right text-muted-foreground">{(popNetYield * 100).toFixed(2)}%</div>
                   <div className="text-muted-foreground">年間CF（概算）</div>
                   <div className={`text-right font-bold ${isDeficit ? "text-red-700" : "text-green-700"}`}>

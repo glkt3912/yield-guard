@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import type { InvestmentResult } from "@/types/investment";
 import { formatMan } from "@/lib/utils";
 import { Skull, ShieldCheck } from "lucide-react";
+import { TermTooltip } from "@/components/ui/TermTooltip";
 
 interface Props {
   result: InvestmentResult;
@@ -45,11 +46,11 @@ function DeadCrossChart({ result }: Props) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             {hasDeadCross ? <Skull className="h-5 w-5 text-red-500" /> : <ShieldCheck className="h-5 w-5 text-green-500" />}
-            デッドクロス予測
+            <TermTooltip term="deadCross">デッドクロス</TermTooltip>予測
           </CardTitle>
           {hasDeadCross
-            ? <Badge variant="danger">{deadCrossYear}年目〜デッドクロスゾーン</Badge>
-            : <Badge variant="success">デッドクロスなし（35年以内）</Badge>}
+            ? <Badge variant="danger">{deadCrossYear}年目〜<TermTooltip term="deadCross">デッドクロス</TermTooltip>ゾーン</Badge>
+            : <Badge variant="success"><TermTooltip term="deadCross">デッドクロス</TermTooltip>なし（35年以内）</Badge>}
         </div>
         <p className="text-xs text-muted-foreground mt-1">
           元金返済額 &gt; 減価償却費となるゾーンでは、帳簿上黒字でも実質的な税負担が増加します（黒字倒産リスク）
