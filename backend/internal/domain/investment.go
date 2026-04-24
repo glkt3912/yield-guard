@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
 )
 
 const (
@@ -212,27 +213,38 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	criticalErrors := calcCriticalErrors(input, deadCrossYear, usefulLife)
 
 	// ストレスシナリオ自動計算（6つのデフォルト + 入力値が非ゼロなら第7シナリオ）
-	defaultScenarios := []struct {
+	// goroutine で並列計算（インデックス固定の slice に直書きするため mutex 不要）
+	type scenarioDef struct {
 		label    string
 		rateDelta float64
 		vacDelta  float64
-	}{
+	}
+	allScenarioDefs := [7]scenarioDef{
 		{"ベースライン", 0, 0},
 		{"金利+1%", 0.01, 0},
 		{"金利+2%", 0.02, 0},
 		{"空室+10%", 0, 0.10},
 		{"空室+20%", 0, 0.20},
 		{"複合ストレス", 0.02, 0.10},
+		{"カスタム", input.LoanRateDelta, input.VacancyRateDelta},
 	}
-	stressScenarios := make([]StressScenarioResult, 0, 7)
-	for _, sc := range defaultScenarios {
-		stressScenarios = append(stressScenarios, calcStressScenario(input, sc.label, sc.rateDelta, sc.vacDelta))
+	hasCustom := input.LoanRateDelta != 0 || input.VacancyRateDelta != 0
+	scenarioCount := 6
+	if hasCustom {
+		scenarioCount = 7
 	}
-	if input.LoanRateDelta != 0 || input.VacancyRateDelta != 0 {
-		stressScenarios = append(stressScenarios, calcStressScenario(
-			input, "カスタム", input.LoanRateDelta, input.VacancyRateDelta,
-		))
+	scenarioResults := make([]StressScenarioResult, scenarioCount)
+	var wg sync.WaitGroup
+	for i := 0; i < scenarioCount; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			sc := allScenarioDefs[idx]
+			scenarioResults[idx] = calcStressScenario(input, sc.label, sc.rateDelta, sc.vacDelta)
+		}(i)
 	}
+	wg.Wait()
+	stressScenarios := scenarioResults
 
 	acquisitionCosts := CalcAcquisitionCosts(
 		input.LandPrice,
