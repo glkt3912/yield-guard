@@ -22,6 +22,8 @@ import { MonteCarloChart } from "@/components/MonteCarloChart";
 import NegotiationPanel from "@/components/NegotiationPanel";
 import WatchlistPanel from "@/components/WatchlistPanel";
 import dynamic from "next/dynamic";
+import { FirstTimerGuide } from "@/components/FirstTimerGuide";
+import { SAMPLE_PROPERTY, ONBOARDING_KEY } from "@/lib/sampleProperty";
 
 const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
 
@@ -88,6 +90,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const [monteCarloLoading, setMonteCarloLoading] = useState(false);
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -118,6 +121,12 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   useEffect(() => {
     if (mobileFormOpen) closeButtonRef.current?.focus();
   }, [mobileFormOpen]);
+
+  useEffect(() => {
+    if (!localStorage.getItem(ONBOARDING_KEY)) {
+      setShowGuide(true);
+    }
+  }, []);
 
   const handleModeChange = (mode: SimulationMode) => {
     if (result) {
@@ -272,6 +281,20 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
 
   return (
     <div className="min-h-screen bg-background">
+      {showGuide && (
+        <FirstTimerGuide
+          sampleProperty={SAMPLE_PROPERTY}
+          onUseSample={(input) => {
+            localStorage.setItem(ONBOARDING_KEY, "1");
+            setShowGuide(false);
+            handleAnalyze(input);
+          }}
+          onDismiss={() => {
+            localStorage.setItem(ONBOARDING_KEY, "1");
+            setShowGuide(false);
+          }}
+        />
+      )}
       <header className="border-b bg-white px-4 py-3 shadow-sm lg:px-6 lg:py-4">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
           <ShieldAlert className="h-6 w-6 text-primary lg:h-7 lg:w-7" />

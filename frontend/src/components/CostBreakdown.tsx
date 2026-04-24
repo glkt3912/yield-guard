@@ -2,6 +2,7 @@
 
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { AcquisitionCostBreakdown, InvestmentInput, YearlyResult } from "@/types/investment";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Props {
   input: InvestmentInput;
@@ -45,9 +46,55 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
 
   const totalInitial = initialCostItems.reduce((s, i) => s + i.value, 0);
 
+  const downPayment = input.landPrice + input.buildingCost - input.loanAmount;
+  const emergencyReserve = input.monthlyRent * 3;
+  const minimumRequired = Math.max(0, downPayment) + acquisitionCosts.total;
+  const propertyValue = input.landPrice + input.buildingCost;
+  const downPaymentRatio = propertyValue > 0 ? downPayment / propertyValue : 0;
+
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold">コスト内訳</h2>
+
+      {/* 必要自己資金サマリー */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">必要自己資金</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between text-sm font-semibold">
+            <span className="text-gray-700">最低必要額</span>
+            <span className="font-mono text-lg text-gray-900">{fmt(minimumRequired)}</span>
+          </div>
+          <div className="border-t pt-3 space-y-2">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">内訳</p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">頭金（借入控除後）</span>
+              <span className="font-mono text-gray-900">{fmt(downPayment)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">諸費用合計</span>
+              <span className="font-mono text-gray-900">{fmt(acquisitionCosts.total)}</span>
+            </div>
+          </div>
+          <div className="border-t pt-3">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>推奨: 緊急予備費</span>
+              <span className="font-mono">+{fmt(emergencyReserve)} （月額家賃×3ヶ月）</span>
+            </div>
+          </div>
+          {downPayment <= 0 && (
+            <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+              頭金がありません。ローン審査が困難になる可能性があります
+            </div>
+          )}
+          {downPayment > 0 && downPaymentRatio < 0.2 && (
+            <div className="rounded-md bg-orange-50 border border-orange-200 px-3 py-2 text-sm text-orange-700">
+              頭金比率が低め（20%未満）です
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* 初期投資内訳 */}
       <div>
