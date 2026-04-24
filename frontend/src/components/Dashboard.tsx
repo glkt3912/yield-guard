@@ -334,6 +334,8 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
               initialInput={decoded?.input}
               initialQuickTotalPriceMan={decoded?.quickTotalPriceMan}
               isOnline={isOnline}
+              externalLat={propertyLat}
+              externalLng={propertyLng}
             />
           </aside>
 
@@ -352,7 +354,14 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             {investmentScore && <InvestmentScoreCard score={investmentScore} />}
 
             {propertyLat !== undefined && (
-              <InvestmentScoreHeatmap centerLat={propertyLat} centerLng={propertyLng} />
+              <InvestmentScoreHeatmap
+                centerLat={propertyLat}
+                centerLng={propertyLng}
+                onTileSelect={(lat, lng) => {
+                  setPropertyLat(lat);
+                  setPropertyLng(lng);
+                }}
+              />
             )}
 
             {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} landAppraisal={landAppraisal} externalUrbanRisks={externalUrbanRisks} hazardRisks={hazardRisks} />}
@@ -446,6 +455,8 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 initialInput={lastInput ?? decoded?.input}
                 initialQuickTotalPriceMan={lastInput ? undefined : decoded?.quickTotalPriceMan}
                 isOnline={isOnline}
+                externalLat={propertyLat}
+                externalLng={propertyLng}
               />
             </div>
           </div>
