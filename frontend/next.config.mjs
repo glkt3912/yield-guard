@@ -1,31 +1,5 @@
-import withPWAInit from "@ducanh2912/next-pwa";
-
-const withPWA = withPWAInit({
-  dest: "public",
-  cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
-  reloadOnOnline: true,
-  disable: process.env.NODE_ENV === "development",
-  workboxOptions: {
-    disableDevLogs: true,
-    runtimeCaching: [
-      {
-        urlPattern: ({ url, request }) =>
-          /\/api\/.*/i.test(url.pathname) && request.method === "GET",
-        handler: "NetworkFirst",
-        options: {
-          cacheName: "api-cache",
-          expiration: { maxEntries: 64, maxAgeSeconds: 60 * 5 },
-        },
-      },
-    ],
-  },
-});
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Turbopack (Next.js 16 default) と PWA プラグインの webpack 設定の衝突を解消する
-  turbopack: {},
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL ?? "http://localhost:8080";
     return [
@@ -37,4 +11,4 @@ const nextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+export default nextConfig;
