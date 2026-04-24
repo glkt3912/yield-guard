@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   ComposedChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ReferenceLine, ReferenceArea, ResponsiveContainer,
@@ -14,22 +14,30 @@ interface Props {
   result: InvestmentResult;
 }
 
-export function DeadCrossChart({ result }: Props) {
+function DeadCrossChart({ result }: Props) {
   const { deadCrossYear, yearlyResults } = result;
 
-  const data = yearlyResults.slice(0, 35).map((y) => ({
-    year: `${y.year}年`,
-    元金返済: Math.round(y.annualPrincipal / 10_000),
-    減価償却費: Math.round(y.annualDepreciation / 10_000),
-    isDeadCrossZone: y.isInDeadCrossZone,
-  }));
+  const data = useMemo(
+    () =>
+      yearlyResults.slice(0, 35).map((y) => ({
+        year: `${y.year}年`,
+        元金返済: Math.round(y.annualPrincipal / 10_000),
+        減価償却費: Math.round(y.annualDepreciation / 10_000),
+        isDeadCrossZone: y.isInDeadCrossZone,
+      })),
+    [yearlyResults],
+  );
 
   const hasDeadCross = deadCrossYear > 0 && deadCrossYear <= 35;
 
   // デッドクロスゾーンの終了年（ローン完済またはデータ終端）
-  const deadCrossEndYear = hasDeadCross
-    ? ([...yearlyResults.slice(0, 35)].reverse().find((y) => y.isInDeadCrossZone)?.year ?? deadCrossYear)
-    : null;
+  const deadCrossEndYear = useMemo(
+    () =>
+      hasDeadCross
+        ? ([...yearlyResults.slice(0, 35)].reverse().find((y) => y.isInDeadCrossZone)?.year ?? deadCrossYear)
+        : null,
+    [hasDeadCross, yearlyResults, deadCrossYear],
+  );
 
   return (
     <Card>
@@ -93,3 +101,5 @@ export function DeadCrossChart({ result }: Props) {
     </Card>
   );
 }
+
+export default React.memo(DeadCrossChart);
