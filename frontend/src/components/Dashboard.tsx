@@ -216,19 +216,18 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
       const comp = await compareLandPrice(baseParams);
       setAnalysisResult((prev) => ({ ...prev, comparison: comp }));
 
-      let est: TheoreticalPriceResult | null = null;
       if (lastInput && lastInput.landArea > 0) {
         try {
-          est = await estimateLandPrice({
+          const est = await estimateLandPrice({
             ...baseParams,
             buildingAge: lastInput.buildingAge,
             stationMinutes: lastInput.stationMinutes,
           });
+          setAnalysisResult((prev) => ({ ...prev, theoreticalPrice: est }));
         } catch {
-          est = null;
+          setAnalysisResult((prev) => ({ ...prev, theoreticalPrice: null }));
         }
       }
-      setAnalysisResult((prev) => ({ ...prev, theoreticalPrice: est }));
 
       const [appraisal] = await Promise.allSettled([
         fetchLandAppraisals({ area, year: toYear, city: city || undefined }),
