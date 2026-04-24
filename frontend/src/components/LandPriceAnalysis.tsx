@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import type { InvestmentInput, LandPriceComparison, UrbanRisk, UrbanRiskLevel, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult } from "@/types/investment";
 import { formatMan, formatTsubo } from "@/lib/utils";
 import { MapPin, AlertTriangle, SearchX, Home, Building2, ShieldAlert, ShieldCheck, TrendingUp, Users } from "lucide-react";
+import { calcYieldBenchmark } from "@/lib/yieldBenchmark";
 
 const SQM_PER_TSUBO = 3.30578;
 
@@ -253,6 +254,49 @@ export function LandPriceAnalysis({ comparison, input, theoreticalPrice, station
             </div>
           ))}
         </div>
+
+        {/* エリア利回り目安 */}
+        {comparison.stats && comparison.stats.count >= 3 &&
+          input?.landArea && input.landArea > 0 &&
+          input?.monthlyRent && input.monthlyRent > 0 && (() => {
+            const userYield = (input.landPrice + input.buildingCost) > 0
+              ? input.monthlyRent * 12 / (input.landPrice + input.buildingCost)
+              : 0;
+            const benchmark = calcYieldBenchmark({
+              medianTsubo: stats.medianTsubo,
+              minTsubo: stats.minTsubo,
+              maxTsubo: stats.maxTsubo,
+              landAreaSqm: input.landArea,
+              monthlyRent: input.monthlyRent,
+              buildingCost: input.buildingCost,
+              userYield,
+            });
+            const judgmentColors: Record<string, string> = {
+              "realistic": "bg-green-100 text-green-800",
+              "slightly-high": "bg-yellow-100 text-yellow-800",
+              "high": "bg-red-100 text-red-800",
+            };
+            return (
+              <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                <p className="text-sm font-semibold">このエリアの利回り目安</p>
+                <p className="text-sm">
+                  推定利回り範囲: {(benchmark.estimatedYieldMin * 100).toFixed(1)}% 〜 {(benchmark.estimatedYieldMax * 100).toFixed(1)}%（中央値: {(benchmark.estimatedYieldTypical * 100).toFixed(1)}%）
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  ※ 土地面積 {input.landArea}m²・建物代 {Math.round(input.buildingCost / 10_000)}万円 で試算
+                </p>
+                {(input.landPrice + input.buildingCost) > 0 && (
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm">あなたの想定利回り: {(userYield * 100).toFixed(1)}%</p>
+                    <Badge className={judgmentColors[benchmark.judgment]}>
+                      {benchmark.judgmentLabel}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            );
+          })()
+        }
 
         {/* 検討中価格 vs 相場 */}
         {inputPricePerTsubo > 0 && (

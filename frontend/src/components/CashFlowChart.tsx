@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { InvestmentResult } from "@/types/investment";
 import { formatMan } from "@/lib/utils";
 import { TrendingUp } from "lucide-react";
+import { TermTooltip } from "@/components/ui/TermTooltip";
 
 interface Props {
   result: InvestmentResult;
@@ -125,13 +126,13 @@ function CashFlowChart({ result, equityInvested }: Props) {
         {/* IRR / NPV */}
         <div className="mt-3 grid grid-cols-2 gap-3 rounded-md border bg-muted/30 p-3">
           <div className="text-center">
-            <p className="text-xs text-muted-foreground">IRR（内部収益率）</p>
+            <p className="text-xs text-muted-foreground"><TermTooltip term="irr">IRR（内部収益率）</TermTooltip></p>
             <p className={`text-sm font-bold ${result.irr != null ? (result.irr >= 0 ? "text-green-600" : "text-red-600") : "text-muted-foreground"}`}>
               {result.irr != null ? `${(result.irr * 100).toFixed(2)}%` : "―"}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-muted-foreground">NPV（正味現在価値）</p>
+            <p className="text-xs text-muted-foreground"><TermTooltip term="npv">NPV（正味現在価値）</TermTooltip></p>
             <p className={`text-sm font-bold ${result.npv >= 0 ? "text-green-600" : "text-red-600"}`}>
               {formatMan(result.npv)}
             </p>
