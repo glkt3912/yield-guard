@@ -21,6 +21,7 @@ import { downloadReportPDF } from "@/lib/generatePdf";
 import { MonteCarloChart } from "@/components/MonteCarloChart";
 import NegotiationPanel from "@/components/NegotiationPanel";
 import WatchlistPanel from "@/components/WatchlistPanel";
+import { AreaDiscovery } from "@/components/AreaDiscovery";
 import dynamic from "next/dynamic";
 import { FirstTimerGuide } from "@/components/FirstTimerGuide";
 import { SAMPLE_PROPERTY, ONBOARDING_KEY } from "@/lib/sampleProperty";
@@ -91,6 +92,8 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [activeTab, setActiveTab] = useState<"simulation" | "area-discovery">("simulation");
+  const [selectedMunicipalityMsg, setSelectedMunicipalityMsg] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -398,7 +401,48 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           </aside>
 
           <section className="space-y-6">
-            {!result && !comparison && (
+            {/* Tab toggle */}
+            <div className="flex gap-1 rounded-lg border bg-muted/30 p-1 w-fit">
+              <button
+                onClick={() => setActiveTab("simulation")}
+                className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                  activeTab === "simulation"
+                    ? "bg-white shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                シミュレーション
+              </button>
+              <button
+                onClick={() => setActiveTab("area-discovery")}
+                className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                  activeTab === "area-discovery"
+                    ? "bg-white shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                エリアを探す
+              </button>
+            </div>
+
+            {activeTab === "area-discovery" && (
+              <>
+                {selectedMunicipalityMsg && (
+                  <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    {selectedMunicipalityMsg}
+                  </div>
+                )}
+                <AreaDiscovery
+                  onMunicipalitySelect={(_code, name) => {
+                    setSelectedMunicipalityMsg(
+                      `「${name}」を選択しました。下の地図上で物件位置をクリックしてください。`
+                    );
+                  }}
+                />
+              </>
+            )}
+
+            {activeTab === "simulation" && !result && !comparison && (
               <div className="flex h-64 items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/20 lg:h-80">
                 <div className="text-center text-muted-foreground">
                   <ShieldAlert className="mx-auto mb-3 h-10 w-10 opacity-30 lg:h-12 lg:w-12" />
@@ -409,67 +453,71 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
               </div>
             )}
 
-            {investmentScore && <InvestmentScoreCard score={investmentScore} />}
-
-            {propertyLat !== undefined && (
-              <InvestmentScoreHeatmap
-                centerLat={propertyLat}
-                centerLng={propertyLng}
-                onTileSelect={(lat, lng) => {
-                  setPropertyLat(lat);
-                  setPropertyLng(lng);
-                }}
-              />
-            )}
-
-            {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} landAppraisal={landAppraisal} externalUrbanRisks={externalUrbanRisks} hazardRisks={hazardRisks} />}
-
-            {result && lastInput && (
+            {activeTab === "simulation" && (
               <>
-                <CriticalErrorBanner errors={result.criticalErrors} />
-                <YieldAnalysis result={result} input={lastInput} populationForecast={populationForecast} />
-                <NegotiationPanel
-                  result={result}
-                  input={lastInput}
-                  comparison={comparison}
-                  theoreticalPrice={theoreticalPrice}
-                />
-                <LoanOptimizationPanel
-                  result={result}
-                  loanMethod={loanMethod}
-                  onLoanMethodChange={handleLoanMethodChange}
-                  loanAmount={lastInput.loanAmount}
-                />
-                {simulationMode === "full" && (
+                {investmentScore && <InvestmentScoreCard score={investmentScore} />}
+
+                {propertyLat !== undefined && (
+                  <InvestmentScoreHeatmap
+                    centerLat={propertyLat}
+                    centerLng={propertyLng}
+                    onTileSelect={(lat, lng) => {
+                      setPropertyLat(lat);
+                      setPropertyLng(lng);
+                    }}
+                  />
+                )}
+
+                {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} landAppraisal={landAppraisal} externalUrbanRisks={externalUrbanRisks} hazardRisks={hazardRisks} />}
+
+                {result && lastInput && (
                   <>
-                    {result.acquisitionCosts && (
-                      <div className="rounded-xl border bg-white p-5 shadow-sm">
-                        <CostBreakdown
-                          input={lastInput}
-                          acquisitionCosts={result.acquisitionCosts}
-                          yearlyResults={result.yearlyResults}
-                        />
-                      </div>
+                    <CriticalErrorBanner errors={result.criticalErrors} />
+                    <YieldAnalysis result={result} input={lastInput} populationForecast={populationForecast} />
+                    <NegotiationPanel
+                      result={result}
+                      input={lastInput}
+                      comparison={comparison}
+                      theoreticalPrice={theoreticalPrice}
+                    />
+                    <LoanOptimizationPanel
+                      result={result}
+                      loanMethod={loanMethod}
+                      onLoanMethodChange={handleLoanMethodChange}
+                      loanAmount={lastInput.loanAmount}
+                    />
+                    {simulationMode === "full" && (
+                      <>
+                        {result.acquisitionCosts && (
+                          <div className="rounded-xl border bg-white p-5 shadow-sm">
+                            <CostBreakdown
+                              input={lastInput}
+                              acquisitionCosts={result.acquisitionCosts}
+                              yearlyResults={result.yearlyResults}
+                            />
+                          </div>
+                        )}
+                        {/* 自己資金 = 総投資額 - ローン金額（ISSUE-22: 投資回収年の正確な計算に使用） */}
+                        <CashFlowChart result={result} equityInvested={result.totalInvestment - lastInput.loanAmount} />
+                        <DeadCrossChart result={result} />
+                        <div className="flex justify-center">
+                          <Button
+                            onClick={handleMonteCarlo}
+                            loading={monteCarloLoading}
+                            size="md"
+                          >
+                            モンテカルロ実行（1,000試行）
+                          </Button>
+                        </div>
+                        {monteCarloResult && <MonteCarloChart result={monteCarloResult} />}
+                      </>
                     )}
-                    {/* 自己資金 = 総投資額 - ローン金額（ISSUE-22: 投資回収年の正確な計算に使用） */}
-                    <CashFlowChart result={result} equityInvested={result.totalInvestment - lastInput.loanAmount} />
-                    <DeadCrossChart result={result} />
-                    <div className="flex justify-center">
-                      <Button
-                        onClick={handleMonteCarlo}
-                        loading={monteCarloLoading}
-                        size="md"
-                      >
-                        モンテカルロ実行（1,000試行）
-                      </Button>
-                    </div>
-                    {monteCarloResult && <MonteCarloChart result={monteCarloResult} />}
                   </>
                 )}
+                <RenovationPanel />
+                <WatchlistPanel />
               </>
             )}
-            <RenovationPanel />
-            <WatchlistPanel />
           </section>
         </div>
       </main>
