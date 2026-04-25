@@ -12,6 +12,13 @@ vi.mock("@/lib/api", () => ({
   fetchStationRidership: vi.fn(),
   fetchPopulationForecast: vi.fn(),
   fetchLandAppraisals: vi.fn(),
+  fetchUrbanRisks: vi.fn(),
+  fetchHazardInfo: vi.fn(),
+  fetchInvestmentScore: vi.fn(),
+  simulate: vi.fn(),
+  fetchMunicipalities: vi.fn().mockResolvedValue([]),
+  fetchGeocode: vi.fn(),
+  fetchRentDeclineHint: vi.fn(),
 }));
 
 // PDFDownloadLink is a browser-only API; stub it out in jsdom
