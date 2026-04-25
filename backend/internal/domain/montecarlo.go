@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"math"
 	"math/rand"
 	"sort"
@@ -80,7 +81,7 @@ func MonteCarloSimulate(input MonteCarloInput) MonteCarloResult {
 		sim.VacancyRateDelta = 0
 		sim.LoanRateDelta = 0
 
-		result := Analyze(sim)
+		result := Analyze(context.Background(), sim)
 
 		irr := calcIRR(result, sim)
 		if !math.IsNaN(irr) {

@@ -1,14 +1,20 @@
 package domain
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"sort"
 	"strings"
 	"sync"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
+	domainTracerName = "domain"
+
 	// SqmPerTsubo は 1坪あたりの平方メートル数（mlit パッケージからも参照）
 	SqmPerTsubo = 3.30578
 
@@ -252,7 +258,7 @@ func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanPara
 
 // calcAllStressScenarios は 6 つのデフォルトシナリオ（入力値が非ゼロなら第 7 カスタムシナリオも）を
 // goroutine で並列計算して返す。インデックス固定の slice に直書きするため mutex 不要。
-func calcAllStressScenarios(input InvestmentInput) []StressScenarioResult {
+func calcAllStressScenarios(ctx context.Context, input InvestmentInput) []StressScenarioResult {
 	type scenarioDef struct {
 		label     string
 		rateDelta float64
@@ -279,7 +285,7 @@ func calcAllStressScenarios(input InvestmentInput) []StressScenarioResult {
 		go func(idx int) {
 			defer wg.Done()
 			sc := allScenarioDefs[idx]
-			scenarioResults[idx] = calcStressScenario(input, sc.label, sc.rateDelta, sc.vacDelta)
+			scenarioResults[idx] = calcStressScenario(ctx, input, sc.label, sc.rateDelta, sc.vacDelta)
 		}(i)
 	}
 	wg.Wait()
@@ -316,7 +322,14 @@ func calcIRRNPV(
 }
 
 // Analyze は投資入力値から収支シミュレーション結果を算出する
-func Analyze(input InvestmentInput) InvestmentResult {
+func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
+	ctx, span := otel.Tracer(domainTracerName).Start(ctx, "domain.Analyze")
+	defer span.End()
+	span.SetAttributes(
+		attribute.Float64("domain.land_price", input.LandPrice),
+		attribute.Float64("domain.loan_amount", input.LoanAmount),
+	)
+
 	input.Defaults()
 
 	yp := initYieldParams(input)
@@ -349,7 +362,7 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	)
 
 	criticalErrors := calcCriticalErrors(input, sim.deadCrossYear, dp.usefulLife)
-	stressScenarios := calcAllStressScenarios(input)
+	stressScenarios := calcAllStressScenarios(ctx, input)
 	acquisitionCosts := CalcAcquisitionCosts(
 		input.LandPrice,
 		input.BuildingCost,
@@ -419,7 +432,14 @@ func calcYieldScenarios(input InvestmentInput, totalInvestment float64) YieldSce
 }
 
 // calcStressScenario は指定の金利・空室率オフセットでシナリオ計算を行い結果を返す
-func calcStressScenario(base InvestmentInput, label string, rateDelta, vacDelta float64) StressScenarioResult {
+func calcStressScenario(ctx context.Context, base InvestmentInput, label string, rateDelta, vacDelta float64) StressScenarioResult {
+	_, span := otel.Tracer(domainTracerName).Start(ctx, "domain.calcStressScenario")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("domain.stress.label", label),
+		attribute.Float64("domain.stress.rate_delta", rateDelta),
+		attribute.Float64("domain.stress.vac_delta", vacDelta),
+	)
 	in := base
 
 	effectiveVacancy := in.VacancyRate + vacDelta
@@ -880,7 +900,11 @@ func calcExit(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciat
 }
 
 // CalcLandPriceStats は取引データから統計を算出する
-func CalcLandPriceStats(transactions []LandTransaction) LandPriceStats {
+func CalcLandPriceStats(ctx context.Context, transactions []LandTransaction) LandPriceStats {
+	_, span := otel.Tracer(domainTracerName).Start(ctx, "domain.CalcLandPriceStats")
+	defer span.End()
+	span.SetAttributes(attribute.Int("domain.transaction_count", len(transactions)))
+
 	if len(transactions) == 0 {
 		return LandPriceStats{}
 	}
