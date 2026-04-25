@@ -10,11 +10,13 @@ import (
 
 const cacheTTL = 24 * time.Hour
 
+// genericEntry はキャッシュの1エントリ。E は格納する要素の型。
 type genericEntry[E any] struct {
 	data      []E
 	expiresAt time.Time
 }
 
+// genericCache は TTL・スレッドセーフ・コピーオンリードを提供する汎用インメモリキャッシュ。
 type genericCache[E any] struct {
 	mu      sync.RWMutex
 	entries map[string]genericEntry[E]
@@ -36,7 +38,10 @@ func (c *genericCache[E]) get(key string) ([]E, bool) {
 	}
 	if time.Now().After(entry.expiresAt) {
 		c.mu.Lock()
-		delete(c.entries, key)
+		// RUnlock から Lock 取得までの間に set() で新しいエントリが書き込まれた場合は削除しない
+		if current, exists := c.entries[key]; exists && time.Now().After(current.expiresAt) {
+			delete(c.entries, key)
+		}
 		c.mu.Unlock()
 		return nil, false
 	}
