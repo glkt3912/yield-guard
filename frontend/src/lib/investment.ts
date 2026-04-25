@@ -451,7 +451,11 @@ function calcStressScenario(
       if (yearDSCR < minDSCR) minDSCR = yearDSCR;
     }
 
-    const cf = yearNOI - yearLoan;
+    const yearCapex = (inInput.capexSchedule ?? [])
+      .filter((ev) => ev.year === y)
+      .reduce((sum, ev) => sum + ev.amount, 0);
+
+    const cf = yearNOI - yearLoan - yearCapex;
     // 減価償却は省略した保守的近似（簡略ストレス計算のため過大に税を見積もる）
     const taxableIncome = yearNOI - yearInterest;
     const incomeTax = taxableIncome > 0 ? taxableIncome * inInput.incomeTaxRate : 0;

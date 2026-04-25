@@ -480,3 +480,104 @@ describe("calcStressScenario - rent decline and after-tax CF", () => {
     expect(s1.breakEvenYear).toBe(-1);
   });
 });
+
+// ─── analyze: capex schedule ──────────────────────────────────────────────────
+
+describe("analyze - capex schedule", () => {
+  it("capexSchedule なしの場合、全年の capexAmount が 0", () => {
+    const r = analyze(BASE_INPUT);
+    r.yearlyResults.forEach((yr) => {
+      expect(yr.capexAmount).toBe(0);
+    });
+  });
+
+  it("指定年の capexAmount が入力値と一致する", () => {
+    const r = analyze({ ...BASE_INPUT, capexSchedule: [{ year: 3, amount: 1_000_000 }] });
+    expect(r.yearlyResults[2].capexAmount).toBe(1_000_000);
+  });
+
+  it("capex 発生年の cashFlow が非発生年より capexAmount 分だけ少ない", () => {
+    const base = analyze(BASE_INPUT);
+    const withCapex = analyze({
+      ...BASE_INPUT,
+      capexSchedule: [{ year: 3, amount: 1_000_000 }],
+    });
+    const diff = base.yearlyResults[2].cashFlow - withCapex.yearlyResults[2].cashFlow;
+    expect(approxEqual(diff, 1_000_000)).toBe(true);
+  });
+
+  it("capex 非発生年の cashFlow は影響を受けない", () => {
+    const base = analyze(BASE_INPUT);
+    const withCapex = analyze({
+      ...BASE_INPUT,
+      capexSchedule: [{ year: 3, amount: 1_000_000 }],
+    });
+    expect(approxEqual(base.yearlyResults[0].cashFlow, withCapex.yearlyResults[0].cashFlow)).toBe(
+      true
+    );
+    expect(approxEqual(base.yearlyResults[4].cashFlow, withCapex.yearlyResults[4].cashFlow)).toBe(
+      true
+    );
+  });
+
+  it("同年に複数の capex イベントがある場合は合算される", () => {
+    const r = analyze({
+      ...BASE_INPUT,
+      capexSchedule: [
+        { year: 5, amount: 500_000 },
+        { year: 5, amount: 300_000 },
+      ],
+    });
+    expect(r.yearlyResults[4].capexAmount).toBe(800_000);
+  });
+
+  it("ローン期間（35年）を超えた capex イベントは yearlyResults に現れない", () => {
+    const r = analyze({
+      ...BASE_INPUT,
+      capexSchedule: [{ year: 40, amount: 2_000_000 }],
+    });
+    r.yearlyResults.forEach((yr) => {
+      expect(yr.capexAmount).toBe(0);
+    });
+  });
+
+  it("capex は cashFlow を減らすが taxableIncome には影響しない", () => {
+    const base = analyze(BASE_INPUT);
+    const withCapex = analyze({
+      ...BASE_INPUT,
+      capexSchedule: [{ year: 2, amount: 500_000 }],
+    });
+    expect(
+      approxEqual(base.yearlyResults[1].taxableIncome, withCapex.yearlyResults[1].taxableIncome)
+    ).toBe(true);
+    expect(
+      base.yearlyResults[1].cashFlow - withCapex.yearlyResults[1].cashFlow
+    ).toBeCloseTo(500_000, -2);
+  });
+
+  it("capex はストレスシナリオの totalCashFlow にも反映される", () => {
+    const base = analyze(BASE_INPUT);
+    const withCapex = analyze({
+      ...BASE_INPUT,
+      capexSchedule: [{ year: 1, amount: 1_000_000 }],
+    });
+    const baseBaseline = base.stressScenarios.find((s) => s.label === "ベースライン")!;
+    const capexBaseline = withCapex.stressScenarios.find((s) => s.label === "ベースライン")!;
+    expect(baseBaseline.totalCashFlow - capexBaseline.totalCashFlow).toBeCloseTo(1_000_000, -2);
+  });
+});
+
+// ─── analyze: totalInterest ───────────────────────────────────────────────────
+
+describe("analyze - totalInterest", () => {
+  it("totalInterest が yearlyResults の annualInterest 合計と一致する", () => {
+    const r = analyze(BASE_INPUT);
+    const sum = r.yearlyResults.reduce((acc, yr) => acc + yr.annualInterest, 0);
+    expect(approxEqual(r.totalInterest, sum)).toBe(true);
+  });
+
+  it("無借金物件は totalInterest が 0", () => {
+    const r = analyze({ ...BASE_INPUT, loanAmount: 0 });
+    expect(r.totalInterest).toBe(0);
+  });
+});
