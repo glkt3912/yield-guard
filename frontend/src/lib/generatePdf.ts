@@ -413,7 +413,7 @@ export async function downloadReportPDF(
                     thCell("シナリオ", "left"),
                     thCell("総CF"),
                     thCell("DSCR"),
-                    thCell("回収年"),
+                    thCell("CF黒転年"),
                     thCell("判定", "center"),
                   ],
                   ...result.stressScenarios.map((sc, idx) => [
