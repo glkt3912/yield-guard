@@ -223,14 +223,15 @@ export function useInvestmentSimulation(
         }));
 
         if (lat !== undefined && lng !== undefined) {
-          const [ridership, population, urbanRisks, scoreResult, hazard] =
-            await Promise.allSettled([
+          const [ridership, population, urbanRisks, scoreResult, hazard] = await Promise.allSettled(
+            [
               fetchStationRidership({ lat, lng }),
               fetchPopulationForecast({ lat, lng }),
               fetchUrbanRisks(lat, lng),
               fetchInvestmentScore({ lat, lng }),
               fetchHazardInfo(lat, lng),
-            ]);
+            ]
+          );
           setAnalysisResult((prev) => ({
             ...prev,
             stationRidership: ridership.status === "fulfilled" ? ridership.value : null,

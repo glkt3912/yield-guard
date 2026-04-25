@@ -14,9 +14,7 @@ export interface UseMunicipalitiesLoaderResult {
   loadMunicipalities: (areaCode: string) => Promise<void>;
 }
 
-export function useMunicipalitiesLoader(
-  initialAreaCode = "10"
-): UseMunicipalitiesLoaderResult {
+export function useMunicipalitiesLoader(initialAreaCode = "10"): UseMunicipalitiesLoaderResult {
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

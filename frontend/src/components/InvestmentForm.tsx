@@ -1,11 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { SimulationModeToggle } from "@/components/SimulationModeToggle";
-import type {
-  InvestmentInput,
-  SimulationMode,
-  RateAdjustment,
-} from "@/types/investment";
+import type { InvestmentInput, SimulationMode, RateAdjustment } from "@/types/investment";
 import { DEFAULT_INPUT, QUICK_MODE_DEFAULTS } from "@/types/investment";
 import { fetchGeocode } from "@/lib/api";
 import { type ZoningType } from "@/lib/zoning";

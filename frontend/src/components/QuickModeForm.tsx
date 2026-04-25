@@ -152,7 +152,12 @@ export function QuickModeForm({
                 const lat = parseFloat(propertyLat);
                 const lng = parseFloat(propertyLng);
                 const hasCoords = !isNaN(lat) && !isNaN(lng);
-                onFetchLandPrices(area, city, hasCoords ? lat : undefined, hasCoords ? lng : undefined);
+                onFetchLandPrices(
+                  area,
+                  city,
+                  hasCoords ? lat : undefined,
+                  hasCoords ? lng : undefined
+                );
               }}
             >
               <Search className="h-4 w-4" />

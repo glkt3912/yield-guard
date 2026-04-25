@@ -16,15 +16,7 @@ import {
   getPeriodLabel,
 } from "@/lib/investmentFormConstants";
 import { ZONING_TYPES, ZONING_META, type ZoningType } from "@/lib/zoning";
-import {
-  Search,
-  Calculator,
-  Info,
-  AlertTriangle,
-  ShieldCheck,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { Search, Calculator, Info, AlertTriangle, ShieldCheck, Plus, Trash2 } from "lucide-react";
 
 const LOCATION_TYPE_LABEL: Record<string, string> = {
   ROOFTOP: "番地レベルで取得",
@@ -203,7 +195,9 @@ export function FullModeForm({
               </select>
               {muniError && <p className="text-xs text-destructive">{muniError}</p>}
               {muniFilter.trim() && filteredMunicipalities.length > 0 && (
-                <p className="text-xs text-muted-foreground">{filteredMunicipalities.length}件該当</p>
+                <p className="text-xs text-muted-foreground">
+                  {filteredMunicipalities.length}件該当
+                </p>
               )}
             </div>
           </div>
@@ -297,7 +291,12 @@ export function FullModeForm({
               const lat = parseFloat(propertyLat);
               const lng = parseFloat(propertyLng);
               const hasCoords = !isNaN(lat) && !isNaN(lng);
-              onFetchLandPrices(area, city, hasCoords ? lat : undefined, hasCoords ? lng : undefined);
+              onFetchLandPrices(
+                area,
+                city,
+                hasCoords ? lat : undefined,
+                hasCoords ? lng : undefined
+              );
             }}
           >
             <Search className="h-4 w-4" />
@@ -389,7 +388,9 @@ export function FullModeForm({
                           適用
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">建物価格 = 消費税額 ÷ 0.1</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        建物価格 = 消費税額 ÷ 0.1
+                      </p>
                     </div>
                     <div>
                       <p className="font-medium text-xs mb-1">② 固定資産税評価額の比率で按分</p>
