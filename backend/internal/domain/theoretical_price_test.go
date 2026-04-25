@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"math"
 	"testing"
 	"time"
@@ -30,7 +31,7 @@ func approx(t *testing.T, got, want, tol float64, label string) {
 }
 
 func TestEstimateTheoreticalPrice_NoData(t *testing.T) {
-	_, ok := EstimateTheoreticalPrice(LandPriceStats{}, TheoreticalPriceInput{
+	_, ok := EstimateTheoreticalPrice(context.Background(), LandPriceStats{}, TheoreticalPriceInput{
 		ListingPrice: 5_000_000, LandArea: 100, BuildingAge: 10,
 	})
 	if ok {
@@ -42,7 +43,7 @@ func TestEstimateTheoreticalPrice_NoBuildingYearData(t *testing.T) {
 	stats := makeStats(100_000, []LandTransaction{
 		{PricePerTsubo: 100_000}, // BuildingYear なし
 	})
-	_, ok := EstimateTheoreticalPrice(stats, TheoreticalPriceInput{
+	_, ok := EstimateTheoreticalPrice(context.Background(), stats, TheoreticalPriceInput{
 		ListingPrice: 5_000_000, LandArea: 100, BuildingAge: 10,
 	})
 	if ok {
@@ -60,7 +61,7 @@ func TestEstimateTheoreticalPrice_NoAgeCorrection(t *testing.T) {
 	}
 	stats := makeStats(300_000, txs)
 
-	res, ok := EstimateTheoreticalPrice(stats, TheoreticalPriceInput{
+	res, ok := EstimateTheoreticalPrice(context.Background(), stats, TheoreticalPriceInput{
 		ListingPrice: 5_000_000, LandArea: 30, BuildingAge: 10,
 	})
 	if !ok {
@@ -84,7 +85,7 @@ func TestEstimateTheoreticalPrice_AgeCorrectionPositive(t *testing.T) {
 	stats := makeStats(300_000, txs)
 
 	propAge := 10
-	res, ok := EstimateTheoreticalPrice(stats, TheoreticalPriceInput{
+	res, ok := EstimateTheoreticalPrice(context.Background(), stats, TheoreticalPriceInput{
 		ListingPrice: 5_000_000, LandArea: 30, BuildingAge: propAge,
 	})
 	if !ok {
@@ -104,7 +105,7 @@ func TestEstimateTheoreticalPrice_AgeCorrectionClamp(t *testing.T) {
 	stats := makeStats(300_000, txs)
 
 	// 物件は新築(築0年) → -0.02×(0-55)=+1.1 → +0.30にクランプ
-	res, ok := EstimateTheoreticalPrice(stats, TheoreticalPriceInput{
+	res, ok := EstimateTheoreticalPrice(context.Background(), stats, TheoreticalPriceInput{
 		ListingPrice: 5_000_000, LandArea: 30, BuildingAge: 0,
 	})
 	if !ok {
@@ -122,7 +123,7 @@ func TestEstimateTheoreticalPrice_StationCorrection(t *testing.T) {
 	}
 	stats := makeStats(300_000, txs)
 
-	res, ok := EstimateTheoreticalPrice(stats, TheoreticalPriceInput{
+	res, ok := EstimateTheoreticalPrice(context.Background(), stats, TheoreticalPriceInput{
 		ListingPrice: 5_000_000, LandArea: 30, BuildingAge: 15, StationMinutes: 5,
 	})
 	if !ok {
@@ -144,7 +145,7 @@ func TestEstimateTheoreticalPrice_NoStationInput(t *testing.T) {
 	}
 	stats := makeStats(300_000, txs)
 
-	res, ok := EstimateTheoreticalPrice(stats, TheoreticalPriceInput{
+	res, ok := EstimateTheoreticalPrice(context.Background(), stats, TheoreticalPriceInput{
 		ListingPrice: 5_000_000, LandArea: 30, BuildingAge: 15, StationMinutes: 0,
 	})
 	if !ok {
@@ -169,7 +170,7 @@ func TestEstimateTheoreticalPrice_DeviationPct(t *testing.T) {
 	theoretical := 300_000 * (30 / SqmPerTsubo)
 	listing := theoretical * 1.1 // 10%割高
 
-	res, ok := EstimateTheoreticalPrice(stats, TheoreticalPriceInput{
+	res, ok := EstimateTheoreticalPrice(context.Background(), stats, TheoreticalPriceInput{
 		ListingPrice: listing, LandArea: 30, BuildingAge: 10,
 	})
 	if !ok {
