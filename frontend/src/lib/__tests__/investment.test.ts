@@ -550,9 +550,10 @@ describe("analyze - capex schedule", () => {
     expect(
       approxEqual(base.yearlyResults[1].taxableIncome, withCapex.yearlyResults[1].taxableIncome)
     ).toBe(true);
-    expect(
-      base.yearlyResults[1].cashFlow - withCapex.yearlyResults[1].cashFlow
-    ).toBeCloseTo(500_000, -2);
+    expect(base.yearlyResults[1].cashFlow - withCapex.yearlyResults[1].cashFlow).toBeCloseTo(
+      500_000,
+      -2
+    );
   });
 
   it("capex はストレスシナリオの totalCashFlow にも反映される", () => {
