@@ -1654,6 +1654,64 @@ func TestCalcLTVSensitivity_WithRateSchedule(t *testing.T) {
 	}
 }
 
+// TestCalcLTVSensitivity_LoanRateDelta は LoanRateDelta が LTV 感度に反映されることを検証する。
+func TestCalcLTVSensitivity_LoanRateDelta(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:      5_000_000,
+		BuildingCost:   10_000_000,
+		MonthlyRent:    120_000,
+		VacancyRate:    0.05,
+		AnnualLoanRate: 0.005,
+		LoanYears:      35,
+		ExpenseRate:    0.20,
+	}
+	base.Defaults()
+
+	withDelta := base
+	withDelta.LoanRateDelta = 0.015 // ストレス +1.5% → 実効 2.0%
+
+	rowsBase := CalcLTVSensitivity(base, nil)
+	rowsDelta := CalcLTVSensitivity(withDelta, nil)
+
+	for i := range rowsBase {
+		if rowsDelta[i].DSCR >= rowsBase[i].DSCR {
+			t.Errorf("rows[%d]: DSCR(%.4f) should be < base DSCR(%.4f) when LoanRateDelta > 0",
+				i, rowsDelta[i].DSCR, rowsBase[i].DSCR)
+		}
+	}
+}
+
+// TestCalcLTVSensitivity_EqualPrincipal は元金均等返済パスで初年度実効金利が使われることを検証する。
+func TestCalcLTVSensitivity_EqualPrincipal(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:      5_000_000,
+		BuildingCost:   10_000_000,
+		MonthlyRent:    120_000,
+		VacancyRate:    0.05,
+		AnnualLoanRate: 0.005,
+		LoanYears:      35,
+		LoanMethod:     LoanMethodEqualPrincipal,
+		ExpenseRate:    0.20,
+	}
+	base.Defaults()
+
+	// 1年目から高金利スケジュールを適用 → DSCR が下がるはず（元金均等パス）
+	withSchedule := base
+	withSchedule.RateAdjustmentSchedule = []RateAdjustment{
+		{AfterYear: 1, Rate: 0.030},
+	}
+
+	rowsBase := CalcLTVSensitivity(base, nil)
+	rowsScheduled := CalcLTVSensitivity(withSchedule, nil)
+
+	for i := range rowsBase {
+		if rowsScheduled[i].DSCR >= rowsBase[i].DSCR {
+			t.Errorf("rows[%d] (equal-principal): DSCR(%.4f) should be < base DSCR(%.4f) when year-1 rate is higher",
+				i, rowsScheduled[i].DSCR, rowsBase[i].DSCR)
+		}
+	}
+}
+
 // TestAnalyze_EqualPrincipal は元金均等返済での計算を検証する
 func TestAnalyze_EqualPrincipal(t *testing.T) {
 	input := InvestmentInput{
