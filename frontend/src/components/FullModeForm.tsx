@@ -598,6 +598,15 @@ export function FullModeForm({
                 onChange={(e) => setNum("miscExpenseRate", fromPct(e.target.value))}
                 error={fieldError("miscExpenseRate")}
               />
+              <Input
+                label="融資諸費用率"
+                type="number"
+                inputMode="decimal"
+                suffix="%"
+                step="0.1"
+                value={toPct(input.loanFeeRate ?? 0, 1)}
+                onChange={(e) => setNum("loanFeeRate", fromPct(e.target.value))}
+              />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               ※運営経費率はローン利息を含みません（管理費・修繕費・固定資産税・保険等）
