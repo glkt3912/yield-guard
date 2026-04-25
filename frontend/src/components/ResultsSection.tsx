@@ -113,7 +113,6 @@ export function ResultsSection({
         </button>
       </div>
 
-
       {activeTab === "area-discovery" && (
         <>
           {selectedMunicipalityMsg && (
