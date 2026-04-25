@@ -109,6 +109,13 @@ resource "google_project_iam_member" "deployer_monitoring_editor" {
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+resource "google_project_iam_member" "deployer_secret_manager_admin" {
+  # Required to create and manage Secret Manager secrets via terraform apply.
+  project = var.project_id
+  role    = "roles/secretmanager.admin"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 # --- Runtime SA permissions (Cloud Run only) ---
 
 resource "google_secret_manager_secret_iam_member" "mlit_accessor" {
