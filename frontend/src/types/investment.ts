@@ -425,3 +425,9 @@ export interface WatchlistItem {
   status: WatchlistStatus;
   addedAt: string; // ISO 8601
 }
+
+export interface GeocodeResult {
+  lat: number;
+  lng: number;
+  locationType: "ROOFTOP" | "RANGE_INTERPOLATED" | "GEOMETRIC_CENTER" | "APPROXIMATE";
+}
