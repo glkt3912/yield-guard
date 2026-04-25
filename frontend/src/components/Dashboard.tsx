@@ -32,9 +32,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
 
   const isOnline = useNetworkStatus();
 
-  const [simulationMode, setSimulationMode] = useState<SimulationMode>(
-    decoded?.mode ?? "quick"
-  );
+  const [simulationMode, setSimulationMode] = useState<SimulationMode>(decoded?.mode ?? "quick");
   const [modeNotice, setModeNotice] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
