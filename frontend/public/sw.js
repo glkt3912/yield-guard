@@ -52,7 +52,7 @@ async function cacheFirst(request) {
   }
 }
 
-async function networkFirst(request, { cacheName, trim = false, checkAge = false } = {}) {
+async function networkFirst(request, { cacheName, trim = false, checkAge = false }) {
   const cache = await caches.open(cacheName);
   try {
     const response = await fetch(request);
