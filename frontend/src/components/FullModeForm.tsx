@@ -61,6 +61,7 @@ interface FullModeFormProps {
   setGeocodeStatus: (v: "idle" | "loading" | "success" | "error") => void;
   geocodeError: string;
   geocodeLocationType: string;
+  setGeocodeLocationType: (v: string) => void;
   showManualCoords: boolean;
   handleGeocode: () => Promise<void>;
   loading: boolean;
@@ -118,6 +119,7 @@ export function FullModeForm({
   setGeocodeStatus,
   geocodeError,
   geocodeLocationType,
+  setGeocodeLocationType,
   showManualCoords,
   handleGeocode,
   loading,
@@ -219,7 +221,7 @@ export function FullModeForm({
                   onChange={(e) => {
                     setAddressInput(e.target.value);
                     setGeocodeStatus("idle");
-                    geocodeLocationType;
+                    setGeocodeLocationType("");
                     setPropertyLat("");
                     setPropertyLng("");
                   }}

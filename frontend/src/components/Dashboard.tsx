@@ -37,6 +37,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   );
   const [modeNotice, setModeNotice] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
@@ -161,10 +162,11 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 disabled={pdfGenerating}
                 onClick={async () => {
                   setPdfGenerating(true);
+                  setPdfError(null);
                   try {
                     await downloadReportPDF(lastInput, result);
                   } catch {
-                    // PDF error is non-critical; silently ignore
+                    setPdfError("PDF の生成に失敗しました。しばらく後で再試行してください。");
                   } finally {
                     setPdfGenerating(false);
                   }
@@ -195,6 +197,12 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
         {error && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             ⚠ {error}
+          </div>
+        )}
+
+        {pdfError && (
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            ⚠ {pdfError}
           </div>
         )}
 

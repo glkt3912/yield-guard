@@ -405,6 +405,7 @@ export function InvestmentForm({
           setGeocodeStatus={setGeocodeStatus}
           geocodeError={geocodeError}
           geocodeLocationType={geocodeLocationType}
+          setGeocodeLocationType={setGeocodeLocationType}
           showManualCoords={showManualCoords}
           handleGeocode={handleGeocode}
           input={input}
