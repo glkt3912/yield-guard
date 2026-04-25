@@ -1,43 +1,9 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { encodeUrlParams, decodeUrlParams } from "@/lib/urlParams";
+import { decodeUrlParams } from "@/lib/urlParams";
 import { InvestmentForm } from "@/components/InvestmentForm";
-import { YieldAnalysis } from "@/components/YieldAnalysis";
-import CashFlowChart from "@/components/CashFlowChart";
-import DeadCrossChart from "@/components/DeadCrossChart";
-import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
-import CostBreakdown from "@/components/CostBreakdown";
-import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
-import RenovationPanel from "@/components/RenovationPanel";
-import type {
-  InvestmentInput,
-  InvestmentResult,
-  LandPriceComparison,
-  TheoreticalPriceResult,
-  StationRidershipResult,
-  PopulationForecastResult,
-  AppraisalComparisonResult,
-  UrbanRisk,
-  SimulationMode,
-  LoanMethod,
-  MonteCarloResult,
-  InvestmentScoreResult,
-} from "@/types/investment";
-import {
-  analyze as analyzeOnline,
-  compareLandPrice,
-  estimateLandPrice,
-  fetchStationRidership,
-  fetchPopulationForecast,
-  fetchLandAppraisals,
-  fetchUrbanRisks,
-  fetchHazardInfo,
-  fetchInvestmentScore,
-  simulate,
-} from "@/lib/api";
-import { analyze as analyzeOffline } from "@/lib/investment";
-import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
+import type { SimulationMode } from "@/types/investment";
 import {
   ShieldAlert,
   Info,
@@ -45,55 +11,16 @@ import {
   Share2,
   Check,
   SlidersHorizontal,
-  X,
   WifiOff,
 } from "lucide-react";
-import { SimulationModeToggle } from "@/components/SimulationModeToggle";
 import { Button } from "@/components/ui/button";
-import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { downloadReportPDF } from "@/lib/generatePdf";
-import { MonteCarloChart } from "@/components/MonteCarloChart";
-import NegotiationPanel from "@/components/NegotiationPanel";
-import WatchlistPanel from "@/components/WatchlistPanel";
-import { AreaDiscovery } from "@/components/AreaDiscovery";
-import dynamic from "next/dynamic";
 import { FirstTimerGuide } from "@/components/FirstTimerGuide";
 import { SAMPLE_PROPERTY, ONBOARDING_KEY } from "@/lib/sampleProperty";
-
-const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
-
-/** 直近2年分の期間（国交省API形式: YYYYQ） */
-function getCurrentPeriods(): { year: number; quarter: number; toYear: number; toQuarter: number } {
-  const now = new Date();
-  const toYear = now.getFullYear();
-  const toQuarter = Math.ceil((now.getMonth() + 1) / 3);
-  return { year: toYear - 2, quarter: 1, toYear, toQuarter };
-}
-
-/** 分析結果系のstateをまとめたオブジェクト型 */
-interface AnalysisResult {
-  result: InvestmentResult | null;
-  comparison: LandPriceComparison | null;
-  theoreticalPrice: TheoreticalPriceResult | null;
-  stationRidership: StationRidershipResult[] | null;
-  populationForecast: PopulationForecastResult | null;
-  landAppraisal: AppraisalComparisonResult | null;
-  externalUrbanRisks: UrbanRisk[] | null;
-  investmentScore: InvestmentScoreResult | null;
-  hazardRisks: UrbanRisk[] | null;
-}
-
-const INITIAL_ANALYSIS_RESULT: AnalysisResult = {
-  result: null,
-  comparison: null,
-  theoreticalPrice: null,
-  stationRidership: null,
-  populationForecast: null,
-  landAppraisal: null,
-  externalUrbanRisks: null,
-  investmentScore: null,
-  hazardRisks: null,
-};
+import { FormSheet } from "@/components/FormSheet";
+import { ResultsSection } from "@/components/ResultsSection";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { useInvestmentSimulation } from "@/hooks/useInvestmentSimulation";
 
 interface DashboardProps {
   initialParams?: URLSearchParams | null;
@@ -101,36 +28,32 @@ interface DashboardProps {
 
 export function Dashboard({ initialParams }: DashboardProps = {}) {
   const router = useRouter();
-
-  // Decode URL params once on mount
   const decoded = initialParams ? decodeUrlParams(initialParams) : null;
 
-  // Analysis results consolidated into a single state object to avoid cascading re-renders
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult>(INITIAL_ANALYSIS_RESULT);
+  const isOnline = useNetworkStatus();
 
-  // UI states remain as individual useState calls
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [lastInput, setLastInput] = useState<InvestmentInput | null>(null);
-  const [propertyLat, setPropertyLat] = useState<number | undefined>(undefined);
-  const [propertyLng, setPropertyLng] = useState<number | undefined>(undefined);
-  const [simulationMode, setSimulationMode] = useState<SimulationMode>(decoded?.mode ?? "quick");
+  const [simulationMode, setSimulationMode] = useState<SimulationMode>(
+    decoded?.mode ?? "quick"
+  );
   const [modeNotice, setModeNotice] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
-  const [loanMethod, setLoanMethod] = useState<LoanMethod>("equal-payment");
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [monteCarloResult, setMonteCarloResult] = useState<MonteCarloResult | null>(null);
-  const [monteCarloLoading, setMonteCarloLoading] = useState(false);
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
-  const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [showGuide, setShowGuide] = useState(false);
   const [activeTab, setActiveTab] = useState<"simulation" | "area-discovery">("simulation");
   const [selectedMunicipalityMsg, setSelectedMunicipalityMsg] = useState<string | null>(null);
+
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Destructure for ergonomic use in JSX
+  const simulation = useInvestmentSimulation({
+    isOnline,
+    simulationMode,
+    onUrlUpdate: (qs) => router.replace(qs ? `?${qs}` : "?", { scroll: false }),
+  });
+
   const {
     result,
     comparison,
@@ -141,20 +64,21 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
     externalUrbanRisks,
     investmentScore,
     hazardRisks,
-  } = analysisResult;
-
-  // Network status detection
-  useEffect(() => {
-    setIsOnline(navigator.onLine);
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []);
+    loading,
+    error,
+    lastInput,
+    propertyLat,
+    propertyLng,
+    monteCarloResult,
+    monteCarloLoading,
+    loanMethod,
+    handleAnalyze,
+    handleFetchLandPrices,
+    handleMonteCarlo,
+    handleLoanMethodChange,
+    setPropertyCoords,
+    clearResult,
+  } = simulation;
 
   useEffect(() => {
     return () => {
@@ -184,142 +108,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
       noticeTimer.current = setTimeout(() => setModeNotice(false), 4000);
     }
     setSimulationMode(mode);
-    setAnalysisResult((prev) => ({ ...prev, result: null }));
-  };
-
-  const handleAnalyze = async (input: InvestmentInput, quickTotalMan?: string) => {
-    setLoading(true);
-    setError(null);
-    setMonteCarloResult(null);
-    const inputWithMethod = { ...input, loanMethod };
-    try {
-      // When offline, fall back to client-side calculation
-      const res =
-        isOnline === false ? analyzeOffline(inputWithMethod) : await analyzeOnline(inputWithMethod);
-      setAnalysisResult((prev) => ({ ...prev, result: res }));
-      setLastInput(inputWithMethod);
-
-      // Update URL with current simulation conditions
-      const urlParams = encodeUrlParams(simulationMode, inputWithMethod, quickTotalMan);
-      const qs = urlParams.toString();
-      router.replace(qs ? `?${qs}` : "?", { scroll: false });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "シミュレーションに失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleMonteCarlo = async () => {
-    if (!lastInput) return;
-    setMonteCarloLoading(true);
-    try {
-      const res = await simulate({ base: lastInput, simulations: 1000 });
-      setMonteCarloResult(res);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "モンテカルロシミュレーションに失敗しました");
-    } finally {
-      setMonteCarloLoading(false);
-    }
-  };
-
-  const handleLoanMethodChange = async (method: LoanMethod) => {
-    setLoanMethod(method);
-    if (!lastInput) return;
-    setLoading(true);
-    setError(null);
-    setMonteCarloResult(null);
-    try {
-      const updatedInput = { ...lastInput, loanMethod: method };
-      const res =
-        isOnline === false ? analyzeOffline(updatedInput) : await analyzeOnline(updatedInput);
-      setAnalysisResult((prev) => ({ ...prev, result: res }));
-      setLastInput((prev) => (prev ? { ...prev, loanMethod: method } : prev));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "シミュレーションに失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFetchLandPrices = async (area: string, city: string, lat?: number, lng?: number) => {
-    setLoading(true);
-    setError(null);
-    setAnalysisResult((prev) => ({
-      ...prev,
-      stationRidership: null,
-      populationForecast: null,
-      landAppraisal: null,
-      externalUrbanRisks: null,
-      investmentScore: null,
-      hazardRisks: null,
-    }));
-    if (lat !== undefined && lng !== undefined) {
-      setPropertyLat(lat);
-      setPropertyLng(lng);
-    }
-    const { year, quarter, toYear, toQuarter } = getCurrentPeriods();
-    try {
-      const baseParams = {
-        area,
-        city,
-        year,
-        quarter,
-        toYear,
-        toQuarter,
-        price: lastInput?.landPrice ?? 5_000_000,
-        areaSqm: lastInput?.landArea ?? 0,
-      };
-      const comp = await compareLandPrice(baseParams);
-      setAnalysisResult((prev) => ({ ...prev, comparison: comp }));
-
-      if (lastInput && lastInput.landArea > 0) {
-        try {
-          const est = await estimateLandPrice({
-            ...baseParams,
-            buildingAge: lastInput.buildingAge,
-            stationMinutes: lastInput.stationMinutes,
-          });
-          setAnalysisResult((prev) => ({ ...prev, theoreticalPrice: est }));
-        } catch {
-          setAnalysisResult((prev) => ({ ...prev, theoreticalPrice: null }));
-        }
-      }
-
-      const [appraisal] = await Promise.allSettled([
-        fetchLandAppraisals({ area, year: toYear, city: city || undefined }),
-      ]);
-      setAnalysisResult((prev) => ({
-        ...prev,
-        landAppraisal: appraisal.status === "fulfilled" ? appraisal.value : null,
-      }));
-
-      if (lat !== undefined && lng !== undefined) {
-        const [ridership, population, urbanRisks, scoreResult, hazard] = await Promise.allSettled([
-          fetchStationRidership({ lat, lng }),
-          fetchPopulationForecast({ lat, lng }),
-          fetchUrbanRisks(lat, lng),
-          fetchInvestmentScore({ lat, lng }),
-          fetchHazardInfo(lat, lng),
-        ]);
-        setAnalysisResult((prev) => ({
-          ...prev,
-          stationRidership: ridership.status === "fulfilled" ? ridership.value : null,
-          populationForecast: population.status === "fulfilled" ? population.value : null,
-          externalUrbanRisks: urbanRisks.status === "fulfilled" ? urbanRisks.value : null,
-          investmentScore: scoreResult.status === "fulfilled" ? scoreResult.value : null,
-          hazardRisks: hazard.status === "fulfilled" ? hazard.value : null,
-        }));
-      }
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "相場データの取得に失敗しました。しばらく後に再試行してください"
-      );
-    } finally {
-      setLoading(false);
-    }
+    clearResult();
   };
 
   const handleShare = () => {
@@ -373,10 +162,11 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 disabled={pdfGenerating}
                 onClick={async () => {
                   setPdfGenerating(true);
+                  setPdfError(null);
                   try {
                     await downloadReportPDF(lastInput, result);
                   } catch {
-                    setError("PDF の生成に失敗しました。しばらく後で再試行してください。");
+                    setPdfError("PDF の生成に失敗しました。しばらく後で再試行してください。");
                   } finally {
                     setPdfGenerating(false);
                   }
@@ -410,6 +200,12 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           </div>
         )}
 
+        {pdfError && (
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            ⚠ {pdfError}
+          </div>
+        )}
+
         {modeNotice && (
           <div className="mb-4 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
             <Info className="h-4 w-4 shrink-0" />
@@ -427,8 +223,6 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           </div>
         )}
 
-        {/* Desktop: side-by-side layout (form left, results right) */}
-        {/* Mobile: results-first layout (results on top, form hidden in bottom sheet) */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[400px_1fr]">
           {/* Form: hidden on mobile (shown in bottom sheet), visible on desktop */}
           <aside className="hidden lg:block">
@@ -449,155 +243,32 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             />
           </aside>
 
-          <section className="space-y-6">
-            {/* Tab toggle */}
-            <div className="flex gap-1 rounded-lg border bg-muted/30 p-1 w-fit">
-              <button
-                onClick={() => setActiveTab("simulation")}
-                className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-                  activeTab === "simulation"
-                    ? "bg-white shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                シミュレーション
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab("area-discovery");
-                  setSelectedMunicipalityMsg(null);
-                }}
-                className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-                  activeTab === "area-discovery"
-                    ? "bg-white shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                エリアを探す
-              </button>
-            </div>
-
-            {/* Mobile: simulation mode toggle (PC は左サイドバーの InvestmentForm 内に表示) */}
-            {activeTab === "simulation" && (
-              <SimulationModeToggle
-                mode={simulationMode}
-                onChange={handleModeChange}
-                className="lg:hidden"
-              />
-            )}
-
-            {activeTab === "area-discovery" && (
-              <>
-                {selectedMunicipalityMsg && (
-                  <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                    {selectedMunicipalityMsg}
-                  </div>
-                )}
-                <AreaDiscovery
-                  onMunicipalitySelect={(_code, name) => {
-                    setSelectedMunicipalityMsg(
-                      `「${name}」を選択しました。下の地図上で物件位置をクリックしてください。`
-                    );
-                  }}
-                />
-              </>
-            )}
-
-            {activeTab === "simulation" && !result && !comparison && (
-              <div className="flex h-64 items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/20 lg:h-80">
-                <div className="text-center text-muted-foreground">
-                  <ShieldAlert className="mx-auto mb-3 h-10 w-10 opacity-30 lg:h-12 lg:w-12" />
-                  <p className="text-sm font-medium">
-                    条件を入力してシミュレーションを実行してください
-                  </p>
-                  <p className="mt-1 text-xs lg:hidden">下の「条件を編集」ボタンから入力できます</p>
-                  <p className="mt-1 hidden text-sm lg:block">
-                    左のフォームから条件を入力してください
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "simulation" && (
-              <>
-                {investmentScore && <InvestmentScoreCard score={investmentScore} />}
-
-                {propertyLat !== undefined && (
-                  <InvestmentScoreHeatmap
-                    centerLat={propertyLat}
-                    centerLng={propertyLng}
-                    onTileSelect={(lat, lng) => {
-                      setPropertyLat(lat);
-                      setPropertyLng(lng);
-                    }}
-                  />
-                )}
-
-                {comparison && (
-                  <LandPriceAnalysis
-                    comparison={comparison}
-                    input={lastInput}
-                    theoreticalPrice={theoreticalPrice}
-                    stationRidership={stationRidership}
-                    populationForecast={populationForecast}
-                    landAppraisal={landAppraisal}
-                    externalUrbanRisks={externalUrbanRisks}
-                    hazardRisks={hazardRisks}
-                  />
-                )}
-
-                {result && lastInput && (
-                  <>
-                    <CriticalErrorBanner errors={result.criticalErrors} />
-                    <YieldAnalysis
-                      result={result}
-                      input={lastInput}
-                      populationForecast={populationForecast}
-                    />
-                    <NegotiationPanel
-                      result={result}
-                      input={lastInput}
-                      comparison={comparison}
-                      theoreticalPrice={theoreticalPrice}
-                    />
-                    <LoanOptimizationPanel
-                      result={result}
-                      loanMethod={loanMethod}
-                      onLoanMethodChange={handleLoanMethodChange}
-                      loanAmount={lastInput.loanAmount}
-                    />
-                    {simulationMode === "full" && (
-                      <>
-                        {result.acquisitionCosts && (
-                          <div className="rounded-xl border bg-white p-5 shadow-sm">
-                            <CostBreakdown
-                              input={lastInput}
-                              acquisitionCosts={result.acquisitionCosts}
-                              yearlyResults={result.yearlyResults}
-                            />
-                          </div>
-                        )}
-                        {/* 自己資金 = 総投資額 - ローン金額（ISSUE-22: 投資回収年の正確な計算に使用） */}
-                        <CashFlowChart
-                          result={result}
-                          equityInvested={result.totalInvestment - lastInput.loanAmount}
-                        />
-                        <DeadCrossChart result={result} />
-                        <div className="flex justify-center">
-                          <Button onClick={handleMonteCarlo} loading={monteCarloLoading} size="md">
-                            モンテカルロ実行（1,000試行）
-                          </Button>
-                        </div>
-                        {monteCarloResult && <MonteCarloChart result={monteCarloResult} />}
-                      </>
-                    )}
-                  </>
-                )}
-                <RenovationPanel />
-                <WatchlistPanel />
-              </>
-            )}
-          </section>
+          <ResultsSection
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            selectedMunicipalityMsg={selectedMunicipalityMsg}
+            setSelectedMunicipalityMsg={setSelectedMunicipalityMsg}
+            simulationMode={simulationMode}
+            onModeChange={handleModeChange}
+            result={result}
+            comparison={comparison}
+            theoreticalPrice={theoreticalPrice}
+            stationRidership={stationRidership}
+            populationForecast={populationForecast}
+            landAppraisal={landAppraisal}
+            externalUrbanRisks={externalUrbanRisks}
+            investmentScore={investmentScore}
+            hazardRisks={hazardRisks}
+            lastInput={lastInput}
+            propertyLat={propertyLat}
+            propertyLng={propertyLng}
+            monteCarloResult={monteCarloResult}
+            monteCarloLoading={monteCarloLoading}
+            onMonteCarlo={handleMonteCarlo}
+            loanMethod={loanMethod}
+            onLoanMethodChange={handleLoanMethodChange}
+            onTileSelect={setPropertyCoords}
+          />
         </div>
       </main>
 
@@ -614,49 +285,28 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
       </div>
 
       {/* Mobile: bottom sheet overlay */}
-      {mobileFormOpen && (
-        <div
-          className="fixed inset-0 z-50 lg:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label="投資条件入力"
-        >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileFormOpen(false)} />
-          {/* Sheet */}
-          <div className="absolute bottom-0 left-0 right-0 max-h-[90vh] overflow-y-auto rounded-t-2xl bg-background shadow-xl">
-            <div className="sticky top-0 flex items-center justify-between border-b bg-background px-4 py-3">
-              <h2 className="text-base font-semibold">投資条件を編集</h2>
-              <button
-                ref={closeButtonRef}
-                onClick={() => setMobileFormOpen(false)}
-                className="flex h-[44px] w-[44px] items-center justify-center rounded-full hover:bg-muted transition-colors"
-                aria-label="閉じる"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="px-4 py-4">
-              <InvestmentForm
-                onAnalyze={(input, quickTotalMan) => {
-                  setMobileFormOpen(false);
-                  return handleAnalyze(input, quickTotalMan);
-                }}
-                onFetchLandPrices={handleFetchLandPrices}
-                loading={loading}
-                simulationMode={simulationMode}
-                onModeChange={handleModeChange}
-                initialInput={lastInput ?? decoded?.input}
-                initialQuickTotalPriceMan={lastInput ? undefined : decoded?.quickTotalPriceMan}
-                isOnline={isOnline}
-                externalLat={propertyLat}
-                externalLng={propertyLng}
-                showModeToggle={false}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <FormSheet
+        isOpen={mobileFormOpen}
+        onClose={() => setMobileFormOpen(false)}
+        closeButtonRef={closeButtonRef}
+      >
+        <InvestmentForm
+          onAnalyze={(input, quickTotalMan) => {
+            setMobileFormOpen(false);
+            return handleAnalyze(input, quickTotalMan);
+          }}
+          onFetchLandPrices={handleFetchLandPrices}
+          loading={loading}
+          simulationMode={simulationMode}
+          onModeChange={handleModeChange}
+          initialInput={lastInput ?? decoded?.input}
+          initialQuickTotalPriceMan={lastInput ? undefined : decoded?.quickTotalPriceMan}
+          isOnline={isOnline}
+          externalLat={propertyLat}
+          externalLng={propertyLng}
+          showModeToggle={false}
+        />
+      </FormSheet>
     </div>
   );
 }
