@@ -362,10 +362,10 @@ func TestCalcDisasterScore_Deduplication(t *testing.T) {
 // --- CalcInvestmentScore 統合 ---
 
 func TestCalcInvestmentScore_AllEmpty_BaseScore(t *testing.T) {
-	// 全データ空 → baseScore=50 から加減なしで 0〜100 の範囲内
+	// 全データ空 → 加減算なしで baseScore=50 が返る
 	result := CalcInvestmentScore(InvestmentScoreInput{})
-	if result.TotalScore < 0 || result.TotalScore > 100 {
-		t.Errorf("TotalScore %d out of [0, 100]", result.TotalScore)
+	if result.TotalScore != 50 {
+		t.Errorf("TotalScore = %d, want 50 (base score)", result.TotalScore)
 	}
 	if result.Grade == "" {
 		t.Error("Grade must not be empty")
@@ -431,6 +431,39 @@ func TestCalcInvestmentScore_RadarScoreInRange(t *testing.T) {
 	for _, p := range result.Breakdown.RadarData {
 		if p.Score < 0 || p.Score > 100 {
 			t.Errorf("RadarData[%q].Score = %.1f, want [0, 100]", p.Category, p.Score)
+		}
+	}
+}
+
+// --- calcLandPriceTrendScore ---
+
+func TestCalcLandPriceTrendScore_NoData(t *testing.T) {
+	s := calcLandPriceTrendScore(0, false)
+	if s.Score != 0 {
+		t.Errorf("score = %d, want 0 when hasData=false", s.Score)
+	}
+}
+
+func TestCalcLandPriceTrendScore_Boundaries(t *testing.T) {
+	tests := []struct {
+		label      string
+		changeRate float64
+		want       int
+	}{
+		{">10%", 0.11, 10},
+		{"ちょうど10%", 0.10, 5},  // pct=10 は >10 に入らず >5 に入る
+		{">5%", 0.06, 5},
+		{"ちょうど5%", 0.05, 0},   // pct=5 は >5 に入らず >=-5 に入る
+		{"0%（横ばい）", 0.00, 0},
+		{"-5%（下限境界）", -0.05, 0}, // pct=-5 は >=-5 に入る
+		{"-6%", -0.06, -5},
+		{"-10%", -0.10, -5},       // pct=-10 は >=-10 に入る
+		{"<-10%", -0.11, -10},
+	}
+	for _, tc := range tests {
+		got := calcLandPriceTrendScore(tc.changeRate, true)
+		if got.Score != tc.want {
+			t.Errorf("[%s] changeRate=%.2f: score = %d, want %d", tc.label, tc.changeRate, got.Score, tc.want)
 		}
 	}
 }

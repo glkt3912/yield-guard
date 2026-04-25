@@ -140,7 +140,7 @@ func TestRouter_InternalKey_Required_WhenSet(t *testing.T) {
 }
 
 func TestRouter_InternalKey_Accepted_WhenCorrect(t *testing.T) {
-	// 正しいキーを付けると認証を通過する
+	// 正しいキーを付けると認証を通過して 200 が返る
 	t.Setenv("APP_INTERNAL_API_KEY", "secret-key")
 
 	r := newTestRouter(&mockMLITClient{}, &mockGeocodeClient{})
@@ -150,13 +150,13 @@ func TestRouter_InternalKey_Accepted_WhenCorrect(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code == http.StatusUnauthorized {
-		t.Error("correct key was rejected")
+	if w.Code != http.StatusOK {
+		t.Errorf("correct key: status = %d, want 200", w.Code)
 	}
 }
 
 func TestRouter_InternalKey_NotRequired_WhenUnset(t *testing.T) {
-	// APP_INTERNAL_API_KEY 未設定のときはキーなしでも通過する
+	// APP_INTERNAL_API_KEY 未設定のときはキーなしでも 200 が返る
 	t.Setenv("APP_INTERNAL_API_KEY", "")
 
 	r := newTestRouter(&mockMLITClient{}, &mockGeocodeClient{})
@@ -165,7 +165,7 @@ func TestRouter_InternalKey_NotRequired_WhenUnset(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code == http.StatusUnauthorized {
-		t.Error("request was rejected even though APP_INTERNAL_API_KEY is not set")
+	if w.Code != http.StatusOK {
+		t.Errorf("no key set: status = %d, want 200", w.Code)
 	}
 }
