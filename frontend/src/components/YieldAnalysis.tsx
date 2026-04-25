@@ -2,13 +2,25 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { InvestmentInput, InvestmentResult, PopulationForecastResult, StressScenarioResult, YieldScenarios } from "@/types/investment";
+import type {
+  InvestmentInput,
+  InvestmentResult,
+  PopulationForecastResult,
+  StressScenarioResult,
+  YieldScenarios,
+} from "@/types/investment";
 import { formatMan, formatPct, formatYen } from "@/lib/utils";
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Users } from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
 
 /** Mobile 2×2 KPI grid showing the 4 most important metrics at a glance */
-function MobileKpiGrid({ result, isGood, targetPct, yieldPct, netYieldPct }: {
+function MobileKpiGrid({
+  result,
+  isGood,
+  targetPct,
+  yieldPct,
+  netYieldPct,
+}: {
   result: InvestmentResult;
   isGood: boolean;
   targetPct: number;
@@ -97,15 +109,22 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
-              <p className="text-xs text-muted-foreground sm:text-sm">表面利回り（満室想定年収 / 総投資額）</p>
+              <p className="text-xs text-muted-foreground sm:text-sm">
+                表面利回り（満室想定年収 / 総投資額）
+              </p>
               <div className="flex items-end gap-2">
-                <span className={`text-4xl font-bold sm:text-5xl ${isGood ? "text-green-600" : "text-red-600"}`}>
+                <span
+                  className={`text-4xl font-bold sm:text-5xl ${isGood ? "text-green-600" : "text-red-600"}`}
+                >
                   {yieldPct.toFixed(2)}
                 </span>
-                <span className="mb-1 text-xl font-semibold text-muted-foreground sm:mb-2 sm:text-2xl">%</span>
+                <span className="mb-1 text-xl font-semibold text-muted-foreground sm:mb-2 sm:text-2xl">
+                  %
+                </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-                <TermTooltip term="netYield">実質利回り</TermTooltip>（空室・経費控除後）：{netYieldPct.toFixed(2)}%
+                <TermTooltip term="netYield">実質利回り</TermTooltip>（空室・経費控除後）：
+                {netYieldPct.toFixed(2)}%
               </p>
             </div>
             <div className="ml-3 flex flex-col items-center gap-2 shrink-0">
@@ -133,11 +152,15 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
             <div className="relative h-3 rounded-full bg-muted overflow-hidden">
               <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 w-full" />
               {/* 現在値マーカー */}
-              <div className="absolute top-0 h-full w-1 bg-foreground/80 rounded"
-                style={{ left: `${gaugePosition}%` }} />
+              <div
+                className="absolute top-0 h-full w-1 bg-foreground/80 rounded"
+                style={{ left: `${gaugePosition}%` }}
+              />
               {/* 8%ライン（スケールと連動） */}
-              <div className="absolute top-0 h-full w-0.5 bg-orange-500"
-                style={{ left: `${targetPosition}%` }} />
+              <div
+                className="absolute top-0 h-full w-0.5 bg-orange-500"
+                style={{ left: `${targetPosition}%` }}
+              />
             </div>
           </div>
         </CardContent>
@@ -145,7 +168,9 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
 
       {/* ストレステストシナリオ比較 */}
       <Card>
-        <CardHeader><CardTitle className="text-base">ストレステストシナリオ（銀行融資審査用）</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">ストレステストシナリオ（銀行融資審査用）</CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -154,7 +179,9 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                   <th className="pb-2 text-left font-medium">シナリオ</th>
                   <th className="pb-2 text-right font-medium">金利△</th>
                   <th className="pb-2 text-right font-medium">空室△</th>
-                  <th className="pb-2 text-right font-medium"><TermTooltip term="dscr">DSCR</TermTooltip></th>
+                  <th className="pb-2 text-right font-medium">
+                    <TermTooltip term="dscr">DSCR</TermTooltip>
+                  </th>
                   <th className="pb-2 text-right font-medium">黒転年</th>
                   <th className="pb-2 text-right font-medium">判定</th>
                 </tr>
@@ -163,11 +190,14 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                 {stressScenarios.map((s) => {
                   const isCompound = s.label === "複合ストレス";
                   const rowBg = isCompound ? "bg-orange-50" : "";
-                  const safeBadge = s.dscr >= 1.2
-                    ? <Badge variant="success">安全</Badge>
-                    : s.dscr >= 1.0
-                      ? <Badge variant="warning">注意</Badge>
-                      : <Badge variant="danger">危険</Badge>;
+                  const safeBadge =
+                    s.dscr >= 1.2 ? (
+                      <Badge variant="success">安全</Badge>
+                    ) : s.dscr >= 1.0 ? (
+                      <Badge variant="warning">注意</Badge>
+                    ) : (
+                      <Badge variant="danger">危険</Badge>
+                    );
                   return (
                     <tr key={s.label} className={`border-b last:border-0 ${rowBg}`}>
                       <td className="py-2 font-medium">
@@ -175,12 +205,18 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                         {isCompound && <span className="ml-1 text-xs text-orange-600">★</span>}
                       </td>
                       <td className="py-2 text-right">
-                        {s.interestRateDelta !== 0 ? `+${(s.interestRateDelta * 100).toFixed(1)}%` : "±0"}
+                        {s.interestRateDelta !== 0
+                          ? `+${(s.interestRateDelta * 100).toFixed(1)}%`
+                          : "±0"}
                       </td>
                       <td className="py-2 text-right">
-                        {s.vacancyRateDelta !== 0 ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%` : "±0"}
+                        {s.vacancyRateDelta !== 0
+                          ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%`
+                          : "±0"}
                       </td>
-                      <td className={`py-2 text-right font-medium ${s.dscr >= 1.2 ? "text-green-600" : s.dscr >= 1.0 ? "text-yellow-600" : "text-red-600"}`}>
+                      <td
+                        className={`py-2 text-right font-medium ${s.dscr >= 1.2 ? "text-green-600" : s.dscr >= 1.0 ? "text-yellow-600" : "text-red-600"}`}
+                      >
                         {s.dscr.toFixed(2)}
                       </td>
                       <td className="py-2 text-right text-muted-foreground">
@@ -194,65 +230,111 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
             </table>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            ※ <TermTooltip term="dscr">DSCR</TermTooltip> = <TermTooltip term="noi">NOI</TermTooltip>（賃料下落・空室調整済み）/ 年間ローン返済額（保有期間内の最悪年）。1.2以上が実務基準、1.0以上が銀行審査の最低ライン（<span className="text-green-600">緑≥1.2</span>・<span className="text-yellow-600">黄1.0〜1.2</span>・<span className="text-red-600">赤&lt;1.0</span>）。黒転年は累積CF黒転年度（税引後）。年間CFがプラスに転じた年であり、自己資金の回収年ではありません。
+            ※ <TermTooltip term="dscr">DSCR</TermTooltip> ={" "}
+            <TermTooltip term="noi">NOI</TermTooltip>（賃料下落・空室調整済み）/
+            年間ローン返済額（保有期間内の最悪年）。1.2以上が実務基準、1.0以上が銀行審査の最低ライン（
+            <span className="text-green-600">緑≥1.2</span>・
+            <span className="text-yellow-600">黄1.0〜1.2</span>・
+            <span className="text-red-600">赤&lt;1.0</span>
+            ）。黒転年は累積CF黒転年度（税引後）。年間CFがプラスに転じた年であり、自己資金の回収年ではありません。
           </p>
 
           {/* 人口減少シナリオ */}
-          {populationForecast && populationForecast.snapshots.length > 0 && (() => {
-            const popV = Math.min(actualV + populationForecast.vacancyRateDelta, 0.99);
-            const popNetYield = result.grossYield * (1 - popV) * (1 - input.expenseRate);
-            const popAnnualRent = result.grossYield * result.totalInvestment * (1 - popV);
-            const popCF = popAnnualRent - (result.yearlyResults[0]?.annualLoanPayment ?? 0) - (result.yearlyResults[0]?.annualExpenses ?? 0);
-            const isDeficit = popCF < 0;
-            return (
-              <div className={`mt-4 rounded-md border p-3 ${isDeficit ? "border-red-300 bg-red-50" : "border-yellow-200 bg-yellow-50"}`}>
-                <p className="flex items-center gap-1 text-sm font-semibold mb-2">
-                  <Users className="h-4 w-4" />
-                  人口減少シナリオ（30年後推計）
-                  {isDeficit && <Badge variant="danger" className="ml-2">赤字転落 ⚠️</Badge>}
-                </p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                  <div className="text-muted-foreground">想定空室率</div>
-                  <div className="text-right font-medium">{(popV * 100).toFixed(0)}%</div>
-                  <div className="text-muted-foreground">表面利回り</div>
-                  <div className={`text-right font-medium ${popNetYield * 100 >= 8 ? "text-green-600" : "text-red-600"}`}>
-                    {(result.grossYield * (1 - popV) * 100).toFixed(2)}%
+          {populationForecast &&
+            populationForecast.snapshots.length > 0 &&
+            (() => {
+              const popV = Math.min(actualV + populationForecast.vacancyRateDelta, 0.99);
+              const popNetYield = result.grossYield * (1 - popV) * (1 - input.expenseRate);
+              const popAnnualRent = result.grossYield * result.totalInvestment * (1 - popV);
+              const popCF =
+                popAnnualRent -
+                (result.yearlyResults[0]?.annualLoanPayment ?? 0) -
+                (result.yearlyResults[0]?.annualExpenses ?? 0);
+              const isDeficit = popCF < 0;
+              return (
+                <div
+                  className={`mt-4 rounded-md border p-3 ${isDeficit ? "border-red-300 bg-red-50" : "border-yellow-200 bg-yellow-50"}`}
+                >
+                  <p className="flex items-center gap-1 text-sm font-semibold mb-2">
+                    <Users className="h-4 w-4" />
+                    人口減少シナリオ（30年後推計）
+                    {isDeficit && (
+                      <Badge variant="danger" className="ml-2">
+                        赤字転落 ⚠️
+                      </Badge>
+                    )}
+                  </p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <div className="text-muted-foreground">想定空室率</div>
+                    <div className="text-right font-medium">{(popV * 100).toFixed(0)}%</div>
+                    <div className="text-muted-foreground">表面利回り</div>
+                    <div
+                      className={`text-right font-medium ${popNetYield * 100 >= 8 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {(result.grossYield * (1 - popV) * 100).toFixed(2)}%
+                    </div>
+                    <div className="text-muted-foreground">
+                      <TermTooltip term="netYield">実質利回り</TermTooltip>
+                    </div>
+                    <div className="text-right text-muted-foreground">
+                      {(popNetYield * 100).toFixed(2)}%
+                    </div>
+                    <div className="text-muted-foreground">年間CF（概算）</div>
+                    <div
+                      className={`text-right font-bold ${isDeficit ? "text-red-700" : "text-green-700"}`}
+                    >
+                      {formatMan(popCF)}
+                    </div>
                   </div>
-                  <div className="text-muted-foreground"><TermTooltip term="netYield">実質利回り</TermTooltip></div>
-                  <div className="text-right text-muted-foreground">{(popNetYield * 100).toFixed(2)}%</div>
-                  <div className="text-muted-foreground">年間CF（概算）</div>
-                  <div className={`text-right font-bold ${isDeficit ? "text-red-700" : "text-green-700"}`}>
-                    {formatMan(popCF)}
-                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    ※ このエリアの30年後人口推計:{" "}
+                    {(populationForecast.changeRate30yr * 100).toFixed(0)}%（現在比）／トレンド:{" "}
+                    {populationForecast.trend}
+                  </p>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  ※ このエリアの30年後人口推計: {(populationForecast.changeRate30yr * 100).toFixed(0)}%（現在比）／トレンド: {populationForecast.trend}
-                </p>
-              </div>
-            );
-          })()}
+              );
+            })()}
         </CardContent>
       </Card>
 
       {/* 空室シナリオ比較 */}
       {result.yieldScenarios && (
-        <VacancyScenarioCard yieldScenarios={result.yieldScenarios} vacancyRate={input.vacancyRate} totalInvestment={result.totalInvestment} />
+        <VacancyScenarioCard
+          yieldScenarios={result.yieldScenarios}
+          vacancyRate={input.vacancyRate}
+          totalInvestment={result.totalInvestment}
+        />
       )}
 
       {/* 総投資額サマリー */}
       <Card>
-        <CardHeader><CardTitle className="text-base">投資サマリー</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">投資サマリー</CardTitle>
+        </CardHeader>
         <CardContent>
           <dl className="space-y-2">
             {[
               { label: "総投資額", value: formatMan(result.totalInvestment), highlight: true },
               { label: "　うち諸経費", value: formatYen(result.miscExpenses) },
-              { label: "年間実効賃料収入（空室控除後）", value: formatYen(result.yearlyResults[0]?.annualRent ?? 0) },
-              { label: "年間ローン返済", value: formatYen(result.yearlyResults[0]?.annualLoanPayment ?? 0) },
-              { label: "1年目税引後CF", value: formatYen(result.yearlyResults[0]?.afterTaxCashFlow ?? 0) },
+              {
+                label: "年間実効賃料収入（空室控除後）",
+                value: formatYen(result.yearlyResults[0]?.annualRent ?? 0),
+              },
+              {
+                label: "年間ローン返済",
+                value: formatYen(result.yearlyResults[0]?.annualLoanPayment ?? 0),
+              },
+              {
+                label: "1年目税引後CF",
+                value: formatYen(result.yearlyResults[0]?.afterTaxCashFlow ?? 0),
+              },
             ].map(({ label, value, highlight }) => (
               <div key={label} className="flex justify-between text-sm">
-                <dt className={`text-muted-foreground ${highlight ? "font-semibold text-foreground" : ""}`}>{label}</dt>
+                <dt
+                  className={`text-muted-foreground ${highlight ? "font-semibold text-foreground" : ""}`}
+                >
+                  {label}
+                </dt>
                 <dd className={`font-medium ${highlight ? "text-primary" : ""}`}>{value}</dd>
               </div>
             ))}
@@ -300,12 +382,15 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
           <CardContent>
             <p className="text-sm text-green-700">
               目標の{targetPct}%に対して{" "}
-              <span className="font-bold">+{formatPct(result.grossYield - result.yieldTarget)}</span>{" "}
+              <span className="font-bold">
+                +{formatPct(result.grossYield - result.yieldTarget)}
+              </span>{" "}
               の余裕があります。
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
-              ※満室想定賃料が{formatPct((result.grossYield - result.yieldTarget) / result.grossYield)}下落すると{targetPct}%を下回ります
-              （空室変動の影響は別途考慮してください）
+              ※満室想定賃料が
+              {formatPct((result.grossYield - result.yieldTarget) / result.grossYield)}下落すると
+              {targetPct}%を下回ります （空室変動の影響は別途考慮してください）
             </p>
           </CardContent>
         </Card>
@@ -320,7 +405,11 @@ interface VacancyScenarioCardProps {
   totalInvestment: number;
 }
 
-function VacancyScenarioCard({ yieldScenarios, vacancyRate, totalInvestment }: VacancyScenarioCardProps) {
+function VacancyScenarioCard({
+  yieldScenarios,
+  vacancyRate,
+  totalInvestment,
+}: VacancyScenarioCardProps) {
   const scenarios = [
     {
       label: "楽観",
@@ -347,7 +436,9 @@ function VacancyScenarioCard({ yieldScenarios, vacancyRate, totalInvestment }: V
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">空室シナリオ別 年間賃料収入</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="text-base">空室シナリオ別 年間賃料収入</CardTitle>
+      </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -374,7 +465,8 @@ function VacancyScenarioCard({ yieldScenarios, vacancyRate, totalInvestment }: V
           </table>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          ※ 楽観: 想定空室率×0.5、標準: 想定空室率×1.0、悲観: 想定空室率×1.5。実効利回りは空室控除後年間賃料/総投資額。
+          ※ 楽観: 想定空室率×0.5、標準: 想定空室率×1.0、悲観:
+          想定空室率×1.5。実効利回りは空室控除後年間賃料/総投資額。
         </p>
       </CardContent>
     </Card>

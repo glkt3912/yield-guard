@@ -20,7 +20,8 @@ import type { RenovationInput, RenovationItem, RenovationResult } from "@/types/
 import { DEFAULT_RENOVATION_INPUT } from "@/types/investment";
 import { formatMan, formatPct } from "@/lib/utils";
 
-const cellInput = "rounded border border-input bg-background px-2 py-0.5 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+const cellInput =
+  "rounded border border-input bg-background px-2 py-0.5 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
 function emptyItem(): RenovationItem {
   return {
@@ -49,7 +50,11 @@ export default function RenovationPanel() {
     setGlobals((prev) => ({ ...prev, [key]: value }));
   }
 
-  function updateItem(index: number, field: keyof RenovationItem, value: string | number | boolean) {
+  function updateItem(
+    index: number,
+    field: keyof RenovationItem,
+    value: string | number | boolean
+  ) {
     setItems((prev) =>
       prev.map((item, i) => {
         if (i !== index) return item;
@@ -101,8 +106,7 @@ export default function RenovationPanel() {
     }));
   }, [result]);
 
-  const recoveryYearLabel =
-    result?.isRecoverable ? `${Math.ceil(result.recoveryYears)}年` : null;
+  const recoveryYearLabel = result?.isRecoverable ? `${Math.ceil(result.recoveryYears)}年` : null;
 
   return (
     <Card>
@@ -194,7 +198,9 @@ export default function RenovationPanel() {
                         min="0"
                         className={`w-24 text-right ${cellInput}`}
                         value={item.expectedMonthlyRentIncrease}
-                        onChange={(e) => updateItem(i, "expectedMonthlyRentIncrease", Number(e.target.value))}
+                        onChange={(e) =>
+                          updateItem(i, "expectedMonthlyRentIncrease", Number(e.target.value))
+                        }
                       />
                     </td>
                     <td className="py-1 pr-2 text-center">
@@ -260,9 +266,7 @@ export default function RenovationPanel() {
               <div className="rounded-md border p-3 text-center">
                 <p className="text-xs text-muted-foreground">修繕費回収期間</p>
                 <p className="text-lg font-bold">
-                  {result.isRecoverable
-                    ? `${result.recoveryYears.toFixed(1)}年`
-                    : "回収不可"}
+                  {result.isRecoverable ? `${result.recoveryYears.toFixed(1)}年` : "回収不可"}
                 </p>
               </div>
               <div className="rounded-md border p-3 text-center">
@@ -275,7 +279,9 @@ export default function RenovationPanel() {
               </div>
               <div className="rounded-md border p-3 text-center">
                 <p className="text-xs text-muted-foreground">実質利回り</p>
-                <p className={`text-lg font-bold ${result.actualYield >= 0.08 ? "text-green-600" : "text-yellow-600"}`}>
+                <p
+                  className={`text-lg font-bold ${result.actualYield >= 0.08 ? "text-green-600" : "text-yellow-600"}`}
+                >
                   {formatPct(result.actualYield)}
                 </p>
               </div>
@@ -327,21 +333,16 @@ export default function RenovationPanel() {
               <div>
                 <p className="text-sm font-semibold mb-2">回収タイムライン</p>
                 <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={recoveryChartData} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
+                  <LineChart
+                    data={recoveryChartData}
+                    margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="year" tick={{ fontSize: 11 }} />
-                    <YAxis
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(v) => `${v}万`}
-                    />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}万`} />
                     <Tooltip formatter={(value: number) => [`${value}万円`]} />
                     <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="累積賃料増加額"
-                      stroke="#2563eb"
-                      dot={false}
-                    />
+                    <Line type="monotone" dataKey="累積賃料増加額" stroke="#2563eb" dot={false} />
                     <Line
                       type="monotone"
                       dataKey="リフォーム費用"

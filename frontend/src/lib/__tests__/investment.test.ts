@@ -24,7 +24,7 @@ const BASE_INPUT: InvestmentInput = {
   annualLoanRate: 0.015,
   loanYears: 35,
   buildingType: "木造",
-  expenseRate: 0.20,
+  expenseRate: 0.2,
   incomeTaxRate: 0.33,
   holdingYears: 10,
   exitYieldTarget: 0.06,
@@ -49,7 +49,7 @@ describe("calcMonthlyPayment", () => {
   });
 
   it("3000万 年利2.0% 30年 ≈ 110,879円", () => {
-    const got = calcMonthlyPayment(30_000_000, 0.020, 30);
+    const got = calcMonthlyPayment(30_000_000, 0.02, 30);
     expect(approxEqual(got, 110_879, 500)).toBe(true);
   });
 
@@ -224,7 +224,7 @@ describe("analyze - stress scenarios", () => {
       loanAmount: 16_000_000,
       annualLoanRate: 0.005,
       loanYears: 25,
-      expenseRate: 0.10,
+      expenseRate: 0.1,
       holdingYears: 10,
       rateAdjustmentSchedule: [{ afterYear: 5, rate: 0.05 }],
     };
@@ -242,8 +242,12 @@ describe("analyze - stress scenarios", () => {
 describe("analyze - yield scenarios", () => {
   it("楽観シナリオの年間賃料 > 標準 > 悲観", () => {
     const r = analyze(BASE_INPUT);
-    expect(r.yieldScenarios.optimistic.annualRent).toBeGreaterThan(r.yieldScenarios.standard.annualRent);
-    expect(r.yieldScenarios.standard.annualRent).toBeGreaterThan(r.yieldScenarios.pessimistic.annualRent);
+    expect(r.yieldScenarios.optimistic.annualRent).toBeGreaterThan(
+      r.yieldScenarios.standard.annualRent
+    );
+    expect(r.yieldScenarios.standard.annualRent).toBeGreaterThan(
+      r.yieldScenarios.pessimistic.annualRent
+    );
   });
 
   it("全シナリオで表面利回りは同じ（空室率に依存しない）", () => {
@@ -265,14 +269,18 @@ describe("analyze - exit strategy", () => {
     // 保有10年の場合、capitalgain > 0 なら tax = gain * 0.20315
     const r = analyze(BASE_INPUT);
     if (r.exitCapitalGain > 0) {
-      expect(approxEqual(r.exitTransferTax, r.exitCapitalGain * 0.20315, r.exitCapitalGain * 0.001)).toBe(true);
+      expect(
+        approxEqual(r.exitTransferTax, r.exitCapitalGain * 0.20315, r.exitCapitalGain * 0.001)
+      ).toBe(true);
     }
   });
 
   it("保有5年以下 → 短期税率(39.63%)が適用される", () => {
     const r = analyze({ ...BASE_INPUT, holdingYears: 3 });
     if (r.exitCapitalGain > 0) {
-      expect(approxEqual(r.exitTransferTax, r.exitCapitalGain * 0.3963, r.exitCapitalGain * 0.001)).toBe(true);
+      expect(
+        approxEqual(r.exitTransferTax, r.exitCapitalGain * 0.3963, r.exitCapitalGain * 0.001)
+      ).toBe(true);
     }
   });
 });
@@ -339,7 +347,7 @@ describe("analyze - equal-principal loan", () => {
   it("元金均等返済: 初年度の元金返済額が後年より多い（逓減型）", () => {
     const r = analyze({ ...BASE_INPUT, loanMethod: "equal-principal" });
     expect(r.yearlyResults[0].annualPrincipal).toBeGreaterThanOrEqual(
-      r.yearlyResults[9].annualPrincipal,
+      r.yearlyResults[9].annualPrincipal
     );
   });
 
@@ -386,7 +394,12 @@ describe("analyze - acquisition costs", () => {
   it("合計 = 各費用の合計", () => {
     const r = analyze(BASE_INPUT);
     const c = r.acquisitionCosts;
-    const sum = c.brokerageFee + c.stampDuty + c.registrationTax + c.realEstateAcquisitionTax + c.propertyTaxProration;
+    const sum =
+      c.brokerageFee +
+      c.stampDuty +
+      c.registrationTax +
+      c.realEstateAcquisitionTax +
+      c.propertyTaxProration;
     expect(approxEqual(c.total, sum, 1)).toBe(true);
   });
 });
@@ -401,7 +414,7 @@ describe("analyze - declining balance depreciation", () => {
     // 定額法の初年度: buildingCost / usefulLife
     // 1.5/L > 1/L なので定率法の方が大きい
     expect(declining.yearlyResults[0].annualDepreciation).toBeGreaterThan(
-      straight.yearlyResults[0].annualDepreciation,
+      straight.yearlyResults[0].annualDepreciation
     );
   });
 });
@@ -411,7 +424,7 @@ describe("analyze - declining balance depreciation", () => {
 describe("analyze - vacancy rate stress test", () => {
   it("vacancyRateDeltaが設定されると実効空室率に反映される", () => {
     const base = analyze(BASE_INPUT);
-    const stressed = analyze({ ...BASE_INPUT, vacancyRateDelta: 0.10 });
+    const stressed = analyze({ ...BASE_INPUT, vacancyRateDelta: 0.1 });
     // 空室増加 → 年間賃料減少
     expect(stressed.yearlyResults[0].annualRent).toBeLessThan(base.yearlyResults[0].annualRent);
   });
@@ -426,7 +439,7 @@ describe("calcStressScenario - rent decline and after-tax CF", () => {
       monthlyRent: 130_000,
       loanAmount: 18_000_000,
       loanYears: 25,
-      expenseRate: 0.20,
+      expenseRate: 0.2,
       incomeTaxRate: 0.33,
       holdingYears: 10,
       rateAdjustmentSchedule: [{ afterYear: 5, rate: 0.03 }],
@@ -455,7 +468,7 @@ describe("calcStressScenario - rent decline and after-tax CF", () => {
       rentDeclineRate: 0,
     };
     const r0 = analyze({ ...base, incomeTaxRate: 0 });
-    const r1 = analyze({ ...base, incomeTaxRate: 0.40 });
+    const r1 = analyze({ ...base, incomeTaxRate: 0.4 });
 
     const s0 = r0.stressScenarios.find((s) => s.label === "ベースライン")!;
     const s1 = r1.stressScenarios.find((s) => s.label === "ベースライン")!;

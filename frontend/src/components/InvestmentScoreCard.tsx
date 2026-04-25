@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Radar,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  ResponsiveContainer,
-} from "recharts";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { InvestmentScoreResult, ScoreItem } from "@/types/investment";
@@ -15,7 +9,10 @@ interface Props {
   score: InvestmentScoreResult;
 }
 
-const GRADE_STYLE: Record<string, { badge: "success" | "default" | "warning" | "danger"; color: string }> = {
+const GRADE_STYLE: Record<
+  string,
+  { badge: "success" | "default" | "warning" | "danger"; color: string }
+> = {
   優良: { badge: "success", color: "text-green-600" },
   良好: { badge: "default", color: "text-blue-600" },
   普通: { badge: "warning", color: "text-yellow-600" },
@@ -74,12 +71,12 @@ export function InvestmentScoreCard({ score }: Props) {
         {breakdown.radarData.length > 0 && (
           <div className="h-48 w-full mb-3">
             <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={breakdown.radarData} margin={{ top: 8, right: 24, left: 24, bottom: 8 }}>
+              <RadarChart
+                data={breakdown.radarData}
+                margin={{ top: 8, right: 24, left: 24, bottom: 8 }}
+              >
                 <PolarGrid stroke="#e0e7ff" />
-                <PolarAngleAxis
-                  dataKey="category"
-                  tick={{ fontSize: 10, fill: "#4338ca" }}
-                />
+                <PolarAngleAxis dataKey="category" tick={{ fontSize: 10, fill: "#4338ca" }} />
                 <Radar
                   name="スコア"
                   dataKey="score"
@@ -98,7 +95,8 @@ export function InvestmentScoreCard({ score }: Props) {
           ))}
         </div>
         <p className="mt-2 text-[10px] text-gray-400 leading-tight">
-          基準スコア50点 + 各指標の加減点（0〜100にクランプ）。API取得失敗時は該当指標を0点として算出。
+          基準スコア50点 +
+          各指標の加減点（0〜100にクランプ）。API取得失敗時は該当指標を0点として算出。
         </p>
       </CardContent>
     </Card>

@@ -45,12 +45,7 @@ interface Props {
   theoreticalPrice: TheoreticalPriceResult | null;
 }
 
-export default function NegotiationPanel({
-  result,
-  input,
-  comparison,
-  theoreticalPrice,
-}: Props) {
+export default function NegotiationPanel({ result, input, comparison, theoreticalPrice }: Props) {
   const askingPropertyPrice = input.landPrice + input.buildingCost;
 
   // Max purchase price derived from existing requiredCostReduction field
@@ -58,8 +53,7 @@ export default function NegotiationPanel({
   const maxPropertyPrice = maxTotalInvestment / (1 + input.miscExpenseRate);
 
   const diffFromAsking = maxPropertyPrice - askingPropertyPrice;
-  const diffPct =
-    askingPropertyPrice > 0 ? (diffFromAsking / askingPropertyPrice) * 100 : 0;
+  const diffPct = askingPropertyPrice > 0 ? (diffFromAsking / askingPropertyPrice) * 100 : 0;
   // Property price discount needed (positive = need to negotiate down)
   const discountNeeded = diffFromAsking < 0 ? -diffFromAsking : 0;
 
@@ -68,8 +62,7 @@ export default function NegotiationPanel({
     comparison && input.landArea > 0
       ? comparison.stats.medianTsubo * (input.landArea / TSUBO_PER_SQM)
       : null;
-  const rawMarketPrice =
-    marketLandValue !== null ? marketLandValue + input.buildingCost : null;
+  const rawMarketPrice = marketLandValue !== null ? marketLandValue + input.buildingCost : null;
   const marketData =
     rawMarketPrice !== null && rawMarketPrice > 0
       ? {
@@ -104,9 +97,7 @@ export default function NegotiationPanel({
   return (
     <Card className="rounded-xl shadow-sm">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">
-          逆算・交渉シミュレーション
-        </CardTitle>
+        <CardTitle className="text-base font-semibold">逆算・交渉シミュレーション</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Section 1: Reverse yield calculation (#296) */}
@@ -116,10 +107,8 @@ export default function NegotiationPanel({
           </h3>
           <p className="mb-3 text-xs text-muted-foreground">
             目標利回り{" "}
-            <span className="font-semibold text-foreground">
-              {formatPct(input.yieldTarget)}
-            </span>{" "}
-            ／ 想定賃料{" "}
+            <span className="font-semibold text-foreground">{formatPct(input.yieldTarget)}</span> ／
+            想定賃料{" "}
             <span className="font-semibold text-foreground">
               ¥{input.monthlyRent.toLocaleString("ja-JP")}
             </span>{" "}
@@ -144,9 +133,7 @@ export default function NegotiationPanel({
               )}
             </div>
             <div className="rounded-lg bg-muted/50 p-3">
-              <p className="text-xs text-muted-foreground mb-1">
-                売出価格での表面利回り
-              </p>
+              <p className="text-xs text-muted-foreground mb-1">売出価格での表面利回り</p>
               <p
                 className={`text-lg font-bold ${result.isAboveYieldTarget ? "text-emerald-600" : "text-red-600"}`}
               >
@@ -169,12 +156,8 @@ export default function NegotiationPanel({
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-muted/50">
                   <tr>
-                    <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">
-                      売出価格
-                    </td>
-                    <td className="py-2 font-semibold">
-                      {formatYen(askingPropertyPrice)}
-                    </td>
+                    <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">売出価格</td>
+                    <td className="py-2 font-semibold">{formatYen(askingPropertyPrice)}</td>
                     <td className="py-2 pl-4" />
                   </tr>
                   {marketData !== null && (
@@ -182,9 +165,7 @@ export default function NegotiationPanel({
                       <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">
                         市場取引実勢
                       </td>
-                      <td className="py-2 font-semibold">
-                        {formatYen(marketData.price)}
-                      </td>
+                      <td className="py-2 font-semibold">{formatYen(marketData.price)}</td>
                       <td className="py-2 pl-4">
                         <DiffBadge diff={marketData.diff} pct={marketData.pct} />
                       </td>
@@ -195,9 +176,7 @@ export default function NegotiationPanel({
                       <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">
                         理論価格
                       </td>
-                      <td className="py-2 font-semibold">
-                        {formatYen(theoreticalData.price)}
-                      </td>
+                      <td className="py-2 font-semibold">{formatYen(theoreticalData.price)}</td>
                       <td className="py-2 pl-4">
                         <DiffBadge diff={theoreticalData.diff} pct={theoreticalData.pct} />
                       </td>
@@ -221,9 +200,7 @@ export default function NegotiationPanel({
             </div>
             {rangeLow !== null && rangeHigh !== null && rangeLow !== rangeHigh && (
               <div className="mt-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 p-3">
-                <p className="text-xs text-muted-foreground mb-1">
-                  交渉推奨価格レンジ
-                </p>
+                <p className="text-xs text-muted-foreground mb-1">交渉推奨価格レンジ</p>
                 <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
                   {formatYen(rangeLow)} 〜 {formatYen(rangeHigh)}
                 </p>

@@ -14,7 +14,7 @@ export const SAMPLE_PROPERTY: InvestmentInput = {
   annualLoanRate: 0.018,
   loanYears: 30,
   buildingType: "木造",
-  expenseRate: 0.20,
+  expenseRate: 0.2,
   incomeTaxRate: 0.33,
   holdingYears: 10,
   exitYieldTarget: 0.06,

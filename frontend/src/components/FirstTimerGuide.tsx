@@ -47,9 +47,7 @@ export function FirstTimerGuide({ onUseSample, onDismiss, sampleProperty }: Prop
 
         <div className="p-6">
           <h2 className="text-lg font-bold">🏠 Yield-Guard の使い方</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            不動産投資を4つの視点で判断しよう
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">不動産投資を4つの視点で判断しよう</p>
 
           <ol className="mt-4 space-y-3">
             {STEPS.map((step, i) => (

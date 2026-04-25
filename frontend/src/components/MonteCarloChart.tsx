@@ -65,9 +65,22 @@ export function MonteCarloChart({ result }: Props) {
       <CardContent className="space-y-6">
         {/* サマリーバッジ */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <StatCard label="IRR正値達成率" value={formatPct(successRate, 1)} positive={successRate >= 0.5} />
-          <StatCard label="デッドクロス発生率" value={formatPct(deadCrossRate, 1)} positive={deadCrossRate < 0.3} invert />
-          <StatCard label="IRR中央値" value={formatPct(irrPercentiles.p50, 1)} positive={irrPercentiles.p50 >= 0} />
+          <StatCard
+            label="IRR正値達成率"
+            value={formatPct(successRate, 1)}
+            positive={successRate >= 0.5}
+          />
+          <StatCard
+            label="デッドクロス発生率"
+            value={formatPct(deadCrossRate, 1)}
+            positive={deadCrossRate < 0.3}
+            invert
+          />
+          <StatCard
+            label="IRR中央値"
+            value={formatPct(irrPercentiles.p50, 1)}
+            positive={irrPercentiles.p50 >= 0}
+          />
         </div>
 
         {/* IRRヒストグラム */}
@@ -124,10 +137,14 @@ export function MonteCarloChart({ result }: Props) {
               {pctRows.map((r) => (
                 <tr key={r.label} className="border-b last:border-0">
                   <td className="py-1">{r.label}</td>
-                  <td className={`py-1 text-right font-mono ${r.irr >= 0 ? "text-blue-600" : "text-red-500"}`}>
+                  <td
+                    className={`py-1 text-right font-mono ${r.irr >= 0 ? "text-blue-600" : "text-red-500"}`}
+                  >
                     {formatPct(r.irr, 1)}
                   </td>
-                  <td className={`py-1 text-right font-mono ${r.equity >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                  <td
+                    className={`py-1 text-right font-mono ${r.equity >= 0 ? "text-emerald-600" : "text-red-500"}`}
+                  >
                     {formatMan(r.equity, 0)}
                   </td>
                 </tr>
@@ -153,9 +170,13 @@ function StatCard({
 }) {
   const good = invert ? !positive : positive;
   return (
-    <div className={`rounded-lg border p-3 ${good ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
+    <div
+      className={`rounded-lg border p-3 ${good ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}
+    >
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`text-lg font-semibold ${good ? "text-emerald-700" : "text-red-600"}`}>{value}</p>
+      <p className={`text-lg font-semibold ${good ? "text-emerald-700" : "text-red-600"}`}>
+        {value}
+      </p>
     </div>
   );
 }

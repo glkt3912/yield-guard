@@ -58,9 +58,10 @@ export default function WatchlistPanel() {
     }
     setNameError("");
     const newItem: WatchlistItem = {
-      id: typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : String(Date.now()),
+      id:
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : String(Date.now()),
       name: trimmed,
       memo: memoInput.trim(),
       status: "検討中",
@@ -72,9 +73,7 @@ export default function WatchlistPanel() {
   }
 
   function handleStatusChange(id: string, status: WatchlistStatus) {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status } : item))
-    );
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
   }
 
   function handleDelete(id: string) {
@@ -110,16 +109,9 @@ export default function WatchlistPanel() {
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 aria-label="物件名"
               />
-              {nameError && (
-                <p className="mt-0.5 text-xs text-destructive">{nameError}</p>
-              )}
+              {nameError && <p className="mt-0.5 text-xs text-destructive">{nameError}</p>}
             </div>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleAdd}
-              className="shrink-0"
-            >
+            <Button type="button" size="sm" onClick={handleAdd} className="shrink-0">
               追加
             </Button>
           </div>
@@ -142,7 +134,10 @@ export default function WatchlistPanel() {
         ) : (
           <ul className="divide-y divide-border">
             {items.map((item) => (
-              <li key={item.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-3">
+              <li
+                key={item.id}
+                className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-3"
+              >
                 {/* Left: name + meta */}
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <div className="flex flex-wrap items-center gap-2">

@@ -42,7 +42,11 @@ describe("LandPriceAnalysis", () => {
     });
 
     it("判定バッジに「(参考値)」を付与する", () => {
-      render(<LandPriceAnalysis comparison={makeComparison({ stats: lowDataStats, assessment: "割高" })} />);
+      render(
+        <LandPriceAnalysis
+          comparison={makeComparison({ stats: lowDataStats, assessment: "割高" })}
+        />
+      );
       expect(screen.getByText("割高（参考値）")).toBeInTheDocument();
     });
 
@@ -84,7 +88,9 @@ describe("LandPriceAnalysis", () => {
     });
 
     it("stats.count === 0 のとき土地値判定セクションを表示しない", () => {
-      render(<LandPriceAnalysis comparison={makeComparison({ stats: ZERO_STATS })} input={makeInput()} />);
+      render(
+        <LandPriceAnalysis comparison={makeComparison({ stats: ZERO_STATS })} input={makeInput()} />
+      );
       expect(screen.queryByText("土地値割れ判定")).not.toBeInTheDocument();
     });
   });

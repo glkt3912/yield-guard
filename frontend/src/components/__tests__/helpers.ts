@@ -1,4 +1,10 @@
-import type { InvestmentInput, InvestmentResult, LandPriceComparison, LandPriceStats, YearlyResult } from "@/types/investment";
+import type {
+  InvestmentInput,
+  InvestmentResult,
+  LandPriceComparison,
+  LandPriceStats,
+  YearlyResult,
+} from "@/types/investment";
 
 export function makeInput(overrides: Partial<InvestmentInput> = {}): InvestmentInput {
   return {
@@ -15,7 +21,7 @@ export function makeInput(overrides: Partial<InvestmentInput> = {}): InvestmentI
     annualLoanRate: 0.015,
     loanYears: 35,
     buildingType: "木造",
-    expenseRate: 0.20,
+    expenseRate: 0.2,
     incomeTaxRate: 0.33,
     holdingYears: 10,
     exitYieldTarget: 0.06,
@@ -60,7 +66,10 @@ export function makeComparison(overrides: Partial<LandPriceComparison> = {}): La
   };
 }
 
-export function makeYearlyResult(year: number, overrides: Partial<YearlyResult> = {}): YearlyResult {
+export function makeYearlyResult(
+  year: number,
+  overrides: Partial<YearlyResult> = {}
+): YearlyResult {
   return {
     year,
     annualRent: 1_200_000,
@@ -111,8 +120,8 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
     exitTotalEquity: 3_000_000,
     stressScenarios: [],
     yieldScenarios: {
-      optimistic:  { annualRent: 1_368_000, grossYield: 0.09 },
-      standard:    { annualRent: 1_296_000, grossYield: 0.09 },
+      optimistic: { annualRent: 1_368_000, grossYield: 0.09 },
+      standard: { annualRent: 1_296_000, grossYield: 0.09 },
       pessimistic: { annualRent: 1_224_000, grossYield: 0.09 },
     },
     dscr: 1.2,

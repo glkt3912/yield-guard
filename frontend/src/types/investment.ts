@@ -49,19 +49,19 @@ export type LoanMethod = "equal-payment" | "equal-principal";
 
 export interface RateAdjustment {
   afterYear: number; // この年（1始まり）以降に適用（例: 6 = 6年目から）
-  rate: number;      // 絶対値の年利（例: 0.02 = 2%）
+  rate: number; // 絶対値の年利（例: 0.02 = 2%）
 }
 
 export interface InvestmentInput {
   landPrice: number;
-  landArea: number;       // 土地面積 (m²)
+  landArea: number; // 土地面積 (m²)
   buildingCost: number;
-  buildingAge: number;    // 築年数 (0=新築)
+  buildingAge: number; // 築年数 (0=新築)
   stationMinutes: number; // 最寄り駅徒歩分 (0=未入力)
   miscExpenseRate: number;
   monthlyRent: number;
-  vacancyRate: number;        // 想定空室率（長期シミュレーション用）
-  actualVacancyRate: number;  // 現況空室率（現時点の実態）
+  vacancyRate: number; // 想定空室率（長期シミュレーション用）
+  actualVacancyRate: number; // 現況空室率（現時点の実態）
   loanAmount: number;
   annualLoanRate: number;
   loanYears: number;
@@ -72,19 +72,19 @@ export interface InvestmentInput {
   exitYieldTarget: number;
   vacancyRateDelta: number;
   loanRateDelta: number;
-  annualPropertyTax: number;  // 固定資産税・都市計画税（年間）。0 = ExpenseRateに含む。
-  rentDeclineRate: number;    // 年間賃料下落率（例: 0.01 = 1%/年）
-  yieldTarget: number;        // 目標表面利回り（例: 0.08 = 8%）
-  loanMethod?: LoanMethod;    // 返済方式（省略時 = equal-payment）
+  annualPropertyTax: number; // 固定資産税・都市計画税（年間）。0 = ExpenseRateに含む。
+  rentDeclineRate: number; // 年間賃料下落率（例: 0.01 = 1%/年）
+  yieldTarget: number; // 目標表面利回り（例: 0.08 = 8%）
+  loanMethod?: LoanMethod; // 返済方式（省略時 = equal-payment）
   rateAdjustmentSchedule: RateAdjustment[]; // 変動金利スケジュール（空=固定金利）
-  discountRate?: number;           // 割引率（NPV/IRR計算用、例: 0.05 = 5%）
-  priceDeclineRate?: number;       // 物件価格下落率（例: 0.02 = 年2%下落）
+  discountRate?: number; // 割引率（NPV/IRR計算用、例: 0.05 = 5%）
+  priceDeclineRate?: number; // 物件価格下落率（例: 0.02 = 年2%下落）
   depreciationMethod?: "straight-line" | "declining-balance"; // 減価償却方式
 }
 
 export interface YearlyResult {
   year: number;
-  annualRent: number;           // 実効賃料収入（空室控除後）
+  annualRent: number; // 実効賃料収入（空室控除後）
   annualLoanPayment: number;
   annualInterest: number;
   annualPrincipal: number;
@@ -97,8 +97,8 @@ export interface YearlyResult {
   remainingLoanBalance: number;
   cumulativeCashFlow: number;
   isDeadCrossYear: boolean;
-  isInDeadCrossZone: boolean;   // デッドクロス継続ゾーン
-  effectiveRate: number;        // その年の適用金利（年利）
+  isInDeadCrossZone: boolean; // デッドクロス継続ゾーン
+  effectiveRate: number; // その年の適用金利（年利）
 }
 
 export interface StressScenarioResult {
@@ -108,7 +108,7 @@ export interface StressScenarioResult {
   totalCashFlow: number;
   dscr: number;
   breakEvenYear: number; // 累積CFが正転する年（-1=なし）
-  isSafe: boolean;       // DSCR >= 1.0 && breakEvenYear <= holdingYears
+  isSafe: boolean; // DSCR >= 1.0 && breakEvenYear <= holdingYears
 }
 
 export interface YieldScenario {
@@ -117,18 +117,18 @@ export interface YieldScenario {
 }
 
 export interface YieldScenarios {
-  optimistic: YieldScenario;  // 楽観: 空室率 × 0.5
-  standard: YieldScenario;    // 標準: 空室率 × 1.0
+  optimistic: YieldScenario; // 楽観: 空室率 × 0.5
+  standard: YieldScenario; // 標準: 空室率 × 1.0
   pessimistic: YieldScenario; // 悲観: 空室率 × 1.5
 }
 
 export interface LTVSensitivityRow {
-  ltv: number;        // 借入比率（例: 0.70）
-  equity: number;     // 自己資金（円）
+  ltv: number; // 借入比率（例: 0.70）
+  equity: number; // 自己資金（円）
   loanAmount: number; // 借入額（円）
-  dscr: number;       // 借入金償還余裕率
-  annualCF: number;   // 年間キャッシュフロー（円）
-  cfYield: number;    // CF利回り（annualCF / 総投資額）
+  dscr: number; // 借入金償還余裕率
+  annualCF: number; // 年間キャッシュフロー（円）
+  cfYield: number; // CF利回り（annualCF / 総投資額）
 }
 
 export interface InvestmentResult {
@@ -151,10 +151,10 @@ export interface InvestmentResult {
   exitTotalEquity: number;
   stressScenarios: StressScenarioResult[];
   yieldScenarios: YieldScenarios;
-  dscr: number;                        // 1年目 DSCR（NOI / 年間返済額）
+  dscr: number; // 1年目 DSCR（NOI / 年間返済額）
   ltvSensitivity: LTVSensitivityRow[]; // LTV 感度分析（50%〜90%）
-  irr: number | null;                  // 内部収益率（収束しない場合は null）
-  npv: number;                         // 正味現在価値
+  irr: number | null; // 内部収益率（収束しない場合は null）
+  npv: number; // 正味現在価値
 }
 
 export interface LandTransaction {
@@ -221,8 +221,8 @@ export interface PopulationForecastResult {
 
 export interface AppraisalComparisonResult {
   appraisalMedianPerSqm: number; // 公示価格中央値（円/m²）
-  appraisalCount: number;         // 標準地点数
-  appraisalTrend: number;         // 平均変動率（小数: 0.05 = +5%）
+  appraisalCount: number; // 標準地点数
+  appraisalTrend: number; // 平均変動率（小数: 0.05 = +5%）
   trendLabel: "上昇" | "安定" | "下落";
 }
 
@@ -240,7 +240,7 @@ export const DEFAULT_INPUT: InvestmentInput = {
   annualLoanRate: 0.015,
   loanYears: 35,
   buildingType: "木造",
-  expenseRate: 0.20,
+  expenseRate: 0.2,
   incomeTaxRate: 0.33,
   holdingYears: 10,
   exitYieldTarget: 0.06,
@@ -257,12 +257,12 @@ export const DEFAULT_INPUT: InvestmentInput = {
 };
 
 export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
-  "木造": 22,
+  木造: 22,
   "軽量鉄骨(3mm以下)": 19,
   "軽量鉄骨(4mm以下)": 27,
-  "重量鉄骨": 34,
-  "RC造": 47,
-  "SRC造": 47,
+  重量鉄骨: 34,
+  RC造: 47,
+  SRC造: 47,
 };
 
 export type SimulationMode = "quick" | "full";
@@ -299,24 +299,24 @@ export interface MonteCarloInput {
 }
 
 export const QUICK_MODE_DEFAULTS: Partial<InvestmentInput> = {
-  landArea:          100,
-  buildingAge:       0,
-  stationMinutes:    0,
-  miscExpenseRate:   0.07,
-  vacancyRate:       0.05,
+  landArea: 100,
+  buildingAge: 0,
+  stationMinutes: 0,
+  miscExpenseRate: 0.07,
+  vacancyRate: 0.05,
   actualVacancyRate: 0,
-  expenseRate:       0.20,
-  incomeTaxRate:     0.33,
-  exitYieldTarget:   0.06,
-  vacancyRateDelta:  0,
-  loanRateDelta:     0,
+  expenseRate: 0.2,
+  incomeTaxRate: 0.33,
+  exitYieldTarget: 0.06,
+  vacancyRateDelta: 0,
+  loanRateDelta: 0,
   annualPropertyTax: 0,
-  buildingType:      "木造" as BuildingType,
-  annualLoanRate:           0.015,
-  rentDeclineRate:          0.01,
-  yieldTarget:              0.08,
-  loanMethod:               "equal-payment",
-  rateAdjustmentSchedule:  [],
+  buildingType: "木造" as BuildingType,
+  annualLoanRate: 0.015,
+  rentDeclineRate: 0.01,
+  yieldTarget: 0.08,
+  loanMethod: "equal-payment",
+  rateAdjustmentSchedule: [],
 };
 
 export interface RenovationItem {
@@ -396,7 +396,7 @@ export const DEFAULT_RENOVATION_INPUT: RenovationInput = {
   propertyPrice: 10_000_000,
   annualBaseRent: 1_200_000,
   annualExpenses: 240_000,
-  effectiveTaxRate: 0.30,
+  effectiveTaxRate: 0.3,
   selfLaborRatePerHour: 0,
   items: [],
 };

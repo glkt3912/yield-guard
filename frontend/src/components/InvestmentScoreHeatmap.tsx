@@ -6,11 +6,11 @@ import { fetchInvestmentScoreHeatmap } from "@/lib/api";
 import type { HeatmapTile } from "@/types/investment";
 
 function scoreToColor(score: number): string {
-  if (score >= 80) return "#22c55e";   // green-500
-  if (score >= 65) return "#86efac";   // green-300
-  if (score >= 50) return "#fde68a";   // yellow-200
-  if (score >= 35) return "#fdba74";   // orange-300
-  return "#f87171";                     // red-400
+  if (score >= 80) return "#22c55e"; // green-500
+  if (score >= 65) return "#86efac"; // green-300
+  if (score >= 50) return "#fde68a"; // yellow-200
+  if (score >= 35) return "#fdba74"; // orange-300
+  return "#f87171"; // red-400
 }
 
 // Tile bounds: the rectangle a tile covers (not just its center)
@@ -20,12 +20,21 @@ function tileBounds(x: number, y: number, z: number): [[number, number], [number
   const lng2 = ((x + 1) / n) * 360 - 180;
   const lat1 = (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n))) * 180) / Math.PI;
   const lat2 = (Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 1)) / n))) * 180) / Math.PI;
-  return [[lat2, lng1], [lat1, lng2]];
+  return [
+    [lat2, lng1],
+    [lat1, lng2],
+  ];
 }
 
 type AnalyzeBounds = { minLat: number; maxLat: number; minLng: number; maxLng: number; z: number };
 
-function AnalyzeButton({ onAnalyze, loading }: { onAnalyze: (bounds: AnalyzeBounds) => void; loading: boolean }) {
+function AnalyzeButton({
+  onAnalyze,
+  loading,
+}: {
+  onAnalyze: (bounds: AnalyzeBounds) => void;
+  loading: boolean;
+}) {
   const map = useMapEvents({});
   const handleClick = useCallback(() => {
     const b = map.getBounds();
@@ -41,7 +50,10 @@ function AnalyzeButton({ onAnalyze, loading }: { onAnalyze: (bounds: AnalyzeBoun
   }, [map, onAnalyze]);
 
   return (
-    <div className="leaflet-top leaflet-right" style={{ zIndex: 1000, marginTop: 10, marginRight: 10 }}>
+    <div
+      className="leaflet-top leaflet-right"
+      style={{ zIndex: 1000, marginTop: 10, marginRight: 10 }}
+    >
       <div className="leaflet-control">
         <button
           onClick={handleClick}
@@ -61,7 +73,11 @@ interface Props {
   onTileSelect?: (lat: number, lng: number) => void;
 }
 
-export default function InvestmentScoreHeatmap({ centerLat = 35.6812, centerLng = 139.7671, onTileSelect }: Props) {
+export default function InvestmentScoreHeatmap({
+  centerLat = 35.6812,
+  centerLng = 139.7671,
+  onTileSelect,
+}: Props) {
   const [tiles, setTiles] = useState<HeatmapTile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +98,9 @@ export default function InvestmentScoreHeatmap({ centerLat = 35.6812, centerLng 
   return (
     <div className="rounded-lg border bg-card p-4">
       <h3 className="text-lg font-semibold mb-1">エリア別投資スコア</h3>
-      <p className="text-xs text-muted-foreground mb-3">スコアは需要・安全性の評価です。表面利回りとは別軸の指標です。</p>
+      <p className="text-xs text-muted-foreground mb-3">
+        スコアは需要・安全性の評価です。表面利回りとは別軸の指標です。
+      </p>
       {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
       <div style={{ height: 480 }}>
         <MapContainer
@@ -106,13 +124,22 @@ export default function InvestmentScoreHeatmap({ centerLat = 35.6812, centerLng 
                 weight: 0.5,
                 ...(onTileSelect ? { className: "cursor-pointer" } : {}),
               }}
-              eventHandlers={onTileSelect ? {
-                click: () => onTileSelect(tile.centerLat, tile.centerLng),
-              } : undefined}
+              eventHandlers={
+                onTileSelect
+                  ? {
+                      click: () => onTileSelect(tile.centerLat, tile.centerLng),
+                    }
+                  : undefined
+              }
             >
               <Tooltip sticky>
                 {tile.grade} / スコア {tile.totalScore}
-                {onTileSelect && <><br /><span className="text-xs">クリックで座標を入力</span></>}
+                {onTileSelect && (
+                  <>
+                    <br />
+                    <span className="text-xs">クリックで座標を入力</span>
+                  </>
+                )}
               </Tooltip>
             </Rectangle>
           ))}
@@ -128,7 +155,15 @@ export default function InvestmentScoreHeatmap({ centerLat = 35.6812, centerLng 
             { label: "要注意 (<35)", color: "#f87171" },
           ].map(({ label, color }) => (
             <span key={label} className="flex items-center gap-1">
-              <span style={{ background: color, width: 12, height: 12, display: "inline-block", borderRadius: 2 }} />
+              <span
+                style={{
+                  background: color,
+                  width: 12,
+                  height: 12,
+                  display: "inline-block",
+                  borderRadius: 2,
+                }}
+              />
               {label}
             </span>
           ))}

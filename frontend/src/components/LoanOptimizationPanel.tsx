@@ -14,7 +14,12 @@ interface Props {
   loanAmount?: number;
 }
 
-export function LoanOptimizationPanel({ result, loanMethod, onLoanMethodChange, loanAmount }: Props) {
+export function LoanOptimizationPanel({
+  result,
+  loanMethod,
+  onLoanMethodChange,
+  loanAmount,
+}: Props) {
   const dscr = result.dscr ?? 0;
   const hasLoan = (loanAmount ?? 0) > 0;
   const dscrSafe = dscr >= 1.0;
@@ -34,9 +39,11 @@ export function LoanOptimizationPanel({ result, loanMethod, onLoanMethodChange, 
               <option value="equal-principal">元金均等返済</option>
             </select>
             <p className="text-xs text-muted-foreground">
-              {loanMethod === "equal-payment"
-                ? <TermTooltip term="equalPayment">元利均等返済</TermTooltip>
-                : <TermTooltip term="equalPrincipal">元金均等返済</TermTooltip>}
+              {loanMethod === "equal-payment" ? (
+                <TermTooltip term="equalPayment">元利均等返済</TermTooltip>
+              ) : (
+                <TermTooltip term="equalPrincipal">元金均等返済</TermTooltip>
+              )}
             </p>
           </div>
         </div>
@@ -45,9 +52,13 @@ export function LoanOptimizationPanel({ result, loanMethod, onLoanMethodChange, 
         {/* DSCR */}
         <div className="flex items-center gap-3">
           <div>
-            <p className="text-xs text-muted-foreground mb-0.5"><TermTooltip term="dscr">DSCR（借入金償還余裕率）</TermTooltip></p>
+            <p className="text-xs text-muted-foreground mb-0.5">
+              <TermTooltip term="dscr">DSCR（借入金償還余裕率）</TermTooltip>
+            </p>
             <p className="text-2xl font-bold tabular-nums">{dscr.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5"><TermTooltip term="noi">NOI</TermTooltip> ÷ 年間返済額（1年目）</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              <TermTooltip term="noi">NOI</TermTooltip> ÷ 年間返済額（1年目）
+            </p>
           </div>
           {!hasLoan ? (
             <Badge className="flex items-center gap-1 bg-gray-100 text-gray-500 border-gray-200 ml-auto">
@@ -80,7 +91,9 @@ export function LoanOptimizationPanel({ result, loanMethod, onLoanMethodChange, 
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="border-b text-muted-foreground">
-                    <th className="text-left py-1.5 pr-3 font-medium"><TermTooltip term="ltv">LTV</TermTooltip></th>
+                    <th className="text-left py-1.5 pr-3 font-medium">
+                      <TermTooltip term="ltv">LTV</TermTooltip>
+                    </th>
                     <th className="text-right py-1.5 pr-3 font-medium">自己資金</th>
                     <th className="text-right py-1.5 pr-3 font-medium">借入額</th>
                     <th className="text-right py-1.5 pr-3 font-medium">DSCR</th>
@@ -92,12 +105,23 @@ export function LoanOptimizationPanel({ result, loanMethod, onLoanMethodChange, 
                   {result.ltvSensitivity.map((row) => {
                     const safe = row.dscr >= 1.0;
                     return (
-                      <tr key={row.ltv} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
+                      <tr
+                        key={row.ltv}
+                        className="border-b last:border-0 hover:bg-muted/40 transition-colors"
+                      >
                         <td className="py-1.5 pr-3 font-medium">{formatPct(row.ltv)}</td>
-                        <td className="text-right py-1.5 pr-3 tabular-nums">{formatMan(row.equity)}</td>
-                        <td className="text-right py-1.5 pr-3 tabular-nums">{formatMan(row.loanAmount)}</td>
                         <td className="text-right py-1.5 pr-3 tabular-nums">
-                          <span className={safe ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                          {formatMan(row.equity)}
+                        </td>
+                        <td className="text-right py-1.5 pr-3 tabular-nums">
+                          {formatMan(row.loanAmount)}
+                        </td>
+                        <td className="text-right py-1.5 pr-3 tabular-nums">
+                          <span
+                            className={
+                              safe ? "text-green-600 font-medium" : "text-red-600 font-medium"
+                            }
+                          >
                             {row.dscr.toFixed(2)}
                           </span>
                         </td>

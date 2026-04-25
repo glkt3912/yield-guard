@@ -4,7 +4,9 @@ import CostBreakdown from "@/components/CostBreakdown";
 import { makeInput, makeResult, makeYearlyResult } from "./helpers";
 import type { AcquisitionCostBreakdown } from "@/types/investment";
 
-function makeAcquisitionCosts(overrides: Partial<AcquisitionCostBreakdown> = {}): AcquisitionCostBreakdown {
+function makeAcquisitionCosts(
+  overrides: Partial<AcquisitionCostBreakdown> = {}
+): AcquisitionCostBreakdown {
   return {
     brokerageFee: 561_000,
     stampDuty: 20_000,
@@ -22,7 +24,9 @@ describe("CostBreakdown", () => {
     const costs = makeAcquisitionCosts();
     const yearlyResults = [makeYearlyResult(1)];
 
-    const { container } = render(<CostBreakdown input={input} acquisitionCosts={costs} yearlyResults={yearlyResults} />);
+    const { container } = render(
+      <CostBreakdown input={input} acquisitionCosts={costs} yearlyResults={yearlyResults} />
+    );
 
     // Labels appear in both the pie chart legend and the detail table;
     // scope assertions to the table to avoid "multiple elements found" errors.
