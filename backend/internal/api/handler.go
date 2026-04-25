@@ -140,6 +140,13 @@ func parseLandPriceQuery(c *gin.Context) (mlit.LandPriceQuery, error) {
 	}, nil
 }
 
+// coordsGlobal and coordsJapanOnly are used as the japanOnly argument of parseLatLng
+// to make call sites self-documenting.
+const (
+	coordsGlobal    = false
+	coordsJapanOnly = true
+)
+
 // parseLatLng parses lat and lng query params with range validation.
 // If japanOnly is true, validates Japan domestic range (lat 20-46, lng 122-154).
 // Otherwise validates global range (lat -90~90, lng -180~180).
@@ -382,7 +389,7 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 // GetStationRidership は物件の緯度経度からタイル座標を計算し、駅別乗降客数と需要スコアを返す（XKT015）
 // GET /api/station-ridership?lat=35.6762&lng=139.6503[&z=14]
 func (h *Handler) GetStationRidership(c *gin.Context) {
-	lat, lng, ok := parseLatLng(c, false)
+	lat, lng, ok := parseLatLng(c, coordsGlobal)
 	if !ok {
 		return
 	}
@@ -417,7 +424,7 @@ func (h *Handler) GetStationRidership(c *gin.Context) {
 // GetPopulationForecast は物件の緯度経度からタイル座標を計算し、将来推計人口と人口減少シナリオを返す（XKT013）
 // GET /api/population-forecast?lat=35.6762&lng=139.6503[&z=14]
 func (h *Handler) GetPopulationForecast(c *gin.Context) {
-	lat, lng, ok := parseLatLng(c, false)
+	lat, lng, ok := parseLatLng(c, coordsGlobal)
 	if !ok {
 		return
 	}
@@ -556,7 +563,7 @@ func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 // GetUrbanRisks は緯度経度から都市計画リスクを一括取得する
 // GET /api/urban-risks?lat=35.68&lng=139.69
 func (h *Handler) GetUrbanRisks(c *gin.Context) {
-	lat, lng, ok := parseLatLng(c, true)
+	lat, lng, ok := parseLatLng(c, coordsJapanOnly)
 	if !ok {
 		return
 	}
@@ -631,7 +638,7 @@ func (h *Handler) GetUrbanRisks(c *gin.Context) {
 // GetHazardInfo は物件の緯度経度から洪水・高潮・津波・土砂災害のハザード情報を返す。
 // GET /api/hazard?lat=35.6895&lng=139.6917
 func (h *Handler) GetHazardInfo(c *gin.Context) {
-	lat, lng, ok := parseLatLng(c, true)
+	lat, lng, ok := parseLatLng(c, coordsJapanOnly)
 	if !ok {
 		return
 	}
@@ -845,7 +852,7 @@ func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.Inv
 // GetInvestmentScore は物件の緯度経度から複数 API を並列呼び出しし、投資適地スコアを算出して返す。
 // GET /api/investment-score?lat=35.6762&lng=139.6503
 func (h *Handler) GetInvestmentScore(c *gin.Context) {
-	lat, lng, ok := parseLatLng(c, true)
+	lat, lng, ok := parseLatLng(c, coordsJapanOnly)
 	if !ok {
 		return
 	}
