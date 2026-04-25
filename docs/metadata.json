@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-24T15:00:00",
+  "lastUpdated": "2026-04-25T00:00:00",
   "documents": [
     {
       "id": "overview",
@@ -176,7 +176,7 @@
       "id": "domain-investment-calculation",
       "path": "docs/domain-investment-calculation.md",
       "title": "投資計算ロジック詳細仕様",
-      "description": "表面利回り・実質利回り・元利均等返済・元金均等返済・DSCR・LTV感度分析・課税所得・税引後キャッシュフロー・8%逆算の計算式と実装根拠。InvestmentInput/InvestmentResult/YearlyResult の全フィールド解説。LoanMethod（equal-payment/equal-principal）・CalcDSCR・CalcEqualPrincipalPayment・CalcLTVSensitivity・LTVSensitivityRow 型仕様を含む。元金均等は1年目月次返済額が最大で約17年目にクロスオーバー。ActualVacancyRate（現況空室率）フィールド含む。取得時諸経費（仲介手数料・印紙税・登録免許税・不動産取得税・固定資産税日割り）の算出ロジックと AcquisitionCostBreakdown 型仕様。固定資産税・都市計画税の年間計算・小規模住宅用地特例・うるう年対応日割り精算。年次賃料下落（RentDeclineRate）: baseAnnualRent × (1-RentDeclineRate)^y の計算式・構造別推奨値（木造1.0%/軽量重量鉄骨0.8%/RC造0.5%）・各年次ループでの適用順序。IRR（内部収益率）とNPV（正味現在価値）の計算仕様（CalcNPV/CalcIRR）。自己資金ベースのレバレッジ考慮済みIRR（equity=総投資額−ローン額）。二分法[-50%,+200%]・最大200回・|NPV|<1円の収束判定。InvestmentInputの新フィールド: DiscountRate（割引率・デフォルト5%）、PriceDeclineRate（物件価格下落率）、DepreciationMethod（減価償却方式）。InvestmentResultの新フィールド: IRR(*float64、非収束時null)、NPV(float64)。CalcRenovationROI: RenovationInput→RenovationResult。60万円閾値による資本的支出/修繕費の自動分類（所得税法施行令第181条）。IsRecoverable bool・セルフリフォーム仮想人件費・実質利回り算出。",
+      "description": "表面利回り・実質利回り・元利均等返済・元金均等返済・DSCR・LTV感度分析・課税所得・税引後キャッシュフロー・8%逆算の計算式と実装根拠。InvestmentInput/InvestmentResult/YearlyResult の全フィールド解説。LoanMethod（equal-payment/equal-principal）・CalcDSCR・CalcEqualPrincipalPayment・CalcLTVSensitivity・LTVSensitivityRow 型仕様を含む。元金均等は1年目月次返済額が最大で約17年目にクロスオーバー。ActualVacancyRate（現況空室率）フィールド含む。取得時諸経費（仲介手数料・印紙税・登録免許税・不動産取得税・固定資産税日割り）の算出ロジックと AcquisitionCostBreakdown 型仕様。固定資産税・都市計画税の年間計算・小規模住宅用地特例・うるう年対応日割り精算。年次賃料下落（RentDeclineRate）: baseAnnualRent × (1-RentDeclineRate)^y の計算式・構造別推奨値（木造1.0%/軽量重量鉄骨0.8%/RC造0.5%）・各年次ループでの適用順序。IRR（内部収益率）とNPV（正味現在価値）の計算仕様（CalcNPV/CalcIRR）。自己資金ベースのレバレッジ考慮済みIRR（equity=総投資額−ローン額）。二分法[-50%,+200%]・最大200回・|NPV|<1円の収束判定。InvestmentInputの新フィールド: DiscountRate（割引率・デフォルト5%）、PriceDeclineRate（物件価格下落率）、DepreciationMethod（減価償却方式）。InvestmentResultの新フィールド: IRR(*float64、非収束時null)、NPV(float64)。CalcRenovationROI: RenovationInput→RenovationResult。60万円閾値による資本的支出/修繕費の自動分類（所得税法施行令第181条）。IsRecoverable bool・セルフリフォーム仮想人件費・実質利回り算出。変動金利スケジュール（RateAdjustmentSchedule）との重ね合わせ仕様を明記: resolveRateForYear(baseRate, rateDelta, schedule, year) はスケジュール金利で上書き後に rateDelta を常時加算する。LTV感度分析（CalcLTVSensitivity）は初年度実効金利 resolveRateForYear(..., year=1) を使用し、RateAdjustmentSchedule・LoanRateDelta の両方を反映する（VacancyRateDelta は無視）。",
       "tags": [
         "利回り",
         "キャッシュフロー",
@@ -197,7 +197,10 @@
         "固定資産税",
         "都市計画税",
         "賃料下落",
-        "経年劣化"
+        "経年劣化",
+        "変動金利スケジュール",
+        "resolveRateForYear",
+        "ストレスΔ"
       ],
       "industry": [
         "不動産",
@@ -277,9 +280,16 @@
         "AnnualRentIncrease",
         "資本的支出",
         "修繕費",
-        "60万円閾値"
+        "60万円閾値",
+        "resolveRateForYear",
+        "RateAdjustmentSchedule",
+        "RateAdjustment",
+        "LoanRateDelta",
+        "rateDelta",
+        "rate1",
+        "変動金利スケジュール"
       ],
-      "updatedAt": "2026-04-23"
+      "updatedAt": "2026-04-25"
     },
     {
       "id": "domain-depreciation-dead-cross",

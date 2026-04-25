@@ -214,6 +214,8 @@ LTV       = 借入額 / 総投資額
 borrowing = 総投資額 × LTV
 equity    = 総投資額 × (1 − LTV)
 
+rate      = resolveRateForYear(AnnualLoanRate, LoanRateDelta, RateAdjustmentSchedule, year=1)
+
 元利均等: 月次返済額 = calcMonthlyPayment(borrowing, rate, years)
            annualDebt = 月次返済額 × 12
 元金均等: 1年目月次返済額 = CalcEqualPrincipalPayment(borrowing, rate, years×12, 1)
@@ -225,7 +227,7 @@ annualCF = NOI − annualDebt
 cfYield  = annualCF / 総投資額
 ```
 
-**注意**: LTV 感度分析はベースケース（`VacancyRateDelta = 0` / `LoanRateDelta = 0`）で試算する。ストレス適用後の値は `StressScenarios` を参照。元金均等では1年目（最大）の年間返済額を使用するため、実際の返済額より保守的な DSCR になる。
+**注意**: LTV 感度分析は初年度実効金利（`resolveRateForYear(..., year=1)`）を使用する。`RateAdjustmentSchedule` が設定されている場合は初年度のスケジュール金利が、`LoanRateDelta` が設定されている場合はそれも加算された金利が適用される（`VacancyRateDelta` は無視）。元金均等では1年目（最大）の年間返済額を使用するため、実際の返済額より保守的な DSCR になる。
 
 ### LTVSensitivityRow フィールド
 
