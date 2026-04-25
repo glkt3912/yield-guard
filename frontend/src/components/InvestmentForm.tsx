@@ -17,7 +17,8 @@ import { DEFAULT_INPUT, QUICK_MODE_DEFAULTS } from "@/types/investment";
 import { formatPct } from "@/lib/utils";
 import { fetchMunicipalities, fetchRentDeclineHint, fetchGeocode, type Municipality } from "@/lib/api";
 import type { RentDeclineHint } from "@/types/investment";
-import { Search, Calculator, Info, AlertTriangle, ShieldCheck, Zap, SlidersHorizontal, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
+import { Search, Calculator, Info, AlertTriangle, ShieldCheck, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
+import { SimulationModeToggle } from "@/components/SimulationModeToggle";
 import { ZONING_TYPES, ZONING_META, type ZoningType } from "@/lib/zoning";
 
 const QUICK_HISTORY_KEY = "yield-guard:quick-history";
@@ -109,6 +110,7 @@ interface Props {
   isOnline?: boolean | null;
   externalLat?: number;
   externalLng?: number;
+  showModeToggle?: boolean;
 }
 
 function getPeriodLabel(): string {
@@ -165,7 +167,7 @@ function validateQuick(quickTotalPriceMan: string, input: InvestmentInput): Form
   return e;
 }
 
-export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulationMode, onModeChange, initialInput, initialQuickTotalPriceMan, isOnline = null, externalLat, externalLng }: Props) {
+export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulationMode, onModeChange, initialInput, initialQuickTotalPriceMan, isOnline = null, externalLat, externalLng, showModeToggle = true }: Props) {
   const [input, setInput] = useState<InvestmentInput>({ ...DEFAULT_INPUT, ...initialInput });
   const [area, setArea] = useState("10");
   const [city, setCity] = useState("");
@@ -453,43 +455,9 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
 
   return (
     <div className="space-y-4">
-      {/* モード切替 */}
-      <div className="flex rounded-lg border bg-muted p-1 gap-1" role="group" aria-label="シミュレーションモード">
-        <button
-          type="button"
-          role="radio"
-          aria-checked={simulationMode === "quick"}
-          onClick={() => onModeChange("quick")}
-          className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-            simulationMode === "quick"
-              ? "bg-primary text-white shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <span className="flex items-center gap-1.5">
-            <Zap className="h-3.5 w-3.5" />
-            クイック
-          </span>
-          <span className="text-xs font-normal opacity-75">内覧でサッと試す</span>
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={simulationMode === "full"}
-          onClick={() => onModeChange("full")}
-          className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-            simulationMode === "full"
-              ? "bg-primary text-white shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <span className="flex items-center gap-1.5">
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            詳細
-          </span>
-          <span className="text-xs font-normal opacity-75">じっくり分析する</span>
-        </button>
-      </div>
+      {showModeToggle && (
+        <SimulationModeToggle mode={simulationMode} onChange={onModeChange} />
+      )}
 
       {/* ─── クイックモード ─── */}
       {isQuick && (
