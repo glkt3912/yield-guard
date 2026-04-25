@@ -375,13 +375,17 @@
       "id": "domain-zoning",
       "path": "docs/domain-zoning.md",
       "title": "用途地域・都市計画区域 ドメイン型仕様",
-      "description": "ZoningType（13種）・ZoningRiskLevel（None/Caution/High）・ZoningMeta（建ぺい率・容積率・リスクメッセージ）・CityPlanningArea（4種）の定義と変換関数仕様。都市計画法第8条準拠。",
+      "description": "ZoningType（13種）・ZoningRiskLevel（None/Caution/High）・ZoningMeta（建ぺい率・容積率・リスクメッセージ）・CityPlanningArea（4種）の定義と変換関数仕様。都市計画法第8条準拠。関連ドメイン知識セクションで再建築不可・接道義務（建築基準法43条）・42条2項道路・既存不適格を domain-glossary.md セクション9へ参照リンク。",
       "tags": [
         "用途地域",
         "都市計画",
         "ゾーニング",
         "リスク",
-        "不動産"
+        "不動産",
+        "再建築不可",
+        "接道義務",
+        "42条2項道路",
+        "既存不適格"
       ],
       "industry": [
         "不動産"
@@ -399,9 +403,14 @@
         "田園住居地域",
         "建ぺい率",
         "容積率",
-        "都市計画法"
+        "都市計画法",
+        "再建築不可",
+        "接道義務",
+        "建築基準法43条",
+        "42条2項道路",
+        "既存不適格"
       ],
-      "updatedAt": "2026-04-17"
+      "updatedAt": "2026-04-25"
     },
     {
       "id": "api-reference",
