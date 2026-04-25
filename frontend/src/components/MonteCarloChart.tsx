@@ -14,6 +14,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { MonteCarloResult } from "@/types/investment";
 import { formatMan, formatPct } from "@/lib/utils";
 import { Sigma } from "lucide-react";
+import { useChartHeight } from "@/lib/useChartHeight";
 
 interface Props {
   result: MonteCarloResult;
@@ -29,6 +30,7 @@ export function MonteCarloChart({ result }: Props) {
     equityHistogram,
     successRate,
   } = result;
+  const chartHeight = useChartHeight(160, 180, 200);
 
   // null guard: 全試行のIRRがNaNの場合バックエンドからnullが返る
   const irrData = (irrHistogram ?? []).map((b) => ({
@@ -89,7 +91,7 @@ export function MonteCarloChart({ result }: Props) {
           {irrData.length === 0 ? (
             <p className="text-xs text-muted-foreground">IRRを算出できた試行がありませんでした。</p>
           ) : (
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={chartHeight}>
               <BarChart data={irrData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
@@ -108,7 +110,7 @@ export function MonteCarloChart({ result }: Props) {
         {/* 最終純資産ヒストグラム */}
         <div>
           <p className="mb-2 text-sm font-medium">最終純資産 分布</p>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <BarChart data={equityData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
