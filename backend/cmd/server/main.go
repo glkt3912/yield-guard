@@ -28,6 +28,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if os.Getenv("GIN_MODE") == "release" && os.Getenv("APP_INTERNAL_API_KEY") == "" {
+		slog.Error("APP_INTERNAL_API_KEY must be set in production (GIN_MODE=release)")
+		os.Exit(1)
+	}
+
 	ctx := context.Background()
 	otelShutdown, err := telemetry.Setup(ctx, "yield-guard-backend", "0.1.0")
 	if err != nil {
