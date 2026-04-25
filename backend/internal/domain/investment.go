@@ -147,6 +147,12 @@ func capexForYear(schedule []CapexEvent, year int) float64 {
 
 // rentForYear は賃料上昇・下落シナリオを考慮した N 年目の年間実効賃料を返す。
 // y は 0-indexed（1年目 = y=0）。
+//
+// 設計: y=0 は「初年度（変化なし）」を表す（RentDeclineRate の既存挙動と対称）。
+// 上昇期 y=0..rentGrowthYears-1 は (1+g)^y を適用し、y=rentGrowthYears-1 が上昇期最終年。
+// y=rentGrowthYears は「上昇期終了直後の最初の下落年」であり、ピーク × (1-d)^1 を返す。
+// これは "下落1年目が即始まる保守的モデル" を採用したもの。
+// peak は上昇が続いたと仮定した場合の理論値 (1+g)^rentGrowthYears を基準とする。
 func rentForYear(baseRent float64, rentDeclineRate, rentGrowthRate float64, rentGrowthYears, y int) float64 {
 	if rentGrowthRate <= 0 || rentGrowthYears <= 0 {
 		return baseRent * math.Pow(1-rentDeclineRate, float64(y))
@@ -533,7 +539,8 @@ func calcStressScenario(ctx context.Context, base InvestmentInput, label string,
 			}
 		}
 
-		// 賃料下落率を年次適用（Analyze() の declineFactor と同じロジック、1-indexed なので y-1 を指数に使用）
+		// 賃料下落率を年次適用（ストレステストは保守的評価のため RentGrowthRate を意図的に無視）
+		// RentGrowthRate を考慮した楽観シナリオはメインの Analyze() で rentForYear() が担う。
 		declineFactor := math.Pow(1-in.RentDeclineRate, float64(y-1))
 		yearRent := annualRent * declineFactor
 		yearExpenses := yearRent*in.ExpenseRate + in.AnnualPropertyTax
