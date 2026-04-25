@@ -51,13 +51,13 @@ func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient) *Handler {
 func (h *Handler) GetLandPrices(c *gin.Context) {
 	q, err := parseLandPriceQuery(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		badRequest(c, err.Error())
 		return
 	}
 
 	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "国交省APIからのデータ取得に失敗しました: " + err.Error()})
+		badGateway(c, "国交省APIからのデータ取得に失敗しました: "+err.Error())
 		return
 	}
 
@@ -70,7 +70,7 @@ func (h *Handler) GetLandPrices(c *gin.Context) {
 func (h *Handler) CompareLandPrice(c *gin.Context) {
 	q, err := parseLandPriceQuery(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		badRequest(c, err.Error())
 		return
 	}
 
@@ -78,13 +78,13 @@ func (h *Handler) CompareLandPrice(c *gin.Context) {
 	areaSqmStr := c.Query("area_sqm")
 
 	if priceStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "price は必須パラメータです"})
+		badRequest(c, "price は必須パラメータです")
 		return
 	}
 
 	landPrice, err := strconv.ParseFloat(priceStr, 64)
 	if err != nil || landPrice <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "price は正の数値で指定してください"})
+		badRequest(c, "price は正の数値で指定してください")
 		return
 	}
 
@@ -92,14 +92,14 @@ func (h *Handler) CompareLandPrice(c *gin.Context) {
 	if areaSqmStr != "" {
 		areaSqm, err = strconv.ParseFloat(areaSqmStr, 64)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "area_sqm は数値で指定してください"})
+			badRequest(c, "area_sqm は数値で指定してください")
 			return
 		}
 	}
 
 	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "国交省APIからのデータ取得に失敗しました: " + err.Error()})
+		badGateway(c, "国交省APIからのデータ取得に失敗しました: "+err.Error())
 		return
 	}
 
@@ -142,81 +142,23 @@ func parseLandPriceQuery(c *gin.Context) (mlit.LandPriceQuery, error) {
 	}, nil
 }
 
-// coordsGlobal and coordsJapanOnly are used as the japanOnly argument of parseLatLng
-// to make call sites self-documenting.
-const (
-	coordsGlobal    = false
-	coordsJapanOnly = true
-)
-
-// parseLatLng parses lat and lng query params with range validation.
-// If japanOnly is true, validates Japan domestic range (lat 20-46, lng 122-154).
-// Otherwise validates global range (lat -90~90, lng -180~180).
-func parseLatLng(c *gin.Context, japanOnly bool) (lat, lng float64, ok bool) {
-	latStr := c.Query("lat")
-	lngStr := c.Query("lng")
-	if latStr == "" || lngStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
-		return 0, 0, false
-	}
-	lat, err := strconv.ParseFloat(latStr, 64)
-	if japanOnly {
-		if err != nil || lat < 20 || lat > 46 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "lat は日本国内の緯度（20〜46）で指定してください"})
-			return 0, 0, false
-		}
-	} else {
-		if err != nil || lat < -90 || lat > 90 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "lat は -90〜90 の数値で指定してください"})
-			return 0, 0, false
-		}
-	}
-	lng, err = strconv.ParseFloat(lngStr, 64)
-	if japanOnly {
-		if err != nil || lng < 122 || lng > 154 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "lng は日本国内の経度（122〜154）で指定してください"})
-			return 0, 0, false
-		}
-	} else {
-		if err != nil || lng < -180 || lng > 180 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "lng は -180〜180 の数値で指定してください"})
-			return 0, 0, false
-		}
-	}
-	return lat, lng, true
-}
-
-// parseZoom parses the optional z query param (11-15). Returns defaultZ if absent.
-func parseZoom(c *gin.Context, defaultZ int) (z int, ok bool) {
-	zStr := c.Query("z")
-	if zStr == "" {
-		return defaultZ, true
-	}
-	zv, err := strconv.Atoi(zStr)
-	if err != nil || zv < 11 || zv > 15 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "z は 11〜15 の整数で指定してください"})
-		return 0, false
-	}
-	return zv, true
-}
-
 // Analyze は投資シミュレーションを実行する
 // POST /api/analyze
 func (h *Handler) Analyze(c *gin.Context) {
 	var input domain.InvestmentInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "リクエストの形式が不正です: " + err.Error()})
+		badRequest(c, "リクエストの形式が不正です: "+err.Error())
 		return
 	}
 
 	if err := validateInvestmentInput(input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		badRequest(c, err.Error())
 		return
 	}
 
 	input.Defaults()
 	if err := input.Validate(); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		badRequest(c, err.Error())
 		return
 	}
 
@@ -230,16 +172,16 @@ func (h *Handler) Analyze(c *gin.Context) {
 func (h *Handler) MonteCarlo(c *gin.Context) {
 	var input domain.MonteCarloInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "リクエストの形式が不正です: " + err.Error()})
+		badRequest(c, "リクエストの形式が不正です: "+err.Error())
 		return
 	}
 	if err := validateInvestmentInput(input.Base); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		badRequest(c, err.Error())
 		return
 	}
 	input.Base.Defaults()
 	if err := input.Base.Validate(); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		badRequest(c, err.Error())
 		return
 	}
 	result := domain.MonteCarloSimulate(input)
@@ -307,7 +249,7 @@ func validateInvestmentInput(in domain.InvestmentInput) error {
 func (h *Handler) EstimateLandPrice(c *gin.Context) {
 	q, err := parseLandPriceQuery(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		badRequest(c, err.Error())
 		return
 	}
 
@@ -316,12 +258,12 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 	buildingAgeStr := c.Query("building_age")
 
 	if priceStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "price は必須パラメータです"})
+		badRequest(c, "price は必須パラメータです")
 		return
 	}
 	listingPrice, err := strconv.ParseFloat(priceStr, 64)
 	if err != nil || listingPrice <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "price は正の数値で指定してください"})
+		badRequest(c, "price は正の数値で指定してください")
 		return
 	}
 
@@ -329,12 +271,12 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 	if areaSqmStr != "" {
 		areaSqm, err = strconv.ParseFloat(areaSqmStr, 64)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "area_sqm は数値で指定してください"})
+			badRequest(c, "area_sqm は数値で指定してください")
 			return
 		}
 	}
 	if areaSqm <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "area_sqm は正の数値で指定してください"})
+		badRequest(c, "area_sqm は正の数値で指定してください")
 		return
 	}
 
@@ -342,7 +284,7 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 	if buildingAgeStr != "" {
 		buildingAge, err = strconv.Atoi(buildingAgeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "building_age は整数で指定してください"})
+			badRequest(c, "building_age は整数で指定してください")
 			return
 		}
 	}
@@ -351,7 +293,7 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 	if sm := c.Query("station_minutes"); sm != "" {
 		stationMinutes, err = strconv.Atoi(sm)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "station_minutes は整数で指定してください"})
+			badRequest(c, "station_minutes は整数で指定してください")
 			return
 		}
 	}
@@ -360,7 +302,7 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 	if raw := c.Query("ridership_score"); raw != "" {
 		score := domain.RidershipDemandScore(raw)
 		if !score.IsValid() {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ridership_score は A〜E で指定してください"})
+			badRequest(c, "ridership_score は A〜E で指定してください")
 			return
 		}
 		ridershipScore = score
@@ -368,7 +310,7 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 
 	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "国交省APIからのデータ取得に失敗しました: " + err.Error()})
+		badGateway(c, "国交省APIからのデータ取得に失敗しました: "+err.Error())
 		return
 	}
 
@@ -404,7 +346,7 @@ func (h *Handler) GetStationRidership(c *gin.Context) {
 
 	stations, err := h.mlitClient.FetchStationRidership(c.Request.Context(), z, tx, ty)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "駅別乗降客数の取得に失敗しました: " + err.Error()})
+		badGateway(c, "駅別乗降客数の取得に失敗しました: "+err.Error())
 		return
 	}
 
@@ -439,7 +381,7 @@ func (h *Handler) GetPopulationForecast(c *gin.Context) {
 
 	items, err := h.mlitClient.FetchPopulationForecast(c.Request.Context(), z, tx, ty)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "将来推計人口の取得に失敗しました: " + err.Error()})
+		badGateway(c, "将来推計人口の取得に失敗しました: "+err.Error())
 		return
 	}
 
@@ -457,13 +399,13 @@ func (h *Handler) GetPopulationForecast(c *gin.Context) {
 func (h *Handler) GetMunicipalities(c *gin.Context) {
 	area := c.Query("area")
 	if area == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "area は必須パラメータです"})
+		badRequest(c, "area は必須パラメータです")
 		return
 	}
 
 	municipalities, err := h.mlitClient.FetchMunicipalities(c.Request.Context(), area)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "市区町村一覧の取得に失敗しました: " + err.Error()})
+		badGateway(c, "市区町村一覧の取得に失敗しました: "+err.Error())
 		return
 	}
 
@@ -476,14 +418,14 @@ func (h *Handler) GetMunicipalities(c *gin.Context) {
 func (h *Handler) GetLandAppraisals(c *gin.Context) {
 	area := c.Query("area")
 	if area == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "area は必須パラメータです"})
+		badRequest(c, "area は必須パラメータです")
 		return
 	}
 
 	yearStr := c.Query("year")
 	year, err := strconv.Atoi(yearStr)
 	if err != nil || year < 2022 || year > 2030 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "year は2022〜2030の整数で指定してください"})
+		badRequest(c, "year は2022〜2030の整数で指定してください")
 		return
 	}
 
@@ -491,13 +433,13 @@ func (h *Handler) GetLandAppraisals(c *gin.Context) {
 	division := c.DefaultQuery("division", "00")
 	validDivisions := map[string]bool{"00": true, "05": true, "07": true, "09": true}
 	if !validDivisions[division] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "division は 00/05/07/09 のいずれかを指定してください"})
+		badRequest(c, "division は 00/05/07/09 のいずれかを指定してください")
 		return
 	}
 
 	items, err := h.mlitClient.FetchLandAppraisals(c.Request.Context(), area, city, year, division)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "地価公示APIからのデータ取得に失敗しました: " + err.Error()})
+		badGateway(c, "地価公示APIからのデータ取得に失敗しました: "+err.Error())
 		return
 	}
 
@@ -515,7 +457,7 @@ func (h *Handler) GetLandAppraisals(c *gin.Context) {
 func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 	area := c.Query("area")
 	if area == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "area は必須パラメータです"})
+		badRequest(c, "area は必須パラメータです")
 		return
 	}
 
@@ -554,7 +496,7 @@ func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 
 	// 全年エラーの場合のみ502を返す
 	if len(itemsByYear) == 0 && fetchErr != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "地価公示APIからのデータ取得に失敗しました: " + fetchErr.Error()})
+		badGateway(c, "地価公示APIからのデータ取得に失敗しました: "+fetchErr.Error())
 		return
 	}
 
@@ -583,31 +525,10 @@ func (h *Handler) GetUrbanRisks(c *gin.Context) {
 	var res result
 
 	// 4 API を並列取得。いずれか失敗してもログのみで他の結果は返す
-	type apiResult[T any] struct {
-		data []T
-		err  error
-	}
-	locCh := make(chan apiResult[domain.LocationOptimizationItem], 1)
-	embCh := make(chan apiResult[domain.EmbankmentItem], 1)
-	rdCh := make(chan apiResult[domain.UrbanRoadItem], 1)
-	disCh := make(chan apiResult[domain.DisasterHistoryItem], 1)
-
-	go func() {
-		d, e := h.mlitClient.FetchLocationOptimization(ctx, z, x, y)
-		locCh <- apiResult[domain.LocationOptimizationItem]{d, e}
-	}()
-	go func() {
-		d, e := h.mlitClient.FetchEmbankment(ctx, z, x, y)
-		embCh <- apiResult[domain.EmbankmentItem]{d, e}
-	}()
-	go func() {
-		d, e := h.mlitClient.FetchUrbanRoad(ctx, z, x, y)
-		rdCh <- apiResult[domain.UrbanRoadItem]{d, e}
-	}()
-	go func() {
-		d, e := h.mlitClient.FetchDisasterHistory(ctx, z, x, y)
-		disCh <- apiResult[domain.DisasterHistoryItem]{d, e}
-	}()
+	locCh := fanOut(func() ([]domain.LocationOptimizationItem, error) { return h.mlitClient.FetchLocationOptimization(ctx, z, x, y) })
+	embCh := fanOut(func() ([]domain.EmbankmentItem, error) { return h.mlitClient.FetchEmbankment(ctx, z, x, y) })
+	rdCh := fanOut(func() ([]domain.UrbanRoadItem, error) { return h.mlitClient.FetchUrbanRoad(ctx, z, x, y) })
+	disCh := fanOut(func() ([]domain.DisasterHistoryItem, error) { return h.mlitClient.FetchDisasterHistory(ctx, z, x, y) })
 
 	if r := <-locCh; r.err != nil {
 		slog.WarnContext(ctx, "FetchLocationOptimization failed", "z", z, "x", x, "y", y, "error", r.err)
@@ -649,31 +570,10 @@ func (h *Handler) GetHazardInfo(c *gin.Context) {
 	z := 14
 	x, y := mlit.LatLngToTile(lat, lng, z)
 
-	type apiResult[T any] struct {
-		data []T
-		err  error
-	}
-	floCh := make(chan apiResult[domain.FloodHazardItem], 1)
-	stmCh := make(chan apiResult[domain.StormHazardItem], 1)
-	tsuCh := make(chan apiResult[domain.TsunamiHazardItem], 1)
-	lsCh := make(chan apiResult[domain.LandslideHazardItem], 1)
-
-	go func() {
-		d, e := h.mlitClient.FetchFloodHazard(ctx, z, x, y)
-		floCh <- apiResult[domain.FloodHazardItem]{d, e}
-	}()
-	go func() {
-		d, e := h.mlitClient.FetchStormHazard(ctx, z, x, y)
-		stmCh <- apiResult[domain.StormHazardItem]{d, e}
-	}()
-	go func() {
-		d, e := h.mlitClient.FetchTsunamiHazard(ctx, z, x, y)
-		tsuCh <- apiResult[domain.TsunamiHazardItem]{d, e}
-	}()
-	go func() {
-		d, e := h.mlitClient.FetchLandslideHazard(ctx, z, x, y)
-		lsCh <- apiResult[domain.LandslideHazardItem]{d, e}
-	}()
+	floCh := fanOut(func() ([]domain.FloodHazardItem, error) { return h.mlitClient.FetchFloodHazard(ctx, z, x, y) })
+	stmCh := fanOut(func() ([]domain.StormHazardItem, error) { return h.mlitClient.FetchStormHazard(ctx, z, x, y) })
+	tsuCh := fanOut(func() ([]domain.TsunamiHazardItem, error) { return h.mlitClient.FetchTsunamiHazard(ctx, z, x, y) })
+	lsCh := fanOut(func() ([]domain.LandslideHazardItem, error) { return h.mlitClient.FetchLandslideHazard(ctx, z, x, y) })
 
 	var floods []domain.FloodHazardItem
 	var storms []domain.StormHazardItem
@@ -714,34 +614,17 @@ func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.Inv
 	if err := ctx.Err(); err != nil {
 		return domain.InvestmentScoreResult{}, err
 	}
-	type result[T any] struct {
-		data T
-		err  error
-	}
-
-	popCh := make(chan result[[]domain.PopulationForecastItem], 1)
-	ridCh := make(chan result[[]mlit.StationRidership], 1)
-	locCh := make(chan result[[]domain.LocationOptimizationItem], 1)
-	embCh := make(chan result[[]domain.EmbankmentItem], 1)
-	disCh := make(chan result[[]domain.DisasterHistoryItem], 1)
-	zonCh := make(chan result[[]domain.UrbanZoningItem], 1)
-	liqCh := make(chan result[[]domain.LiquefactionRiskItem], 1)
-	floCh := make(chan result[[]domain.FloodHazardItem], 1)
-	stoCh := make(chan result[[]domain.StormHazardItem], 1)
-	tsuCh := make(chan result[[]domain.TsunamiHazardItem], 1)
-	lanCh := make(chan result[[]domain.LandslideHazardItem], 1)
-
-	go func() { d, e := h.mlitClient.FetchPopulationForecast(ctx, z, x, y); popCh <- result[[]domain.PopulationForecastItem]{d, e} }()
-	go func() { d, e := h.mlitClient.FetchStationRidership(ctx, z, x, y); ridCh <- result[[]mlit.StationRidership]{d, e} }()
-	go func() { d, e := h.mlitClient.FetchLocationOptimization(ctx, z, x, y); locCh <- result[[]domain.LocationOptimizationItem]{d, e} }()
-	go func() { d, e := h.mlitClient.FetchEmbankment(ctx, z, x, y); embCh <- result[[]domain.EmbankmentItem]{d, e} }()
-	go func() { d, e := h.mlitClient.FetchDisasterHistory(ctx, z, x, y); disCh <- result[[]domain.DisasterHistoryItem]{d, e} }()
-	go func() { d, e := h.mlitClient.FetchUrbanZoning(ctx, z, x, y); zonCh <- result[[]domain.UrbanZoningItem]{d, e} }()
-	go func() { d, e := h.mlitClient.FetchLiquefaction(ctx, z, x, y); liqCh <- result[[]domain.LiquefactionRiskItem]{d, e} }()
-	go func() { d, e := h.mlitClient.FetchFloodHazard(ctx, z, x, y); floCh <- result[[]domain.FloodHazardItem]{d, e} }()
-	go func() { d, e := h.mlitClient.FetchStormHazard(ctx, z, x, y); stoCh <- result[[]domain.StormHazardItem]{d, e} }()
-	go func() { d, e := h.mlitClient.FetchTsunamiHazard(ctx, z, x, y); tsuCh <- result[[]domain.TsunamiHazardItem]{d, e} }()
-	go func() { d, e := h.mlitClient.FetchLandslideHazard(ctx, z, x, y); lanCh <- result[[]domain.LandslideHazardItem]{d, e} }()
+	popCh := fanOut(func() ([]domain.PopulationForecastItem, error) { return h.mlitClient.FetchPopulationForecast(ctx, z, x, y) })
+	ridCh := fanOut(func() ([]mlit.StationRidership, error) { return h.mlitClient.FetchStationRidership(ctx, z, x, y) })
+	locCh := fanOut(func() ([]domain.LocationOptimizationItem, error) { return h.mlitClient.FetchLocationOptimization(ctx, z, x, y) })
+	embCh := fanOut(func() ([]domain.EmbankmentItem, error) { return h.mlitClient.FetchEmbankment(ctx, z, x, y) })
+	disCh := fanOut(func() ([]domain.DisasterHistoryItem, error) { return h.mlitClient.FetchDisasterHistory(ctx, z, x, y) })
+	zonCh := fanOut(func() ([]domain.UrbanZoningItem, error) { return h.mlitClient.FetchUrbanZoning(ctx, z, x, y) })
+	liqCh := fanOut(func() ([]domain.LiquefactionRiskItem, error) { return h.mlitClient.FetchLiquefaction(ctx, z, x, y) })
+	floCh := fanOut(func() ([]domain.FloodHazardItem, error) { return h.mlitClient.FetchFloodHazard(ctx, z, x, y) })
+	stoCh := fanOut(func() ([]domain.StormHazardItem, error) { return h.mlitClient.FetchStormHazard(ctx, z, x, y) })
+	tsuCh := fanOut(func() ([]domain.TsunamiHazardItem, error) { return h.mlitClient.FetchTsunamiHazard(ctx, z, x, y) })
+	lanCh := fanOut(func() ([]domain.LandslideHazardItem, error) { return h.mlitClient.FetchLandslideHazard(ctx, z, x, y) })
 
 	// 地価トレンド: タイル中心座標→都道府県コードを逆引きし、新旧2期間を並列取得する
 	centerLat, centerLng := mlit.TileToLatLng(x, y, z)
@@ -876,50 +759,37 @@ const maxHeatmapTiles = 50
 // GetInvestmentScoreHeatmap はバウンディングボックス内の全タイルに対して投資スコアを並列計算して返す。
 // GET /api/investment-score-heatmap?minLat=35.6&maxLat=35.7&minLng=139.6&maxLng=139.7&z=13
 func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
-	minLatStr := c.Query("minLat")
-	maxLatStr := c.Query("maxLat")
-	minLngStr := c.Query("minLng")
-	maxLngStr := c.Query("maxLng")
-	if minLatStr == "" || maxLatStr == "" || minLngStr == "" || maxLngStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "minLat, maxLat, minLng, maxLng は必須パラメータです"})
+	minLat, ok := parseFloatQuery(c, "minLat")
+	if !ok {
 		return
 	}
-
-	minLat, err := strconv.ParseFloat(minLatStr, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "minLat の値が不正です"})
+	maxLat, ok := parseFloatQuery(c, "maxLat")
+	if !ok {
 		return
 	}
-	maxLat, err := strconv.ParseFloat(maxLatStr, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "maxLat の値が不正です"})
+	minLng, ok := parseFloatQuery(c, "minLng")
+	if !ok {
 		return
 	}
-	minLng, err := strconv.ParseFloat(minLngStr, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "minLng の値が不正です"})
-		return
-	}
-	maxLng, err := strconv.ParseFloat(maxLngStr, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "maxLng の値が不正です"})
+	maxLng, ok := parseFloatQuery(c, "maxLng")
+	if !ok {
 		return
 	}
 
 	if minLat >= maxLat {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "minLat は maxLat より小さい値を指定してください"})
+		badRequest(c, "minLat は maxLat より小さい値を指定してください")
 		return
 	}
 	if minLng >= maxLng {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "minLng は maxLng より小さい値を指定してください"})
+		badRequest(c, "minLng は maxLng より小さい値を指定してください")
 		return
 	}
 	if minLat < 20 || maxLat > 46 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "緯度は日本国内（20〜46）の範囲で指定してください"})
+		badRequest(c, "緯度は日本国内（20〜46）の範囲で指定してください")
 		return
 	}
 	if minLng < 122 || maxLng > 154 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "経度は日本国内（122〜154）の範囲で指定してください"})
+		badRequest(c, "経度は日本国内（122〜154）の範囲で指定してください")
 		return
 	}
 
@@ -946,9 +816,7 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 
 	tileCount := (xMax - xMin + 1) * (yMax - yMin + 1)
 	if tileCount > maxTiles {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("too many tiles: max %d for zoom level %d", maxTiles, z),
-		})
+		badRequest(c, fmt.Sprintf("too many tiles: max %d for zoom level %d", maxTiles, z))
 		return
 	}
 
@@ -1046,7 +914,7 @@ func validateRenovationInput(in domain.RenovationInput) error {
 func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 	prefecture := c.Query("prefecture")
 	if prefecture == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "prefecture は必須パラメータです"})
+		badRequest(c, "prefecture は必須パラメータです")
 		return
 	}
 	budgetStr := c.Query("budget")
@@ -1188,7 +1056,7 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 func (h *Handler) HandleRenovationAnalyze(c *gin.Context) {
 	var input domain.RenovationInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "リクエストの形式が不正です: " + err.Error()})
+		badRequest(c, "リクエストの形式が不正です: "+err.Error())
 		return
 	}
 	if err := validateRenovationInput(input); err != nil {
@@ -1205,7 +1073,7 @@ func (h *Handler) HandleRenovationAnalyze(c *gin.Context) {
 func (h *Handler) GetGeocode(c *gin.Context) {
 	address := c.Query("address")
 	if address == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "address パラメータは必須です"})
+		badRequest(c, "address パラメータは必須です")
 		return
 	}
 
