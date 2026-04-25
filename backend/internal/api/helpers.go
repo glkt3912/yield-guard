@@ -88,19 +88,3 @@ func parseZoom(c *gin.Context, defaultZ int) (z int, ok bool) {
 	}
 	return zv, true
 }
-
-// parseFloatQuery parses a required float64 query parameter.
-// Returns (value, true) on success; writes 400 and returns (0, false) on empty or parse error.
-func parseFloatQuery(c *gin.Context, name string) (float64, bool) {
-	s := c.Query(name)
-	if s == "" {
-		badRequest(c, name+" は必須パラメータです")
-		return 0, false
-	}
-	v, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		badRequest(c, name+" の値が不正です")
-		return 0, false
-	}
-	return v, true
-}
