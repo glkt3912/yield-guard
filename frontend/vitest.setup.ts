@@ -8,3 +8,8 @@ class ResizeObserverMock {
   disconnect() {}
 }
 global.ResizeObserver = ResizeObserverMock;
+
+// Restore any vi.stubGlobal overrides between tests to prevent cross-test pollution
+afterEach(() => {
+  vi.unstubAllGlobals();
+});

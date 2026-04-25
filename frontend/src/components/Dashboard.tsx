@@ -126,8 +126,12 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   }, [mobileFormOpen]);
 
   useEffect(() => {
-    if (!localStorage.getItem(ONBOARDING_KEY)) {
-      setShowGuide(true);
+    try {
+      if (!localStorage.getItem(ONBOARDING_KEY)) {
+        setShowGuide(true);
+      }
+    } catch {
+      // localStorage unavailable (e.g. test environment or private browsing)
     }
   }, []);
 

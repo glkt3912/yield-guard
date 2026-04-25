@@ -19,6 +19,10 @@ vi.mock("next/dynamic", () => ({
   default: () => () => null,
 }));
 
+// WatchlistPanel and AreaDiscovery use localStorage/external APIs not needed for Dashboard unit tests
+vi.mock("@/components/WatchlistPanel", () => ({ default: () => null }));
+vi.mock("@/components/AreaDiscovery", () => ({ AreaDiscovery: () => null }));
+
 // Mock next/navigation for useRouter
 const mockReplace = vi.fn();
 vi.mock("next/navigation", () => ({
