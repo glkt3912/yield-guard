@@ -567,6 +567,8 @@ func CalcLTVSensitivity(input InvestmentInput, ltvRange []float64) []LTVSensitiv
 	annualExpenses := annualRent*input.ExpenseRate + input.AnnualPropertyTax
 	noi := annualRent - annualExpenses
 
+	rate1 := resolveRateForYear(input.AnnualLoanRate, input.LoanRateDelta, input.RateAdjustmentSchedule, 1)
+
 	rows := make([]LTVSensitivityRow, 0, len(ltvRange))
 	for _, ltv := range ltvRange {
 		loanAmount := totalInvestment * ltv
@@ -577,11 +579,11 @@ func CalcLTVSensitivity(input InvestmentInput, ltvRange []float64) []LTVSensitiv
 			totalMonths := input.LoanYears * 12
 			monthlyPrincipal := loanAmount / float64(totalMonths)
 			yearInterest, yearPrincipal := calcYearlyLoanComponentsEqualPrincipal(
-				loanAmount, input.AnnualLoanRate, monthlyPrincipal,
+				loanAmount, rate1, monthlyPrincipal,
 			)
 			annualDebtService = yearInterest + yearPrincipal
 		} else {
-			mp := calcMonthlyPayment(loanAmount, input.AnnualLoanRate, input.LoanYears)
+			mp := calcMonthlyPayment(loanAmount, rate1, input.LoanYears)
 			annualDebtService = mp * 12
 		}
 
