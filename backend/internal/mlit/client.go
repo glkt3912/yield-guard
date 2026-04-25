@@ -90,7 +90,7 @@ func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domai
 	)
 
 	key := cacheKey(q)
-	if cached, ok := c.cache.get(key); ok {
+	if cached, ok := c.cache.landPrices.get(key); ok {
 		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001")))
 		return cached, nil
@@ -125,7 +125,7 @@ func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domai
 
 		if err == nil {
 			span.SetAttributes(attribute.Int("mlit.retry.count", attempt))
-			c.cache.set(key, result)
+			c.cache.landPrices.set(key, result)
 			return result, nil
 		}
 		lastErr = err
@@ -163,7 +163,7 @@ func (c *Client) FetchMunicipalities(ctx context.Context, area string) ([]Munici
 		return nil, err
 	}
 
-	if cached, ok := c.cache.getMuni(area); ok {
+	if cached, ok := c.cache.municipalities.get(area); ok {
 		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT002")))
 		return cached, nil
@@ -224,7 +224,7 @@ func (c *Client) FetchMunicipalities(ctx context.Context, area string) ([]Munici
 	}
 
 	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
-	c.cache.setMuni(area, apiResp.Data)
+	c.cache.municipalities.set(area, apiResp.Data)
 	return apiResp.Data, nil
 }
 
@@ -264,7 +264,7 @@ func (c *Client) FetchStationRidership(ctx context.Context, z, x, y int) ([]Stat
 	)
 
 	key := fmt.Sprintf("ridership:%d:%d:%d", z, x, y)
-	if cached, ok := c.cache.getRidership(key); ok {
+	if cached, ok := c.cache.ridership.get(key); ok {
 		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT015")))
 		return cached, nil
@@ -323,7 +323,7 @@ func (c *Client) FetchStationRidership(ctx context.Context, z, x, y int) ([]Stat
 
 	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
 	result := parseStationRiderships(geoResp.Features)
-	c.cache.setRidership(key, result)
+	c.cache.ridership.set(key, result)
 	return result, nil
 }
 
@@ -384,7 +384,7 @@ func (c *Client) FetchPopulationForecast(ctx context.Context, z, x, y int) ([]do
 	)
 
 	key := fmt.Sprintf("population:%d:%d:%d", z, x, y)
-	if cached, ok := c.cache.getPopulation(key); ok {
+	if cached, ok := c.cache.population.get(key); ok {
 		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT013")))
 		return cached, nil
@@ -443,7 +443,7 @@ func (c *Client) FetchPopulationForecast(ctx context.Context, z, x, y int) ([]do
 
 	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
 	result := parsePopulationForecasts(geoResp.Features)
-	c.cache.setPopulation(key, result)
+	c.cache.population.set(key, result)
 	return result, nil
 }
 
@@ -496,7 +496,7 @@ func (c *Client) FetchLandAppraisals(ctx context.Context, area, city string, yea
 	)
 
 	key := fmt.Sprintf("appraisals:%s:%s:%d:%s", area, city, year, division)
-	if cached, ok := c.cache.getAppraisals(key); ok {
+	if cached, ok := c.cache.appraisals.get(key); ok {
 		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XCT001")))
 		return cached, nil
@@ -529,7 +529,7 @@ func (c *Client) FetchLandAppraisals(ctx context.Context, area, city string, yea
 
 		if err == nil {
 			span.SetAttributes(attribute.Int("mlit.retry.count", attempt))
-			c.cache.setAppraisals(key, result)
+			c.cache.appraisals.set(key, result)
 			return result, nil
 		}
 		lastErr = err
@@ -802,7 +802,7 @@ func (c *Client) fetchTileGeoJSON(ctx context.Context, endpoint string, z, x, y 
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchLocationOptimization(ctx context.Context, z, x, y int) ([]domain.LocationOptimizationItem, error) {
 	key := fmt.Sprintf("location_optimization:%d:%d:%d", z, x, y)
-	if cached, ok := c.cache.getLocationOptimization(key); ok {
+	if cached, ok := c.cache.locationOptimization.get(key); ok {
 		return cached, nil
 	}
 
@@ -815,7 +815,7 @@ func (c *Client) FetchLocationOptimization(ctx context.Context, z, x, y int) ([]
 	for _, f := range geoResp.Features {
 		result = append(result, domain.LocationOptimizationItem{KubunNameJa: f.Properties.KubunNameJa})
 	}
-	c.cache.setLocationOptimization(key, result)
+	c.cache.locationOptimization.set(key, result)
 	return result, nil
 }
 
@@ -823,7 +823,7 @@ func (c *Client) FetchLocationOptimization(ctx context.Context, z, x, y int) ([]
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.EmbankmentItem, error) {
 	key := fmt.Sprintf("embankment:%d:%d:%d", z, x, y)
-	if cached, ok := c.cache.getEmbankment(key); ok {
+	if cached, ok := c.cache.embankment.get(key); ok {
 		return cached, nil
 	}
 
@@ -836,7 +836,7 @@ func (c *Client) FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.Emb
 	for _, f := range geoResp.Features {
 		result = append(result, domain.EmbankmentItem{Classification: f.Properties.EmbankmentClassification})
 	}
-	c.cache.setEmbankment(key, result)
+	c.cache.embankment.set(key, result)
 	return result, nil
 }
 
@@ -844,7 +844,7 @@ func (c *Client) FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.Emb
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.UrbanRoadItem, error) {
 	key := fmt.Sprintf("urban_road:%d:%d:%d", z, x, y)
-	if cached, ok := c.cache.getUrbanRoad(key); ok {
+	if cached, ok := c.cache.urbanRoad.get(key); ok {
 		return cached, nil
 	}
 
@@ -860,7 +860,7 @@ func (c *Client) FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.Urba
 			KubunID:        f.Properties.KubunID,
 		})
 	}
-	c.cache.setUrbanRoad(key, result)
+	c.cache.urbanRoad.set(key, result)
 	return result, nil
 }
 
@@ -868,7 +868,7 @@ func (c *Client) FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.Urba
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domain.DisasterHistoryItem, error) {
 	key := fmt.Sprintf("disaster:%d:%d:%d", z, x, y)
-	if cached, ok := c.cache.getDisaster(key); ok {
+	if cached, ok := c.cache.disaster.get(key); ok {
 		return cached, nil
 	}
 
@@ -888,7 +888,7 @@ func (c *Client) FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domai
 			Year: year,
 		})
 	}
-	c.cache.setDisaster(key, result)
+	c.cache.disaster.set(key, result)
 	return result, nil
 }
 
@@ -896,7 +896,7 @@ func (c *Client) FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domai
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.UrbanZoningItem, error) {
 	key := fmt.Sprintf("urban_zoning:%d:%d:%d", z, x, y)
-	if cached, ok := c.cache.getUrbanZoning(key); ok {
+	if cached, ok := c.cache.urbanZoning.get(key); ok {
 		return cached, nil
 	}
 	var geoResp UrbanZoningGeoJSON
@@ -910,7 +910,7 @@ func (c *Client) FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.Ur
 			KubunID:              f.Properties.KubunID,
 		})
 	}
-	c.cache.setUrbanZoning(key, result)
+	c.cache.urbanZoning.set(key, result)
 	return result, nil
 }
 
@@ -918,7 +918,7 @@ func (c *Client) FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.Ur
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.LiquefactionRiskItem, error) {
 	key := fmt.Sprintf("liquefaction:%d:%d:%d", z, x, y)
-	if cached, ok := c.cache.getLiquefaction(key); ok {
+	if cached, ok := c.cache.liquefaction.get(key); ok {
 		return cached, nil
 	}
 	var geoResp LiquefactionGeoJSON
@@ -932,7 +932,7 @@ func (c *Client) FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.L
 			Note:          f.Properties.Note,
 		})
 	}
-	c.cache.setLiquefaction(key, result)
+	c.cache.liquefaction.set(key, result)
 	return result, nil
 }
 
@@ -940,7 +940,7 @@ func (c *Client) FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.L
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchFloodHazard(ctx context.Context, z, x, y int) ([]domain.FloodHazardItem, error) {
 	key := fmt.Sprintf("flood_hazard:%d:%d:%d", z, x, y)
-	if cached, ok := c.cache.getFloodHazard(key); ok {
+	if cached, ok := c.cache.floodHazard.get(key); ok {
 		return cached, nil
 	}
 	var geoResp FloodHazardGeoJSON
@@ -954,7 +954,7 @@ func (c *Client) FetchFloodHazard(ctx context.Context, z, x, y int) ([]domain.Fl
 			RiverName: f.Properties.RiverName,
 		})
 	}
-	c.cache.setFloodHazard(key, result)
+	c.cache.floodHazard.set(key, result)
 	return result, nil
 }
 
@@ -962,7 +962,7 @@ func (c *Client) FetchFloodHazard(ctx context.Context, z, x, y int) ([]domain.Fl
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.StormHazardItem, error) {
 	key := fmt.Sprintf("storm_hazard:%d:%d:%d", z, x, y)
-	if cached, ok := c.cache.getStormHazard(key); ok {
+	if cached, ok := c.cache.stormHazard.get(key); ok {
 		return cached, nil
 	}
 	var geoResp StormHazardGeoJSON
@@ -973,7 +973,7 @@ func (c *Client) FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.St
 	for _, f := range geoResp.Features {
 		result = append(result, domain.StormHazardItem{DepthJa: f.Properties.DepthJa})
 	}
-	c.cache.setStormHazard(key, result)
+	c.cache.stormHazard.set(key, result)
 	return result, nil
 }
 
@@ -981,7 +981,7 @@ func (c *Client) FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.St
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.TsunamiHazardItem, error) {
 	key := fmt.Sprintf("tsunami_hazard:%d:%d:%d", z, x, y)
-	if cached, ok := c.cache.getTsunamiHazard(key); ok {
+	if cached, ok := c.cache.tsunamiHazard.get(key); ok {
 		return cached, nil
 	}
 	var geoResp TsunamiHazardGeoJSON
@@ -992,7 +992,7 @@ func (c *Client) FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.
 	for _, f := range geoResp.Features {
 		result = append(result, domain.TsunamiHazardItem{DepthJa: f.Properties.DepthJa})
 	}
-	c.cache.setTsunamiHazard(key, result)
+	c.cache.tsunamiHazard.set(key, result)
 	return result, nil
 }
 
@@ -1000,7 +1000,7 @@ func (c *Client) FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domain.LandslideHazardItem, error) {
 	key := fmt.Sprintf("landslide_hazard:%d:%d:%d", z, x, y)
-	if cached, ok := c.cache.getLandslideHazard(key); ok {
+	if cached, ok := c.cache.landslideHazard.get(key); ok {
 		return cached, nil
 	}
 	var geoResp LandslideHazardGeoJSON
@@ -1014,7 +1014,7 @@ func (c *Client) FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domai
 			ZoneCode:       f.Properties.ZoneCode,
 		})
 	}
-	c.cache.setLandslideHazard(key, result)
+	c.cache.landslideHazard.set(key, result)
 	return result, nil
 }
 

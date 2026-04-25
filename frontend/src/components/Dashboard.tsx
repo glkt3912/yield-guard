@@ -15,6 +15,7 @@ import { analyze as analyzeOnline, compareLandPrice, estimateLandPrice, fetchSta
 import { analyze as analyzeOffline } from "@/lib/investment";
 import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
 import { ShieldAlert, Info, FileDown, Share2, Check, SlidersHorizontal, X, WifiOff } from "lucide-react";
+import { SimulationModeToggle } from "@/components/SimulationModeToggle";
 import { Button } from "@/components/ui/button";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { downloadReportPDF } from "@/lib/generatePdf";
@@ -429,6 +430,15 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
               </button>
             </div>
 
+            {/* Mobile: simulation mode toggle (PC は左サイドバーの InvestmentForm 内に表示) */}
+            {activeTab === "simulation" && (
+              <SimulationModeToggle
+                mode={simulationMode}
+                onChange={handleModeChange}
+                className="lg:hidden"
+              />
+            )}
+
             {activeTab === "area-discovery" && (
               <>
                 {selectedMunicipalityMsg && (
@@ -574,6 +584,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 isOnline={isOnline}
                 externalLat={propertyLat}
                 externalLng={propertyLng}
+                showModeToggle={false}
               />
             </div>
           </div>
