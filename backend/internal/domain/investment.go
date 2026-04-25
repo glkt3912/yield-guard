@@ -327,6 +327,7 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 	defer span.End()
 	span.SetAttributes(
 		attribute.Float64("domain.land_price", input.LandPrice),
+		attribute.Float64("domain.building_cost", input.BuildingCost),
 		attribute.Float64("domain.loan_amount", input.LoanAmount),
 	)
 

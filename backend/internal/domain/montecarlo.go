@@ -81,6 +81,9 @@ func MonteCarloSimulate(input MonteCarloInput) MonteCarloResult {
 		sim.VacancyRateDelta = 0
 		sim.LoanRateDelta = 0
 
+		// context.Background() は意図的: MonteCarloSimulate は ctx を持たず、
+		// Analyze を最大10000回呼ぶためリクエストスパン配下に大量のスパンが
+		// 発生するのを防ぐ。
 		result := Analyze(context.Background(), sim)
 
 		irr := calcIRR(result, sim)
