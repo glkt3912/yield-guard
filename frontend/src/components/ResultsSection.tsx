@@ -6,6 +6,7 @@ import DeadCrossChart from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
 import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
+import { LoanComparePanel } from "@/components/LoanComparePanel";
 import RenovationPanel from "@/components/RenovationPanel";
 import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
@@ -186,6 +187,7 @@ export function ResultsSection({
                 onLoanMethodChange={onLoanMethodChange}
                 loanAmount={lastInput.loanAmount}
               />
+              <LoanComparePanel baseInput={lastInput} />
               {simulationMode === "full" && (
                 <>
                   {result.acquisitionCosts && (

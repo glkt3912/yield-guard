@@ -121,6 +121,9 @@ type InvestmentInput struct {
 	// どちらかが 0 の場合は従来の RentDeclineRate のみが適用される。
 	RentGrowthRate  float64 `json:"rentGrowthRate,omitempty"`  // 年間賃料上昇率 (例: 0.02 = 2%)
 	RentGrowthYears int     `json:"rentGrowthYears,omitempty"` // 上昇が続く年数
+
+	// 融資諸費用率（保証料・登記費用等の合算）。LoanAmount × LoanFeeRate を取得費に加算。
+	LoanFeeRate float64 `json:"loanFeeRate,omitempty"`
 }
 
 // CapexEvent は大規模修繕費の発生スケジュール1件
@@ -317,6 +320,7 @@ type InvestmentResult struct {
 
 	DSCR           float64             `json:"dscr"`           // 1年目の借入金償還余裕率（NOI/年間返済額）
 	LTVSensitivity []LTVSensitivityRow `json:"ltvSensitivity"` // LTV感度分析（50%〜90%）
+	TotalInterest  float64             `json:"totalInterest"`  // 保有期間の総支払利息
 }
 
 // AcquisitionCostBreakdown は物件取得時の諸経費内訳

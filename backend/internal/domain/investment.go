@@ -69,7 +69,8 @@ type depreciationParams struct {
 type simulationResult struct {
 	yearlyResults           []YearlyResult
 	accumulatedDepreciation float64
-	deadCrossYear           int // -1 = デッドクロスなし
+	deadCrossYear           int     // -1 = デッドクロスなし
+	totalInterest           float64 // 保有期間の総支払利息
 }
 
 // irrNPVResult は IRR / NPV 計算結果をまとめた内部 struct。
@@ -80,7 +81,8 @@ type irrNPVResult struct {
 
 func initYieldParams(input InvestmentInput) yieldParams {
 	effectiveVacancy := math.Min(input.VacancyRate+input.VacancyRateDelta, 0.99)
-	miscExpenses := (input.LandPrice + input.BuildingCost) * input.MiscExpenseRate
+	loanFee := input.LoanAmount * input.LoanFeeRate
+	miscExpenses := (input.LandPrice+input.BuildingCost)*input.MiscExpenseRate + loanFee
 	totalInvestment := input.LandPrice + input.BuildingCost + miscExpenses
 	annualRent := input.MonthlyRent * 12 * (1 - effectiveVacancy)
 	grossYield := 0.0
@@ -172,6 +174,7 @@ func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanPara
 	cumulativeCF := 0.0
 	deadCrossYear := -1
 	var accumulatedDepreciation float64
+	var totalInterest float64
 
 	// loanParams / depreciationParams の可変フィールドをループローカルにコピー
 	currentRate := lp.currentRate
@@ -213,6 +216,11 @@ func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanPara
 			if remainingBalance < 0 {
 				remainingBalance = 0
 			}
+		}
+
+		// 保有期間内の利息のみ集計（HoldingYears 以内の年）
+		if year <= input.HoldingYears {
+			totalInterest += annualInterest
 		}
 
 		yearAnnualRent := rentForYear(yp.annualRent, input.RentDeclineRate, input.RentGrowthRate, input.RentGrowthYears, y)
@@ -284,6 +292,7 @@ func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanPara
 		yearlyResults:           yearlyResults,
 		accumulatedDepreciation: accumulatedDepreciation,
 		deadCrossYear:           deadCrossYear,
+		totalInterest:           totalInterest,
 	}
 }
 
@@ -434,6 +443,7 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 		LTVSensitivity:        ltvSensitivity,
 		IRR:                   irrNPV.irr,
 		NPV:                   irrNPV.npv,
+		TotalInterest:         sim.totalInterest,
 	}
 }
 
