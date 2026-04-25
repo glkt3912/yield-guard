@@ -112,6 +112,21 @@ type InvestmentInput struct {
 	// 変動金利スケジュール: 指定年以降に適用する金利ステップ（空=固定金利）
 	// LoanRateDelta はスケジュール後の金利にも加算される。
 	RateAdjustmentSchedule []RateAdjustment `json:"rateAdjustmentSchedule"`
+
+	// 大規模修繕費スケジュール（最大5件）
+	CapexSchedule []CapexEvent `json:"capexSchedule,omitempty"`
+
+	// 賃料上昇シナリオ（新築・リノベ向け）
+	// RentGrowthYears 年間は RentGrowthRate で上昇し、その後 RentDeclineRate で下落する。
+	// どちらかが 0 の場合は従来の RentDeclineRate のみが適用される。
+	RentGrowthRate  float64 `json:"rentGrowthRate,omitempty"`  // 年間賃料上昇率 (例: 0.02 = 2%)
+	RentGrowthYears int     `json:"rentGrowthYears,omitempty"` // 上昇が続く年数
+}
+
+// CapexEvent は大規模修繕費の発生スケジュール1件
+type CapexEvent struct {
+	Year   int     `json:"year"`   // 何年目に発生（1〜保有年数）
+	Amount float64 `json:"amount"` // 金額（円）
 }
 
 // Validate は入力値のバリデーションを行い、不正な組み合わせはエラーを返す。
@@ -211,6 +226,7 @@ type YearlyResult struct {
 	AnnualExpenses       float64 `json:"annualExpenses"`
 	TaxableIncome        float64 `json:"taxableIncome"`
 	IncomeTax            float64 `json:"incomeTax"`
+	CapexAmount          float64 `json:"capexAmount"`          // 大規模修繕費（当年発生額）
 	CashFlow             float64 `json:"cashFlow"`
 	AfterTaxCashFlow     float64 `json:"afterTaxCashFlow"`
 	RemainingLoanBalance float64 `json:"remainingLoanBalance"`

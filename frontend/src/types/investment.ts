@@ -80,6 +80,14 @@ export interface InvestmentInput {
   discountRate?: number; // 割引率（NPV/IRR計算用、例: 0.05 = 5%）
   priceDeclineRate?: number; // 物件価格下落率（例: 0.02 = 年2%下落）
   depreciationMethod?: "straight-line" | "declining-balance"; // 減価償却方式
+  capexSchedule?: CapexEvent[]; // 大規模修繕費スケジュール（最大5件）
+  rentGrowthRate?: number; // 年間賃料上昇率（新築・リノベ向け、例: 0.02 = 2%）
+  rentGrowthYears?: number; // 賃料上昇が続く年数
+}
+
+export interface CapexEvent {
+  year: number; // 何年目に発生（1〜保有年数）
+  amount: number; // 金額（円）
 }
 
 export interface YearlyResult {
@@ -92,6 +100,7 @@ export interface YearlyResult {
   annualExpenses: number;
   taxableIncome: number;
   incomeTax: number;
+  capexAmount: number; // 大規模修繕費（当年発生額）
   cashFlow: number;
   afterTaxCashFlow: number;
   remainingLoanBalance: number;
