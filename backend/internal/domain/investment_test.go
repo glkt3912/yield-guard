@@ -1604,6 +1604,56 @@ func TestCalcLTVSensitivity(t *testing.T) {
 	}
 }
 
+// TestCalcLTVSensitivity_WithRateSchedule は変動金利スケジュール指定時に
+// 初年度実効金利が使われることを検証する。
+func TestCalcLTVSensitivity_WithRateSchedule(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:      5_000_000,
+		BuildingCost:   10_000_000,
+		MonthlyRent:    120_000,
+		VacancyRate:    0.05,
+		AnnualLoanRate: 0.005, // ベース金利 0.5%
+		LoanYears:      35,
+		ExpenseRate:    0.20,
+	}
+	base.Defaults()
+
+	// スケジュール: 3年目から 3.0% に切り替わるが LTV 感度は初年度（0.5%）で計算されるべき
+	withSchedule := base
+	withSchedule.RateAdjustmentSchedule = []RateAdjustment{
+		{AfterYear: 3, Rate: 0.030},
+	}
+
+	rowsBase := CalcLTVSensitivity(base, nil)
+	rowsScheduled := CalcLTVSensitivity(withSchedule, nil)
+
+	if len(rowsBase) != 5 || len(rowsScheduled) != 5 {
+		t.Fatalf("unexpected row counts: base=%d scheduled=%d", len(rowsBase), len(rowsScheduled))
+	}
+
+	// 初年度金利はスケジュールが始まる前（AfterYear=3 は year 1 に適用されない）なので
+	// ベース金利 0.5% のまま → 両者の DSCR は等しいはず
+	for i := range rowsBase {
+		if !approxEqual(rowsBase[i].DSCR, rowsScheduled[i].DSCR, 0.0001) {
+			t.Errorf("rows[%d]: DSCR should be equal (schedule starts year 3): base=%.4f scheduled=%.4f",
+				i, rowsBase[i].DSCR, rowsScheduled[i].DSCR)
+		}
+	}
+
+	// スケジュールで初年度から高金利が適用される場合は DSCR が下がるべき
+	withScheduleY1 := base
+	withScheduleY1.RateAdjustmentSchedule = []RateAdjustment{
+		{AfterYear: 1, Rate: 0.030}, // 1年目から 3.0%
+	}
+	rowsY1 := CalcLTVSensitivity(withScheduleY1, nil)
+	for i := range rowsBase {
+		if rowsY1[i].DSCR >= rowsBase[i].DSCR {
+			t.Errorf("rows[%d]: DSCR(%.4f) should be < base DSCR(%.4f) when year-1 rate is higher",
+				i, rowsY1[i].DSCR, rowsBase[i].DSCR)
+		}
+	}
+}
+
 // TestAnalyze_EqualPrincipal は元金均等返済での計算を検証する
 func TestAnalyze_EqualPrincipal(t *testing.T) {
 	input := InvestmentInput{
