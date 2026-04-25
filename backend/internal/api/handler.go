@@ -57,7 +57,8 @@ func (h *Handler) GetLandPrices(c *gin.Context) {
 
 	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
 	if err != nil {
-		badGateway(c, "国交省APIからのデータ取得に失敗しました: "+err.Error())
+		slog.ErrorContext(c.Request.Context(), "FetchLandPrices failed", "err", err)
+		badGateway(c, "国交省APIからのデータ取得に失敗しました")
 		return
 	}
 
@@ -99,7 +100,8 @@ func (h *Handler) CompareLandPrice(c *gin.Context) {
 
 	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
 	if err != nil {
-		badGateway(c, "国交省APIからのデータ取得に失敗しました: "+err.Error())
+		slog.ErrorContext(c.Request.Context(), "FetchLandPrices failed", "err", err)
+		badGateway(c, "国交省APIからのデータ取得に失敗しました")
 		return
 	}
 
@@ -310,7 +312,8 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 
 	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
 	if err != nil {
-		badGateway(c, "国交省APIからのデータ取得に失敗しました: "+err.Error())
+		slog.ErrorContext(c.Request.Context(), "FetchLandPrices failed", "err", err)
+		badGateway(c, "国交省APIからのデータ取得に失敗しました")
 		return
 	}
 
@@ -346,7 +349,8 @@ func (h *Handler) GetStationRidership(c *gin.Context) {
 
 	stations, err := h.mlitClient.FetchStationRidership(c.Request.Context(), z, tx, ty)
 	if err != nil {
-		badGateway(c, "駅別乗降客数の取得に失敗しました: "+err.Error())
+		slog.ErrorContext(c.Request.Context(), "FetchStationRidership failed", "err", err)
+		badGateway(c, "駅別乗降客数の取得に失敗しました")
 		return
 	}
 
@@ -381,7 +385,8 @@ func (h *Handler) GetPopulationForecast(c *gin.Context) {
 
 	items, err := h.mlitClient.FetchPopulationForecast(c.Request.Context(), z, tx, ty)
 	if err != nil {
-		badGateway(c, "将来推計人口の取得に失敗しました: "+err.Error())
+		slog.ErrorContext(c.Request.Context(), "FetchPopulationForecast failed", "err", err)
+		badGateway(c, "将来推計人口の取得に失敗しました")
 		return
 	}
 
@@ -405,7 +410,8 @@ func (h *Handler) GetMunicipalities(c *gin.Context) {
 
 	municipalities, err := h.mlitClient.FetchMunicipalities(c.Request.Context(), area)
 	if err != nil {
-		badGateway(c, "市区町村一覧の取得に失敗しました: "+err.Error())
+		slog.ErrorContext(c.Request.Context(), "FetchMunicipalities failed", "err", err)
+		badGateway(c, "市区町村一覧の取得に失敗しました")
 		return
 	}
 
@@ -439,7 +445,8 @@ func (h *Handler) GetLandAppraisals(c *gin.Context) {
 
 	items, err := h.mlitClient.FetchLandAppraisals(c.Request.Context(), area, city, year, division)
 	if err != nil {
-		badGateway(c, "地価公示APIからのデータ取得に失敗しました: "+err.Error())
+		slog.ErrorContext(c.Request.Context(), "FetchLandAppraisals failed", "err", err)
+		badGateway(c, "地価公示APIからのデータ取得に失敗しました")
 		return
 	}
 
@@ -496,7 +503,7 @@ func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 
 	// 全年エラーの場合のみ502を返す
 	if len(itemsByYear) == 0 && fetchErr != nil {
-		badGateway(c, "地価公示APIからのデータ取得に失敗しました: "+fetchErr.Error())
+		badGateway(c, "地価公示APIからのデータ取得に失敗しました")
 		return
 	}
 
@@ -748,7 +755,8 @@ func (h *Handler) GetInvestmentScore(c *gin.Context) {
 
 	score, err := h.calcScoreForTile(ctx, z, x, y)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		slog.ErrorContext(ctx, "calcScoreForTile failed", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "投資スコアの計算に失敗しました"})
 		return
 	}
 	c.JSON(http.StatusOK, score)
