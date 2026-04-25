@@ -140,6 +140,64 @@ func parseLandPriceQuery(c *gin.Context) (mlit.LandPriceQuery, error) {
 	}, nil
 }
 
+// coordsGlobal and coordsJapanOnly are used as the japanOnly argument of parseLatLng
+// to make call sites self-documenting.
+const (
+	coordsGlobal    = false
+	coordsJapanOnly = true
+)
+
+// parseLatLng parses lat and lng query params with range validation.
+// If japanOnly is true, validates Japan domestic range (lat 20-46, lng 122-154).
+// Otherwise validates global range (lat -90~90, lng -180~180).
+func parseLatLng(c *gin.Context, japanOnly bool) (lat, lng float64, ok bool) {
+	latStr := c.Query("lat")
+	lngStr := c.Query("lng")
+	if latStr == "" || lngStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
+		return 0, 0, false
+	}
+	lat, err := strconv.ParseFloat(latStr, 64)
+	if japanOnly {
+		if err != nil || lat < 20 || lat > 46 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "lat は日本国内の緯度（20〜46）で指定してください"})
+			return 0, 0, false
+		}
+	} else {
+		if err != nil || lat < -90 || lat > 90 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "lat は -90〜90 の数値で指定してください"})
+			return 0, 0, false
+		}
+	}
+	lng, err = strconv.ParseFloat(lngStr, 64)
+	if japanOnly {
+		if err != nil || lng < 122 || lng > 154 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "lng は日本国内の経度（122〜154）で指定してください"})
+			return 0, 0, false
+		}
+	} else {
+		if err != nil || lng < -180 || lng > 180 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "lng は -180〜180 の数値で指定してください"})
+			return 0, 0, false
+		}
+	}
+	return lat, lng, true
+}
+
+// parseZoom parses the optional z query param (11-15). Returns defaultZ if absent.
+func parseZoom(c *gin.Context, defaultZ int) (z int, ok bool) {
+	zStr := c.Query("z")
+	if zStr == "" {
+		return defaultZ, true
+	}
+	zv, err := strconv.Atoi(zStr)
+	if err != nil || zv < 11 || zv > 15 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "z は 11〜15 の整数で指定してください"})
+		return 0, false
+	}
+	return zv, true
+}
+
 // Analyze は投資シミュレーションを実行する
 // POST /api/analyze
 func (h *Handler) Analyze(c *gin.Context) {
@@ -331,31 +389,13 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 // GetStationRidership は物件の緯度経度からタイル座標を計算し、駅別乗降客数と需要スコアを返す（XKT015）
 // GET /api/station-ridership?lat=35.6762&lng=139.6503[&z=14]
 func (h *Handler) GetStationRidership(c *gin.Context) {
-	latStr := c.Query("lat")
-	lngStr := c.Query("lng")
-	if latStr == "" || lngStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
+	lat, lng, ok := parseLatLng(c, coordsGlobal)
+	if !ok {
 		return
 	}
-	lat, err := strconv.ParseFloat(latStr, 64)
-	if err != nil || lat < -90 || lat > 90 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は -90〜90 の数値で指定してください"})
+	z, ok := parseZoom(c, 14)
+	if !ok {
 		return
-	}
-	lng, err := strconv.ParseFloat(lngStr, 64)
-	if err != nil || lng < -180 || lng > 180 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は -180〜180 の数値で指定してください"})
-		return
-	}
-
-	z := 14
-	if zStr := c.Query("z"); zStr != "" {
-		zv, err := strconv.Atoi(zStr)
-		if err != nil || zv < 11 || zv > 15 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "z は 11〜15 の整数で指定してください"})
-			return
-		}
-		z = zv
 	}
 
 	tx, ty := mlit.LatLngToTile(lat, lng, z)
@@ -384,31 +424,13 @@ func (h *Handler) GetStationRidership(c *gin.Context) {
 // GetPopulationForecast は物件の緯度経度からタイル座標を計算し、将来推計人口と人口減少シナリオを返す（XKT013）
 // GET /api/population-forecast?lat=35.6762&lng=139.6503[&z=14]
 func (h *Handler) GetPopulationForecast(c *gin.Context) {
-	latStr := c.Query("lat")
-	lngStr := c.Query("lng")
-	if latStr == "" || lngStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
+	lat, lng, ok := parseLatLng(c, coordsGlobal)
+	if !ok {
 		return
 	}
-	lat, err := strconv.ParseFloat(latStr, 64)
-	if err != nil || lat < -90 || lat > 90 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は -90〜90 の数値で指定してください"})
+	z, ok := parseZoom(c, 14)
+	if !ok {
 		return
-	}
-	lng, err := strconv.ParseFloat(lngStr, 64)
-	if err != nil || lng < -180 || lng > 180 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は -180〜180 の数値で指定してください"})
-		return
-	}
-
-	z := 14
-	if zStr := c.Query("z"); zStr != "" {
-		zv, err := strconv.Atoi(zStr)
-		if err != nil || zv < 11 || zv > 15 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "z は 11〜15 の整数で指定してください"})
-			return
-		}
-		z = zv
 	}
 
 	tx, ty := mlit.LatLngToTile(lat, lng, z)
@@ -541,20 +563,8 @@ func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 // GetUrbanRisks は緯度経度から都市計画リスクを一括取得する
 // GET /api/urban-risks?lat=35.68&lng=139.69
 func (h *Handler) GetUrbanRisks(c *gin.Context) {
-	latStr := c.Query("lat")
-	lngStr := c.Query("lng")
-	if latStr == "" || lngStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
-		return
-	}
-	lat, err := strconv.ParseFloat(latStr, 64)
-	if err != nil || lat < 20 || lat > 46 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は日本国内の緯度（20〜46）で指定してください"})
-		return
-	}
-	lng, err := strconv.ParseFloat(lngStr, 64)
-	if err != nil || lng < 122 || lng > 154 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は日本国内の経度（122〜154）で指定してください"})
+	lat, lng, ok := parseLatLng(c, coordsJapanOnly)
+	if !ok {
 		return
 	}
 
@@ -628,20 +638,8 @@ func (h *Handler) GetUrbanRisks(c *gin.Context) {
 // GetHazardInfo は物件の緯度経度から洪水・高潮・津波・土砂災害のハザード情報を返す。
 // GET /api/hazard?lat=35.6895&lng=139.6917
 func (h *Handler) GetHazardInfo(c *gin.Context) {
-	latStr := c.Query("lat")
-	lngStr := c.Query("lng")
-	if latStr == "" || lngStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
-		return
-	}
-	lat, err := strconv.ParseFloat(latStr, 64)
-	if err != nil || lat < 20 || lat > 46 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は日本国内の緯度（20〜46）で指定してください"})
-		return
-	}
-	lng, err := strconv.ParseFloat(lngStr, 64)
-	if err != nil || lng < 122 || lng > 154 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は日本国内の経度（122〜154）で指定してください"})
+	lat, lng, ok := parseLatLng(c, coordsJapanOnly)
+	if !ok {
 		return
 	}
 
@@ -854,20 +852,8 @@ func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.Inv
 // GetInvestmentScore は物件の緯度経度から複数 API を並列呼び出しし、投資適地スコアを算出して返す。
 // GET /api/investment-score?lat=35.6762&lng=139.6503
 func (h *Handler) GetInvestmentScore(c *gin.Context) {
-	latStr := c.Query("lat")
-	lngStr := c.Query("lng")
-	if latStr == "" || lngStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat と lng は必須パラメータです"})
-		return
-	}
-	lat, err := strconv.ParseFloat(latStr, 64)
-	if err != nil || lat < 20 || lat > 46 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lat は日本国内の緯度（20〜46）で指定してください"})
-		return
-	}
-	lng, err := strconv.ParseFloat(lngStr, 64)
-	if err != nil || lng < 122 || lng > 154 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "lng は日本国内の経度（122〜154）で指定してください"})
+	lat, lng, ok := parseLatLng(c, coordsJapanOnly)
+	if !ok {
 		return
 	}
 
@@ -935,14 +921,9 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 		return
 	}
 
-	z := 13
-	if zStr := c.Query("z"); zStr != "" {
-		zVal, err := strconv.Atoi(zStr)
-		if err != nil || zVal < 11 || zVal > 15 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "z は 11〜15 の整数で指定してください"})
-			return
-		}
-		z = zVal
+	z, ok := parseZoom(c, 13)
+	if !ok {
+		return
 	}
 
 	// ズームレベルに応じてタイル数上限を決定

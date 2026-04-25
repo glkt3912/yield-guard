@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -18,6 +19,136 @@ import (
 
 func init() {
 	gin.SetMode(gin.TestMode)
+}
+
+func TestParseLatLng_Global(t *testing.T) {
+	cases := []struct {
+		name    string
+		lat     string
+		lng     string
+		wantOK  bool
+		wantLat float64
+		wantLng float64
+	}{
+		{"valid", "35.6762", "139.6503", true, 35.6762, 139.6503},
+		{"missing lat", "", "139.6503", false, 0, 0},
+		{"missing lng", "35.6762", "", false, 0, 0},
+		{"lat out of range high", "91", "139.6503", false, 0, 0},
+		{"lat out of range low", "-91", "139.6503", false, 0, 0},
+		{"lng out of range high", "35.6762", "181", false, 0, 0},
+		{"lng out of range low", "35.6762", "-181", false, 0, 0},
+		{"lat not a number", "abc", "139.6503", false, 0, 0},
+		{"lng not a number", "35.6762", "abc", false, 0, 0},
+		{"lat boundary min", "-90", "0", true, -90, 0},
+		{"lat boundary max", "90", "0", true, 90, 0},
+		{"lng boundary min", "0", "-180", true, 0, -180},
+		{"lng boundary max", "0", "180", true, 0, 180},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			q := url.Values{}
+			if tc.lat != "" {
+				q.Set("lat", tc.lat)
+			}
+			if tc.lng != "" {
+				q.Set("lng", tc.lng)
+			}
+			c.Request, _ = http.NewRequest("GET", "/?"+q.Encode(), nil)
+			lat, lng, ok := parseLatLng(c, coordsGlobal)
+			if ok != tc.wantOK {
+				t.Errorf("ok = %v, want %v (status %d)", ok, tc.wantOK, w.Code)
+			}
+			if ok && (lat != tc.wantLat || lng != tc.wantLng) {
+				t.Errorf("lat/lng = %v/%v, want %v/%v", lat, lng, tc.wantLat, tc.wantLng)
+			}
+			if !ok && w.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want 400", w.Code)
+			}
+		})
+	}
+}
+
+func TestParseLatLng_JapanOnly(t *testing.T) {
+	cases := []struct {
+		name    string
+		lat     string
+		lng     string
+		wantOK  bool
+		wantLat float64
+		wantLng float64
+	}{
+		{"valid tokyo", "35.6762", "139.6503", true, 35.6762, 139.6503},
+		{"lat below japan", "19", "139.6503", false, 0, 0},
+		{"lat above japan", "47", "139.6503", false, 0, 0},
+		{"lng below japan", "35.6762", "121", false, 0, 0},
+		{"lng above japan", "35.6762", "155", false, 0, 0},
+		{"boundary lat min", "20", "139", true, 20, 139},
+		{"boundary lat max", "46", "139", true, 46, 139},
+		{"boundary lng min", "35", "122", true, 35, 122},
+		{"boundary lng max", "35", "154", true, 35, 154},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			q := url.Values{}
+			q.Set("lat", tc.lat)
+			q.Set("lng", tc.lng)
+			c.Request, _ = http.NewRequest("GET", "/?"+q.Encode(), nil)
+			lat, lng, ok := parseLatLng(c, coordsJapanOnly)
+			if ok != tc.wantOK {
+				t.Errorf("ok = %v, want %v (status %d)", ok, tc.wantOK, w.Code)
+			}
+			if ok && (lat != tc.wantLat || lng != tc.wantLng) {
+				t.Errorf("lat/lng = %v/%v, want %v/%v", lat, lng, tc.wantLat, tc.wantLng)
+			}
+			if !ok && w.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want 400", w.Code)
+			}
+		})
+	}
+}
+
+func TestParseZoom(t *testing.T) {
+	cases := []struct {
+		name     string
+		z        string
+		defaultZ int
+		wantOK   bool
+		wantZ    int
+	}{
+		{"omitted uses default 14", "", 14, true, 14},
+		{"omitted uses default 13", "", 13, true, 13},
+		{"explicit valid", "12", 14, true, 12},
+		{"boundary min", "11", 14, true, 11},
+		{"boundary max", "15", 14, true, 15},
+		{"below range", "10", 14, false, 0},
+		{"above range", "16", 14, false, 0},
+		{"not a number", "abc", 14, false, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			url := "/"
+			if tc.z != "" {
+				url += "?z=" + tc.z
+			}
+			c.Request, _ = http.NewRequest("GET", url, nil)
+			z, ok := parseZoom(c, tc.defaultZ)
+			if ok != tc.wantOK {
+				t.Errorf("ok = %v, want %v (status %d)", ok, tc.wantOK, w.Code)
+			}
+			if ok && z != tc.wantZ {
+				t.Errorf("z = %d, want %d", z, tc.wantZ)
+			}
+			if !ok && w.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want 400", w.Code)
+			}
+		})
+	}
 }
 
 // mockMLITClient は MLITClient インターフェースのテスト用モック
