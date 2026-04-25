@@ -62,7 +62,6 @@ function getCurrentPeriods(): { year: number; quarter: number; toYear: number; t
 
 export interface UseInvestmentSimulationParams {
   isOnline: boolean | null;
-  loanMethod: LoanMethod;
   simulationMode: SimulationMode;
   onUrlUpdate: (qs: string) => void;
 }
@@ -75,9 +74,11 @@ export interface UseInvestmentSimulationResult extends Omit<AnalysisResult, neve
   propertyLng: number | undefined;
   monteCarloResult: MonteCarloResult | null;
   monteCarloLoading: boolean;
+  loanMethod: LoanMethod;
   handleAnalyze: (input: InvestmentInput, quickTotalMan?: string) => Promise<void>;
   handleFetchLandPrices: (area: string, city: string, lat?: number, lng?: number) => Promise<void>;
   handleMonteCarlo: () => Promise<void>;
+  handleLoanMethodChange: (method: LoanMethod) => Promise<void>;
   setPropertyCoords: (lat: number, lng: number) => void;
   clearResult: () => void;
 }
@@ -93,6 +94,7 @@ export function useInvestmentSimulation(
   const [propertyLng, setPropertyLng] = useState<number | undefined>(undefined);
   const [monteCarloResult, setMonteCarloResult] = useState<MonteCarloResult | null>(null);
   const [monteCarloLoading, setMonteCarloLoading] = useState(false);
+  const [loanMethod, setLoanMethod] = useState<LoanMethod>("equal-payment");
 
   // Stable refs for params to avoid stale closures in callbacks
   const paramsRef = useRef(params);
@@ -100,18 +102,20 @@ export function useInvestmentSimulation(
     paramsRef.current = params;
   });
 
-  // lastInput ref for access inside async callbacks without dep churn
+  // Refs for mutable values accessed inside async callbacks
   const lastInputRef = useRef(lastInput);
   useEffect(() => {
     lastInputRef.current = lastInput;
   }, [lastInput]);
+  const loanMethodRef = useRef<LoanMethod>("equal-payment");
 
   const handleAnalyze = useCallback(async (input: InvestmentInput, quickTotalMan?: string) => {
-    const { isOnline, loanMethod, simulationMode, onUrlUpdate } = paramsRef.current;
+    const { isOnline, simulationMode, onUrlUpdate } = paramsRef.current;
+    const currentLoanMethod = loanMethodRef.current;
     setLoading(true);
     setError(null);
     setMonteCarloResult(null);
-    const inputWithMethod = { ...input, loanMethod };
+    const inputWithMethod = { ...input, loanMethod: currentLoanMethod };
     try {
       const res =
         isOnline === false ? analyzeOffline(inputWithMethod) : await analyzeOnline(inputWithMethod);
@@ -138,6 +142,28 @@ export function useInvestmentSimulation(
       setError(e instanceof Error ? e.message : "モンテカルロシミュレーションに失敗しました");
     } finally {
       setMonteCarloLoading(false);
+    }
+  }, []);
+
+  const handleLoanMethodChange = useCallback(async (method: LoanMethod) => {
+    setLoanMethod(method);
+    loanMethodRef.current = method;
+    const current = lastInputRef.current;
+    if (!current) return;
+    const { isOnline } = paramsRef.current;
+    setLoading(true);
+    setError(null);
+    setMonteCarloResult(null);
+    try {
+      const updatedInput = { ...current, loanMethod: method };
+      const res =
+        isOnline === false ? analyzeOffline(updatedInput) : await analyzeOnline(updatedInput);
+      setAnalysisResult((prev) => ({ ...prev, result: res }));
+      setLastInput((prev) => (prev ? { ...prev, loanMethod: method } : prev));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "シミュレーションに失敗しました");
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -248,9 +274,11 @@ export function useInvestmentSimulation(
     propertyLng,
     monteCarloResult,
     monteCarloLoading,
+    loanMethod,
     handleAnalyze,
     handleFetchLandPrices,
     handleMonteCarlo,
+    handleLoanMethodChange,
     setPropertyCoords,
     clearResult,
   };
