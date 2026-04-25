@@ -27,22 +27,22 @@ func TestCacheKey_UniquePerQuery(t *testing.T) {
 	}
 }
 
-// --- getMuni / setMuni (landPriceGroup) ---
+// --- municipalities ---
 
 func TestCacheMuni_HitMiss(t *testing.T) {
 	c := newCache()
 
-	_, ok := c.getMuni("13")
+	_, ok := c.municipalities.get("13")
 	if ok {
 		t.Fatal("expected miss on empty cache")
 	}
 
 	data := []Municipality{{ID: "13101", Name: "千代田区"}}
-	c.setMuni("13", data)
+	c.municipalities.set("13", data)
 
-	got, ok := c.getMuni("13")
+	got, ok := c.municipalities.get("13")
 	if !ok {
-		t.Fatal("expected hit after setMuni")
+		t.Fatal("expected hit after set")
 	}
 	if len(got) != 1 || got[0].ID != "13101" {
 		t.Errorf("unexpected data: %+v", got)
@@ -51,22 +51,22 @@ func TestCacheMuni_HitMiss(t *testing.T) {
 
 func TestCacheMuni_TTLExpiry(t *testing.T) {
 	c := newCache()
-	c.land.mu.Lock()
-	c.land.muniEntries["13"] = muniCacheEntry{
+	c.municipalities.mu.Lock()
+	c.municipalities.entries["13"] = genericEntry[Municipality]{
 		data:      []Municipality{{ID: "13101", Name: "千代田区"}},
 		expiresAt: time.Now().Add(-1 * time.Second), // 期限切れ
 	}
-	c.land.mu.Unlock()
+	c.municipalities.mu.Unlock()
 
-	_, ok := c.getMuni("13")
+	_, ok := c.municipalities.get("13")
 	if ok {
 		t.Error("expected miss after TTL expiry")
 	}
 
 	// 期限切れエントリが削除されていること
-	c.land.mu.RLock()
-	_, stillExists := c.land.muniEntries["13"]
-	c.land.mu.RUnlock()
+	c.municipalities.mu.RLock()
+	_, stillExists := c.municipalities.entries["13"]
+	c.municipalities.mu.RUnlock()
 	if stillExists {
 		t.Error("expired muni entry was not deleted from map")
 	}
@@ -75,34 +75,34 @@ func TestCacheMuni_TTLExpiry(t *testing.T) {
 func TestCacheMuni_ReturnsCopy(t *testing.T) {
 	c := newCache()
 	original := []Municipality{{ID: "13101", Name: "千代田区"}}
-	c.setMuni("13", original)
+	c.municipalities.set("13", original)
 
-	got, _ := c.getMuni("13")
+	got, _ := c.municipalities.get("13")
 	got[0].Name = "MODIFIED"
 
-	got2, _ := c.getMuni("13")
+	got2, _ := c.municipalities.get("13")
 	if got2[0].Name != "千代田区" {
 		t.Errorf("cache was mutated by caller: got %q, want '千代田区'", got2[0].Name)
 	}
 }
 
-// --- getRidership / setRidership (tileGroup) ---
+// --- ridership ---
 
 func TestCacheRidership_HitMiss(t *testing.T) {
 	c := newCache()
 	key := "14/2/2"
 
-	_, ok := c.getRidership(key)
+	_, ok := c.ridership.get(key)
 	if ok {
 		t.Fatal("expected miss on empty cache")
 	}
 
 	data := []StationRidership{{StationName: "横浜", Passengers: 100_000}}
-	c.setRidership(key, data)
+	c.ridership.set(key, data)
 
-	got, ok := c.getRidership(key)
+	got, ok := c.ridership.get(key)
 	if !ok {
-		t.Fatal("expected hit after setRidership")
+		t.Fatal("expected hit after set")
 	}
 	if len(got) != 1 || got[0].StationName != "横浜" {
 		t.Errorf("unexpected data: %+v", got)
@@ -112,66 +112,66 @@ func TestCacheRidership_HitMiss(t *testing.T) {
 func TestCacheRidership_TTLExpiry(t *testing.T) {
 	c := newCache()
 	key := "14/2/2"
-	c.tile.mu.Lock()
-	c.tile.ridershipEntries[key] = ridershipCacheEntry{
+	c.ridership.mu.Lock()
+	c.ridership.entries[key] = genericEntry[StationRidership]{
 		data:      []StationRidership{{StationName: "横浜", Passengers: 100_000}},
 		expiresAt: time.Now().Add(-1 * time.Second),
 	}
-	c.tile.mu.Unlock()
+	c.ridership.mu.Unlock()
 
-	_, ok := c.getRidership(key)
+	_, ok := c.ridership.get(key)
 	if ok {
 		t.Error("expected miss after TTL expiry")
 	}
 
-	c.tile.mu.RLock()
-	_, stillExists := c.tile.ridershipEntries[key]
-	c.tile.mu.RUnlock()
+	c.ridership.mu.RLock()
+	_, stillExists := c.ridership.entries[key]
+	c.ridership.mu.RUnlock()
 	if stillExists {
 		t.Error("expired ridership entry was not deleted from map")
 	}
 }
 
-// --- getPopulation / setPopulation (tileGroup) ---
+// --- population ---
 
 func TestCachePopulation_HitMiss(t *testing.T) {
 	c := newCache()
 	key := "14/5/5"
 
-	_, ok := c.getPopulation(key)
+	_, ok := c.population.get(key)
 	if ok {
 		t.Fatal("expected miss on empty cache")
 	}
 
 	data := []domain.PopulationForecastItem{{Year: 2020, Pop: 50000}}
-	c.setPopulation(key, data)
+	c.population.set(key, data)
 
-	got, ok := c.getPopulation(key)
+	got, ok := c.population.get(key)
 	if !ok {
-		t.Fatal("expected hit after setPopulation")
+		t.Fatal("expected hit after set")
 	}
 	if len(got) != 1 || got[0].Year != 2020 {
 		t.Errorf("unexpected data: %+v", got)
 	}
 }
 
-// --- getFloodHazard / setFloodHazard (hazardGroup) ---
+// --- floodHazard ---
 
 func TestCacheFloodHazard_HitMiss(t *testing.T) {
 	c := newCache()
 	key := "15/3/3"
 
-	_, ok := c.getFloodHazard(key)
+	_, ok := c.floodHazard.get(key)
 	if ok {
 		t.Fatal("expected miss on empty cache")
 	}
 
 	data := []domain.FloodHazardItem{{DepthRank: 3, RiverName: "多摩川"}}
-	c.setFloodHazard(key, data)
+	c.floodHazard.set(key, data)
 
-	got, ok := c.getFloodHazard(key)
+	got, ok := c.floodHazard.get(key)
 	if !ok {
-		t.Fatal("expected hit after setFloodHazard")
+		t.Fatal("expected hit after set")
 	}
 	if len(got) != 1 || got[0].RiverName != "多摩川" {
 		t.Errorf("unexpected data: %+v", got)
@@ -181,27 +181,27 @@ func TestCacheFloodHazard_HitMiss(t *testing.T) {
 func TestCacheFloodHazard_TTLExpiry(t *testing.T) {
 	c := newCache()
 	key := "15/3/3"
-	c.hazard.mu.Lock()
-	c.hazard.floodHazardEntries[key] = floodHazardCacheEntry{
+	c.floodHazard.mu.Lock()
+	c.floodHazard.entries[key] = genericEntry[domain.FloodHazardItem]{
 		data:      []domain.FloodHazardItem{{DepthRank: 3}},
 		expiresAt: time.Now().Add(-1 * time.Second),
 	}
-	c.hazard.mu.Unlock()
+	c.floodHazard.mu.Unlock()
 
-	_, ok := c.getFloodHazard(key)
+	_, ok := c.floodHazard.get(key)
 	if ok {
 		t.Error("expected miss after TTL expiry")
 	}
 
-	c.hazard.mu.RLock()
-	_, stillExists := c.hazard.floodHazardEntries[key]
-	c.hazard.mu.RUnlock()
+	c.floodHazard.mu.RLock()
+	_, stillExists := c.floodHazard.entries[key]
+	c.floodHazard.mu.RUnlock()
 	if stillExists {
 		t.Error("expired flood entry was not deleted from map")
 	}
 }
 
-// --- 並行アクセス (tileGroup / hazardGroup) ---
+// --- 並行アクセス ---
 
 func TestCacheTileGroup_ConcurrentAccess(t *testing.T) {
 	c := newCache()
@@ -215,9 +215,9 @@ func TestCacheTileGroup_ConcurrentAccess(t *testing.T) {
 			key := "14/5/5"
 			data := []domain.PopulationForecastItem{{Year: 2020, Pop: float64(idx * 1000)}}
 			if idx%2 == 0 {
-				c.setPopulation(key, data)
+				c.population.set(key, data)
 			} else {
-				c.getPopulation(key)
+				c.population.get(key)
 			}
 		}(i)
 	}
@@ -236,9 +236,9 @@ func TestCacheHazardGroup_ConcurrentAccess(t *testing.T) {
 			key := "15/3/3"
 			data := []domain.FloodHazardItem{{DepthRank: idx % 5}}
 			if idx%2 == 0 {
-				c.setFloodHazard(key, data)
+				c.floodHazard.set(key, data)
 			} else {
-				c.getFloodHazard(key)
+				c.floodHazard.get(key)
 			}
 		}(i)
 	}
