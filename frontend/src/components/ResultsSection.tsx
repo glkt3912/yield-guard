@@ -13,7 +13,6 @@ import { MonteCarloChart } from "@/components/MonteCarloChart";
 import NegotiationPanel from "@/components/NegotiationPanel";
 import WatchlistPanel from "@/components/WatchlistPanel";
 import { AreaDiscovery } from "@/components/AreaDiscovery";
-import { SimulationModeToggle } from "@/components/SimulationModeToggle";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 import { ShieldAlert } from "lucide-react";
@@ -40,7 +39,6 @@ interface ResultsSectionProps {
   selectedMunicipalityMsg: string | null;
   setSelectedMunicipalityMsg: (msg: string | null) => void;
   simulationMode: SimulationMode;
-  onModeChange: (mode: SimulationMode) => void;
   result: InvestmentResult | null;
   comparison: LandPriceComparison | null;
   theoreticalPrice: TheoreticalPriceResult | null;
@@ -67,7 +65,6 @@ export function ResultsSection({
   selectedMunicipalityMsg,
   setSelectedMunicipalityMsg,
   simulationMode,
-  onModeChange,
   result,
   comparison,
   theoreticalPrice,
@@ -116,10 +113,6 @@ export function ResultsSection({
         </button>
       </div>
 
-      {/* Mobile: simulation mode toggle */}
-      {activeTab === "simulation" && (
-        <SimulationModeToggle mode={simulationMode} onChange={onModeChange} className="lg:hidden" />
-      )}
 
       {activeTab === "area-discovery" && (
         <>

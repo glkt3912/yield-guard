@@ -249,7 +249,6 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             selectedMunicipalityMsg={selectedMunicipalityMsg}
             setSelectedMunicipalityMsg={setSelectedMunicipalityMsg}
             simulationMode={simulationMode}
-            onModeChange={handleModeChange}
             result={result}
             comparison={comparison}
             theoreticalPrice={theoreticalPrice}
@@ -304,7 +303,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           isOnline={isOnline}
           externalLat={propertyLat}
           externalLng={propertyLng}
-          showModeToggle={false}
+          showModeToggle={true}
         />
       </FormSheet>
     </div>
