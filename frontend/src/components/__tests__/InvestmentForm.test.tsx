@@ -8,6 +8,7 @@ import type { SimulationMode } from "@/types/investment";
 vi.mock("@/lib/api", () => ({
   fetchMunicipalities: vi.fn().mockResolvedValue([]),
   fetchRentDeclineHint: vi.fn(),
+  fetchGeocode: vi.fn(),
 }));
 
 import * as api from "@/lib/api";
@@ -321,6 +322,72 @@ describe("InvestmentForm", () => {
       await waitFor(() => {
         expect(screen.queryByText("ネットワークエラー")).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe("住所ジオコーディング", () => {
+    it("住所入力後「座標を取得」ボタン押下で精度ラベルが表示される", async () => {
+      vi.mocked(api.fetchGeocode).mockResolvedValueOnce({
+        lat: 35.6585,
+        lng: 139.7013,
+        locationType: "ROOFTOP",
+      });
+      renderForm("full");
+
+      await userEvent.type(screen.getByLabelText("物件住所"), "東京都渋谷区道玄坂1-2");
+      await userEvent.click(screen.getByRole("button", { name: "座標を取得" }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/番地レベルで取得/)).toBeInTheDocument();
+      });
+      expect(api.fetchGeocode).toHaveBeenCalledWith("東京都渋谷区道玄坂1-2");
+    });
+
+    it("ZERO_RESULTS エラー時にエラーメッセージと手動入力フォールバックが表示される", async () => {
+      vi.mocked(api.fetchGeocode).mockRejectedValueOnce(new Error("住所が見つかりませんでした。丁目・番地まで入力してください"));
+      renderForm("full");
+
+      await userEvent.type(screen.getByLabelText("物件住所"), "存在しない住所99999");
+      await userEvent.click(screen.getByRole("button", { name: "座標を取得" }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/住所が見つかりませんでした/)).toBeInTheDocument();
+        expect(screen.getByLabelText("物件の緯度")).toBeInTheDocument();
+        expect(screen.getByLabelText("物件の経度")).toBeInTheDocument();
+      });
+    });
+
+    it("上流エラー時にエラーメッセージと手動入力フォールバックが表示される", async () => {
+      vi.mocked(api.fetchGeocode).mockRejectedValueOnce(new Error("座標取得に失敗しました"));
+      renderForm("full");
+
+      await userEvent.type(screen.getByLabelText("物件住所"), "東京都渋谷区");
+      await userEvent.click(screen.getByRole("button", { name: "座標を取得" }));
+
+      await waitFor(() => {
+        expect(screen.getByText("座標取得に失敗しました")).toBeInTheDocument();
+        expect(screen.getByLabelText("物件の緯度")).toBeInTheDocument();
+      });
+    });
+
+    it("住所書き換え後に精度ラベルが消えて座標がクリアされる", async () => {
+      vi.mocked(api.fetchGeocode).mockResolvedValueOnce({
+        lat: 35.6585,
+        lng: 139.7013,
+        locationType: "ROOFTOP",
+      });
+      renderForm("full");
+
+      await userEvent.type(screen.getByLabelText("物件住所"), "東京都渋谷区道玄坂1-2");
+      await userEvent.click(screen.getByRole("button", { name: "座標を取得" }));
+      await waitFor(() => {
+        expect(screen.getByText(/番地レベルで取得/)).toBeInTheDocument();
+      });
+
+      await userEvent.clear(screen.getByLabelText("物件住所"));
+      await userEvent.type(screen.getByLabelText("物件住所"), "東京都新宿区");
+
+      expect(screen.queryByText(/番地レベルで取得/)).not.toBeInTheDocument();
     });
   });
 });
