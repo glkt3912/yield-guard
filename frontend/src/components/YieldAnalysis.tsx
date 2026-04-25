@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type {
@@ -10,10 +10,11 @@ import type {
   YieldScenarios,
 } from "@/types/investment";
 import { formatMan, formatPct, formatYen } from "@/lib/utils";
-import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Users } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Users, ChevronDown, ChevronUp } from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
+import { MobileSummaryCard } from "@/components/MobileSummaryCard";
 
-/** Mobile 2×2 KPI grid showing the 4 most important metrics at a glance */
+/** Mobile 2×3 KPI grid showing 6 critical metrics at a glance */
 function MobileKpiGrid({
   result,
   isGood,
@@ -28,6 +29,11 @@ function MobileKpiGrid({
   netYieldPct: number;
 }) {
   const firstYearCF = result.yearlyResults[0]?.afterTaxCashFlow ?? 0;
+  const dscr = result.dscr;
+  const deadCrossYear = result.deadCrossYear;
+  const hasDeadCross = deadCrossYear > 0 && deadCrossYear <= 35;
+  const deadCrossEarly = hasDeadCross && deadCrossYear <= 10;
+
   const kpis = [
     {
       label: "表面利回り",
@@ -42,6 +48,20 @@ function MobileKpiGrid({
       sub: "空室・経費控除後",
       color: "text-foreground",
       bg: "bg-muted/40 border-border",
+    },
+    {
+      label: "DSCR",
+      value: dscr.toFixed(2),
+      sub: dscr >= 1.2 ? "良好（融資余裕）" : dscr >= 1.0 ? "注意（最低ライン）" : "危険（融資困難）",
+      color: dscr >= 1.2 ? "text-green-600" : dscr >= 1.0 ? "text-yellow-600" : "text-red-600",
+      bg: dscr >= 1.2 ? "bg-green-50 border-green-200" : dscr >= 1.0 ? "bg-yellow-50 border-yellow-200" : "bg-red-50 border-red-200",
+    },
+    {
+      label: "デッドクロス",
+      value: hasDeadCross ? `${deadCrossYear}年目〜` : "なし",
+      sub: hasDeadCross ? (deadCrossEarly ? "早期発生・要注意" : "税負担増加に注意") : "35年以内問題なし",
+      color: hasDeadCross ? (deadCrossEarly ? "text-red-600" : "text-yellow-600") : "text-green-600",
+      bg: hasDeadCross ? (deadCrossEarly ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200") : "bg-green-50 border-green-200",
     },
     {
       label: "総投資額",
@@ -89,13 +109,22 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
   const actualV = input.actualVacancyRate > 0 ? input.actualVacancyRate : input.vacancyRate;
 
   const stressScenarios: StressScenarioResult[] = result.stressScenarios ?? [];
+  const [expandedScenario, setExpandedScenario] = useState<number | null>(null);
 
   const gaugePosition = Math.min(yieldPct / maxYieldPct, 1) * 100;
   const targetPosition = 50; // 目標は常にゲージ中央
 
   return (
     <div className="space-y-4">
-      {/* Mobile: 2×2 KPI grid (hidden on desktop) */}
+      {/* Mobile: professional summary card for agents (hidden on desktop) */}
+      <MobileSummaryCard
+        result={result}
+        input={input}
+        yieldPct={yieldPct}
+        netYieldPct={netYieldPct}
+      />
+
+      {/* Mobile: 2×3 KPI grid (hidden on desktop) */}
       <MobileKpiGrid
         result={result}
         isGood={isGood}
@@ -172,7 +201,69 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
           <CardTitle className="text-base">ストレステストシナリオ（銀行融資審査用）</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          {/* Mobile: accordion (lg:hidden) */}
+          <div className="space-y-1 lg:hidden">
+            {stressScenarios.map((s, idx) => {
+              const isCompound = s.label === "複合ストレス";
+              const isExpanded = expandedScenario === idx;
+              const safeBadge =
+                s.dscr >= 1.2 ? (
+                  <Badge variant="success">安全</Badge>
+                ) : s.dscr >= 1.0 ? (
+                  <Badge variant="warning">注意</Badge>
+                ) : (
+                  <Badge variant="danger">危険</Badge>
+                );
+              return (
+                <div
+                  key={s.label}
+                  className={`rounded-lg border ${isCompound ? "border-orange-200 bg-orange-50" : "border-border bg-background"}`}
+                >
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between px-3 py-3 text-left min-h-[44px]"
+                    onClick={() => setExpandedScenario(isExpanded ? null : idx)}
+                  >
+                    <span className="text-sm font-medium">
+                      {s.label}
+                      {isCompound && <span className="ml-1 text-xs text-orange-600">★</span>}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {safeBadge}
+                      {isExpanded ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </button>
+                  {isExpanded && (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t px-3 pb-3 pt-2 text-sm">
+                      <span className="text-muted-foreground">DSCR</span>
+                      <span className={`text-right font-medium ${s.dscr >= 1.2 ? "text-green-600" : s.dscr >= 1.0 ? "text-yellow-600" : "text-red-600"}`}>
+                        {s.dscr.toFixed(2)}
+                      </span>
+                      <span className="text-muted-foreground">黒転年</span>
+                      <span className="text-right">
+                        {s.breakEvenYear === -1 ? "なし" : `${s.breakEvenYear}年目`}
+                      </span>
+                      <span className="text-muted-foreground">金利△</span>
+                      <span className="text-right">
+                        {s.interestRateDelta !== 0 ? `+${(s.interestRateDelta * 100).toFixed(1)}%` : "±0"}
+                      </span>
+                      <span className="text-muted-foreground">空室△</span>
+                      <span className="text-right">
+                        {s.vacancyRateDelta !== 0 ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%` : "±0"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: horizontal table (hidden on mobile) */}
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-muted-foreground">
