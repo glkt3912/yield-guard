@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"math"
 	"testing"
 )
@@ -71,7 +72,7 @@ func TestAnalyze_GrossYield(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	// 総投資額の検証
 	// 5,000,000 + 10,000,000 + (15,000,000 * 0.07) = 16,050,000
@@ -96,7 +97,7 @@ func TestAnalyze_Above8Percent(t *testing.T) {
 		MonthlyRent:  200_000, // 高い賃料
 	}
 	highRent.Defaults()
-	r1 := Analyze(highRent)
+	r1 := Analyze(context.Background(), highRent)
 	if !r1.IsAboveYieldTarget {
 		t.Errorf("高賃料ケース: IsAboveYieldTarget = false, want true (yield=%.2f%%)", r1.GrossYield*100)
 	}
@@ -108,7 +109,7 @@ func TestAnalyze_Above8Percent(t *testing.T) {
 		MonthlyRent:  80_000, // 低い賃料
 	}
 	lowRent.Defaults()
-	r2 := Analyze(lowRent)
+	r2 := Analyze(context.Background(), lowRent)
 	if r2.IsAboveYieldTarget {
 		t.Errorf("低賃料ケース: IsAboveYieldTarget = true, want false (yield=%.2f%%)", r2.GrossYield*100)
 	}
@@ -132,7 +133,7 @@ func TestAnalyze_DeadCross(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	// 木造22年: 耐用年数内に元金が追い越すか、翌年(23年目)に減価償却=0でデッドクロス発生
 	if result.DeadCrossYear == -1 {
@@ -163,7 +164,7 @@ func TestAnalyze_ExitStrategy(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	// 売却価格 = NOI / 6%（NOI = 実効賃料 - 運営経費）
 	annualRent := 120_000.0 * 12 * (1 - 0.05)
@@ -202,8 +203,8 @@ func TestAnalyze_StressTest(t *testing.T) {
 	stressed.VacancyRateDelta = 0.10 // 空室率+10%
 	stressed.LoanRateDelta = 0.015   // 金利+1.5%
 
-	baseResult := Analyze(base)
-	stressResult := Analyze(stressed)
+	baseResult := Analyze(context.Background(), base)
+	stressResult := Analyze(context.Background(), stressed)
 
 	// ストレス時のCFはベースより悪化するはず
 	if len(baseResult.YearlyResults) == 0 || len(stressResult.YearlyResults) == 0 {
@@ -227,7 +228,7 @@ func TestCalcLandPriceStats(t *testing.T) {
 		{PricePerTsubo: 500_000},
 	}
 
-	stats := CalcLandPriceStats(transactions)
+	stats := CalcLandPriceStats(context.Background(), transactions)
 
 	if stats.Count != 5 {
 		t.Errorf("Count = %d, want 5", stats.Count)
@@ -264,7 +265,7 @@ func TestAnalyze_ZeroLoan(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	if len(result.YearlyResults) == 0 {
 		t.Fatal("YearlyResults is empty")
@@ -300,7 +301,7 @@ func TestAnalyze_ZeroExitYield(t *testing.T) {
 	}
 
 	// パニックしないことを確認。Defaults() により ExitYieldTarget=0.06 となり正の売却価格が返る。
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 	if result.ExitSalePrice <= 0 {
 		t.Errorf("ExitSalePrice = %.0f, want > 0 (Defaults补完後は0.06で計算)", result.ExitSalePrice)
 	}
@@ -326,7 +327,7 @@ func TestAnalyze_FullVacancy(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	if len(result.YearlyResults) == 0 {
 		t.Fatal("YearlyResults is empty")
@@ -458,7 +459,7 @@ func TestAnalyze_ExitNOI_UsesHoldingYearValues(t *testing.T) {
 		RentDeclineRate: rentDeclineRate,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	// 保有10年目(インデックス9)の賃料下落係数: (1-0.01)^9 = 0.99^9
 	declineFactor := math.Pow(1-rentDeclineRate, float64(holdingYears-1))
@@ -485,7 +486,7 @@ func TestAnalyze_ExitNOI_UsesHoldingYearValues(t *testing.T) {
 	// RentDeclineRate=0のケースより売却価格が低いことを確認
 	inputNoDecline := input
 	inputNoDecline.RentDeclineRate = 0
-	resultNoDecline := Analyze(inputNoDecline)
+	resultNoDecline := Analyze(context.Background(), inputNoDecline)
 	if result.ExitSalePrice >= resultNoDecline.ExitSalePrice {
 		t.Errorf("ExitSalePrice with decline (%.0f) should be < without decline (%.0f)",
 			result.ExitSalePrice, resultNoDecline.ExitSalePrice)
@@ -600,7 +601,7 @@ func TestAnalyze_StressScenarios(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	// カスタムデルタが0なので6シナリオのみ生成される
 	if len(result.StressScenarios) != 6 {
@@ -644,7 +645,7 @@ func TestAnalyze_StressScenarios_IsSafe(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	// 複合ストレス（金利+2%, 空室+10%）ではIsSafe=falseになるはず
 	compound := result.StressScenarios[5]
@@ -673,7 +674,7 @@ func TestAnalyze_StressScenarios_BreakEvenNever(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	// いずれかのシナリオでBreakEvenYear=-1となることを確認
 	foundNever := false
@@ -707,7 +708,7 @@ func TestAnalyze_StressScenarios_CustomSeventh(t *testing.T) {
 		LoanRateDelta:   0.005, // カスタム金利上昇
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	if len(result.StressScenarios) != 7 {
 		t.Errorf("StressScenarios count = %d, want 7 (6 default + 1 custom)", len(result.StressScenarios))
@@ -742,7 +743,7 @@ func TestCalcStressScenario_DSCRAbove1ButBreakEvenExceedsHolding(t *testing.T) {
 		BuildingType: BuildingTypeWood,
 	}
 
-	result := calcStressScenario(input, "テスト", 0, 0)
+	result := calcStressScenario(context.Background(), input, "テスト", 0, 0)
 
 	// 前提確認: DSCR が 1.0 以上
 	if result.DSCR < 1.0 {
@@ -794,7 +795,7 @@ func TestCalcStressScenario_DSCRWorstYearVariableRate(t *testing.T) {
 	noi := annualRent - annualExpenses
 	dscrYear1 := noi / annualLoanY1
 
-	result := calcStressScenario(input, "変動金利テスト", 0, 0)
+	result := calcStressScenario(context.Background(), input, "変動金利テスト", 0, 0)
 
 	// 最悪年 DSCR は初年度 DSCR より低いはず（5年目以降の高金利による返済増を反映）
 	if result.DSCR >= dscrYear1 {
@@ -837,7 +838,7 @@ func TestCalcStressScenario_IsSafeFlipsWithVariableRate(t *testing.T) {
 		t.Fatalf("前提条件未充足: 初年度DSCR=%.4f < 1.0（テスト設計を確認）", dscrYear1)
 	}
 
-	result := calcStressScenario(input, "変動金利isSafe反転テスト", 0, 0)
+	result := calcStressScenario(context.Background(), input, "変動金利isSafe反転テスト", 0, 0)
 
 	// 最悪年 DSCR は 1.0 未満であるべき
 	if result.DSCR >= 1.0 {
@@ -880,8 +881,8 @@ func TestCalcStressScenario_RentDeclineLowersDSCR(t *testing.T) {
 	withDecline := base
 	withDecline.RentDeclineRate = 0.03
 
-	r0 := calcStressScenario(withoutDecline, "下落なし", 0, 0)
-	r1 := calcStressScenario(withDecline, "下落3%", 0, 0)
+	r0 := calcStressScenario(context.Background(), withoutDecline, "下落なし", 0, 0)
+	r1 := calcStressScenario(context.Background(), withDecline, "下落3%", 0, 0)
 
 	if r1.DSCR >= r0.DSCR {
 		t.Errorf("RentDeclineRate=3%% の DSCR(%.4f) >= 下落なし DSCR(%.4f): 賃料下落が反映されていない",
@@ -918,8 +919,8 @@ func TestCalcStressScenario_AfterTaxCFDelaysBreakEven(t *testing.T) {
 	withTax := base
 	withTax.IncomeTaxRate = 0.40
 
-	r0 := calcStressScenario(noTax, "税なし", 0, 0)
-	r1 := calcStressScenario(withTax, "税40%", 0, 0)
+	r0 := calcStressScenario(context.Background(), noTax, "税なし", 0, 0)
+	r1 := calcStressScenario(context.Background(), withTax, "税40%", 0, 0)
 
 	// 税なしは初年度から CF > 0 → breakEven = 1
 	if r0.BreakEvenYear != 1 {
@@ -1117,7 +1118,7 @@ func TestAnalyze_VacancyOverflow(t *testing.T) {
 				ExitYieldTarget:  0.06,
 			}
 
-			result := Analyze(input)
+			result := Analyze(context.Background(), input)
 
 			if len(result.YearlyResults) == 0 {
 				t.Fatal("YearlyResults is empty")
@@ -1219,7 +1220,7 @@ func TestAnalyze_OldBuildingZeroDepreciation(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	if len(result.YearlyResults) == 0 {
 		t.Fatal("YearlyResults is empty")
@@ -1263,7 +1264,7 @@ func TestAnalyze_ZeroLoanYears(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	if len(result.YearlyResults) == 0 {
 		t.Fatal("YearlyResults is empty")
@@ -1316,7 +1317,7 @@ func TestAnalyze_ShortTermCapitalGains(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	// 売却益が正値であることを確認（テストが空振りしないよう）
 	if result.ExitCapitalGain <= 0 {
@@ -1348,7 +1349,7 @@ func TestAnalyze_YieldScenarios(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 	sc := result.YieldScenarios
 
 	totalInvestment := 5_000_000.0 + 10_000_000.0 + 15_000_000.0*0.07 // 16,050,000
@@ -1412,7 +1413,7 @@ func TestAnalyze_YieldScenarios_HighVacancy(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 	sc := result.YieldScenarios
 
 	// 悲観: 0.80 × 1.5 = 1.20 → 0.99 にキャップ
@@ -1445,7 +1446,7 @@ func TestAnalyze_YieldScenarios_ZeroVacancy(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 	sc := result.YieldScenarios
 
 	fullAnnualRent := 120_000.0 * 12
@@ -1481,7 +1482,7 @@ func TestAnalyze_UltraLowInterestRate(t *testing.T) {
 	}
 
 	// パニックしないこと・結果が有限な数値であること
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	if len(result.YearlyResults) == 0 {
 		t.Fatal("YearlyResults is empty")
@@ -1730,12 +1731,12 @@ func TestAnalyze_EqualPrincipal(t *testing.T) {
 		LoanMethod:     LoanMethodEqualPrincipal,
 	}
 
-	epResult := Analyze(input)
+	epResult := Analyze(context.Background(), input)
 
 	// 同一入力で元利均等と比較
 	inputEP := input
 	inputEP.LoanMethod = LoanMethodEqualPayment
-	equalPayResult := Analyze(inputEP)
+	equalPayResult := Analyze(context.Background(), inputEP)
 
 	// 元金均等: 1年目の返済額 > 元利均等の返済額（初期は利息負担が大きい）
 	y1EP := epResult.YearlyResults[0]
@@ -1792,7 +1793,7 @@ func TestAnalyze_DSCR(t *testing.T) {
 		HoldingYears:   10,
 		ExitYieldTarget: 0.06,
 	}
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	// DSCR > 0 であること
 	if result.DSCR <= 0 {
@@ -1833,7 +1834,7 @@ func TestAnalyze_EqualPrincipalStressScenario(t *testing.T) {
 		LoanMethod:      LoanMethodEqualPrincipal,
 	}
 
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	// ① 年次結果: 元金均等の年間返済額は年々減少する
 	for i := 1; i < input.HoldingYears; i++ {
@@ -2026,7 +2027,7 @@ func TestAnalyzeWithRateSchedule(t *testing.T) {
 	}
 
 	t.Run("fixed rate: all years same EffectiveRate", func(t *testing.T) {
-		result := Analyze(base)
+		result := Analyze(context.Background(), base)
 		for _, y := range result.YearlyResults {
 			if math.Abs(y.EffectiveRate-0.015) > 1e-9 {
 				t.Errorf("year=%d: EffectiveRate=%.4f, want 0.015", y.Year, y.EffectiveRate)
@@ -2040,7 +2041,7 @@ func TestAnalyzeWithRateSchedule(t *testing.T) {
 			{AfterYear: 6, Rate: 0.02},
 			{AfterYear: 11, Rate: 0.03},
 		}
-		result := Analyze(in)
+		result := Analyze(context.Background(), in)
 
 		for _, y := range result.YearlyResults {
 			var wantRate float64
@@ -2069,10 +2070,10 @@ func TestAnalyzeWithRateSchedule(t *testing.T) {
 
 	t.Run("variable rate total interest > fixed rate total interest", func(t *testing.T) {
 		// 金利が途中から上がれば総支払利息は増える
-		fixed := Analyze(base)
+		fixed := Analyze(context.Background(), base)
 		variable := base
 		variable.RateAdjustmentSchedule = []RateAdjustment{{AfterYear: 6, Rate: 0.03}}
-		varResult := Analyze(variable)
+		varResult := Analyze(context.Background(), variable)
 
 		fixedInterest := 0.0
 		varInterest := 0.0
@@ -2089,7 +2090,7 @@ func TestAnalyzeWithRateSchedule(t *testing.T) {
 		in := base
 		in.RateAdjustmentSchedule = []RateAdjustment{{AfterYear: 6, Rate: 0.02}}
 		in.LoanRateDelta = 0.005
-		result := Analyze(in)
+		result := Analyze(context.Background(), in)
 
 		// 年6以降: 0.02 + 0.005 = 0.025
 		y6 := result.YearlyResults[5]
@@ -2154,11 +2155,11 @@ func TestAnalyze_DecliningBalance(t *testing.T) {
 		HoldingYears:       10,
 	}
 	input.Defaults()
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	straightInput := input
 	straightInput.DepreciationMethod = DepreciationMethodStraightLine
-	straightResult := Analyze(straightInput)
+	straightResult := Analyze(context.Background(), straightInput)
 
 	// 定率法の1年目減価は定額法より大きい
 	declYear1 := result.YearlyResults[0].AnnualDepreciation
@@ -2193,12 +2194,12 @@ func TestAnalyze_PriceDeclineRate_Zero(t *testing.T) {
 		PriceDeclineRate: 0,
 	}
 	base.Defaults()
-	withZero := Analyze(base)
+	withZero := Analyze(context.Background(), base)
 
 	noField := base
 	noField.PriceDeclineRate = 0
 	noField.Defaults()
-	withoutField := Analyze(noField)
+	withoutField := Analyze(context.Background(), noField)
 
 	if withZero.IRR == nil || withoutField.IRR == nil {
 		t.Skip("IRR did not converge for test input — adjust inputs if this consistently skips")
@@ -2223,12 +2224,12 @@ func TestAnalyze_PriceDeclineRate_NonZero(t *testing.T) {
 		DiscountRate:    0.05,
 	}
 	base.Defaults()
-	zeroDecline := Analyze(base)
+	zeroDecline := Analyze(context.Background(), base)
 
 	withDecline := base
 	withDecline.PriceDeclineRate = 0.02
 	withDecline.Defaults()
-	declineResult := Analyze(withDecline)
+	declineResult := Analyze(context.Background(), withDecline)
 
 	if zeroDecline.IRR == nil || declineResult.IRR == nil {
 		t.Skip("IRR did not converge for test input")
@@ -2252,7 +2253,7 @@ func TestAnalyze_OverLoan_IRRNil(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 	input.Defaults()
-	result := Analyze(input)
+	result := Analyze(context.Background(), input)
 
 	if result.IRR != nil {
 		t.Errorf("expected IRR=nil for over-loan case, got %v", *result.IRR)
@@ -2281,7 +2282,7 @@ func TestAnalyze_DeadCross_ZeroBuildingCost(t *testing.T) {
 		ExitYieldTarget: 0.06,
 		YieldTarget:     0.08,
 	}
-	result := Analyze(in)
+	result := Analyze(context.Background(), in)
 	if result.DeadCrossYear != -1 {
 		t.Errorf("DeadCrossYear = %d, want -1 (none) when BuildingCost=0", result.DeadCrossYear)
 	}
@@ -2306,7 +2307,7 @@ func TestAnalyze_DeadCross_NewWoodFrame(t *testing.T) {
 		ExitYieldTarget: 0.06,
 		YieldTarget:     0.08,
 	}
-	result := Analyze(in)
+	result := Analyze(context.Background(), in)
 	// 新築木造35年1.5%では1年目の元金返済≒285,000円 < 減価償却≒454,545円
 	// 両者が逆転するのは23年目（実計算値）
 	if result.DeadCrossYear != 23 {

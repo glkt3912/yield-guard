@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"math"
 	"testing"
 )
@@ -78,7 +79,7 @@ func TestCalcIRR_AllNegativeCF(t *testing.T) {
 		ExitYieldTarget: 0.06,
 	}
 	in.Defaults()
-	result := Analyze(in)
+	result := Analyze(context.Background(), in)
 	irr := calcIRR(result, in)
 	if !math.IsNaN(irr) {
 		// 極端なケースでは NaN でなく非常に低い IRR を返す場合もあるが
@@ -92,7 +93,7 @@ func TestCalcIRR_AllNegativeCF(t *testing.T) {
 func TestCalcIRR_ReasonableCase(t *testing.T) {
 	in := baseInput
 	in.Defaults()
-	result := Analyze(in)
+	result := Analyze(context.Background(), in)
 	irr := calcIRR(result, in)
 
 	// 健全な投資物件なので IRR は NaN でなく有限値であること

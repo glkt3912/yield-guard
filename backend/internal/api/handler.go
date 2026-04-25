@@ -62,7 +62,7 @@ func (h *Handler) GetLandPrices(c *gin.Context) {
 		return
 	}
 
-	stats := domain.CalcLandPriceStats(transactions)
+	stats := domain.CalcLandPriceStats(c.Request.Context(), transactions)
 	c.JSON(http.StatusOK, stats)
 }
 
@@ -105,7 +105,7 @@ func (h *Handler) CompareLandPrice(c *gin.Context) {
 		return
 	}
 
-	stats := domain.CalcLandPriceStats(transactions)
+	stats := domain.CalcLandPriceStats(c.Request.Context(), transactions)
 	comparison := domain.CompareLandPrice(stats, landPrice, areaSqm)
 	c.JSON(http.StatusOK, comparison)
 }
@@ -164,7 +164,7 @@ func (h *Handler) Analyze(c *gin.Context) {
 		return
 	}
 
-	result := domain.Analyze(input)
+	result := domain.Analyze(c.Request.Context(), input)
 	telemetry.AnalyzeRequestsTotal.Add(c.Request.Context(), 1)
 	c.JSON(http.StatusOK, result)
 }
@@ -317,8 +317,8 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 		return
 	}
 
-	stats := domain.CalcLandPriceStats(transactions)
-	result, ok := domain.EstimateTheoreticalPrice(stats, domain.TheoreticalPriceInput{
+	stats := domain.CalcLandPriceStats(c.Request.Context(), transactions)
+	result, ok := domain.EstimateTheoreticalPrice(c.Request.Context(), stats, domain.TheoreticalPriceInput{
 		ListingPrice:   listingPrice,
 		LandArea:       areaSqm,
 		BuildingAge:    buildingAge,
@@ -646,11 +646,11 @@ func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.Inv
 	if prefCode != "" {
 		go func() {
 			tx, e := h.mlitClient.FetchLandPrices(ctx, mlit.LandPriceQuery{Area: prefCode, Year: 2023, Quarter: 1, ToYear: 2024, ToQuarter: 4})
-			recentLandCh <- landResult{domain.CalcLandPriceStats(tx), e}
+			recentLandCh <- landResult{domain.CalcLandPriceStats(ctx, tx), e}
 		}()
 		go func() {
 			tx, e := h.mlitClient.FetchLandPrices(ctx, mlit.LandPriceQuery{Area: prefCode, Year: 2021, Quarter: 1, ToYear: 2022, ToQuarter: 4})
-			oldLandCh <- landResult{domain.CalcLandPriceStats(tx), e}
+			oldLandCh <- landResult{domain.CalcLandPriceStats(ctx, tx), e}
 		}()
 	} else {
 		recentLandCh <- landResult{}
@@ -1013,7 +1013,7 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 				return
 			}
 
-			stats := domain.CalcLandPriceStats(transactions)
+			stats := domain.CalcLandPriceStats(ctx, transactions)
 
 			item.MedianTsubo = stats.MedianTsubo
 			item.TransactionCount = stats.Count
