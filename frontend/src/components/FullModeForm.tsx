@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import type { InvestmentInput, BuildingType, RateAdjustment } from "@/types/investment";
+import type { InvestmentInput, BuildingType, RateAdjustment, CapexEvent } from "@/types/investment";
 import { toMan, fromMan, toPct, fromPct, formatPct } from "@/lib/utils";
 import type { Municipality } from "@/lib/api";
 import type { RentDeclineHint } from "@/types/investment";
@@ -94,6 +94,9 @@ interface FullModeFormProps {
   removeRateStep: (i: number) => void;
   updateRateStep: (i: number, field: keyof RateAdjustment, value: number) => void;
   canAddRateStep: boolean;
+  addCapexEvent: () => void;
+  removeCapexEvent: (i: number) => void;
+  updateCapexEvent: (i: number, field: "year" | "amount", value: number) => void;
   hasErrors: boolean;
   handleAnalyze: () => void;
 }
@@ -152,6 +155,9 @@ export function FullModeForm({
   removeRateStep,
   updateRateStep,
   canAddRateStep,
+  addCapexEvent,
+  removeCapexEvent,
+  updateCapexEvent,
   hasErrors,
   handleAnalyze,
 }: FullModeFormProps) {
@@ -501,6 +507,40 @@ export function FullModeForm({
                     </p>
                   )}
                 </div>
+              </div>
+
+              {/* 賃料上昇シナリオ（新築・リノベ向け） */}
+              <div className="col-span-full">
+                <details className="group">
+                  <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground select-none">
+                    ▶ 賃料上昇期の設定（新築・リノベ向け）
+                  </summary>
+                  <div className="mt-2 grid grid-cols-2 gap-3 pl-2 border-l-2 border-muted">
+                    <Input
+                      label="年間上昇率"
+                      type="number"
+                      suffix="%"
+                      step="0.1"
+                      min="0"
+                      max="10"
+                      value={toPct(input.rentGrowthRate ?? 0, 1)}
+                      onChange={(e) => setNum("rentGrowthRate", fromPct(e.target.value))}
+                    />
+                    <Input
+                      label="上昇期間"
+                      type="number"
+                      suffix="年"
+                      step="1"
+                      min="0"
+                      max="20"
+                      value={String(input.rentGrowthYears ?? 0)}
+                      onChange={(e) => setNum("rentGrowthYears", parseInt(e.target.value) || 0)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 pl-2">
+                    上昇期終了後は年間賃料下落率が適用されます
+                  </p>
+                </details>
               </div>
             </div>
           </div>
@@ -859,6 +899,63 @@ export function FullModeForm({
               <p className="text-xs text-muted-foreground">
                 金利上昇分はスケジュール後の金利にも上乗せされます
               </p>
+            )}
+          </div>
+
+          {/* 大規模修繕費スケジュール */}
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-foreground">大規模修繕費スケジュール</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs h-7 px-2"
+                disabled={(input.capexSchedule ?? []).length >= 5}
+                onClick={addCapexEvent}
+              >
+                ＋追加
+              </Button>
+            </div>
+            {(input.capexSchedule ?? []).length === 0 ? (
+              <p className="text-xs text-muted-foreground">修繕費なし（追加ボタンで最大5件入力可）</p>
+            ) : (
+              <div className="space-y-2">
+                {(input.capexSchedule ?? []).map((ev, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      label="何年目"
+                      type="number"
+                      suffix="年目"
+                      step="1"
+                      min="1"
+                      max={input.holdingYears || 35}
+                      value={String(ev.year)}
+                      onChange={(e) => updateCapexEvent(i, "year", parseInt(e.target.value) || 1)}
+                      className="w-24"
+                    />
+                    <Input
+                      label="金額"
+                      type="number"
+                      suffix="万円"
+                      step="10"
+                      min="0"
+                      value={String(Math.round(ev.amount / 10_000))}
+                      onChange={(e) => updateCapexEvent(i, "amount", (parseFloat(e.target.value) || 0) * 10_000)}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7 px-2 mt-5 shrink-0"
+                      onClick={() => removeCapexEvent(i)}
+                    >
+                      削除
+                    </Button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
