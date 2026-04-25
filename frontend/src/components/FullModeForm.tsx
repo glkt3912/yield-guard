@@ -928,7 +928,9 @@ export function FullModeForm({
               </Button>
             </div>
             {(input.capexSchedule ?? []).length === 0 ? (
-              <p className="text-xs text-muted-foreground">修繕費なし（追加ボタンで最大5件入力可）</p>
+              <p className="text-xs text-muted-foreground">
+                修繕費なし（追加ボタンで最大5件入力可）
+              </p>
             ) : (
               <div className="space-y-2">
                 {(input.capexSchedule ?? []).map((ev, i) => (
@@ -951,7 +953,9 @@ export function FullModeForm({
                       step="10"
                       min="0"
                       value={String(Math.round(ev.amount / 10_000))}
-                      onChange={(e) => updateCapexEvent(i, "amount", (parseFloat(e.target.value) || 0) * 10_000)}
+                      onChange={(e) =>
+                        updateCapexEvent(i, "amount", (parseFloat(e.target.value) || 0) * 10_000)
+                      }
                       className="flex-1"
                     />
                     <Button

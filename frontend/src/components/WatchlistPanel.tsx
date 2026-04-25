@@ -179,7 +179,10 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
                         DSCR: {item.metrics.dscr.toFixed(2)}
                       </span>
                       <span className="text-xs text-purple-600">
-                        IRR: {item.metrics.irr !== null ? `${(item.metrics.irr * 100).toFixed(1)}%` : "-"}
+                        IRR:{" "}
+                        {item.metrics.irr !== null
+                          ? `${(item.metrics.irr * 100).toFixed(1)}%`
+                          : "-"}
                       </span>
                     </div>
                   )}

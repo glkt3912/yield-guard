@@ -29,8 +29,7 @@ export function MobileSummaryCard({ result, input, yieldPct, netYieldPct }: Prop
 
   const dscrColor =
     dscr >= 1.2 ? "text-green-700" : dscr >= 1.0 ? "text-yellow-700" : "text-red-700";
-  const dscrBg =
-    dscr >= 1.2 ? "bg-green-50" : dscr >= 1.0 ? "bg-yellow-50" : "bg-red-50";
+  const dscrBg = dscr >= 1.2 ? "bg-green-50" : dscr >= 1.0 ? "bg-yellow-50" : "bg-red-50";
 
   async function handlePdf() {
     setPdfLoading(true);
@@ -68,9 +67,13 @@ export function MobileSummaryCard({ result, input, yieldPct, netYieldPct }: Prop
           <p className="text-xs text-muted-foreground">DSCR</p>
           <p className={`font-bold ${dscrColor}`}>{dscr.toFixed(2)}</p>
         </div>
-        <div className={`col-span-1 rounded-lg px-2 py-1.5 ${hasDeadCross ? (deadCrossEarly ? "bg-red-50" : "bg-yellow-50") : "bg-green-50"}`}>
+        <div
+          className={`col-span-1 rounded-lg px-2 py-1.5 ${hasDeadCross ? (deadCrossEarly ? "bg-red-50" : "bg-yellow-50") : "bg-green-50"}`}
+        >
           <p className="text-xs text-muted-foreground">デッドクロス</p>
-          <p className={`font-bold ${hasDeadCross ? (deadCrossEarly ? "text-red-700" : "text-yellow-700") : "text-green-700"}`}>
+          <p
+            className={`font-bold ${hasDeadCross ? (deadCrossEarly ? "text-red-700" : "text-yellow-700") : "text-green-700"}`}
+          >
             {hasDeadCross ? `${deadCrossYear}年目〜` : "なし"}
           </p>
         </div>

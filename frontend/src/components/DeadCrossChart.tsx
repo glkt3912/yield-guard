@@ -83,7 +83,11 @@ function DeadCrossChart({ result }: Props) {
           <ComposedChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis dataKey="year" tick={{ fontSize: 11 }} interval={4} />
-            <YAxis tickFormatter={(v) => `${v}万`} tick={{ fontSize: 11 }} width={isMobile ? 32 : 50} />
+            <YAxis
+              tickFormatter={(v) => `${v}万`}
+              tick={{ fontSize: 11 }}
+              width={isMobile ? 32 : 50}
+            />
             <Tooltip
               formatter={(value: number, name: string) => [`${value}万円`, name]}
               labelStyle={{ fontWeight: "bold" }}
