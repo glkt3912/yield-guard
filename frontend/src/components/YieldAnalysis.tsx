@@ -182,7 +182,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                   <th className="pb-2 text-right font-medium">
                     <TermTooltip term="dscr">DSCR</TermTooltip>
                   </th>
-                  <th className="pb-2 text-right font-medium">黒転年</th>
+                  <th className="pb-2 text-right font-medium">CF黒転年</th>
                   <th className="pb-2 text-right font-medium">判定</th>
                 </tr>
               </thead>
@@ -236,7 +236,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
             <span className="text-green-600">緑≥1.2</span>・
             <span className="text-yellow-600">黄1.0〜1.2</span>・
             <span className="text-red-600">赤&lt;1.0</span>
-            ）。黒転年は累積CF黒転年度（税引後）。年間CFがプラスに転じた年であり、自己資金の回収年ではありません。
+            ）。CF黒転年は累積CF黒転年度（税引後）。年間CFがプラスに転じた年であり、自己資金の回収年ではありません。
           </p>
 
           {/* 人口減少シナリオ */}
