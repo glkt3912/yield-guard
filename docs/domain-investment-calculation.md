@@ -44,6 +44,25 @@ effectiveRate    := input.AnnualLoanRate + input.LoanRateDelta
 `Analyze` の先頭で加算し、以降の全計算に `effectiveVacancy` / `effectiveRate` を使用する。
 元の `VacancyRate` / `AnnualLoanRate` は変更しない。
 
+### 変動金利スケジュール（`RateAdjustmentSchedule`）との重ね合わせ
+
+`resolveRateForYear(baseRate, rateDelta, schedule, year)` は以下のロジックで各年の適用金利を決定する。
+
+```go
+rate := baseRate
+for _, adj := range schedule {
+    if year >= adj.AfterYear {
+        rate = adj.Rate  // スケジュール金利で上書き（絶対値）
+    }
+}
+return rate + rateDelta  // rateDelta は常に加算
+```
+
+- `RateAdjustmentSchedule` が設定されている場合、該当年以降はスケジュール金利（絶対値）に切り替わる。
+- `LoanRateDelta`（ストレスΔ）は **スケジュール適用後の金利にも加算される**。  
+  例: スケジュールで6年目以降 2.0%、ストレス +1% → 6年目以降の実効金利 = **3.0%**
+- LTV 感度分析（`CalcLTVSensitivity`）も初年度実効金利 `resolveRateForYear(..., year=1)` を使用する。
+
 ---
 
 ## 総投資額の計算
