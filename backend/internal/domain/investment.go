@@ -134,6 +134,30 @@ func initDepreciationParams(input InvestmentInput) depreciationParams {
 	}
 }
 
+// capexForYear は CapexSchedule から指定年の修繕費合計を返す。
+func capexForYear(schedule []CapexEvent, year int) float64 {
+	total := 0.0
+	for _, ev := range schedule {
+		if ev.Year == year {
+			total += ev.Amount
+		}
+	}
+	return total
+}
+
+// rentForYear は賃料上昇・下落シナリオを考慮した N 年目の年間実効賃料を返す。
+// y は 0-indexed（1年目 = y=0）。
+func rentForYear(baseRent float64, rentDeclineRate, rentGrowthRate float64, rentGrowthYears, y int) float64 {
+	if rentGrowthRate <= 0 || rentGrowthYears <= 0 {
+		return baseRent * math.Pow(1-rentDeclineRate, float64(y))
+	}
+	if y < rentGrowthYears {
+		return baseRent * math.Pow(1+rentGrowthRate, float64(y))
+	}
+	peak := baseRent * math.Pow(1+rentGrowthRate, float64(rentGrowthYears))
+	return peak * math.Pow(1-rentDeclineRate, float64(y-rentGrowthYears+1))
+}
+
 // simulateYears は年次 P&L ループを実行し yearlyResults・デッドクロス年・累積減価償却額を返す。
 // years は呼び出し元 Analyze() が決定した値をそのまま受け取る。
 func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanParams, dp depreciationParams) simulationResult {
@@ -185,8 +209,7 @@ func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanPara
 			}
 		}
 
-		declineFactor := math.Pow(1-input.RentDeclineRate, float64(y))
-		yearAnnualRent := yp.annualRent * declineFactor
+		yearAnnualRent := rentForYear(yp.annualRent, input.RentDeclineRate, input.RentGrowthRate, input.RentGrowthYears, y)
 		yearExpenses := yearAnnualRent*input.ExpenseRate + input.AnnualPropertyTax
 
 		// 減価償却（定額法または定率法）
@@ -214,7 +237,8 @@ func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanPara
 			incomeTax = taxableIncome * input.IncomeTaxRate
 		}
 
-		cashFlow := yearAnnualRent - annualLoanPayment - yearExpenses
+		capex := capexForYear(input.CapexSchedule, year)
+		cashFlow := yearAnnualRent - annualLoanPayment - yearExpenses - capex
 		afterTaxCF := cashFlow - incomeTax
 		cumulativeCF += afterTaxCF
 
@@ -231,6 +255,7 @@ func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanPara
 
 		yearlyResults[y] = YearlyResult{
 			Year:                 year,
+			CapexAmount:          capex,
 			AnnualRent:           yearAnnualRent,
 			AnnualLoanPayment:    annualLoanPayment,
 			AnnualInterest:       annualInterest,
