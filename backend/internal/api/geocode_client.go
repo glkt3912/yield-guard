@@ -75,7 +75,7 @@ func (c *googleGeocodeClient) Geocode(ctx context.Context, address string) (*Geo
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", errGeocodeUpstream, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%w: HTTP %d", errGeocodeUpstream, resp.StatusCode)
