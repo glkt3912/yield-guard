@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from "react";
+import React from "react";
 import {
   ScatterChart,
   Scatter,
@@ -35,7 +35,7 @@ import {
   Users,
 } from "lucide-react";
 import { calcYieldBenchmark } from "@/lib/yieldBenchmark";
-import { useChartHeight, useIsMobile } from "@/lib/useChartHeight";
+import { useResponsiveChart } from "@/lib/useChartHeight";
 
 const SQM_PER_TSUBO = 3.30578;
 
@@ -114,8 +114,7 @@ export function LandPriceAnalysis({
   hazardRisks,
 }: Props) {
   const { stats, assessment, inputPricePerTsubo, diffFromMedian } = comparison;
-  const scatterHeight = useChartHeight(180, 200, 220);
-  const isMobile = useIsMobile();
+  const { height: scatterHeight, isMobile } = useResponsiveChart(180, 200, 220);
 
   const allUrbanRisks: UrbanRisk[] = [
     ...(stats.urbanRisks ?? []),

@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { InvestmentInput, InvestmentResult } from "@/types/investment";
-import { formatMan, formatPct } from "@/lib/utils";
+import { formatMan } from "@/lib/utils";
 import { CheckCircle, AlertTriangle, FileText } from "lucide-react";
 import { downloadReportPDF } from "@/lib/generatePdf";
 
@@ -19,6 +19,7 @@ interface Props {
  */
 export function MobileSummaryCard({ result, input, yieldPct, netYieldPct }: Props) {
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
 
   const dscr = result.dscr;
   const deadCrossYear = result.deadCrossYear;
@@ -33,8 +34,11 @@ export function MobileSummaryCard({ result, input, yieldPct, netYieldPct }: Prop
 
   async function handlePdf() {
     setPdfLoading(true);
+    setPdfError(false);
     try {
       await downloadReportPDF(input, result);
+    } catch {
+      setPdfError(true);
     } finally {
       setPdfLoading(false);
     }
@@ -93,6 +97,9 @@ export function MobileSummaryCard({ result, input, yieldPct, netYieldPct }: Prop
         <FileText className="h-4 w-4" />
         {pdfLoading ? "生成中..." : "詳細PDFを出力"}
       </button>
+      {pdfError && (
+        <p className="mt-1 text-xs text-destructive">PDF生成に失敗しました。再試行してください。</p>
+      )}
     </div>
   );
 }

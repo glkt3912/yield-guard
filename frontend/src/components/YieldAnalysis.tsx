@@ -14,55 +14,14 @@ import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Users, ChevronDow
 import { TermTooltip } from "@/components/ui/TermTooltip";
 import { MobileSummaryCard } from "@/components/MobileSummaryCard";
 
-/** Mobile 2×3 KPI grid showing 6 critical metrics at a glance */
-function MobileKpiGrid({
-  result,
-  isGood,
-  targetPct,
-  yieldPct,
-  netYieldPct,
-}: {
-  result: InvestmentResult;
-  isGood: boolean;
-  targetPct: number;
-  yieldPct: number;
-  netYieldPct: number;
-}) {
+/**
+ * Mobile 1×2 KPI strip showing metrics not already in MobileSummaryCard.
+ * MobileSummaryCard covers yield/DSCR/dead-cross; this adds investment totals.
+ */
+function MobileKpiGrid({ result }: { result: InvestmentResult }) {
   const firstYearCF = result.yearlyResults[0]?.afterTaxCashFlow ?? 0;
-  const dscr = result.dscr;
-  const deadCrossYear = result.deadCrossYear;
-  const hasDeadCross = deadCrossYear > 0 && deadCrossYear <= 35;
-  const deadCrossEarly = hasDeadCross && deadCrossYear <= 10;
 
   const kpis = [
-    {
-      label: "表面利回り",
-      value: `${yieldPct.toFixed(2)}%`,
-      sub: isGood ? `目標${targetPct}%超え` : `目標${targetPct}%未満`,
-      color: isGood ? "text-green-600" : "text-red-600",
-      bg: isGood ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200",
-    },
-    {
-      label: "実質利回り",
-      value: `${netYieldPct.toFixed(2)}%`,
-      sub: "空室・経費控除後",
-      color: "text-foreground",
-      bg: "bg-muted/40 border-border",
-    },
-    {
-      label: "DSCR",
-      value: dscr.toFixed(2),
-      sub: dscr >= 1.2 ? "良好（融資余裕）" : dscr >= 1.0 ? "注意（最低ライン）" : "危険（融資困難）",
-      color: dscr >= 1.2 ? "text-green-600" : dscr >= 1.0 ? "text-yellow-600" : "text-red-600",
-      bg: dscr >= 1.2 ? "bg-green-50 border-green-200" : dscr >= 1.0 ? "bg-yellow-50 border-yellow-200" : "bg-red-50 border-red-200",
-    },
-    {
-      label: "デッドクロス",
-      value: hasDeadCross ? `${deadCrossYear}年目〜` : "なし",
-      sub: hasDeadCross ? (deadCrossEarly ? "早期発生・要注意" : "税負担増加に注意") : "35年以内問題なし",
-      color: hasDeadCross ? (deadCrossEarly ? "text-red-600" : "text-yellow-600") : "text-green-600",
-      bg: hasDeadCross ? (deadCrossEarly ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200") : "bg-green-50 border-green-200",
-    },
     {
       label: "総投資額",
       value: formatMan(result.totalInvestment),
@@ -124,14 +83,8 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
         netYieldPct={netYieldPct}
       />
 
-      {/* Mobile: 2×3 KPI grid (hidden on desktop) */}
-      <MobileKpiGrid
-        result={result}
-        isGood={isGood}
-        targetPct={targetPct}
-        yieldPct={yieldPct}
-        netYieldPct={netYieldPct}
-      />
+      {/* Mobile: investment totals strip (hidden on desktop) */}
+      <MobileKpiGrid result={result} />
 
       {/* メイン利回り表示 */}
       <Card className={`border-2 ${isGood ? "border-green-400" : "border-red-400"}`}>

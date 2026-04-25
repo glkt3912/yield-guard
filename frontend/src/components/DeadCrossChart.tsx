@@ -18,7 +18,7 @@ import type { InvestmentResult } from "@/types/investment";
 import { formatMan } from "@/lib/utils";
 import { Skull, ShieldCheck } from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
-import { useChartHeight, useIsMobile } from "@/lib/useChartHeight";
+import { useResponsiveChart } from "@/lib/useChartHeight";
 
 interface Props {
   result: InvestmentResult;
@@ -26,8 +26,7 @@ interface Props {
 
 function DeadCrossChart({ result }: Props) {
   const { deadCrossYear, yearlyResults } = result;
-  const chartHeight = useChartHeight(200, 240, 280);
-  const isMobile = useIsMobile();
+  const { height: chartHeight, isMobile } = useResponsiveChart(200, 240, 280);
 
   const data = useMemo(
     () =>

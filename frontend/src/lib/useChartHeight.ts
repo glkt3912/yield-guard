@@ -1,37 +1,43 @@
 "use client";
 import { useEffect, useState } from "react";
 
-/** Returns a responsive chart height based on viewport width (sm/lg breakpoints). */
-export function useChartHeight(mobile: number, tablet: number, desktop: number): number {
-  const [height, setHeight] = useState(desktop);
+interface ResponsiveChartState {
+  height: number;
+  isMobile: boolean;
+}
+
+/**
+ * Returns responsive chart height and mobile flag from a single resize listener.
+ * Initializes with desktop values to avoid SSR hydration mismatch.
+ */
+export function useResponsiveChart(
+  mobile: number,
+  tablet: number,
+  desktop: number
+): ResponsiveChartState {
+  const [state, setState] = useState<ResponsiveChartState>({
+    height: desktop,
+    isMobile: false,
+  });
 
   useEffect(() => {
     function update() {
       const w = window.innerWidth;
-      if (w < 640) setHeight(mobile);
-      else if (w < 1024) setHeight(tablet);
-      else setHeight(desktop);
+      const isMobile = w < 640;
+      setState({
+        height: isMobile ? mobile : w < 1024 ? tablet : desktop,
+        isMobile,
+      });
     }
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, [mobile, tablet, desktop]);
 
-  return height;
+  return state;
 }
 
-/** Returns true when viewport is narrower than Tailwind's sm breakpoint (640px). */
-export function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    function update() {
-      setIsMobile(window.innerWidth < 640);
-    }
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  return isMobile;
+/** Convenience wrapper for components that only need responsive height. */
+export function useChartHeight(mobile: number, tablet: number, desktop: number): number {
+  return useResponsiveChart(mobile, tablet, desktop).height;
 }

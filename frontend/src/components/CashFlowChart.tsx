@@ -18,7 +18,7 @@ import type { InvestmentResult } from "@/types/investment";
 import { formatMan } from "@/lib/utils";
 import { TrendingUp } from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
-import { useChartHeight, useIsMobile } from "@/lib/useChartHeight";
+import { useResponsiveChart } from "@/lib/useChartHeight";
 
 interface Props {
   result: InvestmentResult;
@@ -28,8 +28,7 @@ interface Props {
 
 function CashFlowChart({ result, equityInvested }: Props) {
   const { yearlyResults, exitTotalEquity, exitSalePrice, exitNetProceeds } = result;
-  const chartHeight = useChartHeight(220, 260, 300);
-  const isMobile = useIsMobile();
+  const { height: chartHeight, isMobile } = useResponsiveChart(220, 260, 300);
 
   const data = useMemo(
     () =>
