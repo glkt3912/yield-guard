@@ -1500,3 +1500,94 @@ func TestGetGeocode(t *testing.T) {
 		})
 	}
 }
+
+// TestUpstreamErrorNotExposed は上流APIエラーの詳細がレスポンスに漏洩しないことを検証する
+func TestUpstreamErrorNotExposed(t *testing.T) {
+	// 内部詳細を含む典型的な上流エラー（URLやネットワーク情報）
+	internalErr := errors.New(`Get "https://www.reinfolib.mlit.go.jp/ex-api/external/XIT001": dial tcp 203.0.113.1:443: connect: connection refused`)
+
+	tests := []struct {
+		name        string
+		path        string
+		client      *mockMLITClient
+		wantStatus  int
+		wantMessage string
+	}{
+		{
+			name: "GetLandPrices: 上流エラーが漏洩しない",
+			path: "/api/land-prices/stats?area=13&year=2024&quarter=1&to_year=2024&to_quarter=4",
+			client: &mockMLITClient{fetchFunc: func(_ context.Context, _ mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
+				return nil, internalErr
+			}},
+			wantStatus:  http.StatusBadGateway,
+			wantMessage: "国交省APIからのデータ取得に失敗しました",
+		},
+		{
+			name: "GetMunicipalities: 上流エラーが漏洩しない",
+			path: "/api/municipalities?area=13",
+			client: &mockMLITClient{muniFunc: func(_ context.Context, _ string) ([]mlit.Municipality, error) {
+				return nil, internalErr
+			}},
+			wantStatus:  http.StatusBadGateway,
+			wantMessage: "市区町村一覧の取得に失敗しました",
+		},
+		{
+			name: "GetStationRidership: 上流エラーが漏洩しない",
+			path: "/api/station-ridership?lat=35.68&lng=139.69",
+			client: &mockMLITClient{ridershipFunc: func(_ context.Context, _, _, _ int) ([]mlit.StationRidership, error) {
+				return nil, internalErr
+			}},
+			wantStatus:  http.StatusBadGateway,
+			wantMessage: "駅別乗降客数の取得に失敗しました",
+		},
+		{
+			name: "GetPopulationForecast: 上流エラーが漏洩しない",
+			path: "/api/population-forecast?lat=35.68&lng=139.69",
+			client: &mockMLITClient{populationFunc: func(_ context.Context, _, _, _ int) ([]domain.PopulationForecastItem, error) {
+				return nil, internalErr
+			}},
+			wantStatus:  http.StatusBadGateway,
+			wantMessage: "将来推計人口の取得に失敗しました",
+		},
+		{
+			name: "GetLandAppraisals: 上流エラーが漏洩しない",
+			path: "/api/land-appraisals?area=13&year=2024",
+			client: &mockMLITClient{appraisalFunc: func(_ context.Context, _, _ string, _ int, _ string) ([]domain.LandAppraisalItem, error) {
+				return nil, internalErr
+			}},
+			wantStatus:  http.StatusBadGateway,
+			wantMessage: "地価公示APIからのデータ取得に失敗しました",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newTestRouter(tc.client, nil)
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.wantStatus {
+				t.Errorf("status: want %d, got %d", tc.wantStatus, w.Code)
+			}
+
+			body := w.Body.String()
+
+			// 上流エラーの内部詳細がレスポンスに含まれていないことを確認
+			if strings.Contains(body, "reinfolib.mlit.go.jp") {
+				t.Errorf("response must not contain upstream URL: %s", body)
+			}
+			if strings.Contains(body, "dial tcp") {
+				t.Errorf("response must not contain network error details: %s", body)
+			}
+			if strings.Contains(body, "connect: connection refused") {
+				t.Errorf("response must not contain connection error details: %s", body)
+			}
+
+			// 汎用メッセージが返っていることを確認
+			if !strings.Contains(body, tc.wantMessage) {
+				t.Errorf("response body %q must contain %q", body, tc.wantMessage)
+			}
+		})
+	}
+}

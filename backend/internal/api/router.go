@@ -1,6 +1,7 @@
 package api
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"io"
 	"log/slog"
@@ -18,8 +19,9 @@ import (
 
 func internalKeyMiddleware() gin.HandlerFunc {
 	key := os.Getenv("APP_INTERNAL_API_KEY")
+	keyBytes := []byte(key)
 	return func(c *gin.Context) {
-		if key != "" && c.GetHeader("X-Internal-Key") != key {
+		if key != "" && subtle.ConstantTimeCompare([]byte(c.GetHeader("X-Internal-Key")), keyBytes) != 1 {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
