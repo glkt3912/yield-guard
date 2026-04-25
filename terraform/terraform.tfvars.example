@@ -9,6 +9,7 @@
 #   GCP_PROJECT_ID            = var.project_id
 #   MLIT_API_KEY              = var.mlit_api_key
 #   APP_INTERNAL_API_KEY      = var.app_internal_api_key
+#   GOOGLE_MAPS_API_KEY       = var.google_maps_api_key
 #
 # GitHub Variables（Settings → Secrets and variables → Actions → Variables）:
 #   VERCEL_FRONTEND_URL       = var.vercel_frontend_url
@@ -30,6 +31,12 @@ region               = "asia-northeast1"
 env                  = "prod"
 mlit_api_key         = "your-mlit-api-key"
 app_internal_api_key = "generate with: openssl rand -hex 32"
+google_maps_api_key  = "your-google-maps-api-key"
+# Google Maps Geocoding API: 課金リスク管理
+#   1. Google Cloud Console → API とサービス → 割り当て
+#      → "Geocoding API" → 日次上限を設定（推奨: 1000件/日）
+#   2. Google Cloud Console → お支払い → 予算とアラート
+#      → 予算 $1 を作成し、notification_email に通知
 vercel_frontend_url  = "https://your-app.vercel.app"
 notification_email   = "your@email.com"
 billing_account_id   = "XXXXXX-XXXXXX-XXXXXX"  # gcloud billing accounts list で確認

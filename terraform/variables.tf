@@ -31,6 +31,12 @@ variable "vercel_frontend_url" {
   type        = string
 }
 
+variable "google_maps_api_key" {
+  description = "Google Maps Geocoding API key for server-side address geocoding"
+  type        = string
+  sensitive   = true
+}
+
 variable "billing_account_id" {
   description = "GCP billing account ID for budget alerts (format: XXXXXX-XXXXXX-XXXXXX)"
   type        = string
