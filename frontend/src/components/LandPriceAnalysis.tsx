@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   ScatterChart,
   Scatter,
@@ -35,6 +35,7 @@ import {
   Users,
 } from "lucide-react";
 import { calcYieldBenchmark } from "@/lib/yieldBenchmark";
+import { useChartHeight, useIsMobile } from "@/lib/useChartHeight";
 
 const SQM_PER_TSUBO = 3.30578;
 
@@ -113,6 +114,8 @@ export function LandPriceAnalysis({
   hazardRisks,
 }: Props) {
   const { stats, assessment, inputPricePerTsubo, diffFromMedian } = comparison;
+  const scatterHeight = useChartHeight(180, 200, 220);
+  const isMobile = useIsMobile();
 
   const allUrbanRisks: UrbanRisk[] = [
     ...(stats.urbanRisks ?? []),
@@ -427,7 +430,7 @@ export function LandPriceAnalysis({
             <p className="text-xs font-medium text-muted-foreground">
               取引データ分布（面積 vs 坪単価）
             </p>
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={scatterHeight}>
               <ScatterChart margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
@@ -441,7 +444,7 @@ export function LandPriceAnalysis({
                   name="坪単価"
                   tickFormatter={(v) => `${v}万`}
                   tick={{ fontSize: 10 }}
-                  width={50}
+                  width={isMobile ? 32 : 50}
                 />
                 <Tooltip
                   formatter={(v: number, name: string) => [

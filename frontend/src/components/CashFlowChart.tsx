@@ -18,6 +18,7 @@ import type { InvestmentResult } from "@/types/investment";
 import { formatMan } from "@/lib/utils";
 import { TrendingUp } from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
+import { useChartHeight, useIsMobile } from "@/lib/useChartHeight";
 
 interface Props {
   result: InvestmentResult;
@@ -27,6 +28,8 @@ interface Props {
 
 function CashFlowChart({ result, equityInvested }: Props) {
   const { yearlyResults, exitTotalEquity, exitSalePrice, exitNetProceeds } = result;
+  const chartHeight = useChartHeight(220, 260, 300);
+  const isMobile = useIsMobile();
 
   const data = useMemo(
     () =>
@@ -82,7 +85,7 @@ function CashFlowChart({ result, equityInvested }: Props) {
         </p>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <ComposedChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis dataKey="year" tick={{ fontSize: 11 }} interval={4} />
@@ -90,14 +93,14 @@ function CashFlowChart({ result, equityInvested }: Props) {
               yAxisId="left"
               tickFormatter={(v) => `${v}万`}
               tick={{ fontSize: 11 }}
-              width={55}
+              width={isMobile ? 36 : 55}
             />
             <YAxis
               yAxisId="right"
               orientation="right"
               tickFormatter={(v) => `${v}万`}
               tick={{ fontSize: 11 }}
-              width={55}
+              width={isMobile ? 36 : 55}
             />
             <Tooltip
               formatter={(value: number, name: string) => [`${value}万円`, name]}

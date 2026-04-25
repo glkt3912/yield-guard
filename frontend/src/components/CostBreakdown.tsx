@@ -3,6 +3,7 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { AcquisitionCostBreakdown, InvestmentInput, YearlyResult } from "@/types/investment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useChartHeight } from "@/lib/useChartHeight";
 
 interface Props {
   input: InvestmentInput;
@@ -18,6 +19,8 @@ const fmt = (n: number) =>
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
 
 export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }: Props) {
+  const initialPieHeight = useChartHeight(180, 200, 220);
+  const annualPieHeight = useChartHeight(160, 170, 180);
   // 初期投資の内訳（miscExpenses は別軸の概算値のため表示しない）
   const initialCostItems = [
     { name: "土地", value: input.landPrice },
@@ -99,7 +102,7 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
           初期投資の内訳（合計: {fmt(totalInitial)}）
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={initialPieHeight}>
             <PieChart>
               <Pie
                 data={initialCostItems}
@@ -183,7 +186,7 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
         <div>
           <h3 className="text-sm font-medium text-gray-600 mb-3">年間費用の内訳（1年目）</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={annualPieHeight}>
               <PieChart>
                 <Pie
                   data={annualCostItems}

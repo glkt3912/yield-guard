@@ -18,6 +18,7 @@ import type { InvestmentResult } from "@/types/investment";
 import { formatMan } from "@/lib/utils";
 import { Skull, ShieldCheck } from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
+import { useChartHeight, useIsMobile } from "@/lib/useChartHeight";
 
 interface Props {
   result: InvestmentResult;
@@ -25,6 +26,8 @@ interface Props {
 
 function DeadCrossChart({ result }: Props) {
   const { deadCrossYear, yearlyResults } = result;
+  const chartHeight = useChartHeight(200, 240, 280);
+  const isMobile = useIsMobile();
 
   const data = useMemo(
     () =>
@@ -77,11 +80,11 @@ function DeadCrossChart({ result }: Props) {
         </p>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={280}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <ComposedChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis dataKey="year" tick={{ fontSize: 11 }} interval={4} />
-            <YAxis tickFormatter={(v) => `${v}万`} tick={{ fontSize: 11 }} width={50} />
+            <YAxis tickFormatter={(v) => `${v}万`} tick={{ fontSize: 11 }} width={isMobile ? 32 : 50} />
             <Tooltip
               formatter={(value: number, name: string) => [`${value}万円`, name]}
               labelStyle={{ fontWeight: "bold" }}
