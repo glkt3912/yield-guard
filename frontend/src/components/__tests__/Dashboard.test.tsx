@@ -66,8 +66,8 @@ describe("Dashboard", () => {
 
     render(<Dashboard />);
 
-    // 詳細モードに切り替え
-    await userEvent.click(screen.getByRole("radio", { name: /詳細/ }));
+    // 詳細モードに切り替え（Dashboard は複数箇所にトグルを持つため最初の要素を使う）
+    await userEvent.click(screen.getAllByRole("radio", { name: /詳細/ })[0]);
 
     await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
 
@@ -147,7 +147,7 @@ describe("Dashboard", () => {
     const params = new URLSearchParams("mode=quick&totalPrice=2000&rent=12");
     render(<Dashboard initialParams={params} />);
     // クイックモードのラジオが選択されていること
-    expect(screen.getByRole("radio", { name: /クイック/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getAllByRole("radio", { name: /クイック/ })[0]).toHaveAttribute("aria-checked", "true");
     // 物件価格フィールドが復元されていること
     expect(screen.getByLabelText(/物件価格（土地＋建物の総額）/)).toHaveValue(2000);
   });
@@ -156,7 +156,7 @@ describe("Dashboard", () => {
     const params = new URLSearchParams("mode=full&landPrice=1000&buildingCost=500");
     render(<Dashboard initialParams={params} />);
     // フルモードのラジオが選択されていること
-    expect(screen.getByRole("radio", { name: /詳細/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getAllByRole("radio", { name: /詳細/ })[0]).toHaveAttribute("aria-checked", "true");
   });
 
   it("シミュレーション結果表示後に「この条件を共有」ボタンが表示される", async () => {
