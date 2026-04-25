@@ -1,5 +1,12 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+
+const LOCATION_TYPE_LABEL: Record<string, string> = {
+  ROOFTOP: "番地レベルで取得",
+  RANGE_INTERPOLATED: "住所レベルで取得",
+  GEOMETRIC_CENTER: "地点レベルで取得",
+  APPROXIMATE: "近似位置で取得（精度低）",
+};
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -319,13 +326,6 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   };
   const setStr = (key: keyof InvestmentInput, value: string) =>
     setInput((prev) => ({ ...prev, [key]: value }));
-
-  const locationTypeLabel: Record<string, string> = {
-    ROOFTOP: "番地レベルで取得",
-    RANGE_INTERPOLATED: "住所レベルで取得",
-    GEOMETRIC_CENTER: "地点レベルで取得",
-    APPROXIMATE: "近似位置で取得（精度低）",
-  };
 
   const handleGeocode = useCallback(async () => {
     if (!addressInput.trim()) return;
@@ -739,6 +739,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                         setPropertyLat("");
                         setPropertyLng("");
                       }}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleGeocode(); }}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
                       aria-label="物件住所"
                     />
@@ -754,7 +755,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   </div>
                   {geocodeStatus === "success" && (
                     <p className="text-xs text-green-600">
-                      ✓ {locationTypeLabel[geocodeLocationType] ?? "座標を取得しました"}
+                      ✓ {LOCATION_TYPE_LABEL[geocodeLocationType] ?? "座標を取得しました"}
                     </p>
                   )}
                   {geocodeStatus === "error" && (

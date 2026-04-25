@@ -88,6 +88,9 @@ func (c *googleGeocodeClient) Geocode(ctx context.Context, address string) (*Geo
 
 	switch gr.Status {
 	case "OK":
+		if len(gr.Results) == 0 {
+			return nil, fmt.Errorf("%w: empty results", errGeocodeUpstream)
+		}
 		loc := gr.Results[0].Geometry
 		return &GeocodeResult{
 			Lat:          loc.Location.Lat,

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"sync"
@@ -1208,12 +1209,19 @@ func (h *Handler) GetGeocode(c *gin.Context) {
 		return
 	}
 
-	// 住所はPIIになりうるため先頭10文字のみログに記録する
+	// 住所はPIIになりうるため、accessLogMiddleware が記録するクエリ文字列をマスクする
+	// nil ガードより先に実行することで、全パスでマスクが適用される
 	masked := address
 	if len([]rune(address)) > 10 {
 		masked = string([]rune(address)[:10]) + "***"
 	}
+	c.Request.URL.RawQuery = "address=" + url.QueryEscape(masked)
 	slog.InfoContext(c.Request.Context(), "geocode request", "address_masked", masked)
+
+	if h.geocodeClient == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "ジオコーディングが設定されていません"})
+		return
+	}
 
 	result, err := h.geocodeClient.Geocode(c.Request.Context(), address)
 	if err != nil {

@@ -1392,3 +1392,111 @@ func TestGetHazardInfo_EmptyResult(t *testing.T) {
 		t.Errorf("expected 0 risks, got %d", len(risks))
 	}
 }
+
+// mockGeocodeClient は GeocodeClient インターフェースのテスト用モック
+type mockGeocodeClient struct {
+	geocodeFunc func(ctx context.Context, address string) (*GeocodeResult, error)
+}
+
+func (m *mockGeocodeClient) Geocode(ctx context.Context, address string) (*GeocodeResult, error) {
+	if m.geocodeFunc == nil {
+		return &GeocodeResult{Lat: 35.6762, Lng: 139.6503, LocationType: "ROOFTOP"}, nil
+	}
+	return m.geocodeFunc(ctx, address)
+}
+
+func TestGetGeocode(t *testing.T) {
+	tests := []struct {
+		name          string
+		query         string
+		geocodeClient GeocodeClient
+		wantStatus    int
+		wantLat       float64
+		wantLocType   string
+	}{
+		{
+			name:  "正常系 ROOFTOP",
+			query: "address=東京都渋谷区道玄坂1-2",
+			geocodeClient: &mockGeocodeClient{geocodeFunc: func(_ context.Context, _ string) (*GeocodeResult, error) {
+				return &GeocodeResult{Lat: 35.6585, Lng: 139.7013, LocationType: "ROOFTOP"}, nil
+			}},
+			wantStatus:  http.StatusOK,
+			wantLat:     35.6585,
+			wantLocType: "ROOFTOP",
+		},
+		{
+			name:  "正常系 APPROXIMATE",
+			query: "address=東京都",
+			geocodeClient: &mockGeocodeClient{geocodeFunc: func(_ context.Context, _ string) (*GeocodeResult, error) {
+				return &GeocodeResult{Lat: 35.6895, Lng: 139.6917, LocationType: "APPROXIMATE"}, nil
+			}},
+			wantStatus:  http.StatusOK,
+			wantLocType: "APPROXIMATE",
+		},
+		{
+			name:          "address パラメータ欠落 → 400",
+			query:         "",
+			geocodeClient: &mockGeocodeClient{},
+			wantStatus:    http.StatusBadRequest,
+		},
+		{
+			name:  "ZERO_RESULTS（住所未発見） → 400",
+			query: "address=存在しない住所99999",
+			geocodeClient: &mockGeocodeClient{geocodeFunc: func(_ context.Context, _ string) (*GeocodeResult, error) {
+				return nil, errGeocodeNotFound
+			}},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:  "上流APIエラー → 502",
+			query: "address=東京都渋谷区",
+			geocodeClient: &mockGeocodeClient{geocodeFunc: func(_ context.Context, _ string) (*GeocodeResult, error) {
+				return nil, errGeocodeUpstream
+			}},
+			wantStatus: http.StatusBadGateway,
+		},
+		{
+			name:  "APIキー未設定 → 503",
+			query: "address=東京都渋谷区",
+			geocodeClient: &mockGeocodeClient{geocodeFunc: func(_ context.Context, _ string) (*GeocodeResult, error) {
+				return nil, errGeocodeNotConfigured
+			}},
+			wantStatus: http.StatusServiceUnavailable,
+		},
+		{
+			name:          "geocodeClient nil → 503",
+			query:         "address=東京都渋谷区",
+			geocodeClient: nil,
+			wantStatus:    http.StatusServiceUnavailable,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newTestRouter(&mockMLITClient{}, tc.geocodeClient)
+			apiURL := "/api/geocode"
+			if tc.query != "" {
+				apiURL += "?" + tc.query
+			}
+			req := httptest.NewRequest(http.MethodGet, apiURL, nil)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.wantStatus {
+				t.Errorf("status: want %d, got %d (body: %s)", tc.wantStatus, w.Code, w.Body.String())
+			}
+			if tc.wantStatus == http.StatusOK && tc.wantLat != 0 {
+				var result GeocodeResult
+				if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+					t.Fatalf("failed to decode response: %v", err)
+				}
+				if result.Lat != tc.wantLat {
+					t.Errorf("lat: want %f, got %f", tc.wantLat, result.Lat)
+				}
+				if tc.wantLocType != "" && result.LocationType != tc.wantLocType {
+					t.Errorf("locationType: want %s, got %s", tc.wantLocType, result.LocationType)
+				}
+			}
+		})
+	}
+}
