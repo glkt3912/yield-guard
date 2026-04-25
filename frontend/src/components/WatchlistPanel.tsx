@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trash2, ClipboardList } from "lucide-react";
-import type { WatchlistItem, WatchlistStatus } from "@/types/investment";
+import type { WatchlistItem, WatchlistStatus, InvestmentResult } from "@/types/investment";
 
 const STORAGE_KEY = "yg_watchlist";
 
@@ -40,7 +40,17 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
-export default function WatchlistPanel() {
+function getDscrColor(dscr: number): string {
+  if (dscr >= 1.2) return "text-green-600";
+  if (dscr >= 1.0) return "text-yellow-600";
+  return "text-red-600";
+}
+
+interface WatchlistPanelProps {
+  currentResult?: InvestmentResult;
+}
+
+export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
   const [items, setItems] = useState<WatchlistItem[]>(loadItems);
   const [nameInput, setNameInput] = useState("");
   const [memoInput, setMemoInput] = useState("");
@@ -66,6 +76,18 @@ export default function WatchlistPanel() {
       memo: memoInput.trim(),
       status: "検討中",
       addedAt: new Date().toISOString(),
+      ...(currentResult
+        ? {
+            metrics: {
+              grossYield: currentResult.grossYield,
+              netYield: currentResult.netYield,
+              dscr: currentResult.dscr,
+              irr: currentResult.irr ?? null,
+              totalInvestment: currentResult.totalInvestment,
+              exitTotalEquity: currentResult.exitTotalEquity,
+            },
+          }
+        : {}),
     };
     setItems((prev) => [newItem, ...prev]);
     setNameInput("");
@@ -148,6 +170,19 @@ export default function WatchlistPanel() {
                       {item.status}
                     </span>
                   </div>
+                  {item.metrics && (
+                    <div className="flex flex-wrap gap-2 pt-0.5">
+                      <span className="text-xs text-blue-600">
+                        表面利回り: {(item.metrics.grossYield * 100).toFixed(1)}%
+                      </span>
+                      <span className={`text-xs ${getDscrColor(item.metrics.dscr)}`}>
+                        DSCR: {item.metrics.dscr.toFixed(2)}
+                      </span>
+                      <span className="text-xs text-purple-600">
+                        IRR: {item.metrics.irr !== null ? `${(item.metrics.irr * 100).toFixed(1)}%` : "-"}
+                      </span>
+                    </div>
+                  )}
                   {item.memo && (
                     <p className="truncate text-xs text-muted-foreground">{item.memo}</p>
                   )}
