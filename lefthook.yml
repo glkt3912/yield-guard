@@ -1,0 +1,19 @@
+pre-commit:
+  parallel: true
+  commands:
+    go-lint:
+      glob: "backend/**/*.go"
+      run: cd backend && golangci-lint run ./...
+    frontend-lint:
+      glob: "frontend/src/**/*.{ts,tsx}"
+      run: cd frontend && npm run lint
+    frontend-typecheck:
+      glob: "frontend/src/**/*.{ts,tsx}"
+      run: cd frontend && npm run type-check
+
+pre-push:
+  commands:
+    go-test:
+      run: cd backend && go test -race ./... -timeout 120s
+    frontend-test:
+      run: cd frontend && npm test
