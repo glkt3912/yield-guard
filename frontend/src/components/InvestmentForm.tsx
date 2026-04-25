@@ -19,7 +19,7 @@ import type {
   RateAdjustment,
 } from "@/types/investment";
 import { DEFAULT_INPUT, QUICK_MODE_DEFAULTS } from "@/types/investment";
-import { formatPct } from "@/lib/utils";
+import { formatPct, toMan, fromMan, toPct, fromPct } from "@/lib/utils";
 import {
   fetchMunicipalities,
   fetchRentDeclineHint,
@@ -437,11 +437,6 @@ export function InvestmentForm({
       setInput((prev) => ({ ...prev, loanAmount: savedLoanAmount, loanYears: savedLoanYears }));
     }
   };
-
-  const toMan = (yen: number) => String(Math.round(yen / 10_000));
-  const fromMan = (s: string) => (parseFloat(s) || 0) * 10_000;
-  const toPct = (rate: number, digits = 2) => (rate * 100).toFixed(digits);
-  const fromPct = (s: string) => (parseFloat(s) || 0) / 100;
 
   const addRateStep = () => {
     const schedule = input.rateAdjustmentSchedule;
