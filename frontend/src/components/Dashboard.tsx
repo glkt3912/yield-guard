@@ -47,7 +47,6 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const simulation = useInvestmentSimulation({
-    isOnline,
     simulationMode,
     onUrlUpdate: (qs) => router.replace(qs ? `?${qs}` : "?", { scroll: false }),
   });
