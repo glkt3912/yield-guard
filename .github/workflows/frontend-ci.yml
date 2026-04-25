@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   ci:
-    name: Lint, Type Check & Build
+    name: Format, Lint, Type Check & Build
     runs-on: ubuntu-24.04
 
     defaults:
