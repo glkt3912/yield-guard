@@ -418,12 +418,22 @@ export interface HeatmapResponse {
 
 export type WatchlistStatus = "検討中" | "見送り" | "購入済み";
 
+export interface WatchlistMetrics {
+  grossYield: number;
+  netYield: number;
+  dscr: number;
+  irr: number | null;
+  totalInvestment: number;
+  exitTotalEquity: number;
+}
+
 export interface WatchlistItem {
   id: string;
   name: string;
   memo: string;
   status: WatchlistStatus;
   addedAt: string; // ISO 8601
+  metrics?: WatchlistMetrics;
 }
 
 export interface GeocodeResult {

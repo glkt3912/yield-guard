@@ -222,7 +222,7 @@ export function ResultsSection({
             </>
           )}
           <RenovationPanel />
-          <WatchlistPanel />
+          <WatchlistPanel currentResult={result ?? undefined} />
         </>
       )}
     </section>
