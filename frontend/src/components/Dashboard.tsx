@@ -32,9 +32,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
 
   const isOnline = useNetworkStatus();
 
-  const [simulationMode, setSimulationMode] = useState<SimulationMode>(
-    decoded?.mode ?? "quick"
-  );
+  const [simulationMode, setSimulationMode] = useState<SimulationMode>(decoded?.mode ?? "quick");
   const [modeNotice, setModeNotice] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -249,7 +247,6 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             selectedMunicipalityMsg={selectedMunicipalityMsg}
             setSelectedMunicipalityMsg={setSelectedMunicipalityMsg}
             simulationMode={simulationMode}
-            onModeChange={handleModeChange}
             result={result}
             comparison={comparison}
             theoreticalPrice={theoreticalPrice}
@@ -304,7 +301,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           isOnline={isOnline}
           externalLat={propertyLat}
           externalLng={propertyLng}
-          showModeToggle={false}
+          showModeToggle={true}
         />
       </FormSheet>
     </div>
