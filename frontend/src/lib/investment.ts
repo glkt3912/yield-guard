@@ -717,7 +717,11 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
     const taxableIncome = yearAnnualRent - annualInterest - yearDepreciation - yearExpenses;
     const incomeTax = taxableIncome > 0 ? taxableIncome * input.incomeTaxRate : 0;
 
-    const cashFlow = yearAnnualRent - annualLoanPayment - yearExpenses;
+    const capexAmount = (input.capexSchedule ?? [])
+      .filter((ev) => ev.year === year)
+      .reduce((sum, ev) => sum + ev.amount, 0);
+
+    const cashFlow = yearAnnualRent - annualLoanPayment - yearExpenses - capexAmount;
     const afterTaxCF = cashFlow - incomeTax;
     cumulativeCF += afterTaxCF;
 
@@ -729,10 +733,6 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
       deadCrossYear = year;
       isDeadCrossYear = true;
     }
-
-    const capexAmount = (input.capexSchedule ?? [])
-      .filter((ev) => ev.year === year)
-      .reduce((sum, ev) => sum + ev.amount, 0);
 
     yearlyResults.push({
       year,
