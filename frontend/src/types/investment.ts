@@ -83,6 +83,7 @@ export interface InvestmentInput {
   capexSchedule?: CapexEvent[]; // 大規模修繕費スケジュール（最大5件）
   rentGrowthRate?: number; // 年間賃料上昇率（新築・リノベ向け、例: 0.02 = 2%）
   rentGrowthYears?: number; // 賃料上昇が続く年数
+  loanFeeRate?: number; // 融資諸費用率（保証料・登記費用等の合算）
 }
 
 export interface CapexEvent {
@@ -164,6 +165,7 @@ export interface InvestmentResult {
   ltvSensitivity: LTVSensitivityRow[]; // LTV 感度分析（50%〜90%）
   irr: number | null; // 内部収益率（収束しない場合は null）
   npv: number; // 正味現在価値
+  totalInterest: number; // 保有期間の総支払利息
 }
 
 export interface LandTransaction {
