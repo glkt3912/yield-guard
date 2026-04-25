@@ -34,12 +34,11 @@ func resolveRateForYear(baseRate, rateDelta float64, schedule []RateAdjustment, 
 
 // yieldParams は yield / vacancy の初期計算結果をまとめた内部 struct。
 type yieldParams struct {
-	effectiveVacancy float64
-	miscExpenses     float64
-	totalInvestment  float64
-	annualRent       float64
-	grossYield       float64
-	netYield         float64
+	miscExpenses    float64
+	totalInvestment float64
+	annualRent      float64
+	grossYield      float64
+	netYield        float64
 }
 
 // loanParams はローン初期値をまとめた内部 struct。
@@ -88,12 +87,11 @@ func initYieldParams(input InvestmentInput) yieldParams {
 		netYield = (annualRent - annualExpenses) / totalInvestment
 	}
 	return yieldParams{
-		effectiveVacancy: effectiveVacancy,
-		miscExpenses:     miscExpenses,
-		totalInvestment:  totalInvestment,
-		annualRent:       annualRent,
-		grossYield:       grossYield,
-		netYield:         netYield,
+		miscExpenses:    miscExpenses,
+		totalInvestment: totalInvestment,
+		annualRent:      annualRent,
+		grossYield:      grossYield,
+		netYield:        netYield,
 	}
 }
 
@@ -131,10 +129,7 @@ func initDepreciationParams(input InvestmentInput) depreciationParams {
 }
 
 // simulateYears は年次 P&L ループを実行し yearlyResults・デッドクロス年・累積減価償却額を返す。
-// max(LoanYears, HoldingYears, 35) 年分のシミュレーションを行う理由:
-//   - LoanYears: ローン完済まで元金返済額が正確に追える
-//   - HoldingYears: 売却試算年が範囲内に収まる
-//   - 35: フロントのグラフ表示が35年固定のため最低35年分を保証
+// years は呼び出し元 Analyze() が決定した値をそのまま受け取る。
 func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanParams, dp depreciationParams) simulationResult {
 	yearlyResults := make([]YearlyResult, years)
 	remainingBalance := input.LoanAmount
@@ -329,6 +324,10 @@ func Analyze(input InvestmentInput) InvestmentResult {
 	lp := initLoanParams(input)
 	dp := initDepreciationParams(input)
 
+	// シミュレーション期間: max(LoanYears, HoldingYears, 35)
+	//   - LoanYears: ローン完済まで元金返済額が正確に追える
+	//   - HoldingYears: 売却試算年が範囲内に収まる
+	//   - 35: フロントのグラフ表示が35年固定のため最低35年分を保証
 	years := input.LoanYears
 	if input.HoldingYears > years {
 		years = input.HoldingYears
