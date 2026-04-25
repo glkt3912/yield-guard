@@ -2662,7 +2662,7 @@ func TestRentGrowthScenario(t *testing.T) {
 	}
 
 	// 3年目(y=2): 上昇期 → baseRent * 1.02^2
-	want2 := baseAnnualRent * math.Pow(1+growthRate, 2)
+	want2 := baseAnnualRent * (1 + growthRate) * (1 + growthRate)
 	got2 := rentForYear(baseAnnualRent, declineRate, growthRate, growthYears, 2)
 	if !approxEqual(got2, want2, 1.0) {
 		t.Errorf("y=2: rent=%.0f, want %.0f", got2, want2)
@@ -2670,7 +2670,7 @@ func TestRentGrowthScenario(t *testing.T) {
 
 	// 4年目(y=3): 上昇期終了後1年目 → peak * (1-0.01)^1
 	peak := baseAnnualRent * math.Pow(1+growthRate, float64(growthYears))
-	want3 := peak * math.Pow(1-declineRate, 1)
+	want3 := peak * (1 - declineRate)
 	got3 := rentForYear(baseAnnualRent, declineRate, growthRate, growthYears, 3)
 	if !approxEqual(got3, want3, 1.0) {
 		t.Errorf("y=3: rent=%.0f, want %.0f", got3, want3)
