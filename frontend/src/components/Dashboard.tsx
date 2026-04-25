@@ -59,6 +59,7 @@ import { AreaDiscovery } from "@/components/AreaDiscovery";
 import dynamic from "next/dynamic";
 import { FirstTimerGuide } from "@/components/FirstTimerGuide";
 import { SAMPLE_PROPERTY, ONBOARDING_KEY } from "@/lib/sampleProperty";
+import { FormSheet } from "@/components/FormSheet";
 
 const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
 
@@ -614,49 +615,28 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
       </div>
 
       {/* Mobile: bottom sheet overlay */}
-      {mobileFormOpen && (
-        <div
-          className="fixed inset-0 z-50 lg:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label="投資条件入力"
-        >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileFormOpen(false)} />
-          {/* Sheet */}
-          <div className="absolute bottom-0 left-0 right-0 max-h-[90vh] overflow-y-auto rounded-t-2xl bg-background shadow-xl">
-            <div className="sticky top-0 flex items-center justify-between border-b bg-background px-4 py-3">
-              <h2 className="text-base font-semibold">投資条件を編集</h2>
-              <button
-                ref={closeButtonRef}
-                onClick={() => setMobileFormOpen(false)}
-                className="flex h-[44px] w-[44px] items-center justify-center rounded-full hover:bg-muted transition-colors"
-                aria-label="閉じる"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="px-4 py-4">
-              <InvestmentForm
-                onAnalyze={(input, quickTotalMan) => {
-                  setMobileFormOpen(false);
-                  return handleAnalyze(input, quickTotalMan);
-                }}
-                onFetchLandPrices={handleFetchLandPrices}
-                loading={loading}
-                simulationMode={simulationMode}
-                onModeChange={handleModeChange}
-                initialInput={lastInput ?? decoded?.input}
-                initialQuickTotalPriceMan={lastInput ? undefined : decoded?.quickTotalPriceMan}
-                isOnline={isOnline}
-                externalLat={propertyLat}
-                externalLng={propertyLng}
-                showModeToggle={false}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <FormSheet
+        isOpen={mobileFormOpen}
+        onClose={() => setMobileFormOpen(false)}
+        closeButtonRef={closeButtonRef}
+      >
+        <InvestmentForm
+          onAnalyze={(input, quickTotalMan) => {
+            setMobileFormOpen(false);
+            return handleAnalyze(input, quickTotalMan);
+          }}
+          onFetchLandPrices={handleFetchLandPrices}
+          loading={loading}
+          simulationMode={simulationMode}
+          onModeChange={handleModeChange}
+          initialInput={lastInput ?? decoded?.input}
+          initialQuickTotalPriceMan={lastInput ? undefined : decoded?.quickTotalPriceMan}
+          isOnline={isOnline}
+          externalLat={propertyLat}
+          externalLng={propertyLng}
+          showModeToggle={false}
+        />
+      </FormSheet>
     </div>
   );
 }
