@@ -503,6 +503,7 @@ func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 
 	// 全年エラーの場合のみ502を返す
 	if len(itemsByYear) == 0 && fetchErr != nil {
+		slog.ErrorContext(c.Request.Context(), "FetchLandAppraisals failed for all years", "err", fetchErr)
 		badGateway(c, "地価公示APIからのデータ取得に失敗しました")
 		return
 	}
