@@ -15,12 +15,23 @@ dev:
 	echo "==> Starting backend..."; \
 	(cd backend && set -a; . ../.env; set +a; go run ./cmd/server) & \
 	BACKEND_PID=$$!; \
-	sleep 3; \
-	if ! kill -0 $$BACKEND_PID 2>/dev/null; then \
-	  echo "ERROR: バックエンドの起動に失敗しました。ログを確認してください。"; \
+	echo "==> Waiting for backend (up to 30s)..."; \
+	for i in $$(seq 1 30); do \
+	  if curl -sf http://localhost:8080/health > /dev/null 2>&1; then \
+	    echo "==> Backend ready (PID=$$BACKEND_PID)"; \
+	    break; \
+	  fi; \
+	  if ! kill -0 $$BACKEND_PID 2>/dev/null; then \
+	    echo "ERROR: バックエンドの起動に失敗しました。ログを確認してください。"; \
+	    exit 1; \
+	  fi; \
+	  sleep 1; \
+	done; \
+	if ! curl -sf http://localhost:8080/health > /dev/null 2>&1; then \
+	  echo "ERROR: バックエンドが 30 秒以内に応答しませんでした。"; \
+	  kill $$BACKEND_PID 2>/dev/null; \
 	  exit 1; \
 	fi; \
-	echo "==> Backend started (PID=$$BACKEND_PID)"; \
 	echo "==> Starting frontend..."; \
 	(cd frontend && npm run dev) & \
 	wait
