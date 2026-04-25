@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -47,7 +48,14 @@ func TestParseLatLng_Global(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			c.Request, _ = http.NewRequest("GET", "/?lat="+tc.lat+"&lng="+tc.lng, nil)
+			q := url.Values{}
+			if tc.lat != "" {
+				q.Set("lat", tc.lat)
+			}
+			if tc.lng != "" {
+				q.Set("lng", tc.lng)
+			}
+			c.Request, _ = http.NewRequest("GET", "/?"+q.Encode(), nil)
 			lat, lng, ok := parseLatLng(c, coordsGlobal)
 			if ok != tc.wantOK {
 				t.Errorf("ok = %v, want %v (status %d)", ok, tc.wantOK, w.Code)
@@ -64,29 +72,37 @@ func TestParseLatLng_Global(t *testing.T) {
 
 func TestParseLatLng_JapanOnly(t *testing.T) {
 	cases := []struct {
-		name   string
-		lat    string
-		lng    string
-		wantOK bool
+		name    string
+		lat     string
+		lng     string
+		wantOK  bool
+		wantLat float64
+		wantLng float64
 	}{
-		{"valid tokyo", "35.6762", "139.6503", true},
-		{"lat below japan", "19", "139.6503", false},
-		{"lat above japan", "47", "139.6503", false},
-		{"lng below japan", "35.6762", "121", false},
-		{"lng above japan", "35.6762", "155", false},
-		{"boundary lat min", "20", "139", true},
-		{"boundary lat max", "46", "139", true},
-		{"boundary lng min", "35", "122", true},
-		{"boundary lng max", "35", "154", true},
+		{"valid tokyo", "35.6762", "139.6503", true, 35.6762, 139.6503},
+		{"lat below japan", "19", "139.6503", false, 0, 0},
+		{"lat above japan", "47", "139.6503", false, 0, 0},
+		{"lng below japan", "35.6762", "121", false, 0, 0},
+		{"lng above japan", "35.6762", "155", false, 0, 0},
+		{"boundary lat min", "20", "139", true, 20, 139},
+		{"boundary lat max", "46", "139", true, 46, 139},
+		{"boundary lng min", "35", "122", true, 35, 122},
+		{"boundary lng max", "35", "154", true, 35, 154},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			c.Request, _ = http.NewRequest("GET", "/?lat="+tc.lat+"&lng="+tc.lng, nil)
-			_, _, ok := parseLatLng(c, coordsJapanOnly)
+			q := url.Values{}
+			q.Set("lat", tc.lat)
+			q.Set("lng", tc.lng)
+			c.Request, _ = http.NewRequest("GET", "/?"+q.Encode(), nil)
+			lat, lng, ok := parseLatLng(c, coordsJapanOnly)
 			if ok != tc.wantOK {
 				t.Errorf("ok = %v, want %v (status %d)", ok, tc.wantOK, w.Code)
+			}
+			if ok && (lat != tc.wantLat || lng != tc.wantLng) {
+				t.Errorf("lat/lng = %v/%v, want %v/%v", lat, lng, tc.wantLat, tc.wantLng)
 			}
 			if !ok && w.Code != http.StatusBadRequest {
 				t.Errorf("status = %d, want 400", w.Code)
