@@ -32,42 +32,87 @@ func resolveRateForYear(baseRate, rateDelta float64, schedule []RateAdjustment, 
 	return rate + rateDelta
 }
 
-// Analyze は投資入力値から収支シミュレーション結果を算出する
-func Analyze(input InvestmentInput) InvestmentResult {
-	input.Defaults()
+// yieldParams は yield / vacancy の初期計算結果をまとめた内部 struct。
+type yieldParams struct {
+	effectiveVacancy float64
+	miscExpenses     float64
+	totalInvestment  float64
+	annualRent       float64
+	grossYield       float64
+	netYield         float64
+}
 
-	// ストレステスト値を適用（空室率は99%上限でキャップ）
+// loanParams はローン初期値をまとめた内部 struct。
+// currentRate / monthlyPayment は変動金利スケジュールによりループ内で変化するため、
+// ループ開始時にローカル変数へコピーして使う。
+type loanParams struct {
+	currentRate           float64
+	monthlyPayment        float64
+	monthlyPrincipalFixed float64 // 元金均等返済のみ非ゼロ
+}
+
+// depreciationParams は減価償却初期値をまとめた内部 struct。
+// bookValue は定率法でループ内に変化するため、ループ開始時にローカル変数へコピーして使う。
+type depreciationParams struct {
+	usefulLife         int
+	annualDepreciation float64 // 定額法定数。定率法では 0
+	bookValue          float64 // 定率法のみ非ゼロ
+	decliningRate      float64 // 定率法のみ非ゼロ
+}
+
+// simulationResult は年次シミュレーションループの出力をまとめた内部 struct。
+type simulationResult struct {
+	yearlyResults           []YearlyResult
+	accumulatedDepreciation float64
+	deadCrossYear           int // -1 = デッドクロスなし
+}
+
+// irrNPVResult は IRR / NPV 計算結果をまとめた内部 struct。
+type irrNPVResult struct {
+	irr *float64
+	npv float64
+}
+
+func initYieldParams(input InvestmentInput) yieldParams {
 	effectiveVacancy := math.Min(input.VacancyRate+input.VacancyRateDelta, 0.99)
-
 	miscExpenses := (input.LandPrice + input.BuildingCost) * input.MiscExpenseRate
 	totalInvestment := input.LandPrice + input.BuildingCost + miscExpenses
-
 	annualRent := input.MonthlyRent * 12 * (1 - effectiveVacancy)
 	grossYield := 0.0
 	if totalInvestment > 0 {
 		grossYield = (input.MonthlyRent * 12) / totalInvestment
 	}
-
 	annualExpenses := annualRent * input.ExpenseRate
 	netYield := 0.0
 	if totalInvestment > 0 {
 		netYield = (annualRent - annualExpenses) / totalInvestment
 	}
+	return yieldParams{
+		effectiveVacancy: effectiveVacancy,
+		miscExpenses:     miscExpenses,
+		totalInvestment:  totalInvestment,
+		annualRent:       annualRent,
+		grossYield:       grossYield,
+		netYield:         netYield,
+	}
+}
 
-	// 目標利回り逆算
-	requiredRent, landDrop := calcRequiredForTarget(input, totalInvestment)
-
-	// ローン月次計算（変動金利+返済方式に応じて切り替え）
+func initLoanParams(input InvestmentInput) loanParams {
 	currentRate := resolveRateForYear(input.AnnualLoanRate, input.LoanRateDelta, input.RateAdjustmentSchedule, 1)
-	var monthlyPayment float64
-	var monthlyPrincipalFixed float64
+	var monthlyPayment, monthlyPrincipalFixed float64
 	if input.LoanMethod == LoanMethodEqualPrincipal && input.LoanYears > 0 {
 		monthlyPrincipalFixed = input.LoanAmount / float64(input.LoanYears*12)
 	} else {
 		monthlyPayment = calcMonthlyPayment(input.LoanAmount, currentRate, input.LoanYears)
 	}
+	return loanParams{
+		currentRate:           currentRate,
+		monthlyPayment:        monthlyPayment,
+		monthlyPrincipalFixed: monthlyPrincipalFixed,
+	}
+}
 
-	// 減価償却
+func initDepreciationParams(input InvestmentInput) depreciationParams {
 	// 中古物件は簡便法耐用年数を使用（新築は法定耐用年数）
 	usefulLife := CalcResidualUsefulLife(input.BuildingType, input.BuildingAge)
 	annualDepreciation := input.BuildingCost / float64(usefulLife)
@@ -77,25 +122,30 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		bookValue = input.BuildingCost
 		decliningRate = 1.5 / float64(usefulLife)
 	}
-
-	// 年次シミュレーション期間の決定
-	// max(LoanYears, HoldingYears, 35) を採用する理由:
-	//   - LoanYears: ローン完済まで元金返済額が正確に追える
-	//   - HoldingYears: 売却試算年が範囲内に収まる
-	//   - 35: フロントのグラフ表示が35年固定のため最低35年分を保証
-	years := input.LoanYears
-	if input.HoldingYears > years {
-		years = input.HoldingYears
+	return depreciationParams{
+		usefulLife:         usefulLife,
+		annualDepreciation: annualDepreciation,
+		bookValue:          bookValue,
+		decliningRate:      decliningRate,
 	}
-	if years < 35 {
-		years = 35
-	}
+}
 
+// simulateYears は年次 P&L ループを実行し yearlyResults・デッドクロス年・累積減価償却額を返す。
+// max(LoanYears, HoldingYears, 35) 年分のシミュレーションを行う理由:
+//   - LoanYears: ローン完済まで元金返済額が正確に追える
+//   - HoldingYears: 売却試算年が範囲内に収まる
+//   - 35: フロントのグラフ表示が35年固定のため最低35年分を保証
+func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanParams, dp depreciationParams) simulationResult {
 	yearlyResults := make([]YearlyResult, years)
 	remainingBalance := input.LoanAmount
 	cumulativeCF := 0.0
 	deadCrossYear := -1
 	var accumulatedDepreciation float64
+
+	// loanParams / depreciationParams の可変フィールドをループローカルにコピー
+	currentRate := lp.currentRate
+	monthlyPayment := lp.monthlyPayment
+	bookValue := dp.bookValue
 
 	for y := 0; y < years; y++ {
 		year := y + 1
@@ -119,7 +169,7 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		if remainingBalance > 0 && year <= input.LoanYears {
 			if input.LoanMethod == LoanMethodEqualPrincipal {
 				annualInterest, annualPrincipal = calcYearlyLoanComponentsEqualPrincipal(
-					remainingBalance, currentRate, monthlyPrincipalFixed,
+					remainingBalance, currentRate, lp.monthlyPrincipalFixed,
 				)
 				annualLoanPayment = annualInterest + annualPrincipal
 			} else {
@@ -135,7 +185,7 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		}
 
 		declineFactor := math.Pow(1-input.RentDeclineRate, float64(y))
-		yearAnnualRent := annualRent * declineFactor
+		yearAnnualRent := yp.annualRent * declineFactor
 		yearExpenses := yearAnnualRent*input.ExpenseRate + input.AnnualPropertyTax
 
 		// 減価償却（定額法または定率法）
@@ -143,15 +193,15 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		switch input.DepreciationMethod {
 		case DepreciationMethodDecliningBalance:
 			if bookValue > 1.0 {
-				yearDepreciation = bookValue * decliningRate
+				yearDepreciation = bookValue * dp.decliningRate
 				if bookValue-yearDepreciation < 1.0 {
 					yearDepreciation = bookValue - 1.0
 				}
 				bookValue -= yearDepreciation
 			}
 		default:
-			if year <= usefulLife {
-				yearDepreciation = annualDepreciation
+			if year <= dp.usefulLife {
+				yearDepreciation = dp.annualDepreciation
 			}
 		}
 		accumulatedDepreciation += yearDepreciation
@@ -198,24 +248,18 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		}
 	}
 
-	// DSCR: 1年目の NOI / 年間返済額
-	dscr := 0.0
-	if len(yearlyResults) > 0 {
-		noi := yearlyResults[0].AnnualRent - yearlyResults[0].AnnualExpenses
-		dscr = CalcDSCR(noi, yearlyResults[0].AnnualLoanPayment)
+	return simulationResult{
+		yearlyResults:           yearlyResults,
+		accumulatedDepreciation: accumulatedDepreciation,
+		deadCrossYear:           deadCrossYear,
 	}
+}
 
-	// 出口戦略 (holdingYears 年後に売却)
-	exitSalePrice, exitCapGain, exitTax, exitNet, exitEquity := calcExit(
-		input, yearlyResults, accumulatedDepreciation, miscExpenses,
-	)
-
-	criticalErrors := calcCriticalErrors(input, deadCrossYear, usefulLife)
-
-	// ストレスシナリオ自動計算（6つのデフォルト + 入力値が非ゼロなら第7シナリオ）
-	// goroutine で並列計算（インデックス固定の slice に直書きするため mutex 不要）
+// calcAllStressScenarios は 6 つのデフォルトシナリオ（入力値が非ゼロなら第 7 カスタムシナリオも）を
+// goroutine で並列計算して返す。インデックス固定の slice に直書きするため mutex 不要。
+func calcAllStressScenarios(input InvestmentInput) []StressScenarioResult {
 	type scenarioDef struct {
-		label    string
+		label     string
 		rateDelta float64
 		vacDelta  float64
 	}
@@ -244,8 +288,69 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		}(i)
 	}
 	wg.Wait()
-	stressScenarios := scenarioResults
+	return scenarioResults
+}
 
+// calcIRRNPV は IRR / NPV を計算して返す。
+// equity がゼロ以下（オーバーローン）または HoldingYears=0 の場合は計算が成立しないためゼロ値を返す。
+func calcIRRNPV(
+	input InvestmentInput,
+	yearlyResults []YearlyResult,
+	equity float64,
+	exitNet float64,
+	exitSalePrice float64,
+	accumulatedDepreciation float64,
+	miscExpenses float64,
+) irrNPVResult {
+	if equity <= 0 || input.HoldingYears <= 0 {
+		return irrNPVResult{}
+	}
+	irrCFs := make([]float64, input.HoldingYears)
+	for i := 0; i < input.HoldingYears && i < len(yearlyResults); i++ {
+		irrCFs[i] = yearlyResults[i].AfterTaxCashFlow
+	}
+	irrTerminalValue := exitNet
+	if input.PriceDeclineRate > 0 {
+		decayFactor := math.Pow(1-input.PriceDeclineRate, float64(input.HoldingYears))
+		adjustedSalePrice := exitSalePrice * decayFactor
+		irrTerminalValue = calcTerminalValueWithDecline(input, yearlyResults, adjustedSalePrice, accumulatedDepreciation, miscExpenses)
+	}
+	npv := CalcNPV(irrCFs, irrTerminalValue, input.DiscountRate, equity)
+	irr, _ := CalcIRR(irrCFs, irrTerminalValue, equity)
+	return irrNPVResult{irr: irr, npv: npv}
+}
+
+// Analyze は投資入力値から収支シミュレーション結果を算出する
+func Analyze(input InvestmentInput) InvestmentResult {
+	input.Defaults()
+
+	yp := initYieldParams(input)
+	requiredRent, landDrop := calcRequiredForTarget(input, yp.totalInvestment)
+	lp := initLoanParams(input)
+	dp := initDepreciationParams(input)
+
+	years := input.LoanYears
+	if input.HoldingYears > years {
+		years = input.HoldingYears
+	}
+	if years < 35 {
+		years = 35
+	}
+
+	sim := simulateYears(input, years, yp, lp, dp)
+
+	dscr := 0.0
+	if len(sim.yearlyResults) > 0 {
+		noi := sim.yearlyResults[0].AnnualRent - sim.yearlyResults[0].AnnualExpenses
+		dscr = CalcDSCR(noi, sim.yearlyResults[0].AnnualLoanPayment)
+	}
+
+	exitSalePrice, exitCapGain, exitTax, exitNet, exitEquity := calcExit(
+		input, sim.yearlyResults, sim.accumulatedDepreciation, yp.miscExpenses,
+	)
+
+	criticalErrors := calcCriticalErrors(input, sim.deadCrossYear, dp.usefulLife)
+	stressScenarios := calcAllStressScenarios(input)
 	acquisitionCosts := CalcAcquisitionCosts(
 		input.LandPrice,
 		input.BuildingCost,
@@ -254,41 +359,24 @@ func Analyze(input InvestmentInput) InvestmentResult {
 			LoanAmount:          input.LoanAmount,
 		},
 	)
-
-	yieldScenarios := calcYieldScenarios(input, totalInvestment)
+	yieldScenarios := calcYieldScenarios(input, yp.totalInvestment)
 	ltvSensitivity := CalcLTVSensitivity(input, nil)
 
-	// IRR / NPV 計算
-	// equity がゼロ以下（オーバーローン）または HoldingYears=0 の場合は計算が成立しない
-	equity := totalInvestment - input.LoanAmount
-	var irr *float64
-	var npv float64
-	if equity > 0 && input.HoldingYears > 0 {
-		irrCFs := make([]float64, input.HoldingYears)
-		for i := 0; i < input.HoldingYears && i < len(yearlyResults); i++ {
-			irrCFs[i] = yearlyResults[i].AfterTaxCashFlow
-		}
-		irrTerminalValue := exitNet
-		if input.PriceDeclineRate > 0 && input.HoldingYears > 0 {
-			decayFactor := math.Pow(1-input.PriceDeclineRate, float64(input.HoldingYears))
-			adjustedSalePrice := exitSalePrice * decayFactor
-			irrTerminalValue = calcTerminalValueWithDecline(input, yearlyResults, adjustedSalePrice, accumulatedDepreciation, miscExpenses)
-		}
-		npv = CalcNPV(irrCFs, irrTerminalValue, input.DiscountRate, equity)
-		irr, _ = CalcIRR(irrCFs, irrTerminalValue, equity)
-	}
+	equity := yp.totalInvestment - input.LoanAmount
+	irrNPV := calcIRRNPV(input, sim.yearlyResults, equity, exitNet,
+		exitSalePrice, sim.accumulatedDepreciation, yp.miscExpenses)
 
 	return InvestmentResult{
-		TotalInvestment:       totalInvestment,
-		MiscExpenses:          miscExpenses,
-		GrossYield:            grossYield,
-		NetYield:              netYield,
-		IsAboveYieldTarget:    grossYield >= input.YieldTarget,
+		TotalInvestment:       yp.totalInvestment,
+		MiscExpenses:          yp.miscExpenses,
+		GrossYield:            yp.grossYield,
+		NetYield:              yp.netYield,
+		IsAboveYieldTarget:    yp.grossYield >= input.YieldTarget,
 		YieldTarget:           input.YieldTarget,
 		RequiredCostReduction: landDrop,
 		RequiredMonthlyRent:   requiredRent,
-		DeadCrossYear:         deadCrossYear,
-		YearlyResults:         yearlyResults,
+		DeadCrossYear:         sim.deadCrossYear,
+		YearlyResults:         sim.yearlyResults,
 		CriticalErrors:        criticalErrors,
 		AcquisitionCosts:      acquisitionCosts,
 		ExitSalePrice:         exitSalePrice,
@@ -300,8 +388,8 @@ func Analyze(input InvestmentInput) InvestmentResult {
 		YieldScenarios:        yieldScenarios,
 		DSCR:                  dscr,
 		LTVSensitivity:        ltvSensitivity,
-		IRR:                   irr,
-		NPV:                   npv,
+		IRR:                   irrNPV.irr,
+		NPV:                   irrNPV.npv,
 	}
 }
 
