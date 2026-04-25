@@ -2721,3 +2721,69 @@ func TestRentGrowthYearsZero(t *testing.T) {
 		}
 	}
 }
+
+// TestLoanFeeRate は LoanFeeRate=0.02 のとき TotalInvestment が LoanAmount×0.02 だけ増えることを検証する。
+func TestLoanFeeRate(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	withoutFee := Analyze(context.Background(), base)
+
+	withFee := base
+	withFee.LoanFeeRate = 0.02
+	resultWithFee := Analyze(context.Background(), withFee)
+
+	expectedIncrease := base.LoanAmount * 0.02 // 13,000,000 × 0.02 = 260,000
+	actualIncrease := resultWithFee.TotalInvestment - withoutFee.TotalInvestment
+
+	if !approxEqual(actualIncrease, expectedIncrease, epsilon) {
+		t.Errorf("TotalInvestment increase = %.0f, want %.0f (LoanAmount × LoanFeeRate)",
+			actualIncrease, expectedIncrease)
+	}
+}
+
+// TestTotalInterest は TotalInterest が保有期間の Σ AnnualInterest と一致することを検証する。
+func TestTotalInterest(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(context.Background(), input)
+
+	// 保有期間内（HoldingYears以内）の AnnualInterest を合計して比較
+	var sumInterest float64
+	for _, yr := range result.YearlyResults {
+		if yr.Year <= input.HoldingYears {
+			sumInterest += yr.AnnualInterest
+		}
+	}
+
+	if !approxEqual(result.TotalInterest, sumInterest, epsilon) {
+		t.Errorf("TotalInterest = %.2f, want Σ AnnualInterest = %.2f", result.TotalInterest, sumInterest)
+	}
+}
