@@ -2591,3 +2591,99 @@ func TestBuildHazardRisks_AllFour(t *testing.T) {
 		}
 	}
 }
+
+// baseInput は CapexSchedule / RentGrowth テスト用の共通入力
+func capexBaseInput() InvestmentInput {
+	return InvestmentInput{
+		LandPrice:          5_000_000,
+		BuildingCost:       10_000_000,
+		MiscExpenseRate:    0.07,
+		MonthlyRent:        100_000,
+		VacancyRate:        0.05,
+		LoanAmount:         12_000_000,
+		AnnualLoanRate:     0.015,
+		LoanYears:          35,
+		BuildingType:       BuildingTypeWood,
+		ExpenseRate:        0.20,
+		IncomeTaxRate:      0.33,
+		HoldingYears:       20,
+		ExitYieldTarget:    0.06,
+		DepreciationMethod: DepreciationMethodStraightLine,
+	}
+}
+
+// TestCapexSchedule は大規模修繕費が指定年の CF から正しく控除されることを検証する。
+func TestCapexSchedule(t *testing.T) {
+	const capexAmount = 5_000_000.0 // 15年目に500万円の修繕費
+
+	base := capexBaseInput()
+	withCapex := capexBaseInput()
+	withCapex.CapexSchedule = []CapexEvent{{Year: 15, Amount: capexAmount}}
+
+	rBase := Analyze(context.Background(), base)
+	rWith := Analyze(context.Background(), withCapex)
+
+	// 15年目: 修繕費分だけ CashFlow / AfterTaxCashFlow が小さくなること
+	baseCF15 := rBase.YearlyResults[14].AfterTaxCashFlow
+	withCF15 := rWith.YearlyResults[14].AfterTaxCashFlow
+	if !approxEqual(baseCF15-withCF15, capexAmount, 1.0) {
+		t.Errorf("15年目のAfterTaxCF差 = %.0f, want %.0f", baseCF15-withCF15, capexAmount)
+	}
+
+	// 15年目の CapexAmount が記録されていること
+	if !approxEqual(rWith.YearlyResults[14].CapexAmount, capexAmount, 1.0) {
+		t.Errorf("15年目のCapexAmount = %.0f, want %.0f", rWith.YearlyResults[14].CapexAmount, capexAmount)
+	}
+
+	// 16年目は修繕費の影響がないこと（両者で差がゼロ）
+	baseCF16 := rBase.YearlyResults[15].AfterTaxCashFlow
+	withCF16 := rWith.YearlyResults[15].AfterTaxCashFlow
+	if !approxEqual(baseCF16, withCF16, 1.0) {
+		t.Errorf("16年目は修繕費なし: diff = %.0f, want ≈0", baseCF16-withCF16)
+	}
+}
+
+// TestRentGrowthScenario は賃料上昇→下落シナリオが正しく計算されることを検証する。
+func TestRentGrowthScenario(t *testing.T) {
+	const (
+		monthlyRent    = 100_000.0
+		vacancyRate    = 0.05
+		growthRate     = 0.02
+		growthYears    = 3
+		declineRate    = 0.01
+	)
+	baseAnnualRent := monthlyRent * 12 * (1 - vacancyRate)
+
+	// rentForYear ヘルパーを直接検証
+	// 1年目(y=0): 上昇期 → baseRent * (1+0.02)^0 = baseRent
+	got0 := rentForYear(baseAnnualRent, declineRate, growthRate, growthYears, 0)
+	if !approxEqual(got0, baseAnnualRent, 1.0) {
+		t.Errorf("y=0: rent=%.0f, want %.0f", got0, baseAnnualRent)
+	}
+
+	// 3年目(y=2): 上昇期 → baseRent * 1.02^2
+	want2 := baseAnnualRent * math.Pow(1+growthRate, 2)
+	got2 := rentForYear(baseAnnualRent, declineRate, growthRate, growthYears, 2)
+	if !approxEqual(got2, want2, 1.0) {
+		t.Errorf("y=2: rent=%.0f, want %.0f", got2, want2)
+	}
+
+	// 4年目(y=3): 上昇期終了後1年目 → peak * (1-0.01)^1
+	peak := baseAnnualRent * math.Pow(1+growthRate, float64(growthYears))
+	want3 := peak * math.Pow(1-declineRate, 1)
+	got3 := rentForYear(baseAnnualRent, declineRate, growthRate, growthYears, 3)
+	if !approxEqual(got3, want3, 1.0) {
+		t.Errorf("y=3: rent=%.0f, want %.0f", got3, want3)
+	}
+
+	// RentGrowthRate=0 の場合は従来の下落のみが適用されること
+	gotNoGrowth0 := rentForYear(baseAnnualRent, declineRate, 0, growthYears, 0)
+	if !approxEqual(gotNoGrowth0, baseAnnualRent, 1.0) {
+		t.Errorf("growth=0, y=0: rent=%.0f, want %.0f", gotNoGrowth0, baseAnnualRent)
+	}
+	gotNoGrowth5 := rentForYear(baseAnnualRent, declineRate, 0, growthYears, 5)
+	wantNoGrowth5 := baseAnnualRent * math.Pow(1-declineRate, 5)
+	if !approxEqual(gotNoGrowth5, wantNoGrowth5, 1.0) {
+		t.Errorf("growth=0, y=5: rent=%.0f, want %.0f", gotNoGrowth5, wantNoGrowth5)
+	}
+}
