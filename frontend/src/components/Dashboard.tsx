@@ -14,7 +14,8 @@ import type { InvestmentInput, InvestmentResult, LandPriceComparison, Theoretica
 import { analyze as analyzeOnline, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks, fetchHazardInfo, fetchInvestmentScore, simulate } from "@/lib/api";
 import { analyze as analyzeOffline } from "@/lib/investment";
 import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
-import { ShieldAlert, Info, FileDown, Share2, Check, SlidersHorizontal, X, WifiOff, Zap } from "lucide-react";
+import { ShieldAlert, Info, FileDown, Share2, Check, SlidersHorizontal, X, WifiOff } from "lucide-react";
+import { SimulationModeToggle } from "@/components/SimulationModeToggle";
 import { Button } from "@/components/ui/button";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { downloadReportPDF } from "@/lib/generatePdf";
@@ -431,42 +432,11 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
 
             {/* Mobile: simulation mode toggle (PC は左サイドバーの InvestmentForm 内に表示) */}
             {activeTab === "simulation" && (
-              <div className="flex rounded-lg border bg-muted p-1 gap-1 lg:hidden" role="group" aria-label="シミュレーションモード">
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={simulationMode === "quick"}
-                  onClick={() => handleModeChange("quick")}
-                  className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    simulationMode === "quick"
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Zap className="h-3.5 w-3.5" />
-                    クイック
-                  </span>
-                  <span className="text-xs font-normal opacity-75">内覧でサッと試す</span>
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={simulationMode === "full"}
-                  onClick={() => handleModeChange("full")}
-                  className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    simulationMode === "full"
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <SlidersHorizontal className="h-3.5 w-3.5" />
-                    詳細
-                  </span>
-                  <span className="text-xs font-normal opacity-75">じっくり分析する</span>
-                </button>
-              </div>
+              <SimulationModeToggle
+                mode={simulationMode}
+                onChange={handleModeChange}
+                className="lg:hidden"
+              />
             )}
 
             {activeTab === "area-discovery" && (
@@ -614,6 +584,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 isOnline={isOnline}
                 externalLat={propertyLat}
                 externalLng={propertyLng}
+                showModeToggle={false}
               />
             </div>
           </div>
