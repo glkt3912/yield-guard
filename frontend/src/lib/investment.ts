@@ -730,6 +730,10 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
       isDeadCrossYear = true;
     }
 
+    const capexAmount = (input.capexSchedule ?? [])
+      .filter((ev) => ev.year === year)
+      .reduce((sum, ev) => sum + ev.amount, 0);
+
     yearlyResults.push({
       year,
       annualRent: yearAnnualRent,
@@ -747,6 +751,7 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
       isDeadCrossYear,
       isInDeadCrossZone: inDeadCrossZone,
       effectiveRate: currentRate,
+      capexAmount,
     });
   }
 
@@ -846,5 +851,6 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
     ltvSensitivity,
     irr,
     npv,
+    totalInterest: yearlyResults.reduce((sum, yr) => sum + yr.annualInterest, 0),
   };
 }
