@@ -2687,3 +2687,37 @@ func TestRentGrowthScenario(t *testing.T) {
 		t.Errorf("growth=0, y=5: rent=%.0f, want %.0f", gotNoGrowth5, wantNoGrowth5)
 	}
 }
+
+// TestCapexForYearMultiple は同一年に複数 CapexEvent がある場合の合算を検証する。
+func TestCapexForYearMultiple(t *testing.T) {
+	schedule := []CapexEvent{
+		{Year: 10, Amount: 2_000_000},
+		{Year: 10, Amount: 3_000_000},
+		{Year: 15, Amount: 1_000_000},
+	}
+	got10 := capexForYear(schedule, 10)
+	if !approxEqual(got10, 5_000_000, 1.0) {
+		t.Errorf("year=10 合算: got %.0f, want 5000000", got10)
+	}
+	got15 := capexForYear(schedule, 15)
+	if !approxEqual(got15, 1_000_000, 1.0) {
+		t.Errorf("year=15: got %.0f, want 1000000", got15)
+	}
+	got20 := capexForYear(schedule, 20)
+	if got20 != 0 {
+		t.Errorf("year=20 (修繕なし): got %.0f, want 0", got20)
+	}
+}
+
+// TestRentGrowthYearsZero は RentGrowthYears=0 のとき従来の下落ロジックと同一になることを検証する。
+func TestRentGrowthYearsZero(t *testing.T) {
+	base := 1_140_000.0
+	decline := 0.01
+	for _, y := range []int{0, 1, 5, 10} {
+		withZeroYears := rentForYear(base, decline, 0.02, 0, y)
+		traditional := base * math.Pow(1-decline, float64(y))
+		if !approxEqual(withZeroYears, traditional, 1.0) {
+			t.Errorf("rentGrowthYears=0, y=%d: got %.0f, want %.0f", y, withZeroYears, traditional)
+		}
+	}
+}
