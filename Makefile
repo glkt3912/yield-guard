@@ -1,4 +1,4 @@
-.PHONY: dev backend frontend install logs test lint build clean help \
+.PHONY: dev backend frontend install install-hooks logs test lint build clean help \
         mlit-land-prices mlit-municipalities mlit-station-ridership mlit-population-forecast mlit-land-appraisals \
         mlit-urban-zoning mlit-liquefaction mlit-flood-hazard mlit-storm-hazard mlit-tsunami-hazard mlit-landslide-hazard \
         api-station-ridership api-estimate-ridership api-population-forecast api-land-appraisals api-investment-score \
@@ -36,6 +36,11 @@ frontend:
 ## install: フロントエンド依存関係をインストール
 install:
 	cd frontend && npm install
+
+## install-hooks: lefthook git フックをインストール
+install-hooks:
+	brew install lefthook || true
+	lefthook install
 
 ## logs: Dockerコンテナのログを表示（未起動の場合は案内）
 logs:
