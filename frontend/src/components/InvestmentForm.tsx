@@ -1178,6 +1178,11 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   min={0} max={0.03} step={0.001}
                   onChange={(v) => setNum("loanRateDelta", v)}
                   formatValue={(v) => `+${formatPct(v)}`} />
+                {rateScheduleEnabled && input.loanRateDelta > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    ストレスΔはスケジュール金利にも加算されます
+                  </p>
+                )}
               </div>
 
               <Button className="w-full" size="lg" loading={loading} disabled={hasErrors || loading} onClick={handleAnalyze}>
