@@ -759,20 +759,32 @@ const maxHeatmapTiles = 50
 // GetInvestmentScoreHeatmap はバウンディングボックス内の全タイルに対して投資スコアを並列計算して返す。
 // GET /api/investment-score-heatmap?minLat=35.6&maxLat=35.7&minLng=139.6&maxLng=139.7&z=13
 func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
-	minLat, ok := parseFloatQuery(c, "minLat")
-	if !ok {
+	minLatStr := c.Query("minLat")
+	maxLatStr := c.Query("maxLat")
+	minLngStr := c.Query("minLng")
+	maxLngStr := c.Query("maxLng")
+	if minLatStr == "" || maxLatStr == "" || minLngStr == "" || maxLngStr == "" {
+		badRequest(c, "minLat, maxLat, minLng, maxLng は必須パラメータです")
 		return
 	}
-	maxLat, ok := parseFloatQuery(c, "maxLat")
-	if !ok {
+	minLat, err := strconv.ParseFloat(minLatStr, 64)
+	if err != nil {
+		badRequest(c, "minLat の値が不正です")
 		return
 	}
-	minLng, ok := parseFloatQuery(c, "minLng")
-	if !ok {
+	maxLat, err := strconv.ParseFloat(maxLatStr, 64)
+	if err != nil {
+		badRequest(c, "maxLat の値が不正です")
 		return
 	}
-	maxLng, ok := parseFloatQuery(c, "maxLng")
-	if !ok {
+	minLng, err := strconv.ParseFloat(minLngStr, 64)
+	if err != nil {
+		badRequest(c, "minLng の値が不正です")
+		return
+	}
+	maxLng, err := strconv.ParseFloat(maxLngStr, 64)
+	if err != nil {
+		badRequest(c, "maxLng の値が不正です")
 		return
 	}
 
