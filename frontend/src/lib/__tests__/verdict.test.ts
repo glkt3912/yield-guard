@@ -6,7 +6,7 @@ describe("calcVerdict", () => {
   it("returns PASS when all conditions are met", () => {
     const input = makeInput();
     const result = makeResult({
-      grossYield: 0.09,     // >= yieldTarget 0.08
+      grossYield: 0.09, // >= yieldTarget 0.08
       yieldTarget: 0.08,
       exitTotalEquity: 1_000_000,
       criticalErrors: [],
@@ -21,7 +21,7 @@ describe("calcVerdict", () => {
   it("returns CAUTION when DSCR is 1.0–1.19", () => {
     const input = makeInput();
     const result = makeResult({
-      grossYield: 0.06,     // below yieldTarget → not PASS
+      grossYield: 0.06, // below yieldTarget → not PASS
       yieldTarget: 0.08,
       exitTotalEquity: 500_000,
       criticalErrors: [],
@@ -46,7 +46,9 @@ describe("calcVerdict", () => {
     const result = makeResult({
       grossYield: 0.09,
       exitTotalEquity: 1_000_000,
-      criticalErrors: [{ code: "DEADCROSS_EARLY", status: "REJECT", message: "デッドクロス早期発生" }],
+      criticalErrors: [
+        { code: "DEADCROSS_EARLY", status: "REJECT", message: "デッドクロス早期発生" },
+      ],
     });
     const v = calcVerdict(input, result, 1.5, 1.2);
     expect(v.level).toBe("REJECT");
@@ -70,7 +72,9 @@ describe("calcVerdict", () => {
       grossYield: 0.07,
       yieldTarget: 0.08,
       exitTotalEquity: 500_000,
-      criticalErrors: [{ code: "LAND_VALUE_GUARD", status: "WARNING" as never, message: "警告のみ" }],
+      criticalErrors: [
+        { code: "LAND_VALUE_GUARD", status: "WARNING" as never, message: "警告のみ" },
+      ],
     });
     const v = calcVerdict(input, result, 1.05, 0.95);
     expect(v.level).toBe("CAUTION");

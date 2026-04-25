@@ -18,10 +18,12 @@ export function calcYieldBenchmark(params: {
   buildingCost: number;
   userYield?: number;
 }): YieldBenchmark {
-  const { medianTsubo, minTsubo, maxTsubo, landAreaSqm, monthlyRent, buildingCost, userYield } = params;
+  const { medianTsubo, minTsubo, maxTsubo, landAreaSqm, monthlyRent, buildingCost, userYield } =
+    params;
   const annualRent = monthlyRent * 12;
   const areaTsubo = landAreaSqm / SQM_PER_TSUBO;
-  const buildingEst = buildingCost > 0 ? buildingCost : areaTsubo * STANDARD_BUILDING_COST_PER_TSUBO;
+  const buildingEst =
+    buildingCost > 0 ? buildingCost : areaTsubo * STANDARD_BUILDING_COST_PER_TSUBO;
 
   const totalTypical = medianTsubo * areaTsubo + buildingEst;
   const totalHigh = maxTsubo * areaTsubo + buildingEst;
@@ -37,9 +39,8 @@ export function calcYieldBenchmark(params: {
     judgment = "realistic";
     judgmentLabel = "データ不足のため判定できません";
   } else {
-    const ratio = (userYield != null && estimatedYieldTypical > 0)
-      ? userYield / estimatedYieldTypical
-      : 1; // userYield 未指定時はニュートラル
+    const ratio =
+      userYield != null && estimatedYieldTypical > 0 ? userYield / estimatedYieldTypical : 1; // userYield 未指定時はニュートラル
     if (ratio <= 1.0) {
       judgment = "realistic";
       judgmentLabel = "エリア相場と概ね合致しています";

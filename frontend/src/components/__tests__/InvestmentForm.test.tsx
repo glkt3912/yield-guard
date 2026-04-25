@@ -39,21 +39,39 @@ describe("InvestmentForm", () => {
     const onAnalyze = vi.fn().mockResolvedValue(undefined);
     const onFetchLandPrices = vi.fn().mockResolvedValue(undefined);
     const onModeChange = vi.fn();
-    render(<InvestmentForm onAnalyze={onAnalyze} onFetchLandPrices={onFetchLandPrices} loading={false} simulationMode="full" onModeChange={onModeChange} />);
+    render(
+      <InvestmentForm
+        onAnalyze={onAnalyze}
+        onFetchLandPrices={onFetchLandPrices}
+        loading={false}
+        simulationMode="full"
+        onModeChange={onModeChange}
+      />
+    );
 
     await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
     expect(onAnalyze).toHaveBeenCalledTimes(1);
-    expect(onAnalyze).toHaveBeenCalledWith(expect.objectContaining({
-      landPrice: DEFAULT_INPUT.landPrice,
-      buildingType: DEFAULT_INPUT.buildingType,
-    }));
+    expect(onAnalyze).toHaveBeenCalledWith(
+      expect.objectContaining({
+        landPrice: DEFAULT_INPUT.landPrice,
+        buildingType: DEFAULT_INPUT.buildingType,
+      })
+    );
   });
 
   it("相場データを取得ボタンをクリックすると onFetchLandPrices が呼ばれる", async () => {
     const onAnalyze = vi.fn().mockResolvedValue(undefined);
     const onFetchLandPrices = vi.fn().mockResolvedValue(undefined);
     const onModeChange = vi.fn();
-    render(<InvestmentForm onAnalyze={onAnalyze} onFetchLandPrices={onFetchLandPrices} loading={false} simulationMode="full" onModeChange={onModeChange} />);
+    render(
+      <InvestmentForm
+        onAnalyze={onAnalyze}
+        onFetchLandPrices={onFetchLandPrices}
+        loading={false}
+        simulationMode="full"
+        onModeChange={onModeChange}
+      />
+    );
 
     await userEvent.click(screen.getByRole("button", { name: /相場データを取得/ }));
     expect(onFetchLandPrices).toHaveBeenCalledTimes(1);
@@ -75,7 +93,15 @@ describe("InvestmentForm", () => {
 
   describe("用途地域リスク警告", () => {
     function renderZoningForm() {
-      render(<InvestmentForm onAnalyze={vi.fn()} onFetchLandPrices={vi.fn()} loading={false} simulationMode="full" onModeChange={vi.fn()} />);
+      render(
+        <InvestmentForm
+          onAnalyze={vi.fn()}
+          onFetchLandPrices={vi.fn()}
+          loading={false}
+          simulationMode="full"
+          onModeChange={vi.fn()}
+        />
+      );
       return screen.getByLabelText("用途地域（任意）");
     }
 
@@ -127,7 +153,13 @@ describe("InvestmentForm", () => {
 
   it("詳細モードでは諸経費率フィールドが常時表示される", () => {
     render(
-      <InvestmentForm onAnalyze={vi.fn()} onFetchLandPrices={vi.fn()} loading={false} simulationMode="full" onModeChange={vi.fn()} />
+      <InvestmentForm
+        onAnalyze={vi.fn()}
+        onFetchLandPrices={vi.fn()}
+        loading={false}
+        simulationMode="full"
+        onModeChange={vi.fn()}
+      />
     );
     expect(screen.getByLabelText(/諸経費率/)).toBeInTheDocument();
   });
@@ -281,9 +313,15 @@ describe("InvestmentForm", () => {
       };
       vi.stubGlobal("localStorage", {
         getItem: (key: string) => store[key] ?? null,
-        setItem: (key: string, value: string) => { store[key] = value; },
-        removeItem: (key: string) => { delete store[key]; },
-        clear: () => { Object.keys(store).forEach((k) => delete store[k]); },
+        setItem: (key: string, value: string) => {
+          store[key] = value;
+        },
+        removeItem: (key: string) => {
+          delete store[key];
+        },
+        clear: () => {
+          Object.keys(store).forEach((k) => delete store[k]);
+        },
       });
       renderForm("quick");
       await userEvent.click(screen.getByText(/前回の入力から開始/));
@@ -344,7 +382,9 @@ describe("InvestmentForm", () => {
     });
 
     it("ZERO_RESULTS エラー時にエラーメッセージと手動入力フォールバックが表示される", async () => {
-      vi.mocked(api.fetchGeocode).mockRejectedValueOnce(new Error("住所が見つかりませんでした。丁目・番地まで入力してください"));
+      vi.mocked(api.fetchGeocode).mockRejectedValueOnce(
+        new Error("住所が見つかりませんでした。丁目・番地まで入力してください")
+      );
       renderForm("full");
 
       await userEvent.type(screen.getByLabelText("物件住所"), "存在しない住所99999");

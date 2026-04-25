@@ -17,10 +17,11 @@ function fmtLabel(v: number): string {
 export function buildCfBarChartSvg(
   yearlyResults: YearlyResult[],
   width = 480,
-  height = 160,
+  height = 160
 ): string {
   const data = yearlyResults.slice(0, 10);
-  if (data.length === 0) return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"></svg>`;
+  if (data.length === 0)
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"></svg>`;
 
   const innerW = width - PAD.left - PAD.right;
   const innerH = height - PAD.top - PAD.bottom;
@@ -71,10 +72,11 @@ export function buildDeadCrossLineSvg(
   yearlyResults: YearlyResult[],
   deadCrossYear: number,
   width = 480,
-  height = 160,
+  height = 160
 ): string {
   const data = yearlyResults.slice(0, 35);
-  if (data.length === 0) return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"></svg>`;
+  if (data.length === 0)
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"></svg>`;
 
   const innerW = width - PAD.left - PAD.right;
   const innerH = height - PAD.top - PAD.bottom;
@@ -87,7 +89,10 @@ export function buildDeadCrossLineSvg(
 
   function polyline(values: number[], color: string): string {
     const pts = values
-      .map((v, i) => `${(PAD.left + i * stepX).toFixed(1)},${(PAD.top + innerH - v * scale).toFixed(1)}`)
+      .map(
+        (v, i) =>
+          `${(PAD.left + i * stepX).toFixed(1)},${(PAD.top + innerH - v * scale).toFixed(1)}`
+      )
       .join(" ");
     return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5"/>`;
   }
@@ -128,7 +133,7 @@ export function buildCostDonutSvg(
   buildingCost: number,
   acquisitionCosts: AcquisitionCostBreakdown,
   width = 200,
-  height = 200,
+  height = 200
 ): string {
   const segments = [
     { label: "土地", value: landPrice, color: "#3b82f6" },
@@ -137,7 +142,8 @@ export function buildCostDonutSvg(
   ].filter((s) => s.value > 0);
 
   const total = segments.reduce((sum, s) => sum + s.value, 0);
-  if (total === 0) return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"></svg>`;
+  if (total === 0)
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"></svg>`;
 
   const cx = width / 2;
   const cy = height / 2 - 10;
@@ -172,7 +178,7 @@ export function buildCostDonutSvg(
     .map(
       (seg, i) =>
         `<rect x="4" y="${(height - 22 + i * 12 - (segments.length - 1) * 6).toFixed(0)}" width="8" height="8" fill="${seg.color}"/>` +
-        `<text x="14" y="${(height - 15 + i * 12 - (segments.length - 1) * 6).toFixed(0)}" font-size="7" fill="#64748b">${escapeXml(seg.label)}: ${Math.round((seg.value / total) * 100)}%</text>`,
+        `<text x="14" y="${(height - 15 + i * 12 - (segments.length - 1) * 6).toFixed(0)}" font-size="7" fill="#64748b">${escapeXml(seg.label)}: ${Math.round((seg.value / total) * 100)}%</text>`
     )
     .join("\n");
 

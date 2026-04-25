@@ -1,8 +1,4 @@
-import type {
-  InvestmentInput,
-  InvestmentResult,
-  YearlyResult,
-} from "@/types/investment";
+import type { InvestmentInput, InvestmentResult, YearlyResult } from "@/types/investment";
 import { fmtYen, fmtPct, fmtDate, fmtYears, sanitize } from "./pdf/format";
 import { calcVerdict } from "./pdf/verdict";
 import { buildCfBarChartSvg, buildDeadCrossLineSvg, buildCostDonutSvg } from "./pdf/charts";
@@ -85,7 +81,13 @@ function hLineTable(body: unknown[][]) {
 function twoCol(label: string, value: string, bold = false, color?: string) {
   return [
     { text: label, fontSize: 8, bold, color: color ? undefined : C.text, noWrap: true },
-    { text: sanitize(value), fontSize: 8, bold, color: color ?? C.text, alignment: "right" as const },
+    {
+      text: sanitize(value),
+      fontSize: 8,
+      bold,
+      color: color ?? C.text,
+      alignment: "right" as const,
+    },
   ];
 }
 
@@ -119,10 +121,8 @@ export async function downloadReportPDF(
 
   const date = fmtDate();
   const year1 = result.yearlyResults[0];
-  const dscr =
-    year1?.annualLoanPayment > 0 ? year1.annualRent / year1.annualLoanPayment : 0;
-  const ltv =
-    result.totalInvestment > 0 ? input.loanAmount / result.totalInvestment : 0;
+  const dscr = year1?.annualLoanPayment > 0 ? year1.annualRent / year1.annualLoanPayment : 0;
+  const ltv = result.totalInvestment > 0 ? input.loanAmount / result.totalInvestment : 0;
   const dscrStress = result.stressScenarios.find((sc) => sc.label === "複合ストレス")?.dscr ?? 0;
   const verdict = calcVerdict(input, result, dscr, dscrStress);
   const baselineScenario = result.stressScenarios.find((sc) => sc.label === "ベースライン");
@@ -173,7 +173,13 @@ export async function downloadReportPDF(
         columns: [
           { text: "yield-guard 不動産投資分析レポート", fontSize: 7, color: C.muted, width: "*" },
           { text: date, fontSize: 7, color: C.muted, alignment: "center" as const, width: "*" },
-          { text: `${currentPage} / ${pageCount}`, fontSize: 7, color: C.muted, alignment: "right" as const, width: "*" },
+          {
+            text: `${currentPage} / ${pageCount}`,
+            fontSize: 7,
+            color: C.muted,
+            alignment: "right" as const,
+            width: "*",
+          },
         ],
         margin: [36, 16, 36, 0],
       };
@@ -194,7 +200,12 @@ export async function downloadReportPDF(
         color: C.headerBg,
         marginBottom: 6,
       },
-      { text: "Real Estate Investment Analysis Report", fontSize: 12, color: C.muted, marginBottom: 24 },
+      {
+        text: "Real Estate Investment Analysis Report",
+        fontSize: 12,
+        color: C.muted,
+        marginBottom: 24,
+      },
 
       { text: "物件概要", fontSize: 9, bold: true, color: C.muted, marginBottom: 8 },
       infoRow("物件価格（土地）", fmtYen(input.landPrice)),
@@ -291,7 +302,9 @@ export async function downloadReportPDF(
                     }),
                     {
                       text: baselineScenario.isSafe ? "安全" : "危険",
-                      fontSize: 8, bold: true, alignment: "center",
+                      fontSize: 8,
+                      bold: true,
+                      alignment: "center",
                       color: baselineScenario.isSafe ? C.safe : C.danger,
                       fillColor: C.rowEven,
                     },
@@ -306,7 +319,9 @@ export async function downloadReportPDF(
                     }),
                     {
                       text: stressScenario.isSafe ? "安全" : "危険",
-                      fontSize: 8, bold: true, alignment: "center",
+                      fontSize: 8,
+                      bold: true,
+                      alignment: "center",
                       color: stressScenario.isSafe ? C.safe : C.danger,
                       fillColor: C.white,
                     },
@@ -367,8 +382,12 @@ export async function downloadReportPDF(
               tdCell(fmtYen(r.annualLoanPayment), idx),
               tdCell(fmtYen(r.annualExpenses), idx),
               tdCell(fmtYen(r.cashFlow), idx, { color: r.cashFlow < 0 ? C.danger : C.text }),
-              tdCell(fmtYen(r.afterTaxCashFlow), idx, { color: r.afterTaxCashFlow < 0 ? C.danger : C.text }),
-              tdCell(fmtYen(r.cumulativeCashFlow), idx, { color: r.cumulativeCashFlow < 0 ? C.danger : C.text }),
+              tdCell(fmtYen(r.afterTaxCashFlow), idx, {
+                color: r.afterTaxCashFlow < 0 ? C.danger : C.text,
+              }),
+              tdCell(fmtYen(r.cumulativeCashFlow), idx, {
+                color: r.cumulativeCashFlow < 0 ? C.danger : C.text,
+              }),
               tdCell(fmtYen(r.remainingLoanBalance), idx),
             ]),
           ],
@@ -380,7 +399,11 @@ export async function downloadReportPDF(
       ...(result.stressScenarios.length > 0
         ? [
             sectionTitle("P3 - ストレステスト結果", true),
-            { svg: buildDeadCrossLineSvg(result.yearlyResults, result.deadCrossYear), width: 480, marginBottom: 12 },
+            {
+              svg: buildDeadCrossLineSvg(result.yearlyResults, result.deadCrossYear),
+              width: 480,
+              marginBottom: 12,
+            },
             {
               table: {
                 headerRows: 1,
@@ -440,9 +463,17 @@ export async function downloadReportPDF(
               twoCol("仲介手数料（税込）", fmtYen(result.acquisitionCosts.brokerageFee)),
               twoCol("印紙税", fmtYen(result.acquisitionCosts.stampDuty)),
               twoCol("登録免許税", fmtYen(result.acquisitionCosts.registrationTax)),
-              twoCol("不動産取得税（概算）", fmtYen(result.acquisitionCosts.realEstateAcquisitionTax)),
+              twoCol(
+                "不動産取得税（概算）",
+                fmtYen(result.acquisitionCosts.realEstateAcquisitionTax)
+              ),
               ...(result.acquisitionCosts.propertyTaxProration > 0
-                ? [twoCol("固定資産税日割り精算", fmtYen(result.acquisitionCosts.propertyTaxProration))]
+                ? [
+                    twoCol(
+                      "固定資産税日割り精算",
+                      fmtYen(result.acquisitionCosts.propertyTaxProration)
+                    ),
+                  ]
                 : []),
               twoCol("諸経費合計", fmtYen(result.acquisitionCosts.total), true, C.primary),
             ]),

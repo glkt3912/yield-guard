@@ -39,7 +39,9 @@ describe("Dashboard", () => {
 
   it("初期状態でプレースホルダーが表示される", () => {
     render(<Dashboard />);
-    expect(screen.getByText(/条件を入力してシミュレーションを実行してください/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/条件を入力してシミュレーションを実行してください/)
+    ).toBeInTheDocument();
   });
 
   it("analyzeAPIの応答後にYieldAnalysisが表示される（クイックモード）", async () => {
@@ -82,7 +84,9 @@ describe("Dashboard", () => {
   it("API呼び出し中はローディング状態でボタンが無効化される", async () => {
     // analyzeが解決されない promise を返す
     let resolve: (v: ReturnType<typeof makeResult>) => void;
-    const pending = new Promise<ReturnType<typeof makeResult>>((r) => { resolve = r; });
+    const pending = new Promise<ReturnType<typeof makeResult>>((r) => {
+      resolve = r;
+    });
     vi.mocked(api.analyze).mockReturnValue(pending);
 
     render(<Dashboard />);
@@ -147,7 +151,10 @@ describe("Dashboard", () => {
     const params = new URLSearchParams("mode=quick&totalPrice=2000&rent=12");
     render(<Dashboard initialParams={params} />);
     // クイックモードのラジオが選択されていること
-    expect(screen.getAllByRole("radio", { name: /クイック/ })[0]).toHaveAttribute("aria-checked", "true");
+    expect(screen.getAllByRole("radio", { name: /クイック/ })[0]).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
     // 物件価格フィールドが復元されていること
     expect(screen.getByLabelText(/物件価格（土地＋建物の総額）/)).toHaveValue(2000);
   });
@@ -156,7 +163,10 @@ describe("Dashboard", () => {
     const params = new URLSearchParams("mode=full&landPrice=1000&buildingCost=500");
     render(<Dashboard initialParams={params} />);
     // フルモードのラジオが選択されていること
-    expect(screen.getAllByRole("radio", { name: /詳細/ })[0]).toHaveAttribute("aria-checked", "true");
+    expect(screen.getAllByRole("radio", { name: /詳細/ })[0]).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
   });
 
   it("シミュレーション結果表示後に「この条件を共有」ボタンが表示される", async () => {

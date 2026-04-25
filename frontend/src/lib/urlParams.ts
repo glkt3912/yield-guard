@@ -12,15 +12,15 @@ export interface UrlShareParams {
   // Quick mode
   totalPrice?: number; // 万円
   // Full mode extras
-  landPrice?: number;   // 万円
+  landPrice?: number; // 万円
   buildingCost?: number; // 万円
   // Common
-  rent?: number;        // 万円/月 (stored as float with 4 decimal places)
-  loanAmount?: number;  // 万円
-  loanRate?: number;    // % (e.g. 1.5 for 1.5%)
+  rent?: number; // 万円/月 (stored as float with 4 decimal places)
+  loanAmount?: number; // 万円
+  loanRate?: number; // % (e.g. 1.5 for 1.5%)
   loanYears?: number;
   holdingYears?: number;
-  vacancy?: number;     // % (e.g. 5 for 5%)
+  vacancy?: number; // % (e.g. 5 for 5%)
   expenseRate?: number; // % (e.g. 20 for 20%)
 }
 
@@ -117,8 +117,7 @@ export interface DecodedParams {
  */
 export function decodeUrlParams(params: URLSearchParams): DecodedParams {
   const rawMode = params.get("mode");
-  const mode: SimulationMode =
-    rawMode === "full" ? "full" : "quick";
+  const mode: SimulationMode = rawMode === "full" ? "full" : "quick";
 
   const input: Partial<InvestmentInput> = {};
   let quickTotalPriceMan = "";

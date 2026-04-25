@@ -73,6 +73,7 @@ lint:
 	@echo "==> Backend lint"
 	cd backend && golangci-lint run ./...
 	@echo "==> Frontend lint"
+	cd frontend && npm run format:check
 	cd frontend && npm run lint
 	cd frontend && npm run type-check
 

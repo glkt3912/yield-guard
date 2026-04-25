@@ -15,10 +15,7 @@ const fmt = (n: number) =>
     ? `${(n / 10_000_000).toFixed(1)}千万円`
     : `${Math.round(n / 10_000).toLocaleString()}万円`;
 
-const COLORS = [
-  "#3b82f6", "#10b981", "#f59e0b", "#ef4444",
-  "#8b5cf6", "#06b6d4", "#f97316",
-];
+const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
 
 export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }: Props) {
   // 初期投資の内訳（miscExpenses は別軸の概算値のため表示しない）
@@ -155,7 +152,12 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
                 ["登録免許税", acquisitionCosts.registrationTax],
                 ["不動産取得税（概算）", acquisitionCosts.realEstateAcquisitionTax],
                 ...(acquisitionCosts.propertyTaxProration > 0
-                  ? [["固定資産税日割り精算", acquisitionCosts.propertyTaxProration] as [string, number]]
+                  ? [
+                      ["固定資産税日割り精算", acquisitionCosts.propertyTaxProration] as [
+                        string,
+                        number,
+                      ],
+                    ]
                   : []),
               ].map(([label, value]) => (
                 <tr key={label as string} className="hover:bg-gray-50">

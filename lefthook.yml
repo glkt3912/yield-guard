@@ -4,10 +4,15 @@ pre-commit:
     go-lint:
       glob: "backend/**/*.go"
       run: cd backend && golangci-lint run ./...
+    frontend-format:
+      glob: "frontend/src/**/*.{ts,tsx,css}"
+      run: npx --prefix frontend prettier --write {staged_files} && git add {staged_files}
     frontend-lint:
+      depends: ["frontend-format"]
       glob: "frontend/src/**/*.{ts,tsx}"
       run: cd frontend && npm run lint
     frontend-typecheck:
+      depends: ["frontend-format"]
       glob: "frontend/src/**/*.{ts,tsx}"
       run: cd frontend && npm run type-check
 

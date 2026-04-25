@@ -33,12 +33,12 @@ const SHORT_TERM_TRANSFER_TAX_RATE = 0.3963;
 // ─── Building useful life ─────────────────────────────────────────────────────
 
 const BUILDING_USEFUL_LIFE_MAP: Record<BuildingType, number> = {
-  "木造": 22,
+  木造: 22,
   "軽量鉄骨(3mm以下)": 19,
   "軽量鉄骨(4mm以下)": 27,
-  "重量鉄骨": 34,
-  "RC造": 47,
-  "SRC造": 47,
+  重量鉄骨: 34,
+  RC造: 47,
+  SRC造: 47,
 };
 
 function getUsefulLife(buildingType: BuildingType): number {
@@ -57,7 +57,7 @@ export function calcResidualUsefulLife(buildingType: BuildingType, buildingAge: 
   if (buildingAge >= legal) {
     residual = Math.floor(legal * 0.2);
   } else {
-    residual = (legal - buildingAge) + Math.floor(buildingAge * 0.2);
+    residual = legal - buildingAge + Math.floor(buildingAge * 0.2);
   }
   return Math.max(residual, 2);
 }
@@ -98,7 +98,7 @@ export function calcMonthlyPayment(principal: number, annualRate: number, years:
 function calcYearlyLoanComponents(
   balance: number,
   annualRate: number,
-  monthlyPayment: number,
+  monthlyPayment: number
 ): { interest: number; principal: number } {
   if (annualRate === 0) {
     if (monthlyPayment * 12 > balance) return { interest: 0, principal: balance };
@@ -126,7 +126,7 @@ function calcYearlyLoanComponents(
 function calcYearlyLoanComponentsEqualPrincipal(
   balance: number,
   annualRate: number,
-  monthlyPrincipal: number,
+  monthlyPrincipal: number
 ): { interest: number; principal: number } {
   const r = annualRate / 12;
   let remaining = balance;
@@ -149,7 +149,7 @@ function resolveRateForYear(
   baseRate: number,
   rateDelta: number,
   schedule: InvestmentInput["rateAdjustmentSchedule"],
-  year: number,
+  year: number
 ): number {
   let rate = baseRate;
   for (const adj of schedule) {
@@ -197,7 +197,7 @@ function calcRegistrationTax(
   landAssessed: number,
   buildingAssessed: number,
   loanAmount: number,
-  isNewBuilding: boolean,
+  isNewBuilding: boolean
 ): number {
   const landTransfer = landAssessed * 0.02;
   const buildingTransfer = isNewBuilding ? buildingAssessed * 0.0015 : buildingAssessed * 0.02;
@@ -215,7 +215,7 @@ function calcRealEstateAcquisitionTax(landAssessed: number, buildingAssessed: nu
 function calcAcquisitionCosts(
   landPrice: number,
   buildingCost: number,
-  loanAmount: number,
+  loanAmount: number
 ): AcquisitionCostBreakdown {
   const totalPrice = landPrice + buildingCost;
   const brokerage = calcBrokerageFee(totalPrice, 1.0);
@@ -242,7 +242,7 @@ function calcAcquisitionCosts(
 
 function calcRequiredForTarget(
   input: InvestmentInput,
-  totalInvestment: number,
+  totalInvestment: number
 ): { requiredRent: number; costReduction: number } {
   const target = input.yieldTarget;
   const requiredAnnualRent = totalInvestment * target;
@@ -262,7 +262,7 @@ function calcExit(
   input: InvestmentInput,
   yearly: YearlyResult[],
   accumulatedDepreciation: number,
-  miscExpenses: number,
+  miscExpenses: number
 ): {
   salePrice: number;
   capitalGain: number;
@@ -280,7 +280,7 @@ function calcExit(
   const noi = exitYear.annualRent - exitYear.annualExpenses;
   const salePrice = noi / input.exitYieldTarget;
 
-  const sellExpenses = (salePrice * 0.03 + 60_000) * 1.10;
+  const sellExpenses = (salePrice * 0.03 + 60_000) * 1.1;
 
   const bookValueBuilding = Math.max(input.buildingCost - accumulatedDepreciation, 0);
   const acquisitionCost = input.landPrice + bookValueBuilding + miscExpenses;
@@ -289,7 +289,8 @@ function calcExit(
 
   let transferTax = 0;
   if (capitalGain > 0) {
-    const taxRate = input.holdingYears > 5 ? LONG_TERM_TRANSFER_TAX_RATE : SHORT_TERM_TRANSFER_TAX_RATE;
+    const taxRate =
+      input.holdingYears > 5 ? LONG_TERM_TRANSFER_TAX_RATE : SHORT_TERM_TRANSFER_TAX_RATE;
     transferTax = capitalGain * taxRate;
   }
 
@@ -304,7 +305,7 @@ function calcExit(
 function calcCriticalErrors(
   input: InvestmentInput,
   deadCrossYear: number,
-  usefulLife: number,
+  usefulLife: number
 ): CriticalError[] {
   const errors: CriticalError[] = [];
 
@@ -356,7 +357,7 @@ function calcStressScenario(
   base: InvestmentInput,
   label: string,
   rateDelta: number,
-  vacDelta: number,
+  vacDelta: number
 ): StressScenarioResult {
   const inInput = applyDefaults(base);
 
@@ -366,7 +367,12 @@ function calcStressScenario(
   // 初年度賃料（空室率調整済み）— 賃料下落はループ内で年次適用
   const annualRent = inInput.monthlyRent * 12 * (1 - effectiveVacancy);
 
-  const initRate = resolveRateForYear(inInput.annualLoanRate, rateDelta, inInput.rateAdjustmentSchedule, 1);
+  const initRate = resolveRateForYear(
+    inInput.annualLoanRate,
+    rateDelta,
+    inInput.rateAdjustmentSchedule,
+    1
+  );
 
   let monthlyPayment = 0;
   let monthlyPrincipalStress = 0;
@@ -393,7 +399,12 @@ function calcStressScenario(
 
   for (let y = 1; y <= holdingYears; y++) {
     if (y > 1 && inInput.rateAdjustmentSchedule.length > 0) {
-      const newRate = resolveRateForYear(inInput.annualLoanRate, rateDelta, inInput.rateAdjustmentSchedule, y);
+      const newRate = resolveRateForYear(
+        inInput.annualLoanRate,
+        rateDelta,
+        inInput.rateAdjustmentSchedule,
+        y
+      );
       if (newRate !== currentRate && remainingBalance > 0 && y <= inInput.loanYears) {
         if (inInput.loanMethod !== LOAN_METHOD_EQUAL_PRINCIPAL) {
           const remainingYears = inInput.loanYears - (y - 1);
@@ -408,14 +419,18 @@ function calcStressScenario(
     if (remainingBalance > 0 && y <= inInput.loanYears) {
       if (inInput.loanMethod === LOAN_METHOD_EQUAL_PRINCIPAL) {
         const { interest: yi, principal: yp } = calcYearlyLoanComponentsEqualPrincipal(
-          remainingBalance, currentRate, monthlyPrincipalStress,
+          remainingBalance,
+          currentRate,
+          monthlyPrincipalStress
         );
         yearLoan = yi + yp;
         yearInterest = yi;
         remainingBalance -= yp;
       } else {
         const { interest: annInterest, principal: annPrincipal } = calcYearlyLoanComponents(
-          remainingBalance, currentRate, curMonthlyPayment,
+          remainingBalance,
+          currentRate,
+          curMonthlyPayment
         );
         yearLoan = curMonthlyPayment * 12;
         yearInterest = annInterest;
@@ -489,7 +504,9 @@ function calcLTVSensitivity(input: InvestmentInput): LTVSensitivityRow[] {
       const totalMonths = input.loanYears * 12;
       const monthlyPrincipal = loanAmount / totalMonths;
       const { interest: yi, principal: yp } = calcYearlyLoanComponentsEqualPrincipal(
-        loanAmount, input.annualLoanRate, monthlyPrincipal,
+        loanAmount,
+        input.annualLoanRate,
+        monthlyPrincipal
       );
       annualDebtService = yi + yp;
     } else {
@@ -511,7 +528,7 @@ function calcNPV(
   cfs: number[],
   terminalValue: number,
   discountRate: number,
-  initialInvestment: number,
+  initialInvestment: number
 ): number {
   let pv = 0;
   for (let t = 0; t < cfs.length; t++) {
@@ -523,13 +540,9 @@ function calcNPV(
   return pv - initialInvestment;
 }
 
-function calcIRR(
-  cfs: number[],
-  terminalValue: number,
-  initialInvestment: number,
-): number | null {
-  const LO = -0.50;
-  const HI = 2.00;
+function calcIRR(cfs: number[], terminalValue: number, initialInvestment: number): number | null {
+  const LO = -0.5;
+  const HI = 2.0;
   const MAX_ITER = 200;
   const TOL = 1.0;
 
@@ -537,7 +550,8 @@ function calcIRR(
   const npvHi = calcNPV(cfs, terminalValue, HI, initialInvestment);
   if (npvLo * npvHi > 0) return null;
 
-  let low = LO, high = HI;
+  let low = LO,
+    high = HI;
   let currentNpvLo = npvLo;
   for (let i = 0; i < MAX_ITER; i++) {
     const mid = (low + high) / 2;
@@ -560,17 +574,18 @@ function calcTerminalValueWithDecline(
   yearly: YearlyResult[],
   adjustedSalePrice: number,
   accumulatedDepreciation: number,
-  miscExpenses: number,
+  miscExpenses: number
 ): number {
   const holdIdx = Math.min(input.holdingYears - 1, yearly.length - 1);
   const exitYear = yearly[holdIdx];
-  const sellExpenses = (adjustedSalePrice * 0.03 + 60_000) * 1.10;
+  const sellExpenses = (adjustedSalePrice * 0.03 + 60_000) * 1.1;
   const bookValueBuilding = Math.max(input.buildingCost - accumulatedDepreciation, 0);
   const acquisitionCost = input.landPrice + bookValueBuilding + miscExpenses;
   const capGain = adjustedSalePrice - sellExpenses - acquisitionCost;
   let transferTax = 0;
   if (capGain > 0) {
-    const taxRate = input.holdingYears > 5 ? LONG_TERM_TRANSFER_TAX_RATE : SHORT_TERM_TRANSFER_TAX_RATE;
+    const taxRate =
+      input.holdingYears > 5 ? LONG_TERM_TRANSFER_TAX_RATE : SHORT_TERM_TRANSFER_TAX_RATE;
     transferTax = capGain * taxRate;
   }
   return adjustedSalePrice - sellExpenses - transferTax - exitYear.remainingLoanBalance;
@@ -603,7 +618,12 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
   const usefulLife = calcResidualUsefulLife(input.buildingType, input.buildingAge);
   const annualDepreciation = input.buildingCost / usefulLife;
 
-  let currentRate = resolveRateForYear(input.annualLoanRate, input.loanRateDelta, input.rateAdjustmentSchedule, 1);
+  let currentRate = resolveRateForYear(
+    input.annualLoanRate,
+    input.loanRateDelta,
+    input.rateAdjustmentSchedule,
+    1
+  );
   let monthlyPayment = 0;
   let monthlyPrincipalFixed = 0;
 
@@ -631,7 +651,12 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
     const year = y + 1;
 
     if (year > 1 && input.rateAdjustmentSchedule.length > 0) {
-      const newRate = resolveRateForYear(input.annualLoanRate, input.loanRateDelta, input.rateAdjustmentSchedule, year);
+      const newRate = resolveRateForYear(
+        input.annualLoanRate,
+        input.loanRateDelta,
+        input.rateAdjustmentSchedule,
+        year
+      );
       if (newRate !== currentRate && remainingBalance > 0 && year <= input.loanYears) {
         if (input.loanMethod !== LOAN_METHOD_EQUAL_PRINCIPAL) {
           const remainingYears = input.loanYears - y;
@@ -648,14 +673,18 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
     if (remainingBalance > 0 && year <= input.loanYears) {
       if (input.loanMethod === LOAN_METHOD_EQUAL_PRINCIPAL) {
         const { interest, principal } = calcYearlyLoanComponentsEqualPrincipal(
-          remainingBalance, currentRate, monthlyPrincipalFixed,
+          remainingBalance,
+          currentRate,
+          monthlyPrincipalFixed
         );
         annualInterest = interest;
         annualPrincipal = principal;
         annualLoanPayment = annualInterest + annualPrincipal;
       } else {
         const { interest, principal } = calcYearlyLoanComponents(
-          remainingBalance, currentRate, monthlyPayment,
+          remainingBalance,
+          currentRate,
+          monthlyPayment
         );
         annualInterest = interest;
         annualPrincipal = principal;
@@ -693,9 +722,7 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
     cumulativeCF += afterTaxCF;
 
     const inDeadCrossZone =
-      input.buildingCost > 0 &&
-      annualPrincipal > 0 &&
-      annualPrincipal > yearDepreciation;
+      input.buildingCost > 0 && annualPrincipal > 0 && annualPrincipal > yearDepreciation;
 
     let isDeadCrossYear = false;
     if (deadCrossYear === -1 && inDeadCrossZone) {
@@ -731,7 +758,10 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
   }
 
   const { salePrice, capitalGain, transferTax, netProceeds, totalEquity } = calcExit(
-    input, yearlyResults, accumulatedDepreciation, miscExpenses,
+    input,
+    yearlyResults,
+    accumulatedDepreciation,
+    miscExpenses
   );
 
   const criticalErrors = calcCriticalErrors(input, deadCrossYear, usefulLife);
@@ -740,22 +770,26 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
     { label: "ベースライン", rateDelta: 0, vacDelta: 0 },
     { label: "金利+1%", rateDelta: 0.01, vacDelta: 0 },
     { label: "金利+2%", rateDelta: 0.02, vacDelta: 0 },
-    { label: "空室+10%", rateDelta: 0, vacDelta: 0.10 },
-    { label: "空室+20%", rateDelta: 0, vacDelta: 0.20 },
-    { label: "複合ストレス", rateDelta: 0.02, vacDelta: 0.10 },
+    { label: "空室+10%", rateDelta: 0, vacDelta: 0.1 },
+    { label: "空室+20%", rateDelta: 0, vacDelta: 0.2 },
+    { label: "複合ストレス", rateDelta: 0.02, vacDelta: 0.1 },
   ];
 
   const stressScenarios: StressScenarioResult[] = defaultScenarios.map((sc) =>
-    calcStressScenario(input, sc.label, sc.rateDelta, sc.vacDelta),
+    calcStressScenario(input, sc.label, sc.rateDelta, sc.vacDelta)
   );
 
   if (input.loanRateDelta !== 0 || input.vacancyRateDelta !== 0) {
     stressScenarios.push(
-      calcStressScenario(input, "カスタム", input.loanRateDelta, input.vacancyRateDelta),
+      calcStressScenario(input, "カスタム", input.loanRateDelta, input.vacancyRateDelta)
     );
   }
 
-  const acquisitionCosts = calcAcquisitionCosts(input.landPrice, input.buildingCost, input.loanAmount);
+  const acquisitionCosts = calcAcquisitionCosts(
+    input.landPrice,
+    input.buildingCost,
+    input.loanAmount
+  );
   const yieldScenarios = calcYieldScenarios(input, totalInvestment);
   const ltvSensitivity = calcLTVSensitivity(input);
 
@@ -775,7 +809,11 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
       const decayFactor = Math.pow(1 - priceDeclineRate, input.holdingYears);
       const adjustedSalePrice = salePrice * decayFactor;
       irrTerminalValue = calcTerminalValueWithDecline(
-        input, yearlyResults, adjustedSalePrice, accumulatedDepreciation, miscExpenses,
+        input,
+        yearlyResults,
+        adjustedSalePrice,
+        accumulatedDepreciation,
+        miscExpenses
       );
     }
 

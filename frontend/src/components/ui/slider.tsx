@@ -13,7 +13,16 @@ interface SliderProps {
   className?: string;
 }
 
-export function Slider({ label, value, min, max, step, onChange, formatValue, className }: SliderProps) {
+export function Slider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  formatValue,
+  className,
+}: SliderProps) {
   const pct = ((value - min) / (max - min)) * 100;
 
   return (
@@ -27,10 +36,7 @@ export function Slider({ label, value, min, max, step, onChange, formatValue, cl
         </div>
       )}
       <div className="relative h-2 w-full rounded-full bg-muted">
-        <div
-          className="absolute h-2 rounded-full bg-primary"
-          style={{ width: `${pct}%` }}
-        />
+        <div className="absolute h-2 rounded-full bg-primary" style={{ width: `${pct}%` }} />
         <input
           type="range"
           min={min}

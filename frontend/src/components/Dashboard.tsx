@@ -10,11 +10,44 @@ import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
 import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
 import RenovationPanel from "@/components/RenovationPanel";
-import type { InvestmentInput, InvestmentResult, LandPriceComparison, TheoreticalPriceResult, StationRidershipResult, PopulationForecastResult, AppraisalComparisonResult, UrbanRisk, SimulationMode, LoanMethod, MonteCarloResult, InvestmentScoreResult } from "@/types/investment";
-import { analyze as analyzeOnline, compareLandPrice, estimateLandPrice, fetchStationRidership, fetchPopulationForecast, fetchLandAppraisals, fetchUrbanRisks, fetchHazardInfo, fetchInvestmentScore, simulate } from "@/lib/api";
+import type {
+  InvestmentInput,
+  InvestmentResult,
+  LandPriceComparison,
+  TheoreticalPriceResult,
+  StationRidershipResult,
+  PopulationForecastResult,
+  AppraisalComparisonResult,
+  UrbanRisk,
+  SimulationMode,
+  LoanMethod,
+  MonteCarloResult,
+  InvestmentScoreResult,
+} from "@/types/investment";
+import {
+  analyze as analyzeOnline,
+  compareLandPrice,
+  estimateLandPrice,
+  fetchStationRidership,
+  fetchPopulationForecast,
+  fetchLandAppraisals,
+  fetchUrbanRisks,
+  fetchHazardInfo,
+  fetchInvestmentScore,
+  simulate,
+} from "@/lib/api";
 import { analyze as analyzeOffline } from "@/lib/investment";
 import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
-import { ShieldAlert, Info, FileDown, Share2, Check, SlidersHorizontal, X, WifiOff } from "lucide-react";
+import {
+  ShieldAlert,
+  Info,
+  FileDown,
+  Share2,
+  Check,
+  SlidersHorizontal,
+  X,
+  WifiOff,
+} from "lucide-react";
 import { SimulationModeToggle } from "@/components/SimulationModeToggle";
 import { Button } from "@/components/ui/button";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
@@ -81,9 +114,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const [lastInput, setLastInput] = useState<InvestmentInput | null>(null);
   const [propertyLat, setPropertyLat] = useState<number | undefined>(undefined);
   const [propertyLng, setPropertyLng] = useState<number | undefined>(undefined);
-  const [simulationMode, setSimulationMode] = useState<SimulationMode>(
-    decoded?.mode ?? "quick"
-  );
+  const [simulationMode, setSimulationMode] = useState<SimulationMode>(decoded?.mode ?? "quick");
   const [modeNotice, setModeNotice] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [loanMethod, setLoanMethod] = useState<LoanMethod>("equal-payment");
@@ -100,7 +131,17 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   // Destructure for ergonomic use in JSX
-  const { result, comparison, theoreticalPrice, stationRidership, populationForecast, landAppraisal, externalUrbanRisks, investmentScore, hazardRisks } = analysisResult;
+  const {
+    result,
+    comparison,
+    theoreticalPrice,
+    stationRidership,
+    populationForecast,
+    landAppraisal,
+    externalUrbanRisks,
+    investmentScore,
+    hazardRisks,
+  } = analysisResult;
 
   // Network status detection
   useEffect(() => {
@@ -153,9 +194,8 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
     const inputWithMethod = { ...input, loanMethod };
     try {
       // When offline, fall back to client-side calculation
-      const res = isOnline === false
-        ? analyzeOffline(inputWithMethod)
-        : await analyzeOnline(inputWithMethod);
+      const res =
+        isOnline === false ? analyzeOffline(inputWithMethod) : await analyzeOnline(inputWithMethod);
       setAnalysisResult((prev) => ({ ...prev, result: res }));
       setLastInput(inputWithMethod);
 
@@ -191,11 +231,10 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
     setMonteCarloResult(null);
     try {
       const updatedInput = { ...lastInput, loanMethod: method };
-      const res = isOnline === false
-        ? analyzeOffline(updatedInput)
-        : await analyzeOnline(updatedInput);
+      const res =
+        isOnline === false ? analyzeOffline(updatedInput) : await analyzeOnline(updatedInput);
       setAnalysisResult((prev) => ({ ...prev, result: res }));
-      setLastInput((prev) => prev ? { ...prev, loanMethod: method } : prev);
+      setLastInput((prev) => (prev ? { ...prev, loanMethod: method } : prev));
     } catch (e) {
       setError(e instanceof Error ? e.message : "シミュレーションに失敗しました");
     } finally {
@@ -273,7 +312,11 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
         }));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "相場データの取得に失敗しました。しばらく後に再試行してください");
+      setError(
+        e instanceof Error
+          ? e.message
+          : "相場データの取得に失敗しました。しばらく後に再試行してください"
+      );
     } finally {
       setLoading(false);
     }
@@ -378,7 +421,8 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           <div className="mb-4 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             <WifiOff className="h-4 w-4 shrink-0" />
             <span>
-              <strong>オフラインモード：</strong>シミュレーションはデバイス内で計算されます。「相場を取得」はネットワーク接続が回復するまで使用できません。
+              <strong>オフラインモード：</strong>
+              シミュレーションはデバイス内で計算されます。「相場を取得」はネットワーク接続が回復するまで使用できません。
             </span>
           </div>
         )}
@@ -419,7 +463,10 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 シミュレーション
               </button>
               <button
-                onClick={() => { setActiveTab("area-discovery"); setSelectedMunicipalityMsg(null); }}
+                onClick={() => {
+                  setActiveTab("area-discovery");
+                  setSelectedMunicipalityMsg(null);
+                }}
                 className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
                   activeTab === "area-discovery"
                     ? "bg-white shadow-sm text-foreground"
@@ -460,9 +507,13 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
               <div className="flex h-64 items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/20 lg:h-80">
                 <div className="text-center text-muted-foreground">
                   <ShieldAlert className="mx-auto mb-3 h-10 w-10 opacity-30 lg:h-12 lg:w-12" />
-                  <p className="text-sm font-medium">条件を入力してシミュレーションを実行してください</p>
+                  <p className="text-sm font-medium">
+                    条件を入力してシミュレーションを実行してください
+                  </p>
                   <p className="mt-1 text-xs lg:hidden">下の「条件を編集」ボタンから入力できます</p>
-                  <p className="mt-1 hidden text-sm lg:block">左のフォームから条件を入力してください</p>
+                  <p className="mt-1 hidden text-sm lg:block">
+                    左のフォームから条件を入力してください
+                  </p>
                 </div>
               </div>
             )}
@@ -482,12 +533,27 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                   />
                 )}
 
-                {comparison && <LandPriceAnalysis comparison={comparison} input={lastInput} theoreticalPrice={theoreticalPrice} stationRidership={stationRidership} populationForecast={populationForecast} landAppraisal={landAppraisal} externalUrbanRisks={externalUrbanRisks} hazardRisks={hazardRisks} />}
+                {comparison && (
+                  <LandPriceAnalysis
+                    comparison={comparison}
+                    input={lastInput}
+                    theoreticalPrice={theoreticalPrice}
+                    stationRidership={stationRidership}
+                    populationForecast={populationForecast}
+                    landAppraisal={landAppraisal}
+                    externalUrbanRisks={externalUrbanRisks}
+                    hazardRisks={hazardRisks}
+                  />
+                )}
 
                 {result && lastInput && (
                   <>
                     <CriticalErrorBanner errors={result.criticalErrors} />
-                    <YieldAnalysis result={result} input={lastInput} populationForecast={populationForecast} />
+                    <YieldAnalysis
+                      result={result}
+                      input={lastInput}
+                      populationForecast={populationForecast}
+                    />
                     <NegotiationPanel
                       result={result}
                       input={lastInput}
@@ -512,14 +578,13 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                           </div>
                         )}
                         {/* 自己資金 = 総投資額 - ローン金額（ISSUE-22: 投資回収年の正確な計算に使用） */}
-                        <CashFlowChart result={result} equityInvested={result.totalInvestment - lastInput.loanAmount} />
+                        <CashFlowChart
+                          result={result}
+                          equityInvested={result.totalInvestment - lastInput.loanAmount}
+                        />
                         <DeadCrossChart result={result} />
                         <div className="flex justify-center">
-                          <Button
-                            onClick={handleMonteCarlo}
-                            loading={monteCarloLoading}
-                            size="md"
-                          >
+                          <Button onClick={handleMonteCarlo} loading={monteCarloLoading} size="md">
                             モンテカルロ実行（1,000試行）
                           </Button>
                         </div>
@@ -550,12 +615,14 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
 
       {/* Mobile: bottom sheet overlay */}
       {mobileFormOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="投資条件入力">
+        <div
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="投資条件入力"
+        >
           {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setMobileFormOpen(false)}
-          />
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileFormOpen(false)} />
           {/* Sheet */}
           <div className="absolute bottom-0 left-0 right-0 max-h-[90vh] overflow-y-auto rounded-t-2xl bg-background shadow-xl">
             <div className="sticky top-0 flex items-center justify-between border-b bg-background px-4 py-3">
