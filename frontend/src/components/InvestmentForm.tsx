@@ -1148,7 +1148,7 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   formatValue={(v) => `+${formatPct(v)}`} />
                 {rateScheduleEnabled && input.loanRateDelta > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    ストレスΔはスケジュール金利にも加算されます
+                    金利上昇分はスケジュール後の金利にも上乗せされます
                   </p>
                 )}
               </div>
