@@ -1,13 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import {
-  LineChart,
-  Line,
-  ReferenceLine,
-  ResponsiveContainer,
-  YAxis,
-  Tooltip,
-} from "recharts";
+import { LineChart, Line, ReferenceLine, ResponsiveContainer, YAxis, Tooltip } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,9 +50,7 @@ export function LoanComparePanel({ baseInput }: Props) {
   };
 
   const updateScenario = (i: number, patch: Partial<LoanScenario>) => {
-    setScenarios((prev) =>
-      prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s))
-    );
+    setScenarios((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
   };
 
   const handleCompare = async () => {
@@ -133,9 +124,7 @@ export function LoanComparePanel({ baseInput }: Props) {
                 suffix="%"
                 step="0.1"
                 value={toPct(sc.annualLoanRate, 1)}
-                onChange={(e) =>
-                  updateScenario(i, { annualLoanRate: fromPct(e.target.value) })
-                }
+                onChange={(e) => updateScenario(i, { annualLoanRate: fromPct(e.target.value) })}
               />
               <Input
                 label="融資期間"
@@ -155,9 +144,7 @@ export function LoanComparePanel({ baseInput }: Props) {
                 suffix="%"
                 step="5"
                 value={toPct(sc.ltv, 0)}
-                onChange={(e) =>
-                  updateScenario(i, { ltv: fromPct(e.target.value) })
-                }
+                onChange={(e) => updateScenario(i, { ltv: fromPct(e.target.value) })}
               />
               <Input
                 label="諸費用率"
@@ -166,9 +153,7 @@ export function LoanComparePanel({ baseInput }: Props) {
                 suffix="%"
                 step="0.5"
                 value={toPct(sc.loanFeeRate, 1)}
-                onChange={(e) =>
-                  updateScenario(i, { loanFeeRate: fromPct(e.target.value) })
-                }
+                onChange={(e) => updateScenario(i, { loanFeeRate: fromPct(e.target.value) })}
               />
             </div>
           ))}
@@ -190,9 +175,7 @@ export function LoanComparePanel({ baseInput }: Props) {
           </Button>
         </div>
 
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
-        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         {/* 比較結果テーブル */}
         {results.length > 0 && (
@@ -213,7 +196,12 @@ export function LoanComparePanel({ baseInput }: Props) {
                 <tr>
                   <td className="px-3 py-2 text-muted-foreground">月返済額</td>
                   {results.map((res, i) => {
-                    if (!res) return <td key={i} className="px-3 py-2 text-center">—</td>;
+                    if (!res)
+                      return (
+                        <td key={i} className="px-3 py-2 text-center">
+                          —
+                        </td>
+                      );
                     const monthlyPayment =
                       res.yearlyResults[0]?.annualLoanPayment != null
                         ? res.yearlyResults[0].annualLoanPayment / 12
@@ -232,12 +220,15 @@ export function LoanComparePanel({ baseInput }: Props) {
                     <span className="ml-1 text-xs text-muted-foreground">参考値</span>
                   </td>
                   {results.map((res, i) => {
-                    if (!res) return <td key={i} className="px-3 py-2 text-center">—</td>;
+                    if (!res)
+                      return (
+                        <td key={i} className="px-3 py-2 text-center">
+                          —
+                        </td>
+                      );
                     const dscr = res.dscr;
                     const colorClass =
-                      dscr >= 1.2
-                        ? "text-green-600 font-semibold"
-                        : "text-red-600 font-semibold";
+                      dscr >= 1.2 ? "text-green-600 font-semibold" : "text-red-600 font-semibold";
                     return (
                       <td key={i} className="px-3 py-2 text-center">
                         <span className={colorClass}>{dscr.toFixed(2)}</span>
@@ -254,7 +245,12 @@ export function LoanComparePanel({ baseInput }: Props) {
                 <tr>
                   <td className="px-3 py-2 text-muted-foreground">DSCR推移</td>
                   {results.map((res, i) => {
-                    if (!res) return <td key={i} className="px-3 py-2 text-center">—</td>;
+                    if (!res)
+                      return (
+                        <td key={i} className="px-3 py-2 text-center">
+                          —
+                        </td>
+                      );
                     const data = dscrSeriesForResult(res);
                     return (
                       <td key={i} className="px-3 py-2">
@@ -283,7 +279,12 @@ export function LoanComparePanel({ baseInput }: Props) {
                 <tr>
                   <td className="px-3 py-2 text-muted-foreground">デッドクロス年</td>
                   {results.map((res, i) => {
-                    if (!res) return <td key={i} className="px-3 py-2 text-center">—</td>;
+                    if (!res)
+                      return (
+                        <td key={i} className="px-3 py-2 text-center">
+                          —
+                        </td>
+                      );
                     return (
                       <td key={i} className="px-3 py-2 text-center">
                         {res.deadCrossYear > 0 ? `${res.deadCrossYear}年目` : "なし"}
@@ -307,7 +308,12 @@ export function LoanComparePanel({ baseInput }: Props) {
                 <tr>
                   <td className="px-3 py-2 text-muted-foreground">総支払利息</td>
                   {results.map((res, i) => {
-                    if (!res) return <td key={i} className="px-3 py-2 text-center">—</td>;
+                    if (!res)
+                      return (
+                        <td key={i} className="px-3 py-2 text-center">
+                          —
+                        </td>
+                      );
                     return (
                       <td key={i} className="px-3 py-2 text-center">
                         {toMan(res.totalInterest)}万円

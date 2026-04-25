@@ -10,7 +10,15 @@ import type {
   YieldScenarios,
 } from "@/types/investment";
 import { formatMan, formatPct, formatYen } from "@/lib/utils";
-import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Users, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  CheckCircle,
+  Users,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
 import { MobileSummaryCard } from "@/components/MobileSummaryCard";
 
@@ -193,7 +201,9 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                   {isExpanded && (
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t px-3 pb-3 pt-2 text-sm">
                       <span className="text-muted-foreground">DSCR</span>
-                      <span className={`text-right font-medium ${s.dscr >= 1.2 ? "text-green-600" : s.dscr >= 1.0 ? "text-yellow-600" : "text-red-600"}`}>
+                      <span
+                        className={`text-right font-medium ${s.dscr >= 1.2 ? "text-green-600" : s.dscr >= 1.0 ? "text-yellow-600" : "text-red-600"}`}
+                      >
                         {s.dscr.toFixed(2)}
                       </span>
                       <span className="text-muted-foreground">CF黒転年</span>
@@ -202,11 +212,15 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                       </span>
                       <span className="text-muted-foreground">金利△</span>
                       <span className="text-right">
-                        {s.interestRateDelta !== 0 ? `+${(s.interestRateDelta * 100).toFixed(1)}%` : "±0"}
+                        {s.interestRateDelta !== 0
+                          ? `+${(s.interestRateDelta * 100).toFixed(1)}%`
+                          : "±0"}
                       </span>
                       <span className="text-muted-foreground">空室△</span>
                       <span className="text-right">
-                        {s.vacancyRateDelta !== 0 ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%` : "±0"}
+                        {s.vacancyRateDelta !== 0
+                          ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%`
+                          : "±0"}
                       </span>
                     </div>
                   )}

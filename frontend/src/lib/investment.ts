@@ -451,7 +451,11 @@ function calcStressScenario(
       if (yearDSCR < minDSCR) minDSCR = yearDSCR;
     }
 
-    const cf = yearNOI - yearLoan;
+    const yearCapex = (inInput.capexSchedule ?? [])
+      .filter((ev) => ev.year === y)
+      .reduce((sum, ev) => sum + ev.amount, 0);
+
+    const cf = yearNOI - yearLoan - yearCapex;
     // 減価償却は省略した保守的近似（簡略ストレス計算のため過大に税を見積もる）
     const taxableIncome = yearNOI - yearInterest;
     const incomeTax = taxableIncome > 0 ? taxableIncome * inInput.incomeTaxRate : 0;
@@ -717,7 +721,11 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
     const taxableIncome = yearAnnualRent - annualInterest - yearDepreciation - yearExpenses;
     const incomeTax = taxableIncome > 0 ? taxableIncome * input.incomeTaxRate : 0;
 
-    const cashFlow = yearAnnualRent - annualLoanPayment - yearExpenses;
+    const capexAmount = (input.capexSchedule ?? [])
+      .filter((ev) => ev.year === year)
+      .reduce((sum, ev) => sum + ev.amount, 0);
+
+    const cashFlow = yearAnnualRent - annualLoanPayment - yearExpenses - capexAmount;
     const afterTaxCF = cashFlow - incomeTax;
     cumulativeCF += afterTaxCF;
 
@@ -747,6 +755,7 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
       isDeadCrossYear,
       isInDeadCrossZone: inDeadCrossZone,
       effectiveRate: currentRate,
+      capexAmount,
     });
   }
 
@@ -846,5 +855,6 @@ export function analyze(inputRaw: InvestmentInput): InvestmentResult {
     ltvSensitivity,
     irr,
     npv,
+    totalInterest: yearlyResults.reduce((sum, yr) => sum + yr.annualInterest, 0),
   };
 }
