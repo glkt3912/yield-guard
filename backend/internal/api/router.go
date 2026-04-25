@@ -133,6 +133,7 @@ func NewRouter(h *Handler) *gin.Engine {
 		api.GET("/investment-score", h.GetInvestmentScore)
 		api.GET("/investment-score-heatmap", analyzeRL.middleware(), h.GetInvestmentScoreHeatmap)
 		api.GET("/area-discovery", analyzeRL.middleware(), h.HandleAreaDiscovery)
+		api.GET("/geocode", h.GetGeocode)
 	}
 
 	return r

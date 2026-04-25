@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"sync"
@@ -37,11 +38,12 @@ type MLITClient interface {
 }
 
 type Handler struct {
-	mlitClient MLITClient
+	mlitClient    MLITClient
+	geocodeClient GeocodeClient
 }
 
-func NewHandler(mlitClient MLITClient) *Handler {
-	return &Handler{mlitClient: mlitClient}
+func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient) *Handler {
+	return &Handler{mlitClient: mlitClient, geocodeClient: geocodeClient}
 }
 
 // GetLandPrices は国交省APIから土地取引価格を取得して統計を返す
@@ -1194,5 +1196,46 @@ func (h *Handler) HandleRenovationAnalyze(c *gin.Context) {
 		return
 	}
 	result := domain.CalcRenovationROI(input)
+	c.JSON(http.StatusOK, result)
+}
+
+// GetGeocode は住所文字列から緯度・経度を返す
+// GET /api/geocode?address=<住所>
+// APIキーはサーバーサイドのみで保持し、フロントには露出しない
+func (h *Handler) GetGeocode(c *gin.Context) {
+	address := c.Query("address")
+	if address == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "address パラメータは必須です"})
+		return
+	}
+
+	// 住所はPIIになりうるため、accessLogMiddleware が記録するクエリ文字列をマスクする
+	// nil ガードより先に実行することで、全パスでマスクが適用される
+	masked := address
+	if len([]rune(address)) > 10 {
+		masked = string([]rune(address)[:10]) + "***"
+	}
+	c.Request.URL.RawQuery = "address=" + url.QueryEscape(masked)
+	slog.InfoContext(c.Request.Context(), "geocode request", "address_masked", masked)
+
+	if h.geocodeClient == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "ジオコーディングが設定されていません"})
+		return
+	}
+
+	result, err := h.geocodeClient.Geocode(c.Request.Context(), address)
+	if err != nil {
+		switch {
+		case errors.Is(err, errGeocodeNotConfigured):
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "ジオコーディングが設定されていません"})
+		case errors.Is(err, errGeocodeNotFound):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "住所が見つかりませんでした。丁目・番地まで入力してください"})
+		default:
+			slog.WarnContext(c.Request.Context(), "geocode upstream error", "error", err)
+			c.JSON(http.StatusBadGateway, gin.H{"error": "座標取得に失敗しました"})
+		}
+		return
+	}
+
 	c.JSON(http.StatusOK, result)
 }

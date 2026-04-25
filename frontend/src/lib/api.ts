@@ -16,6 +16,7 @@ import type {
   InvestmentScoreResult,
   RentDeclineHint,
   HeatmapResponse,
+  GeocodeResult,
 } from "@/types/investment";
 
 const BASE = "/api";
@@ -277,4 +278,11 @@ export async function simulate(input: MonteCarloInput): Promise<MonteCarloResult
     body: JSON.stringify(input),
   });
   return handleResponse<MonteCarloResult>(res);
+}
+
+/** 住所文字列から緯度・経度を取得（バックエンド経由でGoogle Maps Geocoding API を呼び出す） */
+export async function fetchGeocode(address: string): Promise<GeocodeResult> {
+  const q = new URLSearchParams({ address });
+  const res = await fetch(`${BASE}/geocode?${q}`);
+  return handleResponse<GeocodeResult>(res);
 }

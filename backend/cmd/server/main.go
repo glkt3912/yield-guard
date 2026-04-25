@@ -36,7 +36,8 @@ func main() {
 	}
 
 	mlitClient := mlit.NewClient()
-	handler := api.NewHandler(mlitClient)
+	geocodeClient := api.NewGoogleGeocodeClient(os.Getenv("GOOGLE_MAPS_API_KEY"))
+	handler := api.NewHandler(mlitClient, geocodeClient)
 	router := api.NewRouter(handler)
 
 	srv := &http.Server{

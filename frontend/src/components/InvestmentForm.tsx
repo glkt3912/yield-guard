@@ -1,5 +1,12 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+
+const LOCATION_TYPE_LABEL: Record<string, string> = {
+  ROOFTOP: "番地レベルで取得",
+  RANGE_INTERPOLATED: "住所レベルで取得",
+  GEOMETRIC_CENTER: "地点レベルで取得",
+  APPROXIMATE: "近似位置で取得（精度低）",
+};
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -8,7 +15,7 @@ import { Slider } from "@/components/ui/slider";
 import type { InvestmentInput, BuildingType, SimulationMode, RateAdjustment } from "@/types/investment";
 import { DEFAULT_INPUT, QUICK_MODE_DEFAULTS } from "@/types/investment";
 import { formatPct } from "@/lib/utils";
-import { fetchMunicipalities, fetchRentDeclineHint, type Municipality } from "@/lib/api";
+import { fetchMunicipalities, fetchRentDeclineHint, fetchGeocode, type Municipality } from "@/lib/api";
 import type { RentDeclineHint } from "@/types/investment";
 import { Search, Calculator, Info, AlertTriangle, ShieldCheck, Zap, SlidersHorizontal, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { ZONING_TYPES, ZONING_META, type ZoningType } from "@/lib/zoning";
@@ -164,6 +171,11 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   const [city, setCity] = useState("");
   const [propertyLat, setPropertyLat] = useState("");
   const [propertyLng, setPropertyLng] = useState("");
+  const [addressInput, setAddressInput] = useState("");
+  const [geocodeStatus, setGeocodeStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [geocodeError, setGeocodeError] = useState("");
+  const [geocodeLocationType, setGeocodeLocationType] = useState("");
+  const [showManualCoords, setShowManualCoords] = useState(false);
 
   useEffect(() => {
     if (externalLat !== undefined && externalLng !== undefined) {
@@ -314,6 +326,24 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
   };
   const setStr = (key: keyof InvestmentInput, value: string) =>
     setInput((prev) => ({ ...prev, [key]: value }));
+
+  const handleGeocode = useCallback(async () => {
+    if (!addressInput.trim()) return;
+    setGeocodeStatus("loading");
+    setGeocodeError("");
+    try {
+      const result = await fetchGeocode(addressInput.trim());
+      setPropertyLat(result.lat.toFixed(6));
+      setPropertyLng(result.lng.toFixed(6));
+      setGeocodeLocationType(result.locationType);
+      setGeocodeStatus("success");
+      setShowManualCoords(false);
+    } catch (e) {
+      setGeocodeError(e instanceof Error ? e.message : "座標取得に失敗しました");
+      setGeocodeStatus("error");
+      setShowManualCoords(true);
+    }
+  }, [addressInput]);
 
   const handleFetchRentHint = useCallback(async () => {
     setRentHintLoading(true);
@@ -693,33 +723,75 @@ export function InvestmentForm({ onAnalyze, onFetchLandPrices, loading, simulati
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2">
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-foreground">緯度（任意）</label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="例: 35.6762"
-                    step="0.0001"
-                    value={propertyLat}
-                    onChange={(e) => setPropertyLat(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
-                    aria-label="物件の緯度"
-                  />
+                  <label className="text-sm font-medium text-foreground">物件住所（任意）</label>
+                  <p className="text-xs text-muted-foreground">丁目・番地まで入力してください（建物名・部屋番号は不要）</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="例: 東京都渋谷区道玄坂1-2"
+                      value={addressInput}
+                      onChange={(e) => {
+                        setAddressInput(e.target.value);
+                        setGeocodeStatus("idle");
+                        setGeocodeLocationType("");
+                        setPropertyLat("");
+                        setPropertyLng("");
+                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleGeocode(); }}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                      aria-label="物件住所"
+                    />
+                    <Button
+                      variant="outline"
+                      loading={geocodeStatus === "loading"}
+                      disabled={!addressInput.trim() || geocodeStatus === "loading"}
+                      onClick={handleGeocode}
+                      className="shrink-0"
+                    >
+                      座標を取得
+                    </Button>
+                  </div>
+                  {geocodeStatus === "success" && (
+                    <p className="text-xs text-green-600">
+                      ✓ {LOCATION_TYPE_LABEL[geocodeLocationType] ?? "座標を取得しました"}
+                    </p>
+                  )}
+                  {geocodeStatus === "error" && (
+                    <p className="text-xs text-destructive">{geocodeError}</p>
+                  )}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-foreground">経度（任意）</label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="例: 139.6503"
-                    step="0.0001"
-                    value={propertyLng}
-                    onChange={(e) => setPropertyLng(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
-                    aria-label="物件の経度"
-                  />
-                </div>
+                {showManualCoords && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-sm font-medium text-foreground">緯度（手動入力）</label>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        placeholder="例: 35.6762"
+                        step="0.0001"
+                        value={propertyLat}
+                        onChange={(e) => setPropertyLat(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                        aria-label="物件の緯度"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-sm font-medium text-foreground">経度（手動入力）</label>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        placeholder="例: 139.6503"
+                        step="0.0001"
+                        value={propertyLng}
+                        onChange={(e) => setPropertyLng(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                        aria-label="物件の経度"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
                 {getPeriodLabel()}分の宅地取引実績（国交省公式API）を取得します。緯度・経度を入力すると周辺駅の需要スコアも取得します

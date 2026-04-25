@@ -271,8 +271,8 @@ func (m *mockMLITClient) FetchLandslideHazard(ctx context.Context, z, x, y int) 
 }
 
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す
-func newTestRouter(client MLITClient) *gin.Engine {
-	h := NewHandler(client)
+func newTestRouter(client MLITClient, geocodeClient GeocodeClient) *gin.Engine {
+	h := NewHandler(client, geocodeClient)
 	return NewRouter(h)
 }
 
@@ -410,7 +410,7 @@ func TestDomainValidate_Combinations(t *testing.T) {
 }
 
 func TestAnalyze_ValidInput(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 
 	body, _ := json.Marshal(validBase)
 	req := httptest.NewRequest(http.MethodPost, "/api/investment/analyze", bytes.NewReader(body))
@@ -431,7 +431,7 @@ func TestAnalyze_ValidInput(t *testing.T) {
 }
 
 func TestAnalyze_InvalidJSON(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/investment/analyze", bytes.NewBufferString("not-json"))
 	req.Header.Set("Content-Type", "application/json")
@@ -444,7 +444,7 @@ func TestAnalyze_InvalidJSON(t *testing.T) {
 }
 
 func TestAnalyze_ValidationError(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 
 	invalid := validBase
 	invalid.LandPrice = -1
@@ -465,7 +465,7 @@ func TestAnalyze_ValidationError(t *testing.T) {
 }
 
 func TestGetLandPrices_MissingArea(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/stats?year=2024&quarter=1&to_year=2024&to_quarter=4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -476,7 +476,7 @@ func TestGetLandPrices_MissingArea(t *testing.T) {
 }
 
 func TestGetLandPrices_InvalidYear(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/stats?area=13&year=2000&quarter=1&to_year=2024&to_quarter=4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -487,7 +487,7 @@ func TestGetLandPrices_InvalidYear(t *testing.T) {
 }
 
 func TestGetLandPrices_InvalidQuarter(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/stats?area=13&year=2024&quarter=5&to_year=2024&to_quarter=4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -498,7 +498,7 @@ func TestGetLandPrices_InvalidQuarter(t *testing.T) {
 }
 
 func TestHandleRenovationAnalyze_ValidInput(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	body := `{
 		"propertyPrice": 10000000,
 		"annualBaseRent": 1200000,
@@ -533,7 +533,7 @@ func TestHandleRenovationAnalyze_ValidInput(t *testing.T) {
 }
 
 func TestHandleRenovationAnalyze_EmptyItems(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	body := `{"propertyPrice": 10000000, "annualBaseRent": 1200000, "annualExpenses": 0, "effectiveTaxRate": 0.3, "selfLaborRatePerHour": 0, "items": []}`
 	req := httptest.NewRequest(http.MethodPost, "/api/renovation/analyze", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -546,7 +546,7 @@ func TestHandleRenovationAnalyze_EmptyItems(t *testing.T) {
 }
 
 func TestHandleRenovationAnalyze_ZeroPropertyPrice(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	body := `{"propertyPrice": 0, "items": [{"name": "A", "cost": 100000}]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/renovation/analyze", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -559,7 +559,7 @@ func TestHandleRenovationAnalyze_ZeroPropertyPrice(t *testing.T) {
 }
 
 func TestHandleRenovationAnalyze_InvalidTaxRate(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	body := `{"propertyPrice": 10000000, "effectiveTaxRate": 1.5, "items": [{"name": "A", "cost": 100000}]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/renovation/analyze", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -577,7 +577,7 @@ func TestGetLandPrices_APIError(t *testing.T) {
 			return nil, errors.New("upstream error")
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/stats?area=13&year=2024&quarter=1&to_year=2024&to_quarter=4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -595,7 +595,7 @@ func TestGetLandPrices_Success(t *testing.T) {
 			}, nil
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/stats?area=13&year=2024&quarter=1&to_year=2024&to_quarter=4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -613,7 +613,7 @@ func TestGetLandPrices_Success(t *testing.T) {
 }
 
 func TestCompareLandPrice_MissingPrice(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/compare?area=13&year=2024&quarter=1&to_year=2024&to_quarter=4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -624,7 +624,7 @@ func TestCompareLandPrice_MissingPrice(t *testing.T) {
 }
 
 func TestCompareLandPrice_InvalidPrice(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/compare?area=13&year=2024&quarter=1&to_year=2024&to_quarter=4&price=-1", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -642,7 +642,7 @@ func TestCompareLandPrice_Success(t *testing.T) {
 			}, nil
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-prices/compare?area=13&year=2024&quarter=1&to_year=2024&to_quarter=4&price=10000000&area_sqm=100", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -660,7 +660,7 @@ func TestCompareLandPrice_Success(t *testing.T) {
 }
 
 func TestGetMunicipalities_MissingArea(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/municipalities", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -676,7 +676,7 @@ func TestGetMunicipalities_APIError(t *testing.T) {
 			return nil, errors.New("upstream error")
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/municipalities?area=13", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -695,7 +695,7 @@ func TestGetMunicipalities_Success(t *testing.T) {
 			}, nil
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/municipalities?area=13", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -716,7 +716,7 @@ func TestGetMunicipalities_Success(t *testing.T) {
 }
 
 func TestGetStationRidership_MissingLatLng(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -727,7 +727,7 @@ func TestGetStationRidership_MissingLatLng(t *testing.T) {
 }
 
 func TestGetStationRidership_InvalidLatLng(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?lat=999&lng=139.6503", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -738,7 +738,7 @@ func TestGetStationRidership_InvalidLatLng(t *testing.T) {
 }
 
 func TestGetStationRidership_InvalidZ(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?lat=35.6762&lng=139.6503&z=16", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -761,7 +761,7 @@ func TestGetStationRidership_Success(t *testing.T) {
 			}, nil
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?lat=35.6762&lng=139.6503", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -793,7 +793,7 @@ func TestGetStationRidership_APIError(t *testing.T) {
 			return nil, fmt.Errorf("upstream error")
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/station-ridership?lat=35.6762&lng=139.6503", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -811,7 +811,7 @@ func TestEstimateLandPrice_InvalidRidershipScore(t *testing.T) {
 			}, nil
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet,
 		"/api/land-prices/estimate?area=10&year=2024&quarter=1&to_year=2024&to_quarter=4&price=5000000&area_sqm=100&building_age=10&ridership_score=Z",
 		nil)
@@ -824,7 +824,7 @@ func TestEstimateLandPrice_InvalidRidershipScore(t *testing.T) {
 }
 
 func TestHealthCheck(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -840,7 +840,7 @@ func TestHealthCheck(t *testing.T) {
 }
 
 func TestGetPopulationForecast_MissingLatLng(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/population-forecast", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -864,7 +864,7 @@ func TestGetPopulationForecast_Success(t *testing.T) {
 			}, nil
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/population-forecast?lat=35.6762&lng=139.6503", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -890,7 +890,7 @@ func TestGetPopulationForecast_UpstreamError(t *testing.T) {
 			return nil, errors.New("upstream error")
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/population-forecast?lat=35.6762&lng=139.6503", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -903,7 +903,7 @@ func TestGetPopulationForecast_UpstreamError(t *testing.T) {
 // ---- GetLandAppraisals ----
 
 func TestGetLandAppraisals_MissingArea(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?year=2024", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -914,7 +914,7 @@ func TestGetLandAppraisals_MissingArea(t *testing.T) {
 }
 
 func TestGetLandAppraisals_InvalidYear(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?area=13&year=2010", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -933,7 +933,7 @@ func TestGetLandAppraisals_Success(t *testing.T) {
 			}, nil
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?area=13&year=2024", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -959,7 +959,7 @@ func TestGetLandAppraisals_NoData(t *testing.T) {
 			return []domain.LandAppraisalItem{}, nil
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?area=13&year=2024", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -975,7 +975,7 @@ func TestGetLandAppraisals_UpstreamError(t *testing.T) {
 			return nil, errors.New("upstream error")
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?area=13&year=2024", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -986,7 +986,7 @@ func TestGetLandAppraisals_UpstreamError(t *testing.T) {
 }
 
 func TestGetLandAppraisals_InvalidDivision(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/land-appraisals?area=13&year=2024&division=99", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -998,7 +998,7 @@ func TestGetLandAppraisals_InvalidDivision(t *testing.T) {
 
 func TestInternalKeyMiddleware_NoKeySet(t *testing.T) {
 	t.Setenv("APP_INTERNAL_API_KEY", "")
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -1009,7 +1009,7 @@ func TestInternalKeyMiddleware_NoKeySet(t *testing.T) {
 
 func TestInternalKeyMiddleware_HealthSkipped(t *testing.T) {
 	t.Setenv("APP_INTERNAL_API_KEY", "secret")
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -1020,7 +1020,7 @@ func TestInternalKeyMiddleware_HealthSkipped(t *testing.T) {
 
 func TestInternalKeyMiddleware_Unauthorized(t *testing.T) {
 	t.Setenv("APP_INTERNAL_API_KEY", "secret")
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/municipalities", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -1031,7 +1031,7 @@ func TestInternalKeyMiddleware_Unauthorized(t *testing.T) {
 
 func TestInternalKeyMiddleware_WrongKey(t *testing.T) {
 	t.Setenv("APP_INTERNAL_API_KEY", "secret")
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/municipalities", nil)
 	req.Header.Set("X-Internal-Key", "wrong")
 	w := httptest.NewRecorder()
@@ -1043,7 +1043,7 @@ func TestInternalKeyMiddleware_WrongKey(t *testing.T) {
 
 func TestInternalKeyMiddleware_CorrectKey(t *testing.T) {
 	t.Setenv("APP_INTERNAL_API_KEY", "secret")
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/municipalities?area=13", nil)
 	req.Header.Set("X-Internal-Key", "secret")
 	w := httptest.NewRecorder()
@@ -1054,7 +1054,7 @@ func TestInternalKeyMiddleware_CorrectKey(t *testing.T) {
 }
 
 func TestGetUrbanRisks_MissingParams(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	for _, url := range []string{
 		"/api/urban-risks",
 		"/api/urban-risks?lat=35.68",
@@ -1069,7 +1069,7 @@ func TestGetUrbanRisks_MissingParams(t *testing.T) {
 }
 
 func TestGetUrbanRisks_InvalidRange(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	for _, url := range []string{
 		"/api/urban-risks?lat=10&lng=139.69",  // lat 範囲外（< 20）
 		"/api/urban-risks?lat=35.68&lng=200",  // lng 範囲外（> 154）
@@ -1084,7 +1084,7 @@ func TestGetUrbanRisks_InvalidRange(t *testing.T) {
 }
 
 func TestGetUrbanRisks_EmptyResult(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/urban-risks?lat=35.68&lng=139.69", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -1112,7 +1112,7 @@ func TestGetUrbanRisks_WithRisks(t *testing.T) {
 			return []domain.DisasterHistoryItem{{Name: "浸水域", Year: 2019}}, nil
 		},
 	}
-	r := newTestRouter(mock)
+	r := newTestRouter(mock, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/urban-risks?lat=35.68&lng=139.69", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -1143,7 +1143,7 @@ func TestGetUrbanRisks_PartialAPIFailure(t *testing.T) {
 			return []domain.DisasterHistoryItem{{Name: "がけ崩れ", Year: 2011}}, nil
 		},
 	}
-	r := newTestRouter(mock)
+	r := newTestRouter(mock, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/urban-risks?lat=35.68&lng=139.69", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -1168,7 +1168,7 @@ func TestGetUrbanRisks_PartialAPIFailure(t *testing.T) {
 // ---- /api/investment-score テスト ----
 
 func TestGetInvestmentScore_MissingParams(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	for _, url := range []string{
 		"/api/investment-score",
 		"/api/investment-score?lat=35.68",
@@ -1183,7 +1183,7 @@ func TestGetInvestmentScore_MissingParams(t *testing.T) {
 }
 
 func TestGetInvestmentScore_InvalidRange(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	for _, url := range []string{
 		"/api/investment-score?lat=10&lng=139.69",   // lat 範囲外（< 20）
 		"/api/investment-score?lat=35.68&lng=200",   // lng 範囲外（> 154）
@@ -1198,7 +1198,7 @@ func TestGetInvestmentScore_InvalidRange(t *testing.T) {
 }
 
 func TestGetInvestmentScore_EmptyResult(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/investment-score?lat=35.68&lng=139.69", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -1229,7 +1229,7 @@ func TestGetInvestmentScore_WithData(t *testing.T) {
 			return []domain.FloodHazardItem{{DepthRank: 3, RiverName: "多摩川"}}, nil
 		},
 	}
-	r := newTestRouter(mock)
+	r := newTestRouter(mock, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/investment-score?lat=35.68&lng=139.69", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -1261,7 +1261,7 @@ func TestGetInvestmentScore_PartialAPIFailure(t *testing.T) {
 			return []domain.UrbanZoningItem{{AreaClassificationJa: "市街化区域"}}, nil
 		},
 	}
-	r := newTestRouter(mock)
+	r := newTestRouter(mock, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/investment-score?lat=35.68&lng=139.69", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -1280,7 +1280,7 @@ func TestGetInvestmentScore_PartialAPIFailure(t *testing.T) {
 }
 
 func TestGetHazardInfo_MissingLatLng(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	for _, url := range []string{"/api/hazard", "/api/hazard?lat=35.68", "/api/hazard?lng=139.69"} {
 		req := httptest.NewRequest(http.MethodGet, url, nil)
 		w := httptest.NewRecorder()
@@ -1292,7 +1292,7 @@ func TestGetHazardInfo_MissingLatLng(t *testing.T) {
 }
 
 func TestGetHazardInfo_InvalidLatLng(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	cases := []string{
 		"/api/hazard?lat=999&lng=139.69",  // lat 範囲外
 		"/api/hazard?lat=35.68&lng=200",   // lng 範囲外
@@ -1317,7 +1317,7 @@ func TestGetHazardInfo_Success(t *testing.T) {
 			return []domain.TsunamiHazardItem{{DepthJa: "3m以上"}}, nil
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/hazard?lat=35.68&lng=139.69", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -1353,7 +1353,7 @@ func TestGetHazardInfo_PartialAPIFailure(t *testing.T) {
 			return []domain.LandslideHazardItem{{PhenomenonType: 2, ZoneCode: 1}}, nil
 		},
 	}
-	r := newTestRouter(client)
+	r := newTestRouter(client, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/hazard?lat=35.68&lng=139.69", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -1372,7 +1372,7 @@ func TestGetHazardInfo_PartialAPIFailure(t *testing.T) {
 }
 
 func TestGetHazardInfo_EmptyResult(t *testing.T) {
-	r := newTestRouter(&mockMLITClient{})
+	r := newTestRouter(&mockMLITClient{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/hazard?lat=35.68&lng=139.69", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -1390,5 +1390,113 @@ func TestGetHazardInfo_EmptyResult(t *testing.T) {
 	}
 	if len(risks) != 0 {
 		t.Errorf("expected 0 risks, got %d", len(risks))
+	}
+}
+
+// mockGeocodeClient は GeocodeClient インターフェースのテスト用モック
+type mockGeocodeClient struct {
+	geocodeFunc func(ctx context.Context, address string) (*GeocodeResult, error)
+}
+
+func (m *mockGeocodeClient) Geocode(ctx context.Context, address string) (*GeocodeResult, error) {
+	if m.geocodeFunc == nil {
+		return &GeocodeResult{Lat: 35.6762, Lng: 139.6503, LocationType: "ROOFTOP"}, nil
+	}
+	return m.geocodeFunc(ctx, address)
+}
+
+func TestGetGeocode(t *testing.T) {
+	tests := []struct {
+		name          string
+		query         string
+		geocodeClient GeocodeClient
+		wantStatus    int
+		wantLat       float64
+		wantLocType   string
+	}{
+		{
+			name:  "正常系 ROOFTOP",
+			query: "address=東京都渋谷区道玄坂1-2",
+			geocodeClient: &mockGeocodeClient{geocodeFunc: func(_ context.Context, _ string) (*GeocodeResult, error) {
+				return &GeocodeResult{Lat: 35.6585, Lng: 139.7013, LocationType: "ROOFTOP"}, nil
+			}},
+			wantStatus:  http.StatusOK,
+			wantLat:     35.6585,
+			wantLocType: "ROOFTOP",
+		},
+		{
+			name:  "正常系 APPROXIMATE",
+			query: "address=東京都",
+			geocodeClient: &mockGeocodeClient{geocodeFunc: func(_ context.Context, _ string) (*GeocodeResult, error) {
+				return &GeocodeResult{Lat: 35.6895, Lng: 139.6917, LocationType: "APPROXIMATE"}, nil
+			}},
+			wantStatus:  http.StatusOK,
+			wantLocType: "APPROXIMATE",
+		},
+		{
+			name:          "address パラメータ欠落 → 400",
+			query:         "",
+			geocodeClient: &mockGeocodeClient{},
+			wantStatus:    http.StatusBadRequest,
+		},
+		{
+			name:  "ZERO_RESULTS（住所未発見） → 400",
+			query: "address=存在しない住所99999",
+			geocodeClient: &mockGeocodeClient{geocodeFunc: func(_ context.Context, _ string) (*GeocodeResult, error) {
+				return nil, errGeocodeNotFound
+			}},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:  "上流APIエラー → 502",
+			query: "address=東京都渋谷区",
+			geocodeClient: &mockGeocodeClient{geocodeFunc: func(_ context.Context, _ string) (*GeocodeResult, error) {
+				return nil, errGeocodeUpstream
+			}},
+			wantStatus: http.StatusBadGateway,
+		},
+		{
+			name:  "APIキー未設定 → 503",
+			query: "address=東京都渋谷区",
+			geocodeClient: &mockGeocodeClient{geocodeFunc: func(_ context.Context, _ string) (*GeocodeResult, error) {
+				return nil, errGeocodeNotConfigured
+			}},
+			wantStatus: http.StatusServiceUnavailable,
+		},
+		{
+			name:          "geocodeClient nil → 503",
+			query:         "address=東京都渋谷区",
+			geocodeClient: nil,
+			wantStatus:    http.StatusServiceUnavailable,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newTestRouter(&mockMLITClient{}, tc.geocodeClient)
+			apiURL := "/api/geocode"
+			if tc.query != "" {
+				apiURL += "?" + tc.query
+			}
+			req := httptest.NewRequest(http.MethodGet, apiURL, nil)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.wantStatus {
+				t.Errorf("status: want %d, got %d (body: %s)", tc.wantStatus, w.Code, w.Body.String())
+			}
+			if tc.wantStatus == http.StatusOK && tc.wantLat != 0 {
+				var result GeocodeResult
+				if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+					t.Fatalf("failed to decode response: %v", err)
+				}
+				if result.Lat != tc.wantLat {
+					t.Errorf("lat: want %f, got %f", tc.wantLat, result.Lat)
+				}
+				if tc.wantLocType != "" && result.LocationType != tc.wantLocType {
+					t.Errorf("locationType: want %s, got %s", tc.wantLocType, result.LocationType)
+				}
+			}
+		})
 	}
 }

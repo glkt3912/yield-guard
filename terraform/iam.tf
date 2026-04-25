@@ -123,6 +123,12 @@ resource "google_secret_manager_secret_iam_member" "internal_key_accessor" {
   member    = "serviceAccount:${google_service_account.backend.email}"
 }
 
+resource "google_secret_manager_secret_iam_member" "google_maps_accessor" {
+  secret_id = google_secret_manager_secret.google_maps_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.backend.email}"
+}
+
 resource "google_project_iam_member" "backend_trace_agent" {
   project = var.project_id
   role    = "roles/cloudtrace.agent"
