@@ -1,0 +1,467 @@
+package api
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"github.com/yield-guard/backend/internal/domain"
+	"github.com/yield-guard/backend/internal/mlit"
+)
+
+// GetStationRidership は物件の緯度経度からタイル座標を計算し、駅別乗降客数と需要スコアを返す（XKT015）
+// GET /api/station-ridership?lat=35.6762&lng=139.6503[&z=14]
+func (h *Handler) GetStationRidership(c *gin.Context) {
+	lat, lng, ok := parseLatLng(c, coordsGlobal)
+	if !ok {
+		return
+	}
+	z, ok := parseZoom(c, 14)
+	if !ok {
+		return
+	}
+
+	tx, ty := mlit.LatLngToTile(lat, lng, z)
+
+	stations, err := h.mlitClient.FetchStationRidership(c.Request.Context(), z, tx, ty)
+	if err != nil {
+		slog.ErrorContext(c.Request.Context(), "FetchStationRidership failed", "err", err)
+		badGateway(c, "駅別乗降客数の取得に失敗しました")
+		return
+	}
+
+	results := make([]domain.StationRidershipResult, 0, len(stations))
+	for _, s := range stations {
+		score := domain.CalcRidershipDemandScore(s.Passengers)
+		results = append(results, domain.StationRidershipResult{
+			StationName: s.StationName,
+			LineName:    s.LineName,
+			Passengers:  s.Passengers,
+			DemandScore: score,
+			Correction:  domain.RidershipCorrectionFactor(score),
+		})
+	}
+
+	c.JSON(http.StatusOK, results)
+}
+
+// GetPopulationForecast は物件の緯度経度からタイル座標を計算し、将来推計人口と人口減少シナリオを返す（XKT013）
+// GET /api/population-forecast?lat=35.6762&lng=139.6503[&z=14]
+func (h *Handler) GetPopulationForecast(c *gin.Context) {
+	lat, lng, ok := parseLatLng(c, coordsGlobal)
+	if !ok {
+		return
+	}
+	z, ok := parseZoom(c, 14)
+	if !ok {
+		return
+	}
+
+	tx, ty := mlit.LatLngToTile(lat, lng, z)
+
+	items, err := h.mlitClient.FetchPopulationForecast(c.Request.Context(), z, tx, ty)
+	if err != nil {
+		slog.ErrorContext(c.Request.Context(), "FetchPopulationForecast failed", "err", err)
+		badGateway(c, "将来推計人口の取得に失敗しました")
+		return
+	}
+
+	if len(items) == 0 {
+		c.JSON(http.StatusOK, gin.H{"snapshots": []struct{}{}, "changeRate30yr": 0, "vacancyRateDelta": 0, "trend": ""})
+		return
+	}
+
+	result := domain.CalcPopulationForecast(items)
+	c.JSON(http.StatusOK, result)
+}
+
+// GetUrbanRisks は緯度経度から都市計画リスクを一括取得する
+// GET /api/urban-risks?lat=35.68&lng=139.69
+func (h *Handler) GetUrbanRisks(c *gin.Context) {
+	lat, lng, ok := parseLatLng(c, coordsJapanOnly)
+	if !ok {
+		return
+	}
+
+	ctx := c.Request.Context()
+	z := 14
+	x, y := mlit.LatLngToTile(lat, lng, z)
+
+	type result struct {
+		location []domain.LocationOptimizationItem
+		embank   []domain.EmbankmentItem
+		road     []domain.UrbanRoadItem
+		disaster []domain.DisasterHistoryItem
+	}
+	var res result
+
+	// 4 API を並列取得。いずれか失敗してもログのみで他の結果は返す
+	locCh := fanOut(func() ([]domain.LocationOptimizationItem, error) { return h.mlitClient.FetchLocationOptimization(ctx, z, x, y) })
+	embCh := fanOut(func() ([]domain.EmbankmentItem, error) { return h.mlitClient.FetchEmbankment(ctx, z, x, y) })
+	rdCh := fanOut(func() ([]domain.UrbanRoadItem, error) { return h.mlitClient.FetchUrbanRoad(ctx, z, x, y) })
+	disCh := fanOut(func() ([]domain.DisasterHistoryItem, error) { return h.mlitClient.FetchDisasterHistory(ctx, z, x, y) })
+
+	if r := <-locCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchLocationOptimization failed", "z", z, "x", x, "y", y, "error", r.err)
+	} else {
+		res.location = r.data
+	}
+	if r := <-embCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchEmbankment failed", "z", z, "x", x, "y", y, "error", r.err)
+	} else {
+		res.embank = r.data
+	}
+	if r := <-rdCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchUrbanRoad failed", "z", z, "x", x, "y", y, "error", r.err)
+	} else {
+		res.road = r.data
+	}
+	if r := <-disCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchDisasterHistory failed", "z", z, "x", x, "y", y, "error", r.err)
+	} else {
+		res.disaster = r.data
+	}
+
+	risks := domain.BuildUrbanRisksFromAPIs(res.location, res.embank, res.road, res.disaster)
+	if risks == nil {
+		risks = []domain.UrbanRisk{}
+	}
+	c.JSON(http.StatusOK, risks)
+}
+
+// GetHazardInfo は物件の緯度経度から洪水・高潮・津波・土砂災害のハザード情報を返す。
+// GET /api/hazard?lat=35.6895&lng=139.6917
+func (h *Handler) GetHazardInfo(c *gin.Context) {
+	lat, lng, ok := parseLatLng(c, coordsJapanOnly)
+	if !ok {
+		return
+	}
+
+	ctx := c.Request.Context()
+	z := 14
+	x, y := mlit.LatLngToTile(lat, lng, z)
+
+	floCh := fanOut(func() ([]domain.FloodHazardItem, error) { return h.mlitClient.FetchFloodHazard(ctx, z, x, y) })
+	stmCh := fanOut(func() ([]domain.StormHazardItem, error) { return h.mlitClient.FetchStormHazard(ctx, z, x, y) })
+	tsuCh := fanOut(func() ([]domain.TsunamiHazardItem, error) { return h.mlitClient.FetchTsunamiHazard(ctx, z, x, y) })
+	lsCh := fanOut(func() ([]domain.LandslideHazardItem, error) { return h.mlitClient.FetchLandslideHazard(ctx, z, x, y) })
+
+	var floods []domain.FloodHazardItem
+	var storms []domain.StormHazardItem
+	var tsunamis []domain.TsunamiHazardItem
+	var landslides []domain.LandslideHazardItem
+
+	if r := <-floCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchFloodHazard failed", "z", z, "x", x, "y", y, "error", r.err)
+	} else {
+		floods = r.data
+	}
+	if r := <-stmCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchStormHazard failed", "z", z, "x", x, "y", y, "error", r.err)
+	} else {
+		storms = r.data
+	}
+	if r := <-tsuCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchTsunamiHazard failed", "z", z, "x", x, "y", y, "error", r.err)
+	} else {
+		tsunamis = r.data
+	}
+	if r := <-lsCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchLandslideHazard failed", "z", z, "x", x, "y", y, "error", r.err)
+	} else {
+		landslides = r.data
+	}
+
+	risks := domain.BuildHazardRisks(floods, storms, tsunamis, landslides)
+	if risks == nil {
+		risks = []domain.UrbanRisk{}
+	}
+	c.JSON(http.StatusOK, risks)
+}
+
+// calcScoreForTile は指定タイル座標に対して複数 API を並列取得し投資適地スコアを返す。
+// 個別 API の失敗は警告ログのみでスキップする。コンテキストキャンセル時はエラーを返す。
+func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.InvestmentScoreResult, error) {
+	if err := ctx.Err(); err != nil {
+		return domain.InvestmentScoreResult{}, err
+	}
+	popCh := fanOut(func() ([]domain.PopulationForecastItem, error) { return h.mlitClient.FetchPopulationForecast(ctx, z, x, y) })
+	ridCh := fanOut(func() ([]mlit.StationRidership, error) { return h.mlitClient.FetchStationRidership(ctx, z, x, y) })
+	locCh := fanOut(func() ([]domain.LocationOptimizationItem, error) { return h.mlitClient.FetchLocationOptimization(ctx, z, x, y) })
+	embCh := fanOut(func() ([]domain.EmbankmentItem, error) { return h.mlitClient.FetchEmbankment(ctx, z, x, y) })
+	disCh := fanOut(func() ([]domain.DisasterHistoryItem, error) { return h.mlitClient.FetchDisasterHistory(ctx, z, x, y) })
+	zonCh := fanOut(func() ([]domain.UrbanZoningItem, error) { return h.mlitClient.FetchUrbanZoning(ctx, z, x, y) })
+	liqCh := fanOut(func() ([]domain.LiquefactionRiskItem, error) { return h.mlitClient.FetchLiquefaction(ctx, z, x, y) })
+	floCh := fanOut(func() ([]domain.FloodHazardItem, error) { return h.mlitClient.FetchFloodHazard(ctx, z, x, y) })
+	stoCh := fanOut(func() ([]domain.StormHazardItem, error) { return h.mlitClient.FetchStormHazard(ctx, z, x, y) })
+	tsuCh := fanOut(func() ([]domain.TsunamiHazardItem, error) { return h.mlitClient.FetchTsunamiHazard(ctx, z, x, y) })
+	lanCh := fanOut(func() ([]domain.LandslideHazardItem, error) { return h.mlitClient.FetchLandslideHazard(ctx, z, x, y) })
+
+	// 地価トレンド: タイル中心座標→都道府県コードを逆引きし、新旧2期間を並列取得する
+	centerLat, centerLng := mlit.TileToLatLng(x, y, z)
+	prefCode := domain.PrefCodeFromLatLng(centerLat, centerLng)
+	type landResult struct {
+		stats domain.LandPriceStats
+		err   error
+	}
+	recentLandCh := make(chan landResult, 1)
+	oldLandCh := make(chan landResult, 1)
+	if prefCode != "" {
+		go func() {
+			tx, e := h.mlitClient.FetchLandPrices(ctx, mlit.LandPriceQuery{Area: prefCode, Year: 2023, Quarter: 1, ToYear: 2024, ToQuarter: 4})
+			recentLandCh <- landResult{domain.CalcLandPriceStats(ctx, tx), e}
+		}()
+		go func() {
+			tx, e := h.mlitClient.FetchLandPrices(ctx, mlit.LandPriceQuery{Area: prefCode, Year: 2021, Quarter: 1, ToYear: 2022, ToQuarter: 4})
+			oldLandCh <- landResult{domain.CalcLandPriceStats(ctx, tx), e}
+		}()
+	} else {
+		recentLandCh <- landResult{}
+		oldLandCh <- landResult{}
+	}
+
+	input := domain.InvestmentScoreInput{}
+
+	if r := <-popCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchPopulationForecast failed", "error", r.err)
+	} else {
+		input.PopulationItems = r.data
+	}
+	if r := <-ridCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchStationRidership failed", "error", r.err)
+	} else {
+		input.StationRiderships = make([]domain.StationRidershipResult, 0, len(r.data))
+		for _, s := range r.data {
+			score := domain.CalcRidershipDemandScore(s.Passengers)
+			input.StationRiderships = append(input.StationRiderships, domain.StationRidershipResult{
+				StationName: s.StationName,
+				LineName:    s.LineName,
+				Passengers:  s.Passengers,
+				DemandScore: score,
+				Correction:  domain.RidershipCorrectionFactor(score),
+			})
+		}
+	}
+	if r := <-locCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchLocationOptimization failed", "error", r.err)
+	} else {
+		input.LocationItems = r.data
+	}
+	if r := <-embCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchEmbankment failed", "error", r.err)
+	} else {
+		input.EmbankmentItems = r.data
+	}
+	if r := <-disCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchDisasterHistory failed", "error", r.err)
+	} else {
+		input.DisasterItems = r.data
+	}
+	if r := <-zonCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchUrbanZoning failed", "error", r.err)
+	} else {
+		input.UrbanZoningItems = r.data
+	}
+	if r := <-liqCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchLiquefaction failed", "error", r.err)
+	} else {
+		input.LiquefactionItems = r.data
+	}
+	if r := <-floCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchFloodHazard failed", "error", r.err)
+	} else {
+		input.FloodItems = r.data
+	}
+	if r := <-stoCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchStormHazard failed", "error", r.err)
+	} else {
+		input.StormItems = r.data
+	}
+	if r := <-tsuCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchTsunamiHazard failed", "error", r.err)
+	} else {
+		input.TsunamiItems = r.data
+	}
+	if r := <-lanCh; r.err != nil {
+		slog.WarnContext(ctx, "FetchLandslideHazard failed", "error", r.err)
+	} else {
+		input.LandslideItems = r.data
+	}
+
+	recentLand := <-recentLandCh
+	oldLand := <-oldLandCh
+	if recentLand.err != nil || oldLand.err != nil {
+		if recentLand.err != nil {
+			slog.WarnContext(ctx, "FetchLandPrices (recent) failed", "error", recentLand.err)
+		}
+		if oldLand.err != nil {
+			slog.WarnContext(ctx, "FetchLandPrices (old) failed", "error", oldLand.err)
+		}
+	} else if recentLand.stats.MedianTsubo > 0 && oldLand.stats.MedianTsubo > 0 {
+		input.LandPriceChangeRate = (recentLand.stats.MedianTsubo - oldLand.stats.MedianTsubo) / oldLand.stats.MedianTsubo
+		input.HasLandPriceTrend = true
+	}
+
+	return domain.CalcInvestmentScore(input), nil
+}
+
+// GetInvestmentScore は物件の緯度経度から複数 API を並列呼び出しし、投資適地スコアを算出して返す。
+// GET /api/investment-score?lat=35.6762&lng=139.6503
+func (h *Handler) GetInvestmentScore(c *gin.Context) {
+	lat, lng, ok := parseLatLng(c, coordsJapanOnly)
+	if !ok {
+		return
+	}
+
+	ctx := c.Request.Context()
+	z := 14
+	x, y := mlit.LatLngToTile(lat, lng, z)
+
+	score, err := h.calcScoreForTile(ctx, z, x, y)
+	if err != nil {
+		slog.ErrorContext(ctx, "calcScoreForTile failed", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "投資スコアの計算に失敗しました"})
+		return
+	}
+	c.JSON(http.StatusOK, score)
+}
+
+const maxHeatmapTiles = 50
+
+// GetInvestmentScoreHeatmap はバウンディングボックス内の全タイルに対して投資スコアを並列計算して返す。
+// GET /api/investment-score-heatmap?minLat=35.6&maxLat=35.7&minLng=139.6&maxLng=139.7&z=13
+func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
+	minLatStr := c.Query("minLat")
+	maxLatStr := c.Query("maxLat")
+	minLngStr := c.Query("minLng")
+	maxLngStr := c.Query("maxLng")
+	if minLatStr == "" || maxLatStr == "" || minLngStr == "" || maxLngStr == "" {
+		badRequest(c, "minLat, maxLat, minLng, maxLng は必須パラメータです")
+		return
+	}
+	minLat, err := strconv.ParseFloat(minLatStr, 64)
+	if err != nil {
+		badRequest(c, "minLat の値が不正です")
+		return
+	}
+	maxLat, err := strconv.ParseFloat(maxLatStr, 64)
+	if err != nil {
+		badRequest(c, "maxLat の値が不正です")
+		return
+	}
+	minLng, err := strconv.ParseFloat(minLngStr, 64)
+	if err != nil {
+		badRequest(c, "minLng の値が不正です")
+		return
+	}
+	maxLng, err := strconv.ParseFloat(maxLngStr, 64)
+	if err != nil {
+		badRequest(c, "maxLng の値が不正です")
+		return
+	}
+
+	if minLat >= maxLat {
+		badRequest(c, "minLat は maxLat より小さい値を指定してください")
+		return
+	}
+	if minLng >= maxLng {
+		badRequest(c, "minLng は maxLng より小さい値を指定してください")
+		return
+	}
+	if minLat < 20 || maxLat > 46 {
+		badRequest(c, "緯度は日本国内（20〜46）の範囲で指定してください")
+		return
+	}
+	if minLng < 122 || maxLng > 154 {
+		badRequest(c, "経度は日本国内（122〜154）の範囲で指定してください")
+		return
+	}
+
+	z, ok := parseZoom(c, 13)
+	if !ok {
+		return
+	}
+
+	// ズームレベルに応じてタイル数上限を決定
+	// z=11-12: 20, z=13-14: 30, z=15: 50
+	var maxTiles int
+	switch {
+	case z <= 12:
+		maxTiles = 20
+	case z <= 14:
+		maxTiles = 30
+	default:
+		maxTiles = maxHeatmapTiles
+	}
+
+	// 高緯度 → 小さい y 値のため注意
+	xMin, yMin := mlit.LatLngToTile(maxLat, minLng, z)
+	xMax, yMax := mlit.LatLngToTile(minLat, maxLng, z)
+
+	tileCount := (xMax - xMin + 1) * (yMax - yMin + 1)
+	if tileCount > maxTiles {
+		badRequest(c, fmt.Sprintf("too many tiles: max %d for zoom level %d", maxTiles, z))
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	sem := make(chan struct{}, 5)
+	type tileResult struct {
+		tile domain.HeatmapTile
+		err  error
+	}
+	results := make(chan tileResult, tileCount)
+
+	for tx := xMin; tx <= xMax; tx++ {
+		for ty := yMin; ty <= yMax; ty++ {
+			go func(tx, ty int) {
+				defer func() {
+					if r := recover(); r != nil {
+						results <- tileResult{err: fmt.Errorf("panic in calcScoreForTile: %v", r)}
+					}
+				}()
+				select {
+				case <-ctx.Done():
+					results <- tileResult{err: ctx.Err()}
+					return
+				case sem <- struct{}{}:
+				}
+				defer func() { <-sem }()
+				score, err := h.calcScoreForTile(ctx, z, tx, ty)
+				if err != nil {
+					results <- tileResult{err: err}
+					return
+				}
+				lat, lng := mlit.TileToLatLng(tx, ty, z)
+				results <- tileResult{tile: domain.HeatmapTile{
+					X:          tx,
+					Y:          ty,
+					Z:          z,
+					CenterLat:  lat,
+					CenterLng:  lng,
+					TotalScore: score.TotalScore,
+					Grade:      score.Grade,
+				}}
+			}(tx, ty)
+		}
+	}
+
+	tiles := make([]domain.HeatmapTile, 0, tileCount)
+	for i := 0; i < tileCount; i++ {
+		r := <-results
+		if r.err != nil {
+			slog.WarnContext(ctx, "calcScoreForTile failed", "error", r.err)
+			continue
+		}
+		tiles = append(tiles, r.tile)
+	}
+
+	c.JSON(http.StatusOK, domain.HeatmapResponse{
+		Tiles:     tiles,
+		TileCount: len(tiles),
+	})
+}
