@@ -52,6 +52,13 @@ const INITIAL_ANALYSIS_RESULT: AnalysisResult = {
   hazardRisks: null,
 };
 
+function toErrorMessage(e: unknown, fallback: string): string {
+  if (e instanceof TypeError && e.message.toLowerCase().includes("fetch")) {
+    return "インターネット接続を確認してください";
+  }
+  return e instanceof Error ? e.message : fallback;
+}
+
 function getCurrentPeriods(): { year: number; quarter: number; toYear: number; toQuarter: number } {
   const now = new Date();
   const toYear = now.getFullYear();
@@ -64,7 +71,7 @@ export interface UseInvestmentSimulationParams {
   onUrlUpdate: (qs: string) => void;
 }
 
-export interface UseInvestmentSimulationResult extends Omit<AnalysisResult, never> {
+export interface UseInvestmentSimulationResult extends AnalysisResult {
   loading: boolean;
   error: string | null;
   lastInput: InvestmentInput | null;
@@ -122,7 +129,7 @@ export function useInvestmentSimulation(
       const qs = urlParams.toString();
       onUrlUpdate(qs);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "シミュレーションに失敗しました");
+      setError(toErrorMessage(e, "シミュレーションに失敗しました"));
     } finally {
       setLoading(false);
     }
@@ -156,7 +163,7 @@ export function useInvestmentSimulation(
       setAnalysisResult((prev) => ({ ...prev, result: res }));
       setLastInput((prev) => (prev ? { ...prev, loanMethod: method } : prev));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "シミュレーションに失敗しました");
+      setError(toErrorMessage(e, "シミュレーションに失敗しました"));
     } finally {
       setLoading(false);
     }
