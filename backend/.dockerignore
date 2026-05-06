@@ -1,3 +1,9 @@
 *_test.go
 *.md
 .git
+.env*
+.github/
+docs/
+terraform/
+Makefile
+coverage/
