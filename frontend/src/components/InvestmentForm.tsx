@@ -271,68 +271,69 @@ export function InvestmentForm({
     }
   };
 
-  const addRateStep = () => {
-    const schedule = input.rateAdjustmentSchedule;
-    const maxYear = input.loanYears || 35;
-    const lastYear = schedule.length > 0 ? schedule[schedule.length - 1].afterYear : 1;
-    if (lastYear >= maxYear) return;
-    const nextYear = Math.min(lastYear + 5, maxYear);
-    const newStep: RateAdjustment = { afterYear: nextYear, rate: input.annualLoanRate + 0.005 };
-    setInput((prev) => ({
-      ...prev,
-      rateAdjustmentSchedule: [...prev.rateAdjustmentSchedule, newStep],
-    }));
-  };
+  const addRateStep = useCallback(() => {
+    setInput((prev) => {
+      const schedule = prev.rateAdjustmentSchedule;
+      const maxYear = prev.loanYears || 35;
+      const lastYear = schedule.length > 0 ? schedule[schedule.length - 1].afterYear : 1;
+      if (lastYear >= maxYear) return prev;
+      const nextYear = Math.min(lastYear + 5, maxYear);
+      const newStep: RateAdjustment = { afterYear: nextYear, rate: prev.annualLoanRate + 0.005 };
+      return { ...prev, rateAdjustmentSchedule: [...prev.rateAdjustmentSchedule, newStep] };
+    });
+  }, []);
 
-  const removeRateStep = (index: number) => {
+  const removeRateStep = useCallback((index: number) => {
     setInput((prev) => ({
       ...prev,
       rateAdjustmentSchedule: prev.rateAdjustmentSchedule.filter((_, i) => i !== index),
     }));
-  };
+  }, []);
 
-  const updateRateStep = (index: number, field: keyof RateAdjustment, value: number) => {
-    setInput((prev) => ({
-      ...prev,
-      rateAdjustmentSchedule: prev.rateAdjustmentSchedule.map((s, i) =>
-        i === index ? { ...s, [field]: value } : s
-      ),
-    }));
-  };
+  const updateRateStep = useCallback(
+    (index: number, field: keyof RateAdjustment, value: number) => {
+      setInput((prev) => ({
+        ...prev,
+        rateAdjustmentSchedule: prev.rateAdjustmentSchedule.map((s, i) =>
+          i === index ? { ...s, [field]: value } : s
+        ),
+      }));
+    },
+    []
+  );
 
-  const addCapexEvent = () => {
-    const schedule = input.capexSchedule ?? [];
-    if (schedule.length >= 5) return;
-    const lastYear = schedule.length > 0 ? schedule[schedule.length - 1].year : 0;
-    const nextYear = Math.min(lastYear + 5, input.holdingYears || 20);
-    setInput((prev) => ({
-      ...prev,
-      capexSchedule: [...(prev.capexSchedule ?? []), { year: nextYear, amount: 1_000_000 }],
-    }));
-  };
+  const addCapexEvent = useCallback(() => {
+    setInput((prev) => {
+      const schedule = prev.capexSchedule ?? [];
+      if (schedule.length >= 5) return prev;
+      const lastYear = schedule.length > 0 ? schedule[schedule.length - 1].year : 0;
+      const nextYear = Math.min(lastYear + 5, prev.holdingYears || 20);
+      return { ...prev, capexSchedule: [...schedule, { year: nextYear, amount: 1_000_000 }] };
+    });
+  }, []);
 
-  const removeCapexEvent = (index: number) => {
+  const removeCapexEvent = useCallback((index: number) => {
     setInput((prev) => ({
       ...prev,
       capexSchedule: (prev.capexSchedule ?? []).filter((_, i) => i !== index),
     }));
-  };
+  }, []);
 
-  const updateCapexEvent = (index: number, field: "year" | "amount", value: number) => {
+  const updateCapexEvent = useCallback((index: number, field: "year" | "amount", value: number) => {
     setInput((prev) => ({
       ...prev,
       capexSchedule: (prev.capexSchedule ?? []).map((ev, i) =>
         i === index ? { ...ev, [field]: value } : ev
       ),
     }));
-  };
+  }, []);
 
-  const handleRateScheduleToggle = (enabled: boolean) => {
+  const handleRateScheduleToggle = useCallback((enabled: boolean) => {
     setRateScheduleEnabled(enabled);
     if (!enabled) {
       setInput((prev) => ({ ...prev, rateAdjustmentSchedule: [] }));
     }
-  };
+  }, []);
 
   const sortedInput = (src: InvestmentInput): InvestmentInput => ({
     ...src,
