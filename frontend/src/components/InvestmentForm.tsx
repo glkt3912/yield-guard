@@ -373,37 +373,53 @@ export function InvestmentForm({
   };
 
   // geocode オブジェクト（FullModeForm 向け）
-  const geocode: GeocodeState = {
-    address: addressInput,
-    status: geocodeStatus,
-    error: geocodeError,
-    locationType: geocodeLocationType,
-    lat: propertyLat,
-    lng: propertyLng,
-  };
+  const geocode = useMemo<GeocodeState>(
+    () => ({
+      address: addressInput,
+      status: geocodeStatus,
+      error: geocodeError,
+      locationType: geocodeLocationType,
+      lat: propertyLat,
+      lng: propertyLng,
+    }),
+    [addressInput, geocodeStatus, geocodeError, geocodeLocationType, propertyLat, propertyLng]
+  );
   const onGeocodeChange = useCallback((patch: Partial<GeocodeState>) => {
-    if ("address" in patch) setAddressInput(patch.address!);
-    if ("status" in patch) setGeocodeStatus(patch.status!);
-    if ("error" in patch) setGeocodeError(patch.error!);
-    if ("locationType" in patch) setGeocodeLocationType(patch.locationType!);
-    if ("lat" in patch) setPropertyLat(patch.lat!);
-    if ("lng" in patch) setPropertyLng(patch.lng!);
+    if (patch.address !== undefined) setAddressInput(patch.address);
+    if (patch.status !== undefined) setGeocodeStatus(patch.status);
+    if (patch.error !== undefined) setGeocodeError(patch.error);
+    if (patch.locationType !== undefined) setGeocodeLocationType(patch.locationType);
+    if (patch.lat !== undefined) setPropertyLat(patch.lat);
+    if (patch.lng !== undefined) setPropertyLng(patch.lng);
   }, []);
 
   // rateSchedule / capex ハンドラオブジェクト（FullModeForm 向け）
-  const rateSchedule = {
-    enabled: rateScheduleEnabled,
-    onToggle: handleRateScheduleToggle,
-    onAdd: addRateStep,
-    onRemove: removeRateStep,
-    onUpdate: updateRateStep,
-    canAdd: canAddRateStep,
-  };
-  const capex = {
-    onAdd: addCapexEvent,
-    onRemove: removeCapexEvent,
-    onUpdate: updateCapexEvent,
-  };
+  const rateSchedule = useMemo(
+    () => ({
+      enabled: rateScheduleEnabled,
+      onToggle: handleRateScheduleToggle,
+      onAdd: addRateStep,
+      onRemove: removeRateStep,
+      onUpdate: updateRateStep,
+      canAdd: canAddRateStep,
+    }),
+    [
+      rateScheduleEnabled,
+      handleRateScheduleToggle,
+      addRateStep,
+      removeRateStep,
+      updateRateStep,
+      canAddRateStep,
+    ]
+  );
+  const capex = useMemo(
+    () => ({
+      onAdd: addCapexEvent,
+      onRemove: removeCapexEvent,
+      onUpdate: updateCapexEvent,
+    }),
+    [addCapexEvent, removeCapexEvent, updateCapexEvent]
+  );
 
   const sharedMuniProps = {
     area,

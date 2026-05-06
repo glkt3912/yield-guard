@@ -264,9 +264,9 @@ export function PropertyInfoSection({
                 ? "▲ 按分ヘルパーを閉じる"
                 : "▼ 建物価格がわからない場合（按分ヘルパー）"}
             </button>
-            {showBuildingHelper && (
+            <div className={showBuildingHelper ? "block" : "hidden"}>
               <BuildingPriceHelper onApply={(value) => setNum("buildingCost", value)} />
-            )}
+            </div>
           </div>
           <Input
             label="築年数"
