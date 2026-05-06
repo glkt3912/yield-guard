@@ -9,6 +9,7 @@ import { useMunicipalitiesLoader } from "@/hooks/useMunicipalitiesLoader";
 import { useRentDeclineHint } from "@/hooks/useRentDeclineHint";
 import { QuickModeForm, type QuickHistoryEntry } from "@/components/QuickModeForm";
 import { FullModeForm } from "@/components/FullModeForm";
+import { type GeocodeState } from "@/components/sections/LocationSection";
 
 const QUICK_HISTORY_KEY = "yield-guard:quick-history";
 const QUICK_HISTORY_MAX = 5;
@@ -129,11 +130,6 @@ export function InvestmentForm({
   const [showCustomLoan, setShowCustomLoan] = useState(false);
   const [quickHistory, setQuickHistory] = useState<QuickHistoryEntry[]>([]);
   const [rateScheduleEnabled, setRateScheduleEnabled] = useState(false);
-  const [showBuildingHelper, setShowBuildingHelper] = useState(false);
-  const [taxAmount, setTaxAmount] = useState("");
-  const [landAssess, setLandAssess] = useState("");
-  const [buildingAssess, setBuildingAssess] = useState("");
-  const [totalPrice, setTotalPrice] = useState("");
 
   const isQuick = simulationMode === "quick";
 
@@ -275,68 +271,69 @@ export function InvestmentForm({
     }
   };
 
-  const addRateStep = () => {
-    const schedule = input.rateAdjustmentSchedule;
-    const maxYear = input.loanYears || 35;
-    const lastYear = schedule.length > 0 ? schedule[schedule.length - 1].afterYear : 1;
-    if (lastYear >= maxYear) return;
-    const nextYear = Math.min(lastYear + 5, maxYear);
-    const newStep: RateAdjustment = { afterYear: nextYear, rate: input.annualLoanRate + 0.005 };
-    setInput((prev) => ({
-      ...prev,
-      rateAdjustmentSchedule: [...prev.rateAdjustmentSchedule, newStep],
-    }));
-  };
+  const addRateStep = useCallback(() => {
+    setInput((prev) => {
+      const schedule = prev.rateAdjustmentSchedule;
+      const maxYear = prev.loanYears || 35;
+      const lastYear = schedule.length > 0 ? schedule[schedule.length - 1].afterYear : 1;
+      if (lastYear >= maxYear) return prev;
+      const nextYear = Math.min(lastYear + 5, maxYear);
+      const newStep: RateAdjustment = { afterYear: nextYear, rate: prev.annualLoanRate + 0.005 };
+      return { ...prev, rateAdjustmentSchedule: [...prev.rateAdjustmentSchedule, newStep] };
+    });
+  }, []);
 
-  const removeRateStep = (index: number) => {
+  const removeRateStep = useCallback((index: number) => {
     setInput((prev) => ({
       ...prev,
       rateAdjustmentSchedule: prev.rateAdjustmentSchedule.filter((_, i) => i !== index),
     }));
-  };
+  }, []);
 
-  const updateRateStep = (index: number, field: keyof RateAdjustment, value: number) => {
-    setInput((prev) => ({
-      ...prev,
-      rateAdjustmentSchedule: prev.rateAdjustmentSchedule.map((s, i) =>
-        i === index ? { ...s, [field]: value } : s
-      ),
-    }));
-  };
+  const updateRateStep = useCallback(
+    (index: number, field: keyof RateAdjustment, value: number) => {
+      setInput((prev) => ({
+        ...prev,
+        rateAdjustmentSchedule: prev.rateAdjustmentSchedule.map((s, i) =>
+          i === index ? { ...s, [field]: value } : s
+        ),
+      }));
+    },
+    []
+  );
 
-  const addCapexEvent = () => {
-    const schedule = input.capexSchedule ?? [];
-    if (schedule.length >= 5) return;
-    const lastYear = schedule.length > 0 ? schedule[schedule.length - 1].year : 0;
-    const nextYear = Math.min(lastYear + 5, input.holdingYears || 20);
-    setInput((prev) => ({
-      ...prev,
-      capexSchedule: [...(prev.capexSchedule ?? []), { year: nextYear, amount: 1_000_000 }],
-    }));
-  };
+  const addCapexEvent = useCallback(() => {
+    setInput((prev) => {
+      const schedule = prev.capexSchedule ?? [];
+      if (schedule.length >= 5) return prev;
+      const lastYear = schedule.length > 0 ? schedule[schedule.length - 1].year : 0;
+      const nextYear = Math.min(lastYear + 5, prev.holdingYears || 20);
+      return { ...prev, capexSchedule: [...schedule, { year: nextYear, amount: 1_000_000 }] };
+    });
+  }, []);
 
-  const removeCapexEvent = (index: number) => {
+  const removeCapexEvent = useCallback((index: number) => {
     setInput((prev) => ({
       ...prev,
       capexSchedule: (prev.capexSchedule ?? []).filter((_, i) => i !== index),
     }));
-  };
+  }, []);
 
-  const updateCapexEvent = (index: number, field: "year" | "amount", value: number) => {
+  const updateCapexEvent = useCallback((index: number, field: "year" | "amount", value: number) => {
     setInput((prev) => ({
       ...prev,
       capexSchedule: (prev.capexSchedule ?? []).map((ev, i) =>
         i === index ? { ...ev, [field]: value } : ev
       ),
     }));
-  };
+  }, []);
 
-  const handleRateScheduleToggle = (enabled: boolean) => {
+  const handleRateScheduleToggle = useCallback((enabled: boolean) => {
     setRateScheduleEnabled(enabled);
     if (!enabled) {
       setInput((prev) => ({ ...prev, rateAdjustmentSchedule: [] }));
     }
-  };
+  }, []);
 
   const sortedInput = (src: InvestmentInput): InvestmentInput => ({
     ...src,
@@ -375,6 +372,55 @@ export function InvestmentForm({
     setQuickTotalPriceMan(last.totalPriceMan);
     setNum("monthlyRent", parseFloat(last.monthlyRentYen) || 0);
   };
+
+  // geocode オブジェクト（FullModeForm 向け）
+  const geocode = useMemo<GeocodeState>(
+    () => ({
+      address: addressInput,
+      status: geocodeStatus,
+      error: geocodeError,
+      locationType: geocodeLocationType,
+      lat: propertyLat,
+      lng: propertyLng,
+    }),
+    [addressInput, geocodeStatus, geocodeError, geocodeLocationType, propertyLat, propertyLng]
+  );
+  const onGeocodeChange = useCallback((patch: Partial<GeocodeState>) => {
+    if (patch.address !== undefined) setAddressInput(patch.address);
+    if (patch.status !== undefined) setGeocodeStatus(patch.status);
+    if (patch.error !== undefined) setGeocodeError(patch.error);
+    if (patch.locationType !== undefined) setGeocodeLocationType(patch.locationType);
+    if (patch.lat !== undefined) setPropertyLat(patch.lat);
+    if (patch.lng !== undefined) setPropertyLng(patch.lng);
+  }, []);
+
+  // rateSchedule / capex ハンドラオブジェクト（FullModeForm 向け）
+  const rateSchedule = useMemo(
+    () => ({
+      enabled: rateScheduleEnabled,
+      onToggle: handleRateScheduleToggle,
+      onAdd: addRateStep,
+      onRemove: removeRateStep,
+      onUpdate: updateRateStep,
+      canAdd: canAddRateStep,
+    }),
+    [
+      rateScheduleEnabled,
+      handleRateScheduleToggle,
+      addRateStep,
+      removeRateStep,
+      updateRateStep,
+      canAddRateStep,
+    ]
+  );
+  const capex = useMemo(
+    () => ({
+      onAdd: addCapexEvent,
+      onRemove: removeCapexEvent,
+      onUpdate: updateCapexEvent,
+    }),
+    [addCapexEvent, removeCapexEvent, updateCapexEvent]
+  );
 
   const sharedMuniProps = {
     area,
@@ -419,32 +465,26 @@ export function InvestmentForm({
         />
       ) : (
         <FullModeForm
-          {...sharedMuniProps}
-          setPropertyLat={setPropertyLat}
-          setPropertyLng={setPropertyLng}
-          addressInput={addressInput}
-          setAddressInput={setAddressInput}
-          geocodeStatus={geocodeStatus}
-          setGeocodeStatus={setGeocodeStatus}
-          geocodeError={geocodeError}
-          geocodeLocationType={geocodeLocationType}
-          setGeocodeLocationType={setGeocodeLocationType}
+          area={area}
+          handleAreaChange={handleAreaChange}
+          city={city}
+          handleCityChange={handleCityChange}
+          muniFilter={muniFilter}
+          setMuniFilter={setMuniFilter}
+          filteredMunicipalities={filteredMunicipalities}
+          muniLoading={muniLoading}
+          muniError={muniError}
+          isOnline={isOnline}
+          geocode={geocode}
+          onGeocodeChange={onGeocodeChange}
           showManualCoords={showManualCoords}
           handleGeocode={handleGeocode}
+          loading={loading}
+          onFetchLandPrices={onFetchLandPrices}
           input={input}
           setNum={setNum}
           setStr={setStr}
           fieldError={fieldError}
-          showBuildingHelper={showBuildingHelper}
-          setShowBuildingHelper={setShowBuildingHelper}
-          taxAmount={taxAmount}
-          setTaxAmount={setTaxAmount}
-          landAssess={landAssess}
-          setLandAssess={setLandAssess}
-          buildingAssess={buildingAssess}
-          setBuildingAssess={setBuildingAssess}
-          totalPrice={totalPrice}
-          setTotalPrice={setTotalPrice}
           rentHint={rentHint}
           rentHintLoading={rentHintLoading}
           rentHintError={rentHintError}
@@ -453,15 +493,8 @@ export function InvestmentForm({
           handleCashPurchaseToggle={handleCashPurchaseToggle}
           zoningType={zoningType}
           setZoningType={setZoningType}
-          rateScheduleEnabled={rateScheduleEnabled}
-          handleRateScheduleToggle={handleRateScheduleToggle}
-          addRateStep={addRateStep}
-          removeRateStep={removeRateStep}
-          updateRateStep={updateRateStep}
-          canAddRateStep={canAddRateStep}
-          addCapexEvent={addCapexEvent}
-          removeCapexEvent={removeCapexEvent}
-          updateCapexEvent={updateCapexEvent}
+          rateSchedule={rateSchedule}
+          capex={capex}
           hasErrors={hasErrors}
           handleAnalyze={handleAnalyze}
         />
