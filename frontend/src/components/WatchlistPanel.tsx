@@ -110,7 +110,7 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
     setPendingDeleteId(null);
     toast({
       message: target ? `「${target.name}」を削除しました` : "削除しました",
-      variant: "danger",
+      variant: "warning",
     });
   }
 

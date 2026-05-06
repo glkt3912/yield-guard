@@ -12,6 +12,10 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children }: ModalProps) {
+  const titleId = React.useId();
+  const panelRef = React.useRef<HTMLDivElement>(null);
+
+  // ESC キーで閉じる
   React.useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {
@@ -21,6 +25,24 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
     return () => document.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
+  // body スクロールロック
+  React.useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  // フォーカスを最初のフォーカス可能要素へ移動
+  React.useEffect(() => {
+    if (!open) return;
+    const el = panelRef.current?.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    el?.focus();
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -28,13 +50,14 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? "modal-title" : undefined}
+      aria-labelledby={title ? titleId : undefined}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
 
       {/* Panel */}
       <div
+        ref={panelRef}
         className={cn(
           "relative z-10 w-full bg-background shadow-xl",
           "rounded-t-2xl sm:rounded-xl sm:max-w-md",
@@ -44,7 +67,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
         {/* Header */}
         {title && (
           <div className="flex items-center justify-between border-b px-4 py-3">
-            <h2 id="modal-title" className="text-sm font-semibold text-foreground">
+            <h2 id={titleId} className="text-sm font-semibold text-foreground">
               {title}
             </h2>
             <button

@@ -56,8 +56,17 @@ function ToastItem({ item, onDismiss }: { item: ToastItem; onDismiss: (id: strin
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<ToastItem[]>([]);
+  const timers = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  React.useEffect(() => {
+    return () => {
+      timers.current.forEach((t) => clearTimeout(t));
+    };
+  }, []);
 
   const dismiss = React.useCallback((id: string) => {
+    clearTimeout(timers.current.get(id));
+    timers.current.delete(id);
     setItems((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
@@ -68,7 +77,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           ? crypto.randomUUID()
           : String(Date.now());
       setItems((prev) => [...prev, { id, message, variant }]);
-      setTimeout(() => dismiss(id), 4000);
+      const timer = setTimeout(() => dismiss(id), 4000);
+      timers.current.set(id, timer);
     },
     [dismiss]
   );
