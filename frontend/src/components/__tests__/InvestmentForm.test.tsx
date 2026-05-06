@@ -325,8 +325,8 @@ describe("InvestmentForm", () => {
       });
       renderForm("quick");
       await userEvent.click(screen.getByText(/前回の入力から開始/));
-      expect(screen.getByLabelText(/物件価格（土地＋建物の総額）/)).toHaveValue(3000);
-      expect(screen.getByLabelText(/想定月額賃料/)).toHaveValue(150000);
+      expect(screen.getByLabelText(/物件価格（土地＋建物の総額）/)).toHaveValue("3000");
+      expect(screen.getByLabelText(/想定月額賃料/)).toHaveValue("150000");
       vi.unstubAllGlobals();
     });
   });

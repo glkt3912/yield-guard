@@ -163,7 +163,7 @@ describe("Dashboard", () => {
       "true"
     );
     // 物件価格フィールドが復元されていること
-    expect(screen.getByLabelText(/物件価格（土地＋建物の総額）/)).toHaveValue(2000);
+    expect(screen.getByLabelText(/物件価格（土地＋建物の総額）/)).toHaveValue("2000");
   });
 
   it("initialParamsでフルモードが復元される", () => {
