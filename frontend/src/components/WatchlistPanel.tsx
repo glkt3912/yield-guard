@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
+import { useToast } from "@/components/ui/toast";
 import { Trash2, ClipboardList } from "lucide-react";
 import type { WatchlistItem, WatchlistStatus, InvestmentResult } from "@/types/investment";
 
@@ -55,6 +57,8 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
   const [nameInput, setNameInput] = useState("");
   const [memoInput, setMemoInput] = useState("");
   const [nameError, setNameError] = useState("");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     saveItems(items);
@@ -92,136 +96,174 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
     setItems((prev) => [newItem, ...prev]);
     setNameInput("");
     setMemoInput("");
+    toast({ message: `「${trimmed}」をウォッチリストに追加しました`, variant: "success" });
   }
 
   function handleStatusChange(id: string, status: WatchlistStatus) {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
   }
 
-  function handleDelete(id: string) {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+  function handleDeleteConfirm() {
+    if (!pendingDeleteId) return;
+    const target = items.find((item) => item.id === pendingDeleteId);
+    setItems((prev) => prev.filter((item) => item.id !== pendingDeleteId));
+    setPendingDeleteId(null);
+    toast({
+      message: target ? `「${target.name}」を削除しました` : "削除しました",
+      variant: "danger",
+    });
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") handleAdd();
   }
 
-  return (
-    <Card className="rounded-xl shadow-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold">
-          <ClipboardList className="h-4 w-4 text-primary" />
-          物件候補ウォッチリスト
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Add form */}
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="物件名（必須）"
-                value={nameInput}
-                onChange={(e) => {
-                  setNameInput(e.target.value);
-                  if (nameError) setNameError("");
-                }}
-                onKeyDown={handleKeyDown}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                aria-label="物件名"
-              />
-              {nameError && <p className="mt-0.5 text-xs text-destructive">{nameError}</p>}
-            </div>
-            <Button type="button" size="sm" onClick={handleAdd} className="shrink-0">
-              追加
-            </Button>
-          </div>
-          <input
-            type="text"
-            placeholder="メモ（任意）"
-            value={memoInput}
-            onChange={(e) => setMemoInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            aria-label="メモ"
-          />
-        </div>
+  const pendingDeleteName = items.find((item) => item.id === pendingDeleteId)?.name ?? "";
 
-        {/* List */}
-        {items.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            まだ物件が登録されていません
-          </p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {items.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-3"
-              >
-                {/* Left: name + meta */}
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate text-sm font-medium">{item.name}</span>
-                    <span
-                      className={`inline-flex shrink-0 rounded px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[item.status]}`}
-                    >
-                      {item.status}
-                    </span>
-                  </div>
-                  {item.metrics && (
-                    <div className="flex flex-wrap gap-2 pt-0.5">
-                      <span className="text-xs text-blue-600">
-                        表面利回り: {(item.metrics.grossYield * 100).toFixed(1)}%
-                      </span>
-                      <span className={`text-xs ${getDscrColor(item.metrics.dscr)}`}>
-                        DSCR: {item.metrics.dscr.toFixed(2)}
-                      </span>
-                      <span className="text-xs text-purple-600">
-                        IRR:{" "}
-                        {item.metrics.irr !== null
-                          ? `${(item.metrics.irr * 100).toFixed(1)}%`
-                          : "-"}
+  return (
+    <>
+      <Card className="rounded-xl shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <ClipboardList className="h-4 w-4 text-primary" />
+            物件候補ウォッチリスト
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Add form */}
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="物件名（必須）"
+                  value={nameInput}
+                  onChange={(e) => {
+                    setNameInput(e.target.value);
+                    if (nameError) setNameError("");
+                  }}
+                  onKeyDown={handleKeyDown}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  aria-label="物件名"
+                />
+                {nameError && <p className="mt-0.5 text-xs text-destructive">{nameError}</p>}
+              </div>
+              <Button type="button" size="sm" onClick={handleAdd} className="shrink-0">
+                追加
+              </Button>
+            </div>
+            <input
+              type="text"
+              placeholder="メモ（任意）"
+              value={memoInput}
+              onChange={(e) => setMemoInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              aria-label="メモ"
+            />
+          </div>
+
+          {/* List */}
+          {items.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              まだ物件が登録されていません
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {items.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-3"
+                >
+                  {/* Left: name + meta */}
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate text-sm font-medium">{item.name}</span>
+                      <span
+                        className={`inline-flex shrink-0 rounded px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[item.status]}`}
+                      >
+                        {item.status}
                       </span>
                     </div>
-                  )}
-                  {item.memo && (
-                    <p className="truncate text-xs text-muted-foreground">{item.memo}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    登録日: {formatDate(item.addedAt)}
-                  </p>
-                </div>
+                    {item.metrics && (
+                      <div className="flex flex-wrap gap-2 pt-0.5">
+                        <span className="text-xs text-blue-600">
+                          表面利回り: {(item.metrics.grossYield * 100).toFixed(1)}%
+                        </span>
+                        <span className={`text-xs ${getDscrColor(item.metrics.dscr)}`}>
+                          DSCR: {item.metrics.dscr.toFixed(2)}
+                        </span>
+                        <span className="text-xs text-purple-600">
+                          IRR:{" "}
+                          {item.metrics.irr !== null
+                            ? `${(item.metrics.irr * 100).toFixed(1)}%`
+                            : "-"}
+                        </span>
+                      </div>
+                    )}
+                    {item.memo && (
+                      <p className="truncate text-xs text-muted-foreground">{item.memo}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      登録日: {formatDate(item.addedAt)}
+                    </p>
+                  </div>
 
-                {/* Right: status selector + delete */}
-                <div className="flex shrink-0 items-center gap-2">
-                  <select
-                    value={item.status}
-                    onChange={(e) => handleStatusChange(item.id, e.target.value as WatchlistStatus)}
-                    className="h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    aria-label={`${item.name} のステータスを変更`}
-                  >
-                    {STATUS_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(item.id)}
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                    aria-label={`${item.name} を削除`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+                  {/* Right: status selector + delete */}
+                  <div className="flex shrink-0 items-center gap-2">
+                    <select
+                      value={item.status}
+                      onChange={(e) =>
+                        handleStatusChange(item.id, e.target.value as WatchlistStatus)
+                      }
+                      className="h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      aria-label={`${item.name} のステータスを変更`}
+                    >
+                      {STATUS_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setPendingDeleteId(item.id)}
+                      className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                      aria-label={`${item.name} を削除`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        open={pendingDeleteId !== null}
+        onClose={() => setPendingDeleteId(null)}
+        title="削除の確認"
+      >
+        <p className="text-sm text-foreground">
+          「{pendingDeleteName}」をウォッチリストから削除しますか？
+        </p>
+        <div className="mt-4 flex gap-2 justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setPendingDeleteId(null)}
+          >
+            キャンセル
+          </Button>
+          <Button type="button" variant="destructive" size="sm" onClick={handleDeleteConfirm}>
+            削除
+          </Button>
+        </div>
+      </Modal>
+    </>
   );
 }
