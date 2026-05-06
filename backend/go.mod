@@ -15,7 +15,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.opentelemetry.io/otel/sdk/metric v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
-	golang.org/x/time v0.13.0
+	golang.org/x/time v0.15.0
 )
 
 require (
