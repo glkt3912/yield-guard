@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { YieldAnalysis } from "@/components/YieldAnalysis";
 import CashFlowChart from "@/components/CashFlowChart";
 import DeadCrossChart from "@/components/DeadCrossChart";
@@ -33,6 +33,56 @@ import type {
 } from "@/types/investment";
 
 const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
+
+const PREFECTURE_CENTERS: Record<string, { lat: number; lng: number }> = {
+  "01": { lat: 43.06, lng: 141.35 },
+  "02": { lat: 40.82, lng: 140.74 },
+  "03": { lat: 39.7, lng: 141.15 },
+  "04": { lat: 38.27, lng: 140.87 },
+  "05": { lat: 39.72, lng: 140.1 },
+  "06": { lat: 38.24, lng: 140.36 },
+  "07": { lat: 37.75, lng: 140.47 },
+  "08": { lat: 36.34, lng: 140.45 },
+  "09": { lat: 36.57, lng: 139.88 },
+  "10": { lat: 36.39, lng: 139.06 },
+  "11": { lat: 35.86, lng: 139.65 },
+  "12": { lat: 35.61, lng: 140.12 },
+  "13": { lat: 35.69, lng: 139.69 },
+  "14": { lat: 35.45, lng: 139.64 },
+  "15": { lat: 37.9, lng: 139.02 },
+  "16": { lat: 36.7, lng: 137.21 },
+  "17": { lat: 36.59, lng: 136.63 },
+  "18": { lat: 36.06, lng: 136.22 },
+  "19": { lat: 35.66, lng: 138.57 },
+  "20": { lat: 36.65, lng: 138.18 },
+  "21": { lat: 35.39, lng: 136.72 },
+  "22": { lat: 34.98, lng: 138.38 },
+  "23": { lat: 35.18, lng: 136.91 },
+  "24": { lat: 34.73, lng: 136.51 },
+  "25": { lat: 35.0, lng: 135.87 },
+  "26": { lat: 35.02, lng: 135.75 },
+  "27": { lat: 34.69, lng: 135.5 },
+  "28": { lat: 34.69, lng: 135.18 },
+  "29": { lat: 34.69, lng: 135.83 },
+  "30": { lat: 34.22, lng: 135.17 },
+  "31": { lat: 35.5, lng: 134.24 },
+  "32": { lat: 35.47, lng: 133.06 },
+  "33": { lat: 34.66, lng: 133.93 },
+  "34": { lat: 34.4, lng: 132.46 },
+  "35": { lat: 34.19, lng: 131.47 },
+  "36": { lat: 34.07, lng: 134.55 },
+  "37": { lat: 34.34, lng: 134.04 },
+  "38": { lat: 33.84, lng: 132.77 },
+  "39": { lat: 33.56, lng: 133.53 },
+  "40": { lat: 33.61, lng: 130.42 },
+  "41": { lat: 33.25, lng: 130.3 },
+  "42": { lat: 32.74, lng: 129.87 },
+  "43": { lat: 32.79, lng: 130.74 },
+  "44": { lat: 33.24, lng: 131.61 },
+  "45": { lat: 31.91, lng: 131.42 },
+  "46": { lat: 31.56, lng: 130.56 },
+  "47": { lat: 26.21, lng: 127.68 },
+};
 
 interface ResultsSectionProps {
   activeTab: "simulation" | "area-discovery";
@@ -85,6 +135,11 @@ export function ResultsSection({
   onLoanMethodChange,
   onTileSelect,
 }: ResultsSectionProps) {
+  const [municipalityCenter, setMunicipalityCenter] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+
   return (
     <section className="space-y-6">
       {/* Tab toggle */}
@@ -103,6 +158,7 @@ export function ResultsSection({
           onClick={() => {
             setActiveTab("area-discovery");
             setSelectedMunicipalityMsg(null);
+            setMunicipalityCenter(null);
           }}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
             activeTab === "area-discovery"
@@ -122,12 +178,22 @@ export function ResultsSection({
             </div>
           )}
           <AreaDiscovery
-            onMunicipalitySelect={(_code, name) => {
+            onMunicipalitySelect={(_code, name, prefecture) => {
               setSelectedMunicipalityMsg(
                 `「${name}」を選択しました。下の地図上で物件位置をクリックしてください。`
               );
+              setMunicipalityCenter(
+                PREFECTURE_CENTERS[prefecture] ?? { lat: 35.6812, lng: 139.7671 }
+              );
             }}
           />
+          {municipalityCenter && (
+            <InvestmentScoreHeatmap
+              centerLat={municipalityCenter.lat}
+              centerLng={municipalityCenter.lng}
+              onTileSelect={onTileSelect}
+            />
+          )}
         </>
       )}
 
