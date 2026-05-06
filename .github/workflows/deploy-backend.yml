@@ -48,6 +48,8 @@ jobs:
 
       - name: Build and push Docker image
         run: |
+          # mode=max: builder ステージ（Go コンパイル結果）を含む全レイヤーを保存。
+          # min だと最終 alpine ステージのみでコンパイルが毎回走る。
           docker buildx build \
             --cache-from "type=registry,ref=${{ env.IMAGE }}:buildcache" \
             --cache-to   "type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max" \

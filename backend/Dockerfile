@@ -8,7 +8,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
 COPY . .
-# ビルドキャッシュをホストに永続化（変更のないパッケージの再コンパイルをスキップ）
+# --mount=type=cache: ローカル開発専用（CI では ephemeral ランナーのため無効）
+# CI でのキャッシュは deploy-backend.yml の --cache-from/to で対応
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -o server ./cmd/server

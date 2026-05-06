@@ -57,4 +57,4 @@ jobs:
 
       - name: docker build (smoke test)
         working-directory: .
-        run: docker build ./backend
+        run: docker build --progress=plain ./backend
