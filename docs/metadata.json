@@ -626,7 +626,7 @@
       "id": "security",
       "path": "docs/security.md",
       "title": "セキュリティ設計",
-      "description": "Vercel-Cloud Run 間の内部通信認証（APP_INTERNAL_API_KEY / X-Internal-Key ヘッダー）の設計意図・動作仕様・適用範囲・ローカル開発での挙動・本番キー設定手順。internalKeyMiddleware が /api/* グループに適用され、/health はスキップ。APP_INTERNAL_API_KEY 未設定時はミドルウェアをスキップし後方互換を維持。Workload Identity Federation（OIDC パスワードレスデプロイ）・SHA固定 GitHub Actions・Secret Manager・Artifact Registry クリーンアップポリシーを含む。Terraform CI（terraform-ci.yml）: PR 時に fmt/validate/tflint/plan、workflow_dispatch+apply:true 時のみ apply。参照する Secrets（GCP_PROJECT_ID/MLIT_API_KEY/APP_INTERNAL_API_KEY/WIF_PROVIDER/SA_EMAIL）と Variables（VERCEL_FRONTEND_URL/NOTIFICATION_EMAIL）の一覧。gh variable set / gh secret set での設定方法。フロントエンド GitHub Actions デプロイ（VERCEL_TOKEN env渡し・vercel CLI バージョン固定・最小権限）も記載。OpenTelemetry 観測基盤のセキュリティ考慮: OTEL_EXPORTER_OTLP_ENDPOINT の管理方針（非シークレット・Cloud Run 環境変数）・stdout エクスポーターのデータスコープ（ローカル開発時の出力内容）・スパン属性ポリシー（mlit.query.* 属性に PII を含まない設計）・GOOGLE_CLOUD_PROJECT と Cloud Logging トレース相関の説明。",
+      "description": "Vercel-Cloud Run 間の内部通信認証（APP_INTERNAL_API_KEY / X-Internal-Key ヘッダー）の設計意図・動作仕様・適用範囲・ローカル開発での挙動・本番キー設定手順。internalKeyMiddleware が /api/* グループに適用され、/health はスキップ。APP_INTERNAL_API_KEY 未設定時はミドルウェアをスキップし後方互換を維持。Workload Identity Federation（OIDC パスワードレスデプロイ）・SHA固定 GitHub Actions（Dependabot github-actions エコシステムで週次自動更新）・Secret Manager・Artifact Registry クリーンアップポリシーを含む。SHA固定テーブル: actions/checkout v6.0.2・google-github-actions/auth v3.0.0・setup-gcloud v3.0.1・docker/setup-buildx-action v4.0.0・actions/cache v5.0.5・aquasecurity/trivy-action v0.36.0・github/codeql-action/upload-sarif v4.35.3・deploy-cloudrun v3.0.1。Trivy コンテナ脆弱性スキャン: docker buildx build --load でローカル展開 → Trivy スキャン（CRITICAL のみブロック・ignore-unfixed・scanners:vuln・SARIF形式）→ docker push の順序で脆弱なイメージを push 前に検知。2026-03-19 Trivy サプライチェーン攻撃（CVE-2026-33634・TeamPCP）: trivy-action の 76/77 タグをマルウェアに書き換え・runner /proc/<pid>/mem で secrets 窃取。yield-guard はインシデント時点で Trivy 未使用のため影響なし。Terraform CI（terraform-ci.yml）: PR 時に fmt/validate/tflint/plan、workflow_dispatch+apply:true 時のみ apply。参照する Secrets（GCP_PROJECT_ID/MLIT_API_KEY/APP_INTERNAL_API_KEY/WIF_PROVIDER/SA_EMAIL）と Variables（VERCEL_FRONTEND_URL/NOTIFICATION_EMAIL）の一覧。gh variable set / gh secret set での設定方法。フロントエンド GitHub Actions デプロイ（VERCEL_TOKEN env渡し・vercel CLI バージョン固定・最小権限）も記載。OpenTelemetry 観測基盤のセキュリティ考慮: OTEL_EXPORTER_OTLP_ENDPOINT の管理方針（非シークレット・Cloud Run 環境変数）・stdout エクスポーターのデータスコープ（ローカル開発時の出力内容）・スパン属性ポリシー（mlit.query.* 属性に PII を含まない設計）・GOOGLE_CLOUD_PROJECT と Cloud Logging トレース相関の説明。",
       "tags": [
         "セキュリティ",
         "認証",
@@ -651,7 +651,14 @@
         "Cloud Logging",
         "Terraform CI",
         "GitHub Variables",
-        "NOTIFICATION_EMAIL"
+        "NOTIFICATION_EMAIL",
+        "Trivy",
+        "CVE",
+        "脆弱性スキャン",
+        "コンテナスキャン",
+        "サプライチェーン攻撃",
+        "SARIF",
+        "Dependabot"
       ],
       "industry": [
         "不動産",
@@ -698,9 +705,29 @@
         "TF_VAR_notification_email",
         "TF_VAR_vercel_frontend_url",
         "GitHub Variables",
-        "GitHub Secrets"
+        "GitHub Secrets",
+        "trivy-action",
+        "aquasecurity/trivy-action",
+        "CVE-2026-33634",
+        "SARIF",
+        "sarif",
+        "upload-sarif",
+        "codeql-action",
+        "ignore-unfixed",
+        "scanners",
+        "severity",
+        "CRITICAL",
+        "TeamPCP",
+        "サプライチェーン攻撃",
+        "dependabot.yml",
+        "github-actions",
+        "actions/cache",
+        "docker/setup-buildx-action",
+        "setup-buildx-action",
+        "--load",
+        "deploy-backend.yml"
       ],
-      "updatedAt": "2026-04-23"
+      "updatedAt": "2026-05-06"
     },
     {
       "id": "mlit-api-integration",

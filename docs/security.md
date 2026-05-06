@@ -80,7 +80,7 @@ GitHub Actions
 
 `.github/workflows/deploy-backend.yml` 内のすべてのサードパーティ Action はコミット SHA で固定している。バージョンタグはミュータブルであり、タグを悪意あるコミットに移動させるサプライチェーン攻撃を防ぐためである。
 
-2026年3月の Trivy サプライチェーン攻撃（CVE-2026-33634）では `trivy-action` のバージョンタグがマルウェアを指すように書き換えられた。この設計によりその手法を無効化できる。SHA の更新は Dependabot（`github-actions` エコシステム）が週次で PR を自動作成する。
+2026年3月の Trivy サプライチェーン攻撃（CVE-2026-33634）では `trivy-action` のバージョンタグがマルウェアを指すように書き換えられた。この設計によりその手法を無効化できる。
 
 | Action | SHA | バージョン |
 |---|---|---|
@@ -92,6 +92,8 @@ GitHub Actions
 | `aquasecurity/trivy-action` | `ed142fd0673e97e23eac54620cfb913e5ce36c25` | v0.36.0 |
 | `github/codeql-action/upload-sarif` | `e46ed2cbd01164d986452f91f178727624ae40d7` | v4.35.3 |
 | `google-github-actions/deploy-cloudrun` | `2028e2d7d30a78c6910e0632e48dd561b064884d` | v3.0.1 |
+
+> SHA は Dependabot（`github-actions` エコシステム）が週次で更新 PR を自動作成する（`.github/dependabot.yml`）。
 
 ---
 
@@ -259,7 +261,8 @@ MLIT API クライアント（`backend/internal/mlit/client.go`）は以下の�
 - `terraform/iam.tf` — Workload Identity Federation + SA 最小権限
 - `terraform/secret_manager.tf` — Secret Manager リソース
 - `terraform/cloud_run.tf` — Cloud Run v2 サービス定義
-- `.github/workflows/deploy-backend.yml` — バックエンドデプロイワークフロー（SHA 固定）
+- `.github/workflows/deploy-backend.yml` — バックエンドデプロイワークフロー（SHA 固定・Trivy スキャン）
 - `.github/workflows/frontend-ci.yml` — フロントエンド CI + Vercel デプロイワークフロー
+- `.github/dependabot.yml` — Dependabot 自動更新設定（gomod / npm / github-actions）
 - `backend/internal/telemetry/setup.go` — OTel TracerProvider / MeterProvider 初期化
 - `backend/internal/logger/logger.go` — Cloud Logging 準拠 slog ハンドラー
