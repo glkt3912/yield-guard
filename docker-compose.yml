@@ -11,6 +11,11 @@ services:
       PORT: "8080"
       ALLOW_ORIGINS: "${ALLOW_ORIGINS:-http://localhost:3000}"
       MLIT_API_KEY: "${MLIT_API_KEY}"
+    # CVE-2026-31431: setuid 経由の権限昇格を防ぐ多層防御
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 10s
@@ -26,6 +31,11 @@ services:
       - "3000:3000"
     environment:
       BACKEND_URL: "http://backend:8080"
+    # CVE-2026-31431: setuid 経由の権限昇格を防ぐ多層防御
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     depends_on:
       backend:
         condition: service_healthy
