@@ -12,7 +12,6 @@ import {
   fetchInvestmentScore,
   simulate,
 } from "@/lib/api";
-import { analyze as analyzeOffline } from "@/lib/investment";
 import { encodeUrlParams } from "@/lib/urlParams";
 import type {
   InvestmentInput,
@@ -53,6 +52,13 @@ const INITIAL_ANALYSIS_RESULT: AnalysisResult = {
   hazardRisks: null,
 };
 
+function toErrorMessage(e: unknown, fallback: string): string {
+  if (e instanceof TypeError && e.message.toLowerCase().includes("fetch")) {
+    return "インターネット接続を確認してください";
+  }
+  return e instanceof Error ? e.message : fallback;
+}
+
 function getCurrentPeriods(): { year: number; quarter: number; toYear: number; toQuarter: number } {
   const now = new Date();
   const toYear = now.getFullYear();
@@ -61,12 +67,11 @@ function getCurrentPeriods(): { year: number; quarter: number; toYear: number; t
 }
 
 export interface UseInvestmentSimulationParams {
-  isOnline: boolean | null;
   simulationMode: SimulationMode;
   onUrlUpdate: (qs: string) => void;
 }
 
-export interface UseInvestmentSimulationResult extends Omit<AnalysisResult, never> {
+export interface UseInvestmentSimulationResult extends AnalysisResult {
   loading: boolean;
   error: string | null;
   lastInput: InvestmentInput | null;
@@ -110,22 +115,21 @@ export function useInvestmentSimulation(
   const loanMethodRef = useRef<LoanMethod>("equal-payment");
 
   const handleAnalyze = useCallback(async (input: InvestmentInput, quickTotalMan?: string) => {
-    const { isOnline, simulationMode, onUrlUpdate } = paramsRef.current;
+    const { simulationMode, onUrlUpdate } = paramsRef.current;
     const currentLoanMethod = loanMethodRef.current;
     setLoading(true);
     setError(null);
     setMonteCarloResult(null);
     const inputWithMethod = { ...input, loanMethod: currentLoanMethod };
     try {
-      const res =
-        isOnline === false ? analyzeOffline(inputWithMethod) : await analyzeOnline(inputWithMethod);
+      const res = await analyzeOnline(inputWithMethod);
       setAnalysisResult((prev) => ({ ...prev, result: res }));
       setLastInput(inputWithMethod);
       const urlParams = encodeUrlParams(simulationMode, inputWithMethod, quickTotalMan);
       const qs = urlParams.toString();
       onUrlUpdate(qs);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "シミュレーションに失敗しました");
+      setError(toErrorMessage(e, "シミュレーションに失敗しました"));
     } finally {
       setLoading(false);
     }
@@ -150,18 +154,16 @@ export function useInvestmentSimulation(
     loanMethodRef.current = method;
     const current = lastInputRef.current;
     if (!current) return;
-    const { isOnline } = paramsRef.current;
     setLoading(true);
     setError(null);
     setMonteCarloResult(null);
     try {
       const updatedInput = { ...current, loanMethod: method };
-      const res =
-        isOnline === false ? analyzeOffline(updatedInput) : await analyzeOnline(updatedInput);
+      const res = await analyzeOnline(updatedInput);
       setAnalysisResult((prev) => ({ ...prev, result: res }));
       setLastInput((prev) => (prev ? { ...prev, loanMethod: method } : prev));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "シミュレーションに失敗しました");
+      setError(toErrorMessage(e, "シミュレーションに失敗しました"));
     } finally {
       setLoading(false);
     }
@@ -169,7 +171,6 @@ export function useInvestmentSimulation(
 
   const handleFetchLandPrices = useCallback(
     async (area: string, city: string, lat?: number, lng?: number) => {
-      const { isOnline } = paramsRef.current;
       setLoading(true);
       setError(null);
       setAnalysisResult((prev) => ({
@@ -241,9 +242,6 @@ export function useInvestmentSimulation(
             hazardRisks: hazard.status === "fulfilled" ? hazard.value : null,
           }));
         }
-
-        // オフラインでも相場比較は実行可能なため isOnline チェック不要
-        void isOnline;
       } catch (e) {
         setError(
           e instanceof Error
