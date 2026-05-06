@@ -8,10 +8,12 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, suffix, error, id, onFocus, ...props }, ref) => {
+  ({ className, label, suffix, error, id, onFocus, type, ...props }, ref) => {
     const inputId = id ?? label;
+    // select() is not supported on type="number" per spec; use type="text" so select() works
     const isNumeric =
-      props.type === "number" || props.inputMode === "numeric" || props.inputMode === "decimal";
+      type === "number" || props.inputMode === "numeric" || props.inputMode === "decimal";
+    const resolvedType = isNumeric ? "text" : type;
 
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
       if (isNumeric) e.target.select();
@@ -29,6 +31,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <input
             id={inputId}
             ref={ref}
+            type={resolvedType}
             onFocus={handleFocus}
             className={cn(
               "flex h-11 sm:h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
