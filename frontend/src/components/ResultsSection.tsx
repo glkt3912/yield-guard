@@ -191,7 +191,10 @@ export function ResultsSection({
             <InvestmentScoreHeatmap
               centerLat={municipalityCenter.lat}
               centerLng={municipalityCenter.lng}
-              onTileSelect={onTileSelect}
+              onTileSelect={(lat, lng) => {
+                onTileSelect(lat, lng);
+                setActiveTab("simulation");
+              }}
             />
           )}
         </>
