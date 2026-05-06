@@ -1,6 +1,6 @@
 module github.com/yield-guard/backend
 
-go 1.25.5
+go 1.25.10
 
 require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.56.0
