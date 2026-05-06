@@ -80,12 +80,57 @@ GitHub Actions
 
 `.github/workflows/deploy-backend.yml` 内のすべてのサードパーティ Action はコミット SHA で固定している。バージョンタグはミュータブルであり、タグを悪意あるコミットに移動させるサプライチェーン攻撃を防ぐためである。
 
+2026年3月の Trivy サプライチェーン攻撃（CVE-2026-33634）では `trivy-action` のバージョンタグがマルウェアを指すように書き換えられた。この設計によりその手法を無効化できる。
+
 | Action | SHA | バージョン |
 |---|---|---|
-| `actions/checkout` | `11bd71901bbe5b1630ceea73d27597364c9af683` | v4.2.2 |
-| `google-github-actions/auth` | `6fc4af4b145ae7821d527454aa9bd537d1f2dc5f` | v2.1.7 |
-| `google-github-actions/setup-gcloud` | `6189d56e4096ee891640bb02ac264be376592d6a` | v2.1.4 |
-| `google-github-actions/deploy-cloudrun` | `251330ba9a8a34bfbc1622895f42e1d53fd14522` | v2.7.6 |
+| `actions/checkout` | `de0fac2e4500dabe0009e67214ff5f5447ce83dd` | v6.0.2 |
+| `google-github-actions/auth` | `7c6bc770dae815cd3e89ee6cdf493a5fab2cc093` | v3.0.0 |
+| `google-github-actions/setup-gcloud` | `aa5489c8933f4cc7a4f7d45035b3b1440c9c10db` | v3.0.1 |
+| `docker/setup-buildx-action` | `4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd` | v4.0.0 |
+| `actions/cache` | `27d5ce7f107fe9357f9df03efb73ab90386fccae` | v5.0.5 |
+| `aquasecurity/trivy-action` | `ed142fd0673e97e23eac54620cfb913e5ce36c25` | v0.36.0 |
+| `github/codeql-action/upload-sarif` | `e46ed2cbd01164d986452f91f178727624ae40d7` | v4.35.3 |
+| `google-github-actions/deploy-cloudrun` | `2028e2d7d30a78c6910e0632e48dd561b064884d` | v3.0.1 |
+
+> SHA は Dependabot（`github-actions` エコシステム）が週次で更新 PR を自動作成する（`.github/dependabot.yml`）。
+
+---
+
+## Trivy コンテナ脆弱性スキャン
+
+### 背景
+
+`deploy-backend.yml` は Docker イメージをビルドして Cloud Run へデプロイするが、OS パッケージや Go モジュールに既知の脆弱性（CVE）が含まれていても lint・test では検知できない。Trivy スキャンをビルドと push の間に挿入することで、脆弱なイメージがリリースされる前に CI で検知・停止する。
+
+### フロー
+
+```
+docker buildx build（--load でローカルに展開）
+    ↓
+Trivy スキャン（CRITICAL のみブロック）
+    ↓ 常時
+SARIF → GitHub Security タブ
+    ↓ スキャン通過時のみ
+docker push → Cloud Run deploy
+```
+
+`--load` を使いローカル Docker daemon にイメージを展開してからスキャンする。`--push` と組み合わせないのは、脆弱なイメージを Artifact Registry に残さないためである。
+
+### スキャン設定
+
+| 設定 | 値 | 理由 |
+|------|-----|------|
+| `severity` | `CRITICAL` | CVSS 9.0+ のみブロック。HIGH は SARIF に記録するが通過させる |
+| `ignore-unfixed` | `true` | パッチ未提供の CVE は対応不能なため CI ブロックから除外 |
+| `scanners` | `vuln` | 脆弱性スキャンのみ（OS パッケージ・言語ライブラリ対象） |
+| `format` | `sarif` | GitHub Security タブへのアップロードに使用 |
+
+### Trivy サプライチェーン攻撃（CVE-2026-33634）
+
+2026年3月19日、脅威アクター TeamPCP が Aqua Security のリリースインフラを侵害し、`trivy-action` の 76/77 バージョンタグをクレデンシャル窃取マルウェアに書き換えた。GitHub Actions runner の `/proc/<pid>/mem` を直接読み取りログマスキングをバイパスして secrets を盗取する手法が使われた。
+
+yield-guard はインシデント発生時点で Trivy を未使用だったため影響はなかった。現在は commit SHA 固定により同手法の再発を防いでいる。
 
 ---
 
@@ -216,7 +261,8 @@ MLIT API クライアント（`backend/internal/mlit/client.go`）は以下の�
 - `terraform/iam.tf` — Workload Identity Federation + SA 最小権限
 - `terraform/secret_manager.tf` — Secret Manager リソース
 - `terraform/cloud_run.tf` — Cloud Run v2 サービス定義
-- `.github/workflows/deploy-backend.yml` — バックエンドデプロイワークフロー（SHA 固定）
+- `.github/workflows/deploy-backend.yml` — バックエンドデプロイワークフロー（SHA 固定・Trivy スキャン）
 - `.github/workflows/frontend-ci.yml` — フロントエンド CI + Vercel デプロイワークフロー
+- `.github/dependabot.yml` — Dependabot 自動更新設定（gomod / npm / github-actions）
 - `backend/internal/telemetry/setup.go` — OTel TracerProvider / MeterProvider 初期化
 - `backend/internal/logger/logger.go` — Cloud Logging 準拠 slog ハンドラー
