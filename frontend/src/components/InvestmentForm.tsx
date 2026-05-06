@@ -9,6 +9,7 @@ import { useMunicipalitiesLoader } from "@/hooks/useMunicipalitiesLoader";
 import { useRentDeclineHint } from "@/hooks/useRentDeclineHint";
 import { QuickModeForm, type QuickHistoryEntry } from "@/components/QuickModeForm";
 import { FullModeForm } from "@/components/FullModeForm";
+import { type GeocodeState } from "@/components/sections/LocationSection";
 
 const QUICK_HISTORY_KEY = "yield-guard:quick-history";
 const QUICK_HISTORY_MAX = 5;
@@ -129,11 +130,6 @@ export function InvestmentForm({
   const [showCustomLoan, setShowCustomLoan] = useState(false);
   const [quickHistory, setQuickHistory] = useState<QuickHistoryEntry[]>([]);
   const [rateScheduleEnabled, setRateScheduleEnabled] = useState(false);
-  const [showBuildingHelper, setShowBuildingHelper] = useState(false);
-  const [taxAmount, setTaxAmount] = useState("");
-  const [landAssess, setLandAssess] = useState("");
-  const [buildingAssess, setBuildingAssess] = useState("");
-  const [totalPrice, setTotalPrice] = useState("");
 
   const isQuick = simulationMode === "quick";
 
@@ -376,6 +372,39 @@ export function InvestmentForm({
     setNum("monthlyRent", parseFloat(last.monthlyRentYen) || 0);
   };
 
+  // geocode オブジェクト（FullModeForm 向け）
+  const geocode: GeocodeState = {
+    address: addressInput,
+    status: geocodeStatus,
+    error: geocodeError,
+    locationType: geocodeLocationType,
+    lat: propertyLat,
+    lng: propertyLng,
+  };
+  const onGeocodeChange = useCallback((patch: Partial<GeocodeState>) => {
+    if ("address" in patch) setAddressInput(patch.address!);
+    if ("status" in patch) setGeocodeStatus(patch.status!);
+    if ("error" in patch) setGeocodeError(patch.error!);
+    if ("locationType" in patch) setGeocodeLocationType(patch.locationType!);
+    if ("lat" in patch) setPropertyLat(patch.lat!);
+    if ("lng" in patch) setPropertyLng(patch.lng!);
+  }, []);
+
+  // rateSchedule / capex ハンドラオブジェクト（FullModeForm 向け）
+  const rateSchedule = {
+    enabled: rateScheduleEnabled,
+    onToggle: handleRateScheduleToggle,
+    onAdd: addRateStep,
+    onRemove: removeRateStep,
+    onUpdate: updateRateStep,
+    canAdd: canAddRateStep,
+  };
+  const capex = {
+    onAdd: addCapexEvent,
+    onRemove: removeCapexEvent,
+    onUpdate: updateCapexEvent,
+  };
+
   const sharedMuniProps = {
     area,
     handleAreaChange,
@@ -419,32 +448,26 @@ export function InvestmentForm({
         />
       ) : (
         <FullModeForm
-          {...sharedMuniProps}
-          setPropertyLat={setPropertyLat}
-          setPropertyLng={setPropertyLng}
-          addressInput={addressInput}
-          setAddressInput={setAddressInput}
-          geocodeStatus={geocodeStatus}
-          setGeocodeStatus={setGeocodeStatus}
-          geocodeError={geocodeError}
-          geocodeLocationType={geocodeLocationType}
-          setGeocodeLocationType={setGeocodeLocationType}
+          area={area}
+          handleAreaChange={handleAreaChange}
+          city={city}
+          handleCityChange={handleCityChange}
+          muniFilter={muniFilter}
+          setMuniFilter={setMuniFilter}
+          filteredMunicipalities={filteredMunicipalities}
+          muniLoading={muniLoading}
+          muniError={muniError}
+          isOnline={isOnline}
+          geocode={geocode}
+          onGeocodeChange={onGeocodeChange}
           showManualCoords={showManualCoords}
           handleGeocode={handleGeocode}
+          loading={loading}
+          onFetchLandPrices={onFetchLandPrices}
           input={input}
           setNum={setNum}
           setStr={setStr}
           fieldError={fieldError}
-          showBuildingHelper={showBuildingHelper}
-          setShowBuildingHelper={setShowBuildingHelper}
-          taxAmount={taxAmount}
-          setTaxAmount={setTaxAmount}
-          landAssess={landAssess}
-          setLandAssess={setLandAssess}
-          buildingAssess={buildingAssess}
-          setBuildingAssess={setBuildingAssess}
-          totalPrice={totalPrice}
-          setTotalPrice={setTotalPrice}
           rentHint={rentHint}
           rentHintLoading={rentHintLoading}
           rentHintError={rentHintError}
@@ -453,15 +476,8 @@ export function InvestmentForm({
           handleCashPurchaseToggle={handleCashPurchaseToggle}
           zoningType={zoningType}
           setZoningType={setZoningType}
-          rateScheduleEnabled={rateScheduleEnabled}
-          handleRateScheduleToggle={handleRateScheduleToggle}
-          addRateStep={addRateStep}
-          removeRateStep={removeRateStep}
-          updateRateStep={updateRateStep}
-          canAddRateStep={canAddRateStep}
-          addCapexEvent={addCapexEvent}
-          removeCapexEvent={removeCapexEvent}
-          updateCapexEvent={updateCapexEvent}
+          rateSchedule={rateSchedule}
+          capex={capex}
           hasErrors={hasErrors}
           handleAnalyze={handleAnalyze}
         />

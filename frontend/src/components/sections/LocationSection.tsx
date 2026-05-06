@@ -14,6 +14,15 @@ const LOCATION_TYPE_LABEL: Record<string, string> = {
   APPROXIMATE: "近似位置で取得（精度低）",
 };
 
+export interface GeocodeState {
+  address: string;
+  status: "idle" | "loading" | "success" | "error";
+  error: string;
+  locationType: string;
+  lat: string;
+  lng: string;
+}
+
 interface LocationSectionProps {
   area: string;
   handleAreaChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
@@ -25,17 +34,8 @@ interface LocationSectionProps {
   muniLoading: boolean;
   muniError: string | null;
   isOnline: boolean | null;
-  propertyLat: string;
-  setPropertyLat: (v: string) => void;
-  propertyLng: string;
-  setPropertyLng: (v: string) => void;
-  addressInput: string;
-  setAddressInput: (v: string) => void;
-  geocodeStatus: "idle" | "loading" | "success" | "error";
-  setGeocodeStatus: (v: "idle" | "loading" | "success" | "error") => void;
-  geocodeError: string;
-  geocodeLocationType: string;
-  setGeocodeLocationType: (v: string) => void;
+  geocode: GeocodeState;
+  onGeocodeChange: (patch: Partial<GeocodeState>) => void;
   showManualCoords: boolean;
   handleGeocode: () => Promise<void>;
   loading: boolean;
@@ -53,17 +53,8 @@ export function LocationSection({
   muniLoading,
   muniError,
   isOnline,
-  propertyLat,
-  setPropertyLat,
-  propertyLng,
-  setPropertyLng,
-  addressInput,
-  setAddressInput,
-  geocodeStatus,
-  setGeocodeStatus,
-  geocodeError,
-  geocodeLocationType,
-  setGeocodeLocationType,
+  geocode,
+  onGeocodeChange,
   showManualCoords,
   handleGeocode,
   loading,
@@ -124,14 +115,16 @@ export function LocationSection({
               <input
                 type="text"
                 placeholder="例: 東京都渋谷区道玄坂1-2"
-                value={addressInput}
-                onChange={(e) => {
-                  setAddressInput(e.target.value);
-                  setGeocodeStatus("idle");
-                  setGeocodeLocationType("");
-                  setPropertyLat("");
-                  setPropertyLng("");
-                }}
+                value={geocode.address}
+                onChange={(e) =>
+                  onGeocodeChange({
+                    address: e.target.value,
+                    status: "idle",
+                    locationType: "",
+                    lat: "",
+                    lng: "",
+                  })
+                }
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleGeocode();
                 }}
@@ -140,21 +133,21 @@ export function LocationSection({
               />
               <Button
                 variant="outline"
-                loading={geocodeStatus === "loading"}
-                disabled={!addressInput.trim() || geocodeStatus === "loading"}
+                loading={geocode.status === "loading"}
+                disabled={!geocode.address.trim() || geocode.status === "loading"}
                 onClick={handleGeocode}
                 className="shrink-0"
               >
                 座標を取得
               </Button>
             </div>
-            {geocodeStatus === "success" && (
+            {geocode.status === "success" && (
               <p className="text-xs text-green-600">
-                ✓ {LOCATION_TYPE_LABEL[geocodeLocationType] ?? "座標を取得しました"}
+                ✓ {LOCATION_TYPE_LABEL[geocode.locationType] ?? "座標を取得しました"}
               </p>
             )}
-            {geocodeStatus === "error" && (
-              <p className="text-xs text-destructive">{geocodeError}</p>
+            {geocode.status === "error" && (
+              <p className="text-xs text-destructive">{geocode.error}</p>
             )}
           </div>
           {showManualCoords && (
@@ -166,8 +159,8 @@ export function LocationSection({
                   inputMode="decimal"
                   placeholder="例: 35.6762"
                   step="0.0001"
-                  value={propertyLat}
-                  onChange={(e) => setPropertyLat(e.target.value)}
+                  value={geocode.lat}
+                  onChange={(e) => onGeocodeChange({ lat: e.target.value })}
                   className="flex h-11 sm:h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
                   aria-label="物件の緯度"
                 />
@@ -179,8 +172,8 @@ export function LocationSection({
                   inputMode="decimal"
                   placeholder="例: 139.6503"
                   step="0.0001"
-                  value={propertyLng}
-                  onChange={(e) => setPropertyLng(e.target.value)}
+                  value={geocode.lng}
+                  onChange={(e) => onGeocodeChange({ lng: e.target.value })}
                   className="flex h-11 sm:h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
                   aria-label="物件の経度"
                 />
@@ -201,8 +194,8 @@ export function LocationSection({
           loading={loading}
           disabled={isOnline === false}
           onClick={() => {
-            const lat = parseFloat(propertyLat);
-            const lng = parseFloat(propertyLng);
+            const lat = parseFloat(geocode.lat);
+            const lng = parseFloat(geocode.lng);
             const hasCoords = !isNaN(lat) && !isNaN(lng);
             onFetchLandPrices(area, city, hasCoords ? lat : undefined, hasCoords ? lng : undefined);
           }}

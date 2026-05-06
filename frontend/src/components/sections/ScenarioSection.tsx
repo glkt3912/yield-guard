@@ -7,33 +7,29 @@ import { Plus, Trash2 } from "lucide-react";
 import type { InvestmentInput, RateAdjustment } from "@/types/investment";
 import { formatPct } from "@/lib/utils";
 
+export interface RateScheduleHandlers {
+  enabled: boolean;
+  onToggle: (v: boolean) => void;
+  onAdd: () => void;
+  onRemove: (i: number) => void;
+  onUpdate: (i: number, field: keyof RateAdjustment, value: number) => void;
+  canAdd: boolean;
+}
+
+export interface CapexHandlers {
+  onAdd: () => void;
+  onRemove: (i: number) => void;
+  onUpdate: (i: number, field: "year" | "amount", value: number) => void;
+}
+
 interface ScenarioSectionProps {
   input: InvestmentInput;
   setNum: (key: keyof InvestmentInput, value: number) => void;
-  rateScheduleEnabled: boolean;
-  handleRateScheduleToggle: (enabled: boolean) => void;
-  addRateStep: () => void;
-  removeRateStep: (i: number) => void;
-  updateRateStep: (i: number, field: keyof RateAdjustment, value: number) => void;
-  canAddRateStep: boolean;
-  addCapexEvent: () => void;
-  removeCapexEvent: (i: number) => void;
-  updateCapexEvent: (i: number, field: "year" | "amount", value: number) => void;
+  rateSchedule: RateScheduleHandlers;
+  capex: CapexHandlers;
 }
 
-export function ScenarioSection({
-  input,
-  setNum,
-  rateScheduleEnabled,
-  handleRateScheduleToggle,
-  addRateStep,
-  removeRateStep,
-  updateRateStep,
-  canAddRateStep,
-  addCapexEvent,
-  removeCapexEvent,
-  updateCapexEvent,
-}: ScenarioSectionProps) {
+export function ScenarioSection({ input, setNum, rateSchedule, capex }: ScenarioSectionProps) {
   return (
     <>
       {/* 変動金利シミュレーション */}
@@ -43,14 +39,14 @@ export function ScenarioSection({
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={rateScheduleEnabled}
-              onChange={(e) => handleRateScheduleToggle(e.target.checked)}
+              checked={rateSchedule.enabled}
+              onChange={(e) => rateSchedule.onToggle(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300"
             />
             <span className="text-xs text-muted-foreground">有効にする</span>
           </label>
         </div>
-        {rateScheduleEnabled && (
+        {rateSchedule.enabled && (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
               指定年以降の適用金利（絶対値）を設定します。最大3ステップ。
@@ -79,7 +75,9 @@ export function ScenarioSection({
                     max={String(maxYear)}
                     step="1"
                     value={String(step.afterYear)}
-                    onChange={(e) => updateRateStep(i, "afterYear", parseInt(e.target.value) || 2)}
+                    onChange={(e) =>
+                      rateSchedule.onUpdate(i, "afterYear", parseInt(e.target.value) || 2)
+                    }
                     error={yearError}
                   />
                   <Input
@@ -92,13 +90,13 @@ export function ScenarioSection({
                     step="0.1"
                     value={(step.rate * 100).toFixed(2)}
                     onChange={(e) =>
-                      updateRateStep(i, "rate", (parseFloat(e.target.value) || 0) / 100)
+                      rateSchedule.onUpdate(i, "rate", (parseFloat(e.target.value) || 0) / 100)
                     }
                     error={rateError}
                   />
                   <button
                     type="button"
-                    onClick={() => removeRateStep(i)}
+                    onClick={() => rateSchedule.onRemove(i)}
                     className={`text-muted-foreground hover:text-destructive flex-shrink-0 ${i === 0 ? "mt-5" : ""}`}
                     aria-label="削除"
                   >
@@ -107,10 +105,10 @@ export function ScenarioSection({
                 </div>
               );
             })}
-            {canAddRateStep && (
+            {rateSchedule.canAdd && (
               <button
                 type="button"
-                onClick={addRateStep}
+                onClick={rateSchedule.onAdd}
                 className="flex items-center gap-1 text-xs text-primary hover:underline"
               >
                 <Plus className="h-3 w-3" />
@@ -142,7 +140,7 @@ export function ScenarioSection({
           onChange={(v) => setNum("loanRateDelta", v)}
           formatValue={(v) => `+${formatPct(v)}`}
         />
-        {rateScheduleEnabled && input.loanRateDelta > 0 && (
+        {rateSchedule.enabled && input.loanRateDelta > 0 && (
           <p className="text-xs text-muted-foreground">
             金利上昇分はスケジュール後の金利にも上乗せされます
           </p>
@@ -159,7 +157,7 @@ export function ScenarioSection({
             size="sm"
             className="text-xs h-7 px-2"
             disabled={(input.capexSchedule ?? []).length >= 5}
-            onClick={addCapexEvent}
+            onClick={capex.onAdd}
           >
             ＋追加
           </Button>
@@ -178,7 +176,7 @@ export function ScenarioSection({
                   min="1"
                   max={input.holdingYears || 35}
                   value={String(ev.year)}
-                  onChange={(e) => updateCapexEvent(i, "year", parseInt(e.target.value) || 1)}
+                  onChange={(e) => capex.onUpdate(i, "year", parseInt(e.target.value) || 1)}
                   className="w-24"
                 />
                 <Input
@@ -189,7 +187,7 @@ export function ScenarioSection({
                   min="0"
                   value={String(Math.round(ev.amount / 10_000))}
                   onChange={(e) =>
-                    updateCapexEvent(i, "amount", (parseFloat(e.target.value) || 0) * 10_000)
+                    capex.onUpdate(i, "amount", (parseFloat(e.target.value) || 0) * 10_000)
                   }
                   className="flex-1"
                 />
@@ -198,7 +196,7 @@ export function ScenarioSection({
                   variant="outline"
                   size="sm"
                   className="text-xs h-7 px-2 mt-5 shrink-0"
-                  onClick={() => removeCapexEvent(i)}
+                  onClick={() => capex.onRemove(i)}
                 >
                   削除
                 </Button>

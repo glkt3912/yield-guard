@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -16,21 +16,187 @@ function calcFromAssessment(totalMan: number, landA: number, buildingA: number):
   return landA + buildingA > 0 ? totalMan * (buildingA / (landA + buildingA)) : 0;
 }
 
+// 建物価格按分ヘルパー（state を自己完結）
+function BuildingPriceHelper({ onApply }: { onApply: (value: number) => void }) {
+  const [taxAmount, setTaxAmount] = useState("");
+  const [landAssess, setLandAssess] = useState("");
+  const [buildingAssess, setBuildingAssess] = useState("");
+  const [totalPrice, setTotalPrice] = useState("");
+
+  return (
+    <div className="mt-2 rounded-md bg-muted/50 p-3 space-y-3 text-sm">
+      <div>
+        <p className="font-medium text-xs mb-1">① 消費税額から計算（最も確実）</p>
+        <div className="flex gap-2 items-end">
+          <div className="flex-1">
+            <Input
+              label="消費税額"
+              type="number"
+              inputMode="numeric"
+              suffix="万円"
+              value={taxAmount}
+              onChange={(e) => setTaxAmount(e.target.value)}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mb-0 shrink-0"
+            onClick={() => {
+              const result = calcFromTax(parseFloat(taxAmount) || 0);
+              if (result > 0) onApply(result * 10_000);
+            }}
+          >
+            適用
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">建物価格 = 消費税額 ÷ 0.1</p>
+      </div>
+      <div>
+        <p className="font-medium text-xs mb-1">② 固定資産税評価額の比率で按分</p>
+        <div className="grid grid-cols-3 gap-2">
+          <Input
+            label="土地評価額"
+            type="number"
+            inputMode="numeric"
+            suffix="万円"
+            value={landAssess}
+            onChange={(e) => setLandAssess(e.target.value)}
+          />
+          <Input
+            label="建物評価額"
+            type="number"
+            inputMode="numeric"
+            suffix="万円"
+            value={buildingAssess}
+            onChange={(e) => setBuildingAssess(e.target.value)}
+          />
+          <Input
+            label="購入総額"
+            type="number"
+            inputMode="numeric"
+            suffix="万円"
+            value={totalPrice}
+            onChange={(e) => setTotalPrice(e.target.value)}
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-2"
+          onClick={() => {
+            const result = calcFromAssessment(
+              parseFloat(totalPrice) || 0,
+              parseFloat(landAssess) || 0,
+              parseFloat(buildingAssess) || 0
+            );
+            if (result > 0) onApply(result * 10_000);
+          }}
+        >
+          按分して適用
+        </Button>
+        <p className="text-xs text-muted-foreground mt-1">
+          建物価格 = 総額 × 建物評価 ÷（土地+建物評価）
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// 賃料下落率ヒント表示
+function RentDeclineHintDisplay({
+  hint,
+  loading,
+  error,
+  onFetch,
+  disabled,
+}: {
+  hint: RentDeclineHint | null;
+  loading: boolean;
+  error: string | null;
+  onFetch: () => Promise<void>;
+  disabled: boolean;
+}) {
+  return (
+    <div className="mt-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={disabled || loading}
+        onClick={onFetch}
+        className="text-xs h-7 px-2"
+      >
+        {loading ? "取得中…" : "地域の参考値を取得"}
+      </Button>
+      {error && <p className="text-xs text-destructive mt-1">{error}</p>}
+      {hint && !error && (
+        <p className="text-xs text-muted-foreground mt-1">
+          {hint.fallbackUsed
+            ? "データ不足のため地域参考値なし。構造別平均値を推奨します"
+            : `地価公示より参考値: ${toPct(hint.hintRate, 1)}%/年（${hint.dataPointCount}件）`}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// 用途地域リスクバッジ
+function ZoningRiskBadge({
+  zoningType,
+  onZoningChange,
+}: {
+  zoningType: ZoningType;
+  onZoningChange: (v: ZoningType) => void;
+}) {
+  const meta = zoningType ? ZONING_META[zoningType] : null;
+  const styles: Record<number, string> = {
+    0: "border-green-200 bg-green-50 text-green-800",
+    1: "border-blue-200 bg-blue-50 text-blue-800",
+    2: "border-yellow-300 bg-yellow-50 text-yellow-800",
+    3: "border-red-300 bg-red-50 text-red-800",
+  };
+  const labels: Record<number, string> = { 0: "", 1: "低リスク", 2: "中リスク", 3: "高リスク" };
+
+  return (
+    <div className="space-y-2">
+      <Select
+        label="用途地域（任意）"
+        value={zoningType}
+        onChange={(e) => onZoningChange(e.target.value as ZoningType)}
+        options={[
+          { value: "", label: "（未選択）" },
+          ...ZONING_TYPES.map((z) => ({ value: z, label: z })),
+        ]}
+      />
+      {meta && (
+        <div
+          className={`flex items-start gap-2 rounded-md border p-2 text-xs ${styles[meta.riskLevel]}`}
+        >
+          {meta.riskLevel === 0 ? (
+            <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />
+          ) : (
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          )}
+          <div>
+            {labels[meta.riskLevel] && (
+              <span className="font-semibold">{labels[meta.riskLevel]}: </span>
+            )}
+            <span>{meta.riskLevel === 0 ? "良好な住環境です" : meta.riskMessage}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface PropertyInfoSectionProps {
   input: InvestmentInput;
   setNum: (key: keyof InvestmentInput, value: number) => void;
   setStr: (key: keyof InvestmentInput, value: string) => void;
   fieldError: (key: string) => string | undefined;
-  showBuildingHelper: boolean;
-  setShowBuildingHelper: React.Dispatch<React.SetStateAction<boolean>>;
-  taxAmount: string;
-  setTaxAmount: (v: string) => void;
-  landAssess: string;
-  setLandAssess: (v: string) => void;
-  buildingAssess: string;
-  setBuildingAssess: (v: string) => void;
-  totalPrice: string;
-  setTotalPrice: (v: string) => void;
   rentHint: RentDeclineHint | null;
   rentHintLoading: boolean;
   rentHintError: string | null;
@@ -44,16 +210,6 @@ export function PropertyInfoSection({
   setNum,
   setStr,
   fieldError,
-  showBuildingHelper,
-  setShowBuildingHelper,
-  taxAmount,
-  setTaxAmount,
-  landAssess,
-  setLandAssess,
-  buildingAssess,
-  setBuildingAssess,
-  totalPrice,
-  setTotalPrice,
   rentHint,
   rentHintLoading,
   rentHintError,
@@ -61,6 +217,8 @@ export function PropertyInfoSection({
   zoningType,
   setZoningType,
 }: PropertyInfoSectionProps) {
+  const [showBuildingHelper, setShowBuildingHelper] = useState(false);
+
   return (
     <>
       {/* 物件情報 */}
@@ -107,84 +265,7 @@ export function PropertyInfoSection({
                 : "▼ 建物価格がわからない場合（按分ヘルパー）"}
             </button>
             {showBuildingHelper && (
-              <div className="mt-2 rounded-md bg-muted/50 p-3 space-y-3 text-sm">
-                <div>
-                  <p className="font-medium text-xs mb-1">① 消費税額から計算（最も確実）</p>
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1">
-                      <Input
-                        label="消費税額"
-                        type="number"
-                        inputMode="numeric"
-                        suffix="万円"
-                        value={taxAmount}
-                        onChange={(e) => setTaxAmount(e.target.value)}
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mb-0 shrink-0"
-                      onClick={() => {
-                        const tax = parseFloat(taxAmount) || 0;
-                        const result = calcFromTax(tax);
-                        if (result > 0) setNum("buildingCost", result * 10_000);
-                      }}
-                    >
-                      適用
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">建物価格 = 消費税額 ÷ 0.1</p>
-                </div>
-                <div>
-                  <p className="font-medium text-xs mb-1">② 固定資産税評価額の比率で按分</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    <Input
-                      label="土地評価額"
-                      type="number"
-                      inputMode="numeric"
-                      suffix="万円"
-                      value={landAssess}
-                      onChange={(e) => setLandAssess(e.target.value)}
-                    />
-                    <Input
-                      label="建物評価額"
-                      type="number"
-                      inputMode="numeric"
-                      suffix="万円"
-                      value={buildingAssess}
-                      onChange={(e) => setBuildingAssess(e.target.value)}
-                    />
-                    <Input
-                      label="購入総額"
-                      type="number"
-                      inputMode="numeric"
-                      suffix="万円"
-                      value={totalPrice}
-                      onChange={(e) => setTotalPrice(e.target.value)}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => {
-                      const total = parseFloat(totalPrice) || 0;
-                      const land = parseFloat(landAssess) || 0;
-                      const building = parseFloat(buildingAssess) || 0;
-                      const result = calcFromAssessment(total, land, building);
-                      if (result > 0) setNum("buildingCost", result * 10_000);
-                    }}
-                  >
-                    按分して適用
-                  </Button>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    建物価格 = 総額 × 建物評価 ÷（土地+建物評価）
-                  </p>
-                </div>
-              </div>
+              <BuildingPriceHelper onApply={(value) => setNum("buildingCost", value)} />
             )}
           </div>
           <Input
@@ -225,26 +306,13 @@ export function PropertyInfoSection({
             <p className="text-xs text-muted-foreground mt-1">
               建物構造から自動設定（例: 木造1%/年）
             </p>
-            <div className="mt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!input.buildingType || rentHintLoading}
-                onClick={handleFetchRentHint}
-                className="text-xs h-7 px-2"
-              >
-                {rentHintLoading ? "取得中…" : "地域の参考値を取得"}
-              </Button>
-              {rentHintError && <p className="text-xs text-destructive mt-1">{rentHintError}</p>}
-              {rentHint && !rentHintError && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {rentHint.fallbackUsed
-                    ? "データ不足のため地域参考値なし。構造別平均値を推奨します"
-                    : `地価公示より参考値: ${toPct(rentHint.hintRate, 1)}%/年（${rentHint.dataPointCount}件）`}
-                </p>
-              )}
-            </div>
+            <RentDeclineHintDisplay
+              hint={rentHint}
+              loading={rentHintLoading}
+              error={rentHintError}
+              onFetch={handleFetchRentHint}
+              disabled={!input.buildingType}
+            />
           </div>
           <div className="col-span-full">
             <details className="group">
@@ -346,49 +414,8 @@ export function PropertyInfoSection({
         <p className="text-xs text-muted-foreground mt-2">
           ※運営経費率はローン利息を含みません（管理費・修繕費・固定資産税・保険等）
         </p>
-        <div className="mt-3 space-y-2">
-          <Select
-            label="用途地域（任意）"
-            value={zoningType}
-            onChange={(e) => setZoningType(e.target.value as ZoningType)}
-            options={[
-              { value: "", label: "（未選択）" },
-              ...ZONING_TYPES.map((z) => ({ value: z, label: z })),
-            ]}
-          />
-          {zoningType &&
-            (() => {
-              const meta = ZONING_META[zoningType];
-              if (!meta) return null;
-              if (meta.riskLevel === 0)
-                return (
-                  <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 p-2 text-green-800 text-xs">
-                    <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />
-                    <span>良好な住環境です</span>
-                  </div>
-                );
-              const styles: Record<number, string> = {
-                1: "border-blue-200 bg-blue-50 text-blue-800",
-                2: "border-yellow-300 bg-yellow-50 text-yellow-800",
-                3: "border-red-300 bg-red-50 text-red-800",
-              };
-              const labels: Record<number, string> = {
-                1: "低リスク",
-                2: "中リスク",
-                3: "高リスク",
-              };
-              return (
-                <div
-                  className={`flex items-start gap-2 rounded-md border p-2 text-xs ${styles[meta.riskLevel]}`}
-                >
-                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold">{labels[meta.riskLevel]}: </span>
-                    <span>{meta.riskMessage}</span>
-                  </div>
-                </div>
-              );
-            })()}
+        <div className="mt-3">
+          <ZoningRiskBadge zoningType={zoningType} onZoningChange={setZoningType} />
         </div>
       </div>
     </>

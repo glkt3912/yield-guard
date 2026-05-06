@@ -6,10 +6,14 @@ import { Calculator, Info } from "lucide-react";
 import type { InvestmentInput, RateAdjustment, RentDeclineHint } from "@/types/investment";
 import type { Municipality } from "@/lib/api";
 import type { ZoningType } from "@/lib/zoning";
-import { LocationSection } from "@/components/sections/LocationSection";
+import { LocationSection, type GeocodeState } from "@/components/sections/LocationSection";
 import { PropertyInfoSection } from "@/components/sections/PropertyInfoSection";
 import { LoanSection } from "@/components/sections/LoanSection";
-import { ScenarioSection } from "@/components/sections/ScenarioSection";
+import {
+  ScenarioSection,
+  type RateScheduleHandlers,
+  type CapexHandlers,
+} from "@/components/sections/ScenarioSection";
 
 interface FullModeFormProps {
   area: string;
@@ -22,17 +26,8 @@ interface FullModeFormProps {
   muniLoading: boolean;
   muniError: string | null;
   isOnline: boolean | null;
-  propertyLat: string;
-  setPropertyLat: (v: string) => void;
-  propertyLng: string;
-  setPropertyLng: (v: string) => void;
-  addressInput: string;
-  setAddressInput: (v: string) => void;
-  geocodeStatus: "idle" | "loading" | "success" | "error";
-  setGeocodeStatus: (v: "idle" | "loading" | "success" | "error") => void;
-  geocodeError: string;
-  geocodeLocationType: string;
-  setGeocodeLocationType: (v: string) => void;
+  geocode: GeocodeState;
+  onGeocodeChange: (patch: Partial<GeocodeState>) => void;
   showManualCoords: boolean;
   handleGeocode: () => Promise<void>;
   loading: boolean;
@@ -41,16 +36,6 @@ interface FullModeFormProps {
   setNum: (key: keyof InvestmentInput, value: number) => void;
   setStr: (key: keyof InvestmentInput, value: string) => void;
   fieldError: (key: string) => string | undefined;
-  showBuildingHelper: boolean;
-  setShowBuildingHelper: React.Dispatch<React.SetStateAction<boolean>>;
-  taxAmount: string;
-  setTaxAmount: (v: string) => void;
-  landAssess: string;
-  setLandAssess: (v: string) => void;
-  buildingAssess: string;
-  setBuildingAssess: (v: string) => void;
-  totalPrice: string;
-  setTotalPrice: (v: string) => void;
   rentHint: RentDeclineHint | null;
   rentHintLoading: boolean;
   rentHintError: string | null;
@@ -59,15 +44,8 @@ interface FullModeFormProps {
   handleCashPurchaseToggle: (checked: boolean) => void;
   zoningType: ZoningType;
   setZoningType: (v: ZoningType) => void;
-  rateScheduleEnabled: boolean;
-  handleRateScheduleToggle: (enabled: boolean) => void;
-  addRateStep: () => void;
-  removeRateStep: (i: number) => void;
-  updateRateStep: (i: number, field: keyof RateAdjustment, value: number) => void;
-  canAddRateStep: boolean;
-  addCapexEvent: () => void;
-  removeCapexEvent: (i: number) => void;
-  updateCapexEvent: (i: number, field: "year" | "amount", value: number) => void;
+  rateSchedule: RateScheduleHandlers;
+  capex: CapexHandlers;
   hasErrors: boolean;
   handleAnalyze: () => void;
 }
@@ -83,17 +61,8 @@ export function FullModeForm({
   muniLoading,
   muniError,
   isOnline,
-  propertyLat,
-  setPropertyLat,
-  propertyLng,
-  setPropertyLng,
-  addressInput,
-  setAddressInput,
-  geocodeStatus,
-  setGeocodeStatus,
-  geocodeError,
-  geocodeLocationType,
-  setGeocodeLocationType,
+  geocode,
+  onGeocodeChange,
   showManualCoords,
   handleGeocode,
   loading,
@@ -102,16 +71,6 @@ export function FullModeForm({
   setNum,
   setStr,
   fieldError,
-  showBuildingHelper,
-  setShowBuildingHelper,
-  taxAmount,
-  setTaxAmount,
-  landAssess,
-  setLandAssess,
-  buildingAssess,
-  setBuildingAssess,
-  totalPrice,
-  setTotalPrice,
   rentHint,
   rentHintLoading,
   rentHintError,
@@ -120,15 +79,8 @@ export function FullModeForm({
   handleCashPurchaseToggle,
   zoningType,
   setZoningType,
-  rateScheduleEnabled,
-  handleRateScheduleToggle,
-  addRateStep,
-  removeRateStep,
-  updateRateStep,
-  canAddRateStep,
-  addCapexEvent,
-  removeCapexEvent,
-  updateCapexEvent,
+  rateSchedule,
+  capex,
   hasErrors,
   handleAnalyze,
 }: FullModeFormProps) {
@@ -145,17 +97,8 @@ export function FullModeForm({
         muniLoading={muniLoading}
         muniError={muniError}
         isOnline={isOnline}
-        propertyLat={propertyLat}
-        setPropertyLat={setPropertyLat}
-        propertyLng={propertyLng}
-        setPropertyLng={setPropertyLng}
-        addressInput={addressInput}
-        setAddressInput={setAddressInput}
-        geocodeStatus={geocodeStatus}
-        setGeocodeStatus={setGeocodeStatus}
-        geocodeError={geocodeError}
-        geocodeLocationType={geocodeLocationType}
-        setGeocodeLocationType={setGeocodeLocationType}
+        geocode={geocode}
+        onGeocodeChange={onGeocodeChange}
         showManualCoords={showManualCoords}
         handleGeocode={handleGeocode}
         loading={loading}
@@ -175,16 +118,6 @@ export function FullModeForm({
             setNum={setNum}
             setStr={setStr}
             fieldError={fieldError}
-            showBuildingHelper={showBuildingHelper}
-            setShowBuildingHelper={setShowBuildingHelper}
-            taxAmount={taxAmount}
-            setTaxAmount={setTaxAmount}
-            landAssess={landAssess}
-            setLandAssess={setLandAssess}
-            buildingAssess={buildingAssess}
-            setBuildingAssess={setBuildingAssess}
-            totalPrice={totalPrice}
-            setTotalPrice={setTotalPrice}
             rentHint={rentHint}
             rentHintLoading={rentHintLoading}
             rentHintError={rentHintError}
@@ -205,15 +138,8 @@ export function FullModeForm({
           <ScenarioSection
             input={input}
             setNum={setNum}
-            rateScheduleEnabled={rateScheduleEnabled}
-            handleRateScheduleToggle={handleRateScheduleToggle}
-            addRateStep={addRateStep}
-            removeRateStep={removeRateStep}
-            updateRateStep={updateRateStep}
-            canAddRateStep={canAddRateStep}
-            addCapexEvent={addCapexEvent}
-            removeCapexEvent={removeCapexEvent}
-            updateCapexEvent={updateCapexEvent}
+            rateSchedule={rateSchedule}
+            capex={capex}
           />
 
           <Button
