@@ -3,7 +3,7 @@ FROM golang:1.25-alpine AS builder
 WORKDIR /app
 
 COPY go.mod go.sum ./
-# モジュールキャッシュをホストに永続化（go.mod/go.sum が変わらなければダウンロードをスキップ）
+# --mount=type=cache: ローカル開発専用（CI では ephemeral ランナーのため無効）
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
