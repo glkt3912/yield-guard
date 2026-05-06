@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { YieldAnalysis } from "@/components/YieldAnalysis";
 import CashFlowChart from "@/components/CashFlowChart";
 import DeadCrossChart from "@/components/DeadCrossChart";
@@ -17,6 +17,7 @@ import { AreaDiscovery } from "@/components/AreaDiscovery";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 import { ShieldAlert } from "lucide-react";
+import { PREFECTURE_CENTERS } from "@/lib/prefectureCenters";
 import type {
   InvestmentInput,
   InvestmentResult,
@@ -85,6 +86,19 @@ export function ResultsSection({
   onLoanMethodChange,
   onTileSelect,
 }: ResultsSectionProps) {
+  const [municipalityCenter, setMunicipalityCenter] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+
+  const handleAreaTileSelect = useCallback(
+    (lat: number, lng: number) => {
+      onTileSelect(lat, lng);
+      setActiveTab("simulation");
+    },
+    [onTileSelect, setActiveTab]
+  );
+
   return (
     <section className="space-y-6">
       {/* Tab toggle */}
@@ -103,6 +117,7 @@ export function ResultsSection({
           onClick={() => {
             setActiveTab("area-discovery");
             setSelectedMunicipalityMsg(null);
+            setMunicipalityCenter(null);
           }}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
             activeTab === "area-discovery"
@@ -122,12 +137,22 @@ export function ResultsSection({
             </div>
           )}
           <AreaDiscovery
-            onMunicipalitySelect={(_code, name) => {
+            onMunicipalitySelect={(_code, name, prefecture) => {
               setSelectedMunicipalityMsg(
                 `「${name}」を選択しました。下の地図上で物件位置をクリックしてください。`
               );
+              setMunicipalityCenter(
+                PREFECTURE_CENTERS[prefecture] ?? { lat: 35.6812, lng: 139.7671 }
+              );
             }}
           />
+          {municipalityCenter && (
+            <InvestmentScoreHeatmap
+              centerLat={municipalityCenter.lat}
+              centerLng={municipalityCenter.lng}
+              onTileSelect={handleAreaTileSelect}
+            />
+          )}
         </>
       )}
 

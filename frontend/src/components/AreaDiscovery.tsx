@@ -53,7 +53,11 @@ const PREFECTURES = [
 ];
 
 interface Props {
-  onMunicipalitySelect?: (municipalityCode: string, municipalityName: string) => void;
+  onMunicipalitySelect?: (
+    municipalityCode: string,
+    municipalityName: string,
+    prefecture: string
+  ) => void;
 }
 
 function DifficultyBadge({ difficulty, label }: { difficulty: string; label: string }) {
@@ -190,7 +194,7 @@ export function AreaDiscovery({ onMunicipalitySelect }: Props) {
                 <tr
                   key={item.municipalityCode}
                   onClick={() =>
-                    onMunicipalitySelect?.(item.municipalityCode, item.municipalityName)
+                    onMunicipalitySelect?.(item.municipalityCode, item.municipalityName, prefecture)
                   }
                   className="cursor-pointer border-b hover:bg-muted/30 transition-colors"
                 >
