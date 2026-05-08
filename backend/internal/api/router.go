@@ -17,8 +17,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-func internalKeyMiddleware() gin.HandlerFunc {
-	key := os.Getenv("APP_INTERNAL_API_KEY")
+func internalKeyMiddleware(key string) gin.HandlerFunc {
 	keyBytes := []byte(key)
 	return func(c *gin.Context) {
 		if key != "" && subtle.ConstantTimeCompare([]byte(c.GetHeader("X-Internal-Key")), keyBytes) != 1 {
@@ -82,7 +81,7 @@ func recoveryMiddleware() gin.HandlerFunc {
 }
 
 // NewRouter は Gin ルーターを初期化して返す
-func NewRouter(h *Handler) *gin.Engine {
+func NewRouter(h *Handler, appInternalAPIKey string) *gin.Engine {
 	r := gin.New()
 
 	r.Use(otelgin.Middleware("yield-guard-backend"))
@@ -115,7 +114,7 @@ func NewRouter(h *Handler) *gin.Engine {
 	r.GET("/health", h.HealthCheck)
 
 	api := r.Group("/api")
-	api.Use(internalKeyMiddleware())
+	api.Use(internalKeyMiddleware(appInternalAPIKey))
 	api.Use(generalRL.middleware())
 	{
 		api.GET("/land-prices/stats", h.GetLandPrices)
