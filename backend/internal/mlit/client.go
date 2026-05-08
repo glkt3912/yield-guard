@@ -7,7 +7,6 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -62,12 +61,11 @@ type Client struct {
 }
 
 // NewClient は新しい Client を返す。
-// 環境変数 MLIT_API_KEY からAPIキーを読み込む。
-func NewClient() *Client {
+func NewClient(apiKey string) *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: requestTimeout},
 		baseURL:    mlitBaseURL,
-		apiKey:     os.Getenv("MLIT_API_KEY"),
+		apiKey:     apiKey,
 		cache:      newCache(),
 	}
 }
