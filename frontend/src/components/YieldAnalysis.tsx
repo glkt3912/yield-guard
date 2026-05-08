@@ -33,6 +33,12 @@ export function getDscrColorClass(dscr: number): string {
   return "text-red-600";
 }
 
+export function getDscrBadge(dscr: number): React.ReactElement {
+  if (dscr >= 1.2) return <Badge variant="success">安全</Badge>;
+  if (dscr >= 1.0) return <Badge variant="warning">注意</Badge>;
+  return <Badge variant="danger">危険</Badge>;
+}
+
 /**
  * Mobile 1×2 KPI strip showing metrics not already in MobileSummaryCard.
  * MobileSummaryCard covers yield/DSCR/dead-cross; this adds investment totals.
@@ -336,13 +342,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                     カスタム <span className="text-xs text-blue-500">★</span>
                   </span>
                   <div className="flex items-center gap-2">
-                    {customScenario.dscr >= 1.2 ? (
-                      <Badge variant="success">安全</Badge>
-                    ) : customScenario.dscr >= 1.0 ? (
-                      <Badge variant="warning">注意</Badge>
-                    ) : (
-                      <Badge variant="danger">危険</Badge>
-                    )}
+                    {getDscrBadge(customScenario.dscr)}
                     {expandedScenario === stressScenarios.length ? (
                       <ChevronUp className="h-4 w-4 text-muted-foreground" />
                     ) : (
@@ -463,15 +463,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                         ? "なし"
                         : `${customScenario.breakEvenYear}年目`}
                     </td>
-                    <td className="py-2 text-right">
-                      {customScenario.dscr >= 1.2 ? (
-                        <Badge variant="success">安全</Badge>
-                      ) : customScenario.dscr >= 1.0 ? (
-                        <Badge variant="warning">注意</Badge>
-                      ) : (
-                        <Badge variant="danger">危険</Badge>
-                      )}
-                    </td>
+                    <td className="py-2 text-right">{getDscrBadge(customScenario.dscr)}</td>
                   </tr>
                 )}
               </tbody>
