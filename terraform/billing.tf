@@ -22,7 +22,7 @@ resource "google_billing_budget" "monthly" {
   }
 
   threshold_rules {
-    threshold_percent = 0.5
+    threshold_percent = 0.8
   }
   threshold_rules {
     threshold_percent = 1.0
@@ -32,6 +32,7 @@ resource "google_billing_budget" "monthly" {
     monitoring_notification_channels = [
       google_monitoring_notification_channel.email.id,
     ]
+    pubsub_topic                   = google_pubsub_topic.billing_alerts.id
     disable_default_iam_recipients = true
   }
 
