@@ -17,9 +17,14 @@ import (
 )
 
 // readSecret reads a secret from a volume-mounted file, falling back to an env var for local dev.
+// Non-existence is silent; other errors (e.g. permission denied) are logged as warnings to aid debugging.
 func readSecret(filePath, envKey string) string {
-	if data, err := os.ReadFile(filePath); err == nil {
+	data, err := os.ReadFile(filePath)
+	if err == nil {
 		return strings.TrimSpace(string(data))
+	}
+	if !os.IsNotExist(err) {
+		slog.Warn("failed to read secret file, falling back to env", "path", filePath, "error", err)
 	}
 	return os.Getenv(envKey)
 }
@@ -51,8 +56,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	googleMapsAPIKey := readSecret("/secrets/google-maps-api-key", "GOOGLE_MAPS_API_KEY")
+
 	mlitClient := mlit.NewClient(mlitAPIKey)
-	geocodeClient := api.NewGoogleGeocodeClient(readSecret("/secrets/google-maps-api-key", "GOOGLE_MAPS_API_KEY"))
+	geocodeClient := api.NewGoogleGeocodeClient(googleMapsAPIKey)
 	handler := api.NewHandler(mlitClient, geocodeClient)
 	router := api.NewRouter(handler, appInternalAPIKey)
 
