@@ -166,13 +166,6 @@ resource "google_project_iam_member" "billing_stop_run_developer" {
   member  = "serviceAccount:${google_service_account.billing_stop.email}"
 }
 
-resource "google_pubsub_subscription_iam_member" "billing_stop_subscriber" {
-  project      = var.project_id
-  subscription = google_pubsub_subscription.billing_alerts.name
-  role         = "roles/pubsub.subscriber"
-  member       = "serviceAccount:${google_service_account.billing_stop.email}"
-}
-
 resource "google_storage_bucket_iam_member" "billing_stop_storage_viewer" {
   bucket = google_storage_bucket.functions_source.name
   role   = "roles/storage.objectViewer"
