@@ -153,3 +153,28 @@ resource "google_project_iam_member" "backend_metric_writer" {
   role    = "roles/monitoring.metricWriter"
   member  = "serviceAccount:${google_service_account.backend.email}"
 }
+
+# ─── Billing Stop Cloud Function SA ───────────────────────────────────────────
+resource "google_service_account" "billing_stop" {
+  account_id   = "sa-billing-stop-${var.env}"
+  display_name = "yield-guard ${var.env} billing stop (Cloud Function)"
+}
+
+resource "google_project_iam_member" "billing_stop_run_developer" {
+  project = var.project_id
+  role    = "roles/run.developer"
+  member  = "serviceAccount:${google_service_account.billing_stop.email}"
+}
+
+resource "google_pubsub_subscription_iam_member" "billing_stop_subscriber" {
+  project      = var.project_id
+  subscription = google_pubsub_subscription.billing_alerts.name
+  role         = "roles/pubsub.subscriber"
+  member       = "serviceAccount:${google_service_account.billing_stop.email}"
+}
+
+resource "google_storage_bucket_iam_member" "billing_stop_storage_viewer" {
+  bucket = google_storage_bucket.functions_source.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.billing_stop.email}"
+}
