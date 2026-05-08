@@ -25,6 +25,14 @@ import { TermTooltip } from "@/components/ui/TermTooltip";
 import { MobileSummaryCard } from "@/components/MobileSummaryCard";
 import { analyze } from "@/lib/api";
 
+const CUSTOM_SCENARIO_LABEL = "カスタム" as const;
+
+export function getDscrColorClass(dscr: number): string {
+  if (dscr >= 1.2) return "text-green-600";
+  if (dscr >= 1.0) return "text-yellow-600";
+  return "text-red-600";
+}
+
 /**
  * Mobile 1×2 KPI strip showing metrics not already in MobileSummaryCard.
  * MobileSummaryCard covers yield/DSCR/dead-cross; this adds investment totals.
@@ -88,6 +96,12 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
   const [customLoading, setCustomLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
   const fetchCustomScenario = useCallback(
     (loanDeltaPct: number, vacancyDeltaPct: number) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -105,10 +119,10 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
             loanRateDelta: loanDelta,
             vacancyRateDelta: vacancyDelta,
           });
-          const custom = res.stressScenarios.find((s) => s.label === "カスタム") ?? null;
+          const custom = res.stressScenarios.find((s) => s.label === CUSTOM_SCENARIO_LABEL) ?? null;
           setCustomScenario(custom);
-        } catch {
-          // フェッチ失敗時はカスタム行を非表示のまま
+        } catch (err) {
+          console.error("[CustomStressTest] fetch failed:", err);
           setCustomScenario(null);
         } finally {
           setCustomLoading(false);
@@ -274,9 +288,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                   {isExpanded && (
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t px-3 pb-3 pt-2 text-sm">
                       <span className="text-muted-foreground">DSCR</span>
-                      <span
-                        className={`text-right font-medium ${s.dscr >= 1.2 ? "text-green-600" : s.dscr >= 1.0 ? "text-yellow-600" : "text-red-600"}`}
-                      >
+                      <span className={`text-right font-medium ${getDscrColorClass(s.dscr)}`}>
                         {s.dscr.toFixed(2)}
                       </span>
                       <span className="text-muted-foreground">CF黒転年</span>
@@ -342,7 +354,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t px-3 pb-3 pt-2 text-sm">
                     <span className="text-muted-foreground">DSCR</span>
                     <span
-                      className={`text-right font-medium ${customScenario.dscr >= 1.2 ? "text-green-600" : customScenario.dscr >= 1.0 ? "text-yellow-600" : "text-red-600"}`}
+                      className={`text-right font-medium ${getDscrColorClass(customScenario.dscr)}`}
                     >
                       {customScenario.dscr.toFixed(2)}
                     </span>
@@ -409,9 +421,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                           ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%`
                           : "±0"}
                       </td>
-                      <td
-                        className={`py-2 text-right font-medium ${s.dscr >= 1.2 ? "text-green-600" : s.dscr >= 1.0 ? "text-yellow-600" : "text-red-600"}`}
-                      >
+                      <td className={`py-2 text-right font-medium ${getDscrColorClass(s.dscr)}`}>
                         {s.dscr.toFixed(2)}
                       </td>
                       <td className="py-2 text-right text-muted-foreground">
@@ -444,7 +454,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                       {customVacancyRateDelta > 0 ? `+${customVacancyRateDelta.toFixed(0)}%` : "±0"}
                     </td>
                     <td
-                      className={`py-2 text-right font-medium ${customScenario.dscr >= 1.2 ? "text-green-600" : customScenario.dscr >= 1.0 ? "text-yellow-600" : "text-red-600"}`}
+                      className={`py-2 text-right font-medium ${getDscrColorClass(customScenario.dscr)}`}
                     >
                       {customScenario.dscr.toFixed(2)}
                     </td>
