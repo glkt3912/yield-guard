@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -280,7 +281,7 @@ func (m *mockMLITClient) FetchRentStats(ctx context.Context, q mlit.LandPriceQue
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す
 func newTestRouter(client MLITClient, geocodeClient GeocodeClient) *gin.Engine {
 	h := NewHandler(client, geocodeClient)
-	return NewRouter(h)
+	return NewRouter(h, os.Getenv("APP_INTERNAL_API_KEY"))
 }
 
 var validBase = domain.InvestmentInput{
