@@ -4,7 +4,6 @@ import os
 
 import functions_framework
 import google.auth
-import google.auth.transport.requests
 from googleapiclient import discovery
 
 
@@ -25,17 +24,17 @@ def stop_cloud_run(cloud_event):
     service_name = os.environ["SERVICE_NAME"]
 
     credentials, _ = google.auth.default()
-    auth_req = google.auth.transport.requests.Request()
-    credentials.refresh(auth_req)
 
     service = discovery.build("run", "v2", credentials=credentials)
     full_name = f"projects/{project_id}/locations/{region}/services/{service_name}"
 
-    body = {"scaling": {"maxInstanceCount": 0}}
-    service.projects().locations().services().patch(
-        name=full_name,
-        updateMask="scaling.maxInstanceCount",
-        body=body,
-    ).execute()
-
-    print(f"Cloud Run service {service_name} stopped (max_instance_count=0)")
+    try:
+        service.projects().locations().services().patch(
+            name=full_name,
+            updateMask="scaling.maxInstanceCount",
+            body={"scaling": {"maxInstanceCount": 0}},
+        ).execute()
+        print(f"Cloud Run service {service_name} stopped (max_instance_count=0)")
+    except Exception as e:
+        print(f"Failed to stop Cloud Run service {service_name}: {e}")
+        raise
