@@ -143,7 +143,8 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             {result && lastInput && (
               <button
                 onClick={handleShare}
-                className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-muted transition-colors"
+                className="flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-muted transition-colors"
+                aria-label="この条件をクリップボードにコピー"
                 title="この条件をクリップボードにコピー"
               >
                 {copied ? (
