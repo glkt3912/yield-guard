@@ -44,6 +44,8 @@ export function Slider({
           step={step}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
+          aria-label={label}
+          aria-valuetext={formatValue ? formatValue(value) : String(value)}
           className="absolute inset-0 h-2 w-full cursor-pointer opacity-0"
         />
         <div

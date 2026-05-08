@@ -1,7 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import type {
   InvestmentInput,
   InvestmentResult,
@@ -18,9 +19,25 @@ import {
   Users,
   ChevronDown,
   ChevronUp,
+  Loader2,
 } from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
 import { MobileSummaryCard } from "@/components/MobileSummaryCard";
+import { analyze } from "@/lib/api";
+
+const CUSTOM_SCENARIO_LABEL = "カスタム" as const;
+
+export function getDscrColorClass(dscr: number): string {
+  if (dscr >= 1.2) return "text-green-600";
+  if (dscr >= 1.0) return "text-yellow-600";
+  return "text-red-600";
+}
+
+export function getDscrBadge(dscr: number): React.ReactElement {
+  if (dscr >= 1.2) return <Badge variant="success">安全</Badge>;
+  if (dscr >= 1.0) return <Badge variant="warning">注意</Badge>;
+  return <Badge variant="danger">危険</Badge>;
+}
 
 /**
  * Mobile 1×2 KPI strip showing metrics not already in MobileSummaryCard.
@@ -77,6 +94,53 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
 
   const stressScenarios: StressScenarioResult[] = result.stressScenarios ?? [];
   const [expandedScenario, setExpandedScenario] = useState<number | null>(null);
+
+  // カスタムストレステスト入力
+  const [customLoanRateDelta, setCustomLoanRateDelta] = useState(0); // 0〜3 (%)
+  const [customVacancyRateDelta, setCustomVacancyRateDelta] = useState(0); // 0〜30 (%)
+  const [customScenario, setCustomScenario] = useState<StressScenarioResult | null>(null);
+  const [customLoading, setCustomLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const fetchCustomScenario = useCallback(
+    (loanDeltaPct: number, vacancyDeltaPct: number) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      const loanDelta = loanDeltaPct / 100;
+      const vacancyDelta = vacancyDeltaPct / 100;
+      if (loanDelta === 0 && vacancyDelta === 0) {
+        setCustomScenario(null);
+        return;
+      }
+      setCustomLoading(true);
+      debounceRef.current = setTimeout(async () => {
+        try {
+          const res = await analyze({
+            ...input,
+            loanRateDelta: loanDelta,
+            vacancyRateDelta: vacancyDelta,
+          });
+          const custom = res.stressScenarios.find((s) => s.label === CUSTOM_SCENARIO_LABEL) ?? null;
+          setCustomScenario(custom);
+        } catch (err) {
+          console.error("[CustomStressTest] fetch failed:", err);
+          setCustomScenario(null);
+        } finally {
+          setCustomLoading(false);
+        }
+      }, 400);
+    },
+    [input]
+  );
+
+  useEffect(() => {
+    fetchCustomScenario(customLoanRateDelta, customVacancyRateDelta);
+  }, [customLoanRateDelta, customVacancyRateDelta, fetchCustomScenario]);
 
   const gaugePosition = Math.min(yieldPct / maxYieldPct, 1) * 100;
   const targetPosition = 50; // 目標は常にゲージ中央
@@ -162,6 +226,35 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
           <CardTitle className="text-base">ストレステストシナリオ（銀行融資審査用）</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* カスタムストレステスト入力スライダー */}
+          <div className="mb-4 rounded-lg border border-border bg-muted/30 p-4 space-y-4">
+            <p className="text-sm font-medium">カスタムシナリオ設定</p>
+            <Slider
+              label="金利オフセット"
+              value={customLoanRateDelta}
+              min={0}
+              max={3}
+              step={0.1}
+              onChange={(v) => setCustomLoanRateDelta(v)}
+              formatValue={(v) => (v === 0 ? "±0" : `+${v.toFixed(1)}%`)}
+            />
+            <Slider
+              label="空室率オフセット"
+              value={customVacancyRateDelta}
+              min={0}
+              max={30}
+              step={1}
+              onChange={(v) => setCustomVacancyRateDelta(v)}
+              formatValue={(v) => (v === 0 ? "±0" : `+${v.toFixed(0)}%`)}
+            />
+            {(customLoanRateDelta > 0 || customVacancyRateDelta > 0) && customLoading && (
+              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                計算中…
+              </p>
+            )}
+          </div>
+
           {/* Mobile: accordion (lg:hidden) */}
           <div className="space-y-1 lg:hidden">
             {stressScenarios.map((s, idx) => {
@@ -201,9 +294,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                   {isExpanded && (
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t px-3 pb-3 pt-2 text-sm">
                       <span className="text-muted-foreground">DSCR</span>
-                      <span
-                        className={`text-right font-medium ${s.dscr >= 1.2 ? "text-green-600" : s.dscr >= 1.0 ? "text-yellow-600" : "text-red-600"}`}
-                      >
+                      <span className={`text-right font-medium ${getDscrColorClass(s.dscr)}`}>
                         {s.dscr.toFixed(2)}
                       </span>
                       <span className="text-muted-foreground">CF黒転年</span>
@@ -227,6 +318,64 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                 </div>
               );
             })}
+            {/* カスタムシナリオ行（モバイル） */}
+            {customLoading && (customLoanRateDelta > 0 || customVacancyRateDelta > 0) && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50">
+                <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  カスタム（計算中）
+                </div>
+              </div>
+            )}
+            {!customLoading && customScenario && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between px-3 py-3 text-left min-h-[44px]"
+                  onClick={() =>
+                    setExpandedScenario(
+                      expandedScenario === stressScenarios.length ? null : stressScenarios.length
+                    )
+                  }
+                >
+                  <span className="text-sm font-medium text-blue-700">
+                    カスタム <span className="text-xs text-blue-500">★</span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {getDscrBadge(customScenario.dscr)}
+                    {expandedScenario === stressScenarios.length ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </button>
+                {expandedScenario === stressScenarios.length && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t px-3 pb-3 pt-2 text-sm">
+                    <span className="text-muted-foreground">DSCR</span>
+                    <span
+                      className={`text-right font-medium ${getDscrColorClass(customScenario.dscr)}`}
+                    >
+                      {customScenario.dscr.toFixed(2)}
+                    </span>
+                    <span className="text-muted-foreground">CF黒転年</span>
+                    <span className="text-right">
+                      {customScenario.breakEvenYear === -1
+                        ? "なし"
+                        : `${customScenario.breakEvenYear}年目`}
+                    </span>
+                    <span className="text-muted-foreground">金利△</span>
+                    <span className="text-right">
+                      {customLoanRateDelta > 0 ? `+${customLoanRateDelta.toFixed(1)}%` : "±0"}
+                    </span>
+                    <span className="text-muted-foreground">空室△</span>
+                    <span className="text-right">
+                      {customVacancyRateDelta > 0 ? `+${customVacancyRateDelta.toFixed(0)}%` : "±0"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Desktop: horizontal table (hidden on mobile) */}
@@ -272,9 +421,7 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                           ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%`
                           : "±0"}
                       </td>
-                      <td
-                        className={`py-2 text-right font-medium ${s.dscr >= 1.2 ? "text-green-600" : s.dscr >= 1.0 ? "text-yellow-600" : "text-red-600"}`}
-                      >
+                      <td className={`py-2 text-right font-medium ${getDscrColorClass(s.dscr)}`}>
                         {s.dscr.toFixed(2)}
                       </td>
                       <td className="py-2 text-right text-muted-foreground">
@@ -284,6 +431,41 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                     </tr>
                   );
                 })}
+                {/* カスタムシナリオ行（デスクトップ） */}
+                {customLoading && (customLoanRateDelta > 0 || customVacancyRateDelta > 0) && (
+                  <tr className="border-b bg-blue-50">
+                    <td className="py-2 font-medium text-blue-700" colSpan={6}>
+                      <span className="flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        カスタム（計算中）
+                      </span>
+                    </td>
+                  </tr>
+                )}
+                {!customLoading && customScenario && (
+                  <tr className="border-b bg-blue-50">
+                    <td className="py-2 font-medium text-blue-700">
+                      カスタム <span className="ml-0.5 text-xs text-blue-500">★</span>
+                    </td>
+                    <td className="py-2 text-right">
+                      {customLoanRateDelta > 0 ? `+${customLoanRateDelta.toFixed(1)}%` : "±0"}
+                    </td>
+                    <td className="py-2 text-right">
+                      {customVacancyRateDelta > 0 ? `+${customVacancyRateDelta.toFixed(0)}%` : "±0"}
+                    </td>
+                    <td
+                      className={`py-2 text-right font-medium ${getDscrColorClass(customScenario.dscr)}`}
+                    >
+                      {customScenario.dscr.toFixed(2)}
+                    </td>
+                    <td className="py-2 text-right text-muted-foreground">
+                      {customScenario.breakEvenYear === -1
+                        ? "なし"
+                        : `${customScenario.breakEvenYear}年目`}
+                    </td>
+                    <td className="py-2 text-right">{getDscrBadge(customScenario.dscr)}</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
