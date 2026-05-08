@@ -17,7 +17,7 @@ resource "google_billing_budget" "monthly" {
   amount {
     specified_amount {
       currency_code = "JPY"
-      units         = "1000"
+      units         = "10000"
     }
   }
 
