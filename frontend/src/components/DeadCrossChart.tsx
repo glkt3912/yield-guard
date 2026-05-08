@@ -20,6 +20,8 @@ import { Skull, ShieldCheck } from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
 import { useResponsiveChart } from "@/lib/useChartHeight";
 
+const DEADCROSS_EARLY_CODE = "DEADCROSS_EARLY" as const;
+
 const ADVICE_ITEMS = [
   "減価償却が大きい築浅物件への切り替え",
   "法定耐用年数前の売却（デッドクロス前の出口）",
@@ -32,10 +34,14 @@ interface AdviceGuideProps {
 }
 
 function DeadCrossAdviceGuide({ deadCrossYear, criticalErrors }: AdviceGuideProps) {
-  const isEarlyWarning = criticalErrors.some((e) => e.code === "DEADCROSS_EARLY");
+  const isEarlyWarning = criticalErrors.some((e) => e.code === DEADCROSS_EARLY_CODE);
 
   return (
-    <div className="mt-4 rounded-md border border-orange-200 bg-orange-50 p-4">
+    <div
+      role="note"
+      aria-label="デッドクロス対策ガイド"
+      className="mt-4 rounded-md border border-orange-200 bg-orange-50 p-4"
+    >
       <div className="flex items-center gap-2 mb-2">
         <p className="text-sm font-semibold text-orange-900">対策ガイド</p>
         {isEarlyWarning && <Badge variant="danger">早期警告</Badge>}
@@ -44,8 +50,8 @@ function DeadCrossAdviceGuide({ deadCrossYear, criticalErrors }: AdviceGuideProp
         保有{deadCrossYear}年目から税負担が増加します。以下の対策を検討してください：
       </p>
       <ul className="space-y-1">
-        {ADVICE_ITEMS.map((item) => (
-          <li key={item} className="flex items-start gap-2 text-sm text-orange-700">
+        {ADVICE_ITEMS.map((item, i) => (
+          <li key={i} className="flex items-start gap-2 text-sm text-orange-700">
             <span className="mt-0.5 shrink-0">•</span>
             <span>{item}</span>
           </li>
