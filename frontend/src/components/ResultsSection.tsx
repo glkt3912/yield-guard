@@ -10,6 +10,7 @@ import { LoanComparePanel } from "@/components/LoanComparePanel";
 import RenovationPanel from "@/components/RenovationPanel";
 import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
+import { HazardAlertBanner } from "@/components/HazardAlertBanner";
 import { MonteCarloChart } from "@/components/MonteCarloChart";
 import NegotiationPanel from "@/components/NegotiationPanel";
 import WatchlistPanel from "@/components/WatchlistPanel";
@@ -169,6 +170,8 @@ export function ResultsSection({
 
       {activeTab === "simulation" && (
         <>
+          <HazardAlertBanner hazardRisks={hazardRisks} externalUrbanRisks={externalUrbanRisks} />
+
           {investmentScore && <InvestmentScoreCard score={investmentScore} />}
 
           {propertyLat !== undefined && (
