@@ -143,7 +143,8 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             {result && lastInput && (
               <button
                 onClick={handleShare}
-                className="hidden items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-muted transition-colors lg:flex"
+                className="flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-muted transition-colors"
+                aria-label="この条件をクリップボードにコピー"
                 title="この条件をクリップボードにコピー"
               >
                 {copied ? (
@@ -151,7 +152,9 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                 ) : (
                   <Share2 className="h-3.5 w-3.5" />
                 )}
-                {copied ? "コピーしました" : "この条件を共有"}
+                <span className="hidden sm:inline">
+                  {copied ? "コピーしました" : "この条件を共有"}
+                </span>
               </button>
             )}
             {result && lastInput && (

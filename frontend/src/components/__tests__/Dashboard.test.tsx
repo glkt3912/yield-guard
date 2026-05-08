@@ -176,7 +176,7 @@ describe("Dashboard", () => {
     );
   });
 
-  it("シミュレーション結果表示後に「この条件を共有」ボタンが表示される", async () => {
+  it("シミュレーション結果表示後にURL共有ボタンが表示される", async () => {
     const mockResult = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
     vi.mocked(api.analyze).mockResolvedValue(mockResult);
 
@@ -186,11 +186,13 @@ describe("Dashboard", () => {
     await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /この条件を共有/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /この条件をクリップボードにコピー/ })
+      ).toBeInTheDocument();
     });
   });
 
-  it("「この条件を共有」ボタンを押すとクリップボードにURLがコピーされる", async () => {
+  it("URL共有ボタンを押すとクリップボードにURLがコピーされる", async () => {
     const mockResult = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
     vi.mocked(api.analyze).mockResolvedValue(mockResult);
 
@@ -206,10 +208,12 @@ describe("Dashboard", () => {
     await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /この条件を共有/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /この条件をクリップボードにコピー/ })
+      ).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: /この条件を共有/ }));
+    await userEvent.click(screen.getByRole("button", { name: /この条件をクリップボードにコピー/ }));
 
     expect(writeText).toHaveBeenCalledTimes(1);
     expect(writeText).toHaveBeenCalledWith(expect.any(String));
