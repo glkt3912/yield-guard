@@ -11,6 +11,9 @@ locals {
     "cloudtrace.googleapis.com",
     "monitoring.googleapis.com",
     "geocoding-backend.googleapis.com",
+    # AR Standard scanning was deprecated on 2025-07-31.
+    # Enabled for Container Analysis console visibility; vulnerability scanning is handled by Trivy in CI only.
+    "containeranalysis.googleapis.com",
   ])
 }
 
