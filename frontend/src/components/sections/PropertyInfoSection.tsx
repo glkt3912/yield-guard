@@ -50,13 +50,13 @@ function getExpenseHints(buildingType: BuildingType): HintRow[] {
   const isRC = buildingType === "RC造" || buildingType === "SRC造";
   const isWood = buildingType === "木造";
   const isLightSteel = buildingType === "軽量鉄骨(3mm以下)" || buildingType === "軽量鉄骨(4mm以下)";
-  const isKubun = isRC; // RC/SRC is often 区分マンション context
   const isIttou = isWood || isLightSteel || buildingType === "重量鉄骨";
   return [
     {
       label: "区分マンション（管理費込み）",
       range: "15〜25%",
-      highlight: isKubun,
+      /* MVP近似: RC/SRC構造を区分マンション扱いとしてハイライト */
+      highlight: isRC,
     },
     {
       label: "一棟（自主管理）",
@@ -118,13 +118,13 @@ function HintPopover({ title, rows }: HintPopoverProps) {
         <span>市場平均</span>
       </button>
       {open && (
-        <div className="mt-1 rounded-md border border-border bg-popover shadow-md p-2.5 text-xs z-10 w-64">
+        <div className="absolute mt-1 rounded-md border border-border bg-popover shadow-md p-2.5 text-xs z-10 w-64">
           <p className="font-semibold text-foreground mb-1.5">{title}</p>
           <table className="w-full border-collapse">
             <tbody>
-              {rows.map((row, i) => (
+              {rows.map((row) => (
                 <tr
-                  key={i}
+                  key={row.label}
                   className={
                     row.highlight
                       ? "bg-primary/10 font-medium text-primary"
