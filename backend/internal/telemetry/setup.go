@@ -97,7 +97,8 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (func(contex
 		if otlpEndpoint == "" {
 			otlpEndpoint = "https://telemetry.googleapis.com/v1/traces"
 		}
-		tokenSrc, err := google.DefaultTokenSource(ctx, "https://www.googleapis.com/auth/trace.append")
+		var tokenSrc oauth2.TokenSource
+		tokenSrc, err = google.DefaultTokenSource(ctx, "https://www.googleapis.com/auth/trace.append")
 		if err != nil {
 			return nil, fmt.Errorf("GCP trace auth: %w", err)
 		}
