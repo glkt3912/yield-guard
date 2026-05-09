@@ -75,9 +75,12 @@ jobs:
     name: Deploy to Vercel
     runs-on: ubuntu-24.04
     needs: ci
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'pull_request'
     permissions:
       contents: read
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -89,10 +92,39 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel@51.8.0
 
-      - name: Deploy to Vercel
+      - name: Deploy to Vercel (production)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: vercel deploy --prod --yes
         working-directory: frontend
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy to Vercel (preview)
+        if: github.event_name == 'pull_request'
+        id: preview
+        run: |
+          URL=$(vercel deploy --yes 2>/dev/null)
+          echo "url=$URL" >> $GITHUB_OUTPUT
+        working-directory: frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Comment preview URL on PR
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr comment "$PR_NUMBER" \
+            --repo "$REPO" \
+            --body "## Vercel プレビュー
+
+          $PREVIEW_URL
+
+          > ⚠️ このプレビューは本番 API (\`NEXT_PUBLIC_API_URL\`) を使用しています。"
