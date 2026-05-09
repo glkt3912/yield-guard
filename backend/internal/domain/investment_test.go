@@ -1658,6 +1658,10 @@ func TestCalcLTVSensitivity_WithRateSchedule(t *testing.T) {
 // TestCalcLTVSensitivity_RateScheduleYear1 は変動金利スケジュールが初年度から適用される場合に
 // CalcLTVSensitivity がベース金利ではなくスケジュール金利（3%）を使って計算することを検証する。
 // ベース金利 2%、スケジュール AfterYear=1 で 3% に切り替わる → 初年度実効金利は 3% になる。
+//
+// NOTE: AfterYear=1 は Validate() の制約（>= 2）を下回るため、実際の API リクエストでは
+// 弾かれる値である。本テストは API レイヤーのバリデーションをバイパスし、
+// ドメインロジック単体の動作を検証することを意図している。
 func TestCalcLTVSensitivity_RateScheduleYear1(t *testing.T) {
 	baseRate := 0.020
 	scheduleRate := 0.030
