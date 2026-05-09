@@ -202,6 +202,7 @@ export function ResultsSection({
                 result={result}
                 input={lastInput}
                 populationForecast={populationForecast}
+                landPriceStats={comparison?.stats}
               />
               <NegotiationPanel
                 result={result}

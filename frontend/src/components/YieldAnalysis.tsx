@@ -1,16 +1,18 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import type {
   InvestmentInput,
   InvestmentResult,
+  LandPriceStats,
   PopulationForecastResult,
   StressScenarioResult,
   YieldScenarios,
 } from "@/types/investment";
 import { formatMan, formatPct, formatYen } from "@/lib/utils";
+import { calcYieldBenchmark } from "@/lib/yieldBenchmark";
 import {
   TrendingUp,
   TrendingDown,
@@ -105,9 +107,10 @@ interface Props {
   result: InvestmentResult;
   input: InvestmentInput;
   populationForecast?: PopulationForecastResult | null;
+  landPriceStats?: LandPriceStats | null;
 }
 
-export function YieldAnalysis({ result, input, populationForecast }: Props) {
+export function YieldAnalysis({ result, input, populationForecast, landPriceStats }: Props) {
   const yieldPct = result.grossYield * 100;
   const netYieldPct = result.netYield * 100;
   const isGood = result.isAboveYieldTarget;
@@ -169,6 +172,19 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
 
   const gaugePosition = Math.min(yieldPct / maxYieldPct, 1) * 100;
   const targetPosition = 50; // 目標は常にゲージ中央
+
+  const yieldBenchmark = useMemo(() => {
+    if (!landPriceStats || landPriceStats.medianTsubo <= 0) return null;
+    return calcYieldBenchmark({
+      medianTsubo: landPriceStats.medianTsubo,
+      minTsubo: landPriceStats.minTsubo,
+      maxTsubo: landPriceStats.maxTsubo,
+      landAreaSqm: input.landArea,
+      monthlyRent: input.monthlyRent,
+      buildingCost: input.buildingCost,
+      userYield: input.yieldTarget,
+    });
+  }, [landPriceStats, input.landArea, input.monthlyRent, input.buildingCost, input.yieldTarget]);
 
   return (
     <div className="space-y-4">
@@ -242,6 +258,32 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
               />
             </div>
           </div>
+
+          {/* 市場想定利回りベンチマーク */}
+          {yieldBenchmark && (
+            <div className="mt-2 rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              <span>
+                このエリアの市場想定利回り: 約
+                {(yieldBenchmark.estimatedYieldTypical * 100).toFixed(1)}%
+              </span>
+              <Badge
+                className="ml-2"
+                variant={
+                  yieldBenchmark.judgment === "realistic"
+                    ? "secondary"
+                    : yieldBenchmark.judgment === "slightly-high"
+                      ? "outline"
+                      : "destructive"
+                }
+              >
+                {yieldBenchmark.judgment === "realistic"
+                  ? "現実的"
+                  : yieldBenchmark.judgment === "slightly-high"
+                    ? "やや高め"
+                    : "高め"}
+              </Badge>
+            </div>
+          )}
         </CardContent>
       </Card>
 
