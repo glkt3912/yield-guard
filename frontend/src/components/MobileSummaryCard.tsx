@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { InvestmentInput, InvestmentResult } from "@/types/investment";
 import { formatMan } from "@/lib/utils";
-import { CheckCircle, AlertTriangle, FileText } from "lucide-react";
+import { CheckCircle, AlertTriangle, CheckCircle2, XCircle, FileText } from "lucide-react";
 import { downloadReportPDF } from "@/lib/generatePdf";
 
 interface Props {
@@ -65,15 +65,33 @@ export function MobileSummaryCard({ result, input, yieldPct, netYieldPct }: Prop
         <MetricRow label="実質利回り" value={`${netYieldPct.toFixed(2)}%`} />
         <div className={`col-span-1 rounded-lg px-2 py-1.5 ${dscrBg}`}>
           <p className="text-xs text-muted-foreground">DSCR</p>
-          <p className={`font-bold ${dscrColor}`}>{dscr.toFixed(2)}</p>
+          <p className={`flex items-center gap-1 font-bold ${dscrColor}`}>
+            {dscr >= 1.2 ? (
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+            ) : dscr >= 1.0 ? (
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <XCircle className="h-3.5 w-3.5 shrink-0" />
+            )}
+            {dscr.toFixed(2)}
+          </p>
         </div>
         <div
           className={`col-span-1 rounded-lg px-2 py-1.5 ${hasDeadCross ? (deadCrossEarly ? "bg-red-50" : "bg-yellow-50") : "bg-green-50"}`}
         >
           <p className="text-xs text-muted-foreground">デッドクロス</p>
           <p
-            className={`font-bold ${hasDeadCross ? (deadCrossEarly ? "text-red-700" : "text-yellow-700") : "text-green-700"}`}
+            className={`flex items-center gap-1 font-bold ${hasDeadCross ? (deadCrossEarly ? "text-red-700" : "text-yellow-700") : "text-green-700"}`}
           >
+            {hasDeadCross ? (
+              deadCrossEarly ? (
+                <XCircle className="h-3.5 w-3.5 shrink-0" />
+              ) : (
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              )
+            ) : (
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+            )}
             {hasDeadCross ? `${deadCrossYear}年目〜` : "なし"}
           </p>
         </div>
