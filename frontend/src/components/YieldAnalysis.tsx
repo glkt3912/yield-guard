@@ -122,6 +122,7 @@ export function YieldAnalysis({ result, input, populationForecast, landPriceStat
 
   const stressScenarios: StressScenarioResult[] = result.stressScenarios ?? [];
   const [expandedScenario, setExpandedScenario] = useState<number | null>(null);
+  const [aiOpen, setAiOpen] = useState(true);
 
   // カスタムストレステスト入力
   const [customLoanRateDelta, setCustomLoanRateDelta] = useState(0); // 0〜3 (%)
@@ -193,6 +194,24 @@ export function YieldAnalysis({ result, input, populationForecast, landPriceStat
 
   return (
     <div className="space-y-4">
+      {result.aiSummary && (
+        <Card className="border border-blue-200 bg-blue-50/50">
+          <CardHeader className="cursor-pointer pb-2 pt-4" onClick={() => setAiOpen(!aiOpen)}>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-blue-700">AIレポート</CardTitle>
+              {aiOpen ? (
+                <ChevronUp className="h-4 w-4 text-blue-500" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-blue-500" />
+              )}
+            </div>
+          </CardHeader>
+          {aiOpen && (
+            <CardContent className="pt-0 text-sm text-blue-900">{result.aiSummary}</CardContent>
+          )}
+        </Card>
+      )}
+
       {/* Mobile: professional summary card for agents (hidden on desktop) */}
       <MobileSummaryCard
         result={result}

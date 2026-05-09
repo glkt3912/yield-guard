@@ -166,6 +166,7 @@ export interface InvestmentResult {
   irr: number | null; // 内部収益率（収束しない場合は null）
   npv: number; // 正味現在価値
   totalInterest: number; // 保有期間の総支払利息
+  aiSummary?: string;
 }
 
 export interface LandTransaction {
