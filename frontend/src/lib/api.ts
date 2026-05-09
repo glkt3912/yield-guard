@@ -286,3 +286,25 @@ export async function fetchGeocode(address: string): Promise<GeocodeResult> {
   const res = await fetch(`${BASE}/geocode?${q}`);
   return handleResponse<GeocodeResult>(res);
 }
+
+export interface RentStatsResult {
+  median: number;
+  average: number;
+  count: number;
+}
+
+/** エリア賃料相場（中央値・平均値・件数）を取得（XIT001 賃貸） */
+export async function fetchRentStats(params: {
+  area: string;
+  municipality?: string;
+  areaSqm?: number;
+}): Promise<RentStatsResult | null> {
+  const q = new URLSearchParams({ area: params.area });
+  if (params.municipality) q.set("municipality", params.municipality);
+  if (params.areaSqm && params.areaSqm > 0) q.set("area_sqm", String(params.areaSqm));
+  const res = await fetch(`${BASE}/rent-stats?${q}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data || data.count === 0) return null;
+  return data as RentStatsResult;
+}

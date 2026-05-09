@@ -124,6 +124,8 @@ export function FullModeForm({
             handleFetchRentHint={handleFetchRentHint}
             zoningType={zoningType}
             setZoningType={setZoningType}
+            area={area}
+            city={city}
           />
 
           <LoanSection
