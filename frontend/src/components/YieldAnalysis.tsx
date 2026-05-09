@@ -175,6 +175,11 @@ export function YieldAnalysis({ result, input, populationForecast, landPriceStat
 
   const yieldBenchmark = useMemo(() => {
     if (!landPriceStats || landPriceStats.medianTsubo <= 0) return null;
+    if (input.monthlyRent <= 0) return null;
+    const userYield =
+      input.landPrice + input.buildingCost > 0
+        ? (input.monthlyRent * 12) / (input.landPrice + input.buildingCost)
+        : undefined;
     return calcYieldBenchmark({
       medianTsubo: landPriceStats.medianTsubo,
       minTsubo: landPriceStats.minTsubo,
@@ -182,9 +187,9 @@ export function YieldAnalysis({ result, input, populationForecast, landPriceStat
       landAreaSqm: input.landArea,
       monthlyRent: input.monthlyRent,
       buildingCost: input.buildingCost,
-      userYield: input.yieldTarget,
+      userYield,
     });
-  }, [landPriceStats, input.landArea, input.monthlyRent, input.buildingCost, input.yieldTarget]);
+  }, [landPriceStats, input.landArea, input.monthlyRent, input.buildingCost, input.landPrice]);
 
   return (
     <div className="space-y-4">
