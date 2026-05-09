@@ -231,7 +231,6 @@ export function InvestmentForm({
 
   // Load Full-mode draft on mount (run once)
   useEffect(() => {
-    if (isQuick) return;
     try {
       const raw = typeof window !== "undefined" ? localStorage.getItem(FULL_DRAFT_KEY) : null;
       if (!raw) return;
@@ -240,7 +239,7 @@ export function InvestmentForm({
     } catch {
       // ignore
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Debounced auto-save for Full mode
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -261,6 +260,7 @@ export function InvestmentForm({
 
   const handleRestoreDraft = useCallback(() => {
     if (!pendingDraft) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     setInput((prev) => ({ ...prev, ...pendingDraft }));
     setPendingDraft(null);
     try {
@@ -414,6 +414,7 @@ export function InvestmentForm({
       setQuickHistory(saveQuickHistory(entry));
       onAnalyze(payload, quickTotalPriceMan);
     } else {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       try {
         localStorage.removeItem(FULL_DRAFT_KEY);
       } catch {
