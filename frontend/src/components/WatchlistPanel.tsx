@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { Trash2, ClipboardList } from "lucide-react";
+import { Trash2, ClipboardList, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import type { WatchlistItem, WatchlistStatus, InvestmentResult } from "@/types/investment";
 
 const STORAGE_KEY = "yg_watchlist";
@@ -46,6 +46,12 @@ function getDscrColor(dscr: number): string {
   if (dscr >= 1.2) return "text-green-600";
   if (dscr >= 1.0) return "text-yellow-600";
   return "text-red-600";
+}
+
+function DscrIcon({ dscr }: { dscr: number }) {
+  if (dscr >= 1.2) return <CheckCircle2 className="h-3 w-3 shrink-0" />;
+  if (dscr >= 1.0) return <AlertTriangle className="h-3 w-3 shrink-0" />;
+  return <XCircle className="h-3 w-3 shrink-0" />;
 }
 
 interface WatchlistPanelProps {
@@ -190,7 +196,10 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
                         <span className="text-xs text-blue-600">
                           表面利回り: {(item.metrics.grossYield * 100).toFixed(1)}%
                         </span>
-                        <span className={`text-xs ${getDscrColor(item.metrics.dscr)}`}>
+                        <span
+                          className={`inline-flex items-center gap-1 text-xs ${getDscrColor(item.metrics.dscr)}`}
+                        >
+                          <DscrIcon dscr={item.metrics.dscr} />
                           DSCR: {item.metrics.dscr.toFixed(2)}
                         </span>
                         <span className="text-xs text-purple-600">
