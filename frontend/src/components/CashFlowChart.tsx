@@ -39,6 +39,7 @@ function CashFlowChart({ result, equityInvested }: Props) {
         累積CF: Math.round((y.cumulativeCashFlow - equityInvested) / 10_000),
         isDeadCrossZone: y.isInDeadCrossZone,
         effectiveRate: y.effectiveRate,
+        // capex は NOI から除外（バックエンドの calcDSCR と同定義: NOI = annualRent - annualExpenses）
         DSCR:
           y.annualLoanPayment > 0
             ? Math.round(((y.annualRent - y.annualExpenses) / y.annualLoanPayment) * 100) / 100
@@ -130,8 +131,9 @@ function CashFlowChart({ result, equityInvested }: Props) {
               }
             />
             <Tooltip
-              formatter={(value: number, name: string) => {
-                if (name === "DSCR") return [value.toFixed(2), name];
+              formatter={(value: number | null, name: string) => {
+                if (name === "DSCR")
+                  return [value == null ? "―" : (value as number).toFixed(2), name];
                 return [`${value}万円`, name];
               }}
               labelStyle={{ fontWeight: "bold" }}
