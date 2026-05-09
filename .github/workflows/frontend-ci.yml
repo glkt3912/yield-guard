@@ -77,7 +77,8 @@ jobs:
     needs: ci
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      github.event_name == 'pull_request'
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     permissions:
       contents: read
       pull-requests: write
@@ -105,7 +106,13 @@ jobs:
         if: github.event_name == 'pull_request'
         id: preview
         run: |
-          URL=$(vercel deploy --yes 2>/dev/null)
+          OUTPUT=$(vercel deploy --yes 2>&1)
+          echo "$OUTPUT"
+          URL=$(echo "$OUTPUT" | grep -E '^https://' | tail -1)
+          if [ -z "$URL" ]; then
+            echo "::error::Vercel deploy failed or URL not found"
+            exit 1
+          fi
           echo "url=$URL" >> $GITHUB_OUTPUT
         working-directory: frontend
         env:
@@ -115,16 +122,32 @@ jobs:
 
       - name: Comment preview URL on PR
         if: github.event_name == 'pull_request'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          script: |
+            const marker = '<!-- vercel-preview -->';
+            const url = process.env.PREVIEW_URL;
+            const body = `${marker}\n## Vercel プレビュー\n\n${url}\n\n> ⚠️ このプレビューは本番 API (\`NEXT_PUBLIC_API_URL\`) を使用しています。`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PREVIEW_URL: ${{ steps.preview.outputs.url }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
-        run: |
-          gh pr comment "$PR_NUMBER" \
-            --repo "$REPO" \
-            --body "## Vercel プレビュー
-
-          $PREVIEW_URL
-
-          > ⚠️ このプレビューは本番 API (\`NEXT_PUBLIC_API_URL\`) を使用しています。"
