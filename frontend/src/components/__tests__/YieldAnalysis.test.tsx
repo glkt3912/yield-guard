@@ -78,4 +78,38 @@ describe("YieldAnalysis", () => {
     render(<YieldAnalysis result={result} input={makeInput()} landPriceStats={null} />);
     expect(screen.queryByText(/市場想定利回り/)).not.toBeInTheDocument();
   });
+
+  it("judgment が slightly-high のとき 'やや高め' Badge が表示される", () => {
+    // userYield = (120_000*12) / (10_000_000+5_000_000) = 1_440_000/15_000_000 = 0.096
+    // medianTsubo=380_000, areaTsubo=100/3.30578≈30.25
+    // totalTypical = 380_000*30.25+5_000_000 ≈ 16_495_000
+    // estimatedYieldTypical ≈ 1_440_000/16_495_000 ≈ 0.0873
+    // ratio = 0.096/0.0873 ≈ 1.10 → "slightly-high"
+    const result = makeResult({ isAboveYieldTarget: true, grossYield: 0.09 });
+    render(
+      <YieldAnalysis
+        result={result}
+        input={makeInput()}
+        landPriceStats={makeLandPriceStats({ medianTsubo: 380_000 })}
+      />
+    );
+    expect(screen.getByText("やや高め")).toBeInTheDocument();
+  });
+
+  it("judgment が high のとき '大幅に高め' Badge が表示される", () => {
+    // userYield = 0.096
+    // medianTsubo=500_000, areaTsubo≈30.25
+    // totalTypical = 500_000*30.25+5_000_000 ≈ 20_125_000
+    // estimatedYieldTypical ≈ 1_440_000/20_125_000 ≈ 0.0716
+    // ratio = 0.096/0.0716 ≈ 1.34 → "high"
+    const result = makeResult({ isAboveYieldTarget: true, grossYield: 0.09 });
+    render(
+      <YieldAnalysis
+        result={result}
+        input={makeInput()}
+        landPriceStats={makeLandPriceStats({ medianTsubo: 500_000 })}
+      />
+    );
+    expect(screen.getByText("大幅に高め")).toBeInTheDocument();
+  });
 });
