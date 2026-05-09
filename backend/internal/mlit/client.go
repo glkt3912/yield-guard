@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1016,6 +1017,177 @@ func (c *Client) FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domai
 	}
 	c.cache.landslideHazard.set(key, result)
 	return result, nil
+}
+
+// FetchRentStats は XIT001（priceClassification=03）から賃貸取引データを取得し、
+// 月額賃料の中央値・平均値・件数を返す。area_sqm が 0 より大きい場合は
+// 面積が area_sqm ± 50% の範囲のレコードのみを対象にフィルタリングする。
+// キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
+func (c *Client) FetchRentStats(ctx context.Context, q LandPriceQuery, areaSqm float64) (domain.RentStatsResult, error) {
+	ctx, span := otel.Tracer(mlitTracerName).Start(ctx, "mlit.FetchRentStats")
+	defer span.End()
+
+	span.SetAttributes(
+		semconv.ServerAddress("www.reinfolib.mlit.go.jp"),
+		semconv.ServerPort(443),
+		semconv.URLScheme("https"),
+		attribute.String("mlit.endpoint", "XIT001_rent"),
+		attribute.String("mlit.query.area", q.Area),
+		attribute.String("mlit.query.city", q.City),
+	)
+
+	cacheKeySuffix := fmt.Sprintf("rent:%s:%s:%d:%d:%d:%d:%.1f",
+		q.Area, q.City, q.Year, q.Quarter, q.ToYear, q.ToQuarter, areaSqm)
+	if cached, ok := c.cache.rentStats.get(cacheKeySuffix); ok {
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001_rent")))
+		if len(cached) == 0 {
+			return domain.RentStatsResult{}, nil
+		}
+		return cached[0], nil
+	}
+	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001_rent")))
+	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
+
+	if q.Area == "" {
+		return domain.RentStatsResult{}, fmt.Errorf("area is required")
+	}
+	if q.Year == 0 || q.Quarter == 0 || q.ToYear == 0 || q.ToQuarter == 0 {
+		return domain.RentStatsResult{}, fmt.Errorf("year, quarter, to_year, to_quarter are required")
+	}
+
+	params := url.Values{}
+	params.Set("area", q.Area)
+	params.Set("year", strconv.Itoa(q.Year))
+	params.Set("quarter", strconv.Itoa(q.Quarter))
+	params.Set("toYear", strconv.Itoa(q.ToYear))
+	params.Set("toQuarter", strconv.Itoa(q.ToQuarter))
+	params.Set("priceClassification", "03") // 賃貸
+	if q.City != "" {
+		params.Set("city", q.City)
+	}
+	apiURL := c.baseURL + endpointLandPrices + "?" + params.Encode()
+
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			delay := retryBaseDelay * time.Duration(1<<uint(attempt-1))
+			select {
+			case <-ctx.Done():
+				return domain.RentStatsResult{}, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
+			case <-time.After(delay):
+			}
+		}
+
+		start := time.Now()
+		result, err := c.doRentRequest(ctx, apiURL, areaSqm)
+		latencySec := time.Since(start).Seconds()
+		telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
+			metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001_rent")))
+
+		if err == nil {
+			span.SetAttributes(attribute.Int("mlit.retry.count", attempt))
+			if result.Count == 0 {
+				c.cache.rentStats.set(cacheKeySuffix, []domain.RentStatsResult{})
+			} else {
+				c.cache.rentStats.set(cacheKeySuffix, []domain.RentStatsResult{result})
+			}
+			return result, nil
+		}
+		lastErr = err
+		if isClientError(err) {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			return domain.RentStatsResult{}, err
+		}
+	}
+	span.RecordError(lastErr)
+	span.SetStatus(codes.Error, lastErr.Error())
+	return domain.RentStatsResult{}, fmt.Errorf("rent stats API request failed after %d attempts: %w", maxRetries, lastErr)
+}
+
+// doRentRequest は賃貸取引データを取得してパースし、月額賃料統計を計算する。
+func (c *Client) doRentRequest(ctx context.Context, apiURL string, areaSqm float64) (domain.RentStatsResult, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return domain.RentStatsResult{}, fmt.Errorf("request build error: %w", err)
+	}
+	if c.apiKey != "" {
+		req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return domain.RentStatsResult{}, fmt.Errorf("rent API request failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		return domain.RentStatsResult{}, &clientError{code: resp.StatusCode}
+	}
+	if resp.StatusCode != http.StatusOK {
+		return domain.RentStatsResult{}, fmt.Errorf("rent API returned status %d", resp.StatusCode)
+	}
+
+	var apiResp APIResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return domain.RentStatsResult{}, fmt.Errorf("rent JSON decode error: %w", err)
+	}
+	if apiResp.Status != "OK" {
+		return domain.RentStatsResult{}, fmt.Errorf("rent API status: %s", apiResp.Status)
+	}
+
+	return parseRentStats(apiResp.Data, areaSqm), nil
+}
+
+// parseRentStats は賃貸取引データから月額賃料の統計を算出する。
+// areaSqm が 0 より大きい場合、面積が areaSqm の 50%〜150% の範囲のレコードのみ対象とする。
+func parseRentStats(raw []Transaction, areaSqm float64) domain.RentStatsResult {
+	var rents []float64
+	for _, t := range raw {
+		// 賃貸は TradePrice が月額賃料（円）
+		price := parseFloat(t.TradePrice)
+		if price <= 0 {
+			continue
+		}
+		// 面積フィルタ（任意）
+		if areaSqm > 0 {
+			area := parseFloat(t.Area)
+			if area <= 0 {
+				continue
+			}
+			if area < areaSqm*0.5 || area > areaSqm*1.5 {
+				continue
+			}
+		}
+		rents = append(rents, price)
+	}
+
+	if len(rents) == 0 {
+		return domain.RentStatsResult{}
+	}
+
+	sort.Float64s(rents)
+
+	sum := 0.0
+	for _, r := range rents {
+		sum += r
+	}
+	avg := sum / float64(len(rents))
+
+	n := len(rents)
+	var median float64
+	if n%2 == 0 {
+		median = (rents[n/2-1] + rents[n/2]) / 2
+	} else {
+		median = rents[n/2]
+	}
+
+	return domain.RentStatsResult{
+		Median:  median,
+		Average: avg,
+		Count:   n,
+	}
 }
 
 // isLandType は取引種別が宅地(土地)かどうかを判定する

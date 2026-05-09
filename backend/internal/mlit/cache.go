@@ -75,6 +75,7 @@ type cache struct {
 	stormHazard          *genericCache[domain.StormHazardItem]
 	tsunamiHazard        *genericCache[domain.TsunamiHazardItem]
 	landslideHazard      *genericCache[domain.LandslideHazardItem]
+	rentStats            *genericCache[domain.RentStatsResult]
 }
 
 func newCache() *cache {
@@ -94,6 +95,7 @@ func newCache() *cache {
 		stormHazard:          newGenericCache[domain.StormHazardItem](),
 		tsunamiHazard:        newGenericCache[domain.TsunamiHazardItem](),
 		landslideHazard:      newGenericCache[domain.LandslideHazardItem](),
+		rentStats:            newGenericCache[domain.RentStatsResult](),
 	}
 }
 

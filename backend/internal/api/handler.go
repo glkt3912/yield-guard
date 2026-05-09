@@ -34,6 +34,7 @@ type MLITClient interface {
 	FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.StormHazardItem, error)
 	FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.TsunamiHazardItem, error)
 	FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domain.LandslideHazardItem, error)
+	FetchRentStats(ctx context.Context, q mlit.LandPriceQuery, areaSqm float64) (domain.RentStatsResult, error)
 }
 
 type Handler struct {

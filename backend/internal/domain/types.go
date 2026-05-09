@@ -551,6 +551,13 @@ type RenovationResult struct {
 	ClassifiedItems     []ClassifiedRenovationItem `json:"classifiedItems"`
 }
 
+// RentStatsResult は賃貸取引価格の統計情報
+type RentStatsResult struct {
+	Median  float64 `json:"median"`  // 月額賃料 中央値（円）
+	Average float64 `json:"average"` // 月額賃料 平均値（円）
+	Count   int     `json:"count"`   // サンプル数
+}
+
 // HeatmapTile はヒートマップの1タイル分の投資スコア情報
 type HeatmapTile struct {
 	X          int     `json:"x"`

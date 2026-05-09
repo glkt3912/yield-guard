@@ -168,6 +168,7 @@ type mockMLITClient struct {
 	stormHazardFunc      func(ctx context.Context, z, x, y int) ([]domain.StormHazardItem, error)
 	tsunamiHazardFunc    func(ctx context.Context, z, x, y int) ([]domain.TsunamiHazardItem, error)
 	landslideHazardFunc  func(ctx context.Context, z, x, y int) ([]domain.LandslideHazardItem, error)
+	rentStatsFunc        func(ctx context.Context, q mlit.LandPriceQuery, areaSqm float64) (domain.RentStatsResult, error)
 }
 
 func (m *mockMLITClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
@@ -268,6 +269,12 @@ func (m *mockMLITClient) FetchLandslideHazard(ctx context.Context, z, x, y int) 
 		return m.landslideHazardFunc(ctx, z, x, y)
 	}
 	return []domain.LandslideHazardItem{}, nil
+}
+func (m *mockMLITClient) FetchRentStats(ctx context.Context, q mlit.LandPriceQuery, areaSqm float64) (domain.RentStatsResult, error) {
+	if m.rentStatsFunc != nil {
+		return m.rentStatsFunc(ctx, q, areaSqm)
+	}
+	return domain.RentStatsResult{}, nil
 }
 
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す
