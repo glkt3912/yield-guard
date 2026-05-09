@@ -39,6 +39,10 @@ function CashFlowChart({ result, equityInvested }: Props) {
         累積CF: Math.round((y.cumulativeCashFlow - equityInvested) / 10_000),
         isDeadCrossZone: y.isInDeadCrossZone,
         effectiveRate: y.effectiveRate,
+        DSCR:
+          y.annualLoanPayment > 0
+            ? Math.round(((y.annualRent - y.annualExpenses) / y.annualLoanPayment) * 100) / 100
+            : null,
       })),
     [yearlyResults, equityInvested]
   );
@@ -85,7 +89,10 @@ function CashFlowChart({ result, equityInvested }: Props) {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={chartHeight}>
-          <ComposedChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+          <ComposedChart
+            data={data}
+            margin={{ top: 8, right: isMobile ? 60 : 80, left: 0, bottom: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis dataKey="year" tick={{ fontSize: 11 }} interval={4} />
             <YAxis
@@ -101,8 +108,32 @@ function CashFlowChart({ result, equityInvested }: Props) {
               tick={{ fontSize: 11 }}
               width={isMobile ? 36 : 55}
             />
+            <YAxis
+              yAxisId="dscr"
+              orientation="right"
+              domain={[0, 3]}
+              tickFormatter={(v: number) => v.toFixed(1)}
+              tick={{ fontSize: 10, fill: "#8b5cf6" }}
+              width={isMobile ? 28 : 36}
+              dx={isMobile ? 28 : 40}
+              label={
+                isMobile
+                  ? undefined
+                  : {
+                      value: "DSCR",
+                      angle: 90,
+                      position: "insideRight",
+                      fontSize: 10,
+                      fill: "#8b5cf6",
+                      dx: 12,
+                    }
+              }
+            />
             <Tooltip
-              formatter={(value: number, name: string) => [`${value}万円`, name]}
+              formatter={(value: number, name: string) => {
+                if (name === "DSCR") return [value.toFixed(2), name];
+                return [`${value}万円`, name];
+              }}
               labelStyle={{ fontWeight: "bold" }}
             />
             <Legend />
@@ -145,12 +176,59 @@ function CashFlowChart({ result, equityInvested }: Props) {
               strokeWidth={2}
               dot={false}
             />
+            <ReferenceLine
+              yAxisId="dscr"
+              y={1.0}
+              stroke="#ef4444"
+              strokeDasharray="3 3"
+              label={{
+                value: "危険",
+                position: "insideTopRight",
+                fontSize: 9,
+                fill: "#ef4444",
+              }}
+            />
+            <ReferenceLine
+              yAxisId="dscr"
+              y={1.2}
+              stroke="#f59e0b"
+              strokeDasharray="3 3"
+              label={{
+                value: "安全",
+                position: "insideTopRight",
+                fontSize: 9,
+                fill: "#f59e0b",
+              }}
+            />
+            <Line
+              yAxisId="dscr"
+              type="monotone"
+              dataKey="DSCR"
+              stroke="#8b5cf6"
+              strokeWidth={2}
+              dot={false}
+              connectNulls
+            />
           </ComposedChart>
         </ResponsiveContainer>
         <p className="mt-1 text-xs text-muted-foreground text-right">
           ※赤色の棒はデッドクロスゾーン（元金返済 &gt; 減価償却費）
           {rateChangeYears.length > 0 && "　※橙色の縦線は金利変更年"}
         </p>
+        {isMobile ? (
+          <details className="mt-2">
+            <summary className="cursor-pointer text-xs text-purple-600 font-medium select-none">
+              DSCR（借入金償還余裕率）の説明
+            </summary>
+            <p className="mt-1 text-xs text-muted-foreground">
+              ※紫線はDSCR（借入金償還余裕率）。1.0未満は危険、1.2以上が安全とされる
+            </p>
+          </details>
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">
+            ※紫線はDSCR（借入金償還余裕率）。1.0未満は危険、1.2以上が安全とされる
+          </p>
+        )}
 
         {/* 出口戦略サマリー */}
         <div className="mt-4 grid grid-cols-3 gap-3 rounded-md border bg-muted/30 p-3">
