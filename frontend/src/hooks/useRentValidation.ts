@@ -38,13 +38,12 @@ export function useRentValidation(
       return;
     }
 
-    setLoading(true);
-
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
 
     timerRef.current = setTimeout(async () => {
+      setLoading(true);
       try {
         const result = await fetchRentStats({
           area,

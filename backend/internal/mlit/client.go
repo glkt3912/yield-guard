@@ -1152,6 +1152,7 @@ func parseRentStats(raw []Transaction, areaSqm float64) domain.RentStatsResult {
 		}
 		// 面積フィルタ（任意）
 		if areaSqm > 0 {
+			// Area フィールドは XIT001（賃貸）では専有面積（m²）を示す
 			area := parseFloat(t.Area)
 			if area <= 0 {
 				continue

@@ -12,7 +12,7 @@ function badge(
   level: RentDeviationLevel,
   deviationPct: number
 ): { className: string; message: string } | null {
-  if (level === null || deviationPct === null) return null;
+  if (level === null) return null;
   const sign = deviationPct >= 0 ? "+" : "";
   const pctStr = `${sign}${deviationPct.toFixed(1)}%`;
 
