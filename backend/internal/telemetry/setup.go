@@ -7,8 +7,8 @@ import (
 	"os"
 
 	monitoring "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric"
-	cloudtrace "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/metric"
@@ -74,7 +74,9 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (func(contex
 	if gcpProject == "" {
 		traceExporter, err = stdouttrace.New(stdouttrace.WithPrettyPrint())
 	} else {
-		traceExporter, err = cloudtrace.New()
+		traceExporter, err = otlptracehttp.New(ctx,
+			otlptracehttp.WithEndpointURL("https://telemetry.googleapis.com/v1/traces"),
+		)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("trace exporter: %w", err)
