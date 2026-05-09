@@ -3,6 +3,7 @@ module github.com/yield-guard/backend
 go 1.25.9
 
 require (
+	cloud.google.com/go/vertexai v0.14.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.56.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.32.0
 	github.com/gin-contrib/cors v1.7.7
@@ -19,9 +20,13 @@ require (
 )
 
 require (
+	cloud.google.com/go v0.121.2 // indirect
+	cloud.google.com/go/aiplatform v1.102.0 // indirect
 	cloud.google.com/go/auth v0.16.5 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
+	cloud.google.com/go/iam v1.5.2 // indirect
+	cloud.google.com/go/longrunning v0.6.7 // indirect
 	cloud.google.com/go/monitoring v1.24.2 // indirect
 	cloud.google.com/go/trace v1.11.6 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.56.0 // indirect

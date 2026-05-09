@@ -33,6 +33,7 @@ func (h *Handler) Analyze(c *gin.Context) {
 	}
 
 	result := domain.Analyze(c.Request.Context(), input)
+	result.AISummary = h.summarizer.GenerateSummary(c.Request.Context(), result)
 	telemetry.AnalyzeRequestsTotal.Add(c.Request.Context(), 1)
 	c.JSON(http.StatusOK, result)
 }

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yield-guard/backend/internal/ai"
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
 )
@@ -40,10 +41,15 @@ type MLITClient interface {
 type Handler struct {
 	mlitClient    MLITClient
 	geocodeClient GeocodeClient
+	summarizer    ai.Summarizer
 }
 
 func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient) *Handler {
-	return &Handler{mlitClient: mlitClient, geocodeClient: geocodeClient}
+	return &Handler{
+		mlitClient:    mlitClient,
+		geocodeClient: geocodeClient,
+		summarizer:    ai.NewSummarizer(),
+	}
 }
 
 // HealthCheck はサーバーの生存確認
