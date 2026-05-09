@@ -33,7 +33,18 @@ func (h *Handler) Analyze(c *gin.Context) {
 	}
 
 	result := domain.Analyze(c.Request.Context(), input)
-	result.AISummary = h.summarizer.GenerateSummary(c.Request.Context(), result)
+
+	// run Gemini in background; collect result within remaining context budget
+	aiCh := make(chan string, 1)
+	go func() {
+		aiCh <- h.summarizer.GenerateSummary(c.Request.Context(), result)
+	}()
+	select {
+	case result.AISummary = <-aiCh:
+	case <-c.Request.Context().Done():
+		// request cancelled or timed out upstream
+	}
+
 	telemetry.AnalyzeRequestsTotal.Add(c.Request.Context(), 1)
 	c.JSON(http.StatusOK, result)
 }

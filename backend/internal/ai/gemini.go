@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"sync"
 	"time"
@@ -13,11 +14,18 @@ import (
 )
 
 const (
-	aiCacheTTL    = 24 * time.Hour
-	aiCallTimeout = 3 * time.Second
-	geminiModel   = "gemini-2.5-flash-preview-04-17"
-	gcpLocation   = "us-central1"
+	aiCacheTTL         = 24 * time.Hour
+	aiCallTimeout      = 3 * time.Second
+	defaultGeminiModel = "gemini-2.5-flash-preview-04-17"
+	defaultGCPLocation = "us-central1"
 )
+
+func envOrDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
 
 // Summarizer generates an AI investment summary.
 type Summarizer interface {
@@ -49,7 +57,7 @@ func NewSummarizer() Summarizer {
 	if project == "" {
 		return noopSummarizer{}
 	}
-	client, err := genai.NewClient(context.Background(), project, gcpLocation)
+	client, err := genai.NewClient(context.Background(), project, envOrDefault("VERTEX_AI_LOCATION", defaultGCPLocation))
 	if err != nil {
 		slog.Warn("Gemini init failed, AI summary disabled", "error", err)
 		return noopSummarizer{}
@@ -88,7 +96,7 @@ func (s *GeminiSummarizer) GenerateSummary(ctx context.Context, result domain.In
 }
 
 func (s *GeminiSummarizer) call(ctx context.Context, r domain.InvestmentResult) (string, error) {
-	model := s.client.GenerativeModel(geminiModel)
+	model := s.client.GenerativeModel(envOrDefault("GEMINI_MODEL", defaultGeminiModel))
 	model.SetMaxOutputTokens(300)
 	model.SetTemperature(0.3)
 
@@ -133,6 +141,11 @@ func buildPrompt(r domain.InvestmentResult) string {
 }
 
 func summaryKey(r domain.InvestmentResult) string {
-	return fmt.Sprintf("%.4f:%.4f:%d:%.0f:%.0f:%.2f",
-		r.GrossYield, r.NetYield, r.DeadCrossYear, r.ExitTotalEquity, r.NPV, r.DSCR)
+	// round to 2 decimal places to avoid floating-point drift
+	gross := math.Round(r.GrossYield*10000) / 10000
+	net := math.Round(r.NetYield*10000) / 10000
+	equity := math.Round(r.ExitTotalEquity / 1000) // nearest 1000 yen
+	npv := math.Round(r.NPV / 1000)
+	dscr := math.Round(r.DSCR*100) / 100
+	return fmt.Sprintf("%g:%g:%d:%g:%g:%g", gross, net, r.DeadCrossYear, equity, npv, dscr)
 }
