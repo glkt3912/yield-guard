@@ -273,11 +273,12 @@ export function YieldAnalysis({ result, input, populationForecast, landPriceStat
               </span>
               <Badge
                 className="ml-2"
+                title={yieldBenchmark.judgmentLabel}
                 variant={
                   yieldBenchmark.judgment === "realistic"
                     ? "secondary"
                     : yieldBenchmark.judgment === "slightly-high"
-                      ? "outline"
+                      ? "warning"
                       : "destructive"
                 }
               >
@@ -285,7 +286,7 @@ export function YieldAnalysis({ result, input, populationForecast, landPriceStat
                   ? "現実的"
                   : yieldBenchmark.judgment === "slightly-high"
                     ? "やや高め"
-                    : "高め"}
+                    : "大幅に高め"}
               </Badge>
             </div>
           )}
