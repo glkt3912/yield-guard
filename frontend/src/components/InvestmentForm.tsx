@@ -13,6 +13,7 @@ import { type GeocodeState } from "@/components/sections/LocationSection";
 
 const QUICK_HISTORY_KEY = "yield-guard:quick-history";
 const QUICK_HISTORY_MAX = 5;
+const FULL_DRAFT_KEY = "yield-guard:full-draft";
 
 function loadQuickHistory(): QuickHistoryEntry[] {
   if (typeof window === "undefined") return [];
@@ -130,6 +131,7 @@ export function InvestmentForm({
   const [showCustomLoan, setShowCustomLoan] = useState(false);
   const [quickHistory, setQuickHistory] = useState<QuickHistoryEntry[]>([]);
   const [rateScheduleEnabled, setRateScheduleEnabled] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState<Partial<InvestmentInput> | null>(null);
 
   const isQuick = simulationMode === "quick";
 
@@ -225,6 +227,56 @@ export function InvestmentForm({
 
   useEffect(() => {
     setQuickHistory(loadQuickHistory());
+  }, []);
+
+  // Load Full-mode draft on mount (run once)
+  useEffect(() => {
+    if (isQuick) return;
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem(FULL_DRAFT_KEY) : null;
+      if (!raw) return;
+      const draft = JSON.parse(raw) as Partial<InvestmentInput>;
+      setPendingDraft(draft);
+    } catch {
+      // ignore
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced auto-save for Full mode
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (isQuick) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(FULL_DRAFT_KEY, JSON.stringify(input));
+      } catch {
+        // ignore
+      }
+    }, 500);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [input, isQuick]);
+
+  const handleRestoreDraft = useCallback(() => {
+    if (!pendingDraft) return;
+    setInput((prev) => ({ ...prev, ...pendingDraft }));
+    setPendingDraft(null);
+    try {
+      localStorage.removeItem(FULL_DRAFT_KEY);
+    } catch {
+      // ignore
+    }
+  }, [pendingDraft]);
+
+  const handleDiscardDraft = useCallback(() => {
+    setPendingDraft(null);
+    try {
+      localStorage.removeItem(FULL_DRAFT_KEY);
+    } catch {
+      // ignore
+    }
   }, []);
 
   const handleAreaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -362,6 +414,11 @@ export function InvestmentForm({
       setQuickHistory(saveQuickHistory(entry));
       onAnalyze(payload, quickTotalPriceMan);
     } else {
+      try {
+        localStorage.removeItem(FULL_DRAFT_KEY);
+      } catch {
+        // ignore
+      }
       onAnalyze(sortedInput(input));
     }
   };
@@ -442,6 +499,28 @@ export function InvestmentForm({
   return (
     <div className="space-y-4">
       {showModeToggle && <SimulationModeToggle mode={simulationMode} onChange={onModeChange} />}
+
+      {!isQuick && pendingDraft && (
+        <div className="flex items-center justify-between rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-sm">
+          <span>前回の入力を復元しますか？</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleRestoreDraft}
+              className="rounded bg-yellow-400 px-3 py-1 text-xs font-medium text-white hover:bg-yellow-500"
+            >
+              復元する
+            </button>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="rounded bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300"
+            >
+              破棄する
+            </button>
+          </div>
+        </div>
+      )}
 
       {isQuick ? (
         <QuickModeForm
