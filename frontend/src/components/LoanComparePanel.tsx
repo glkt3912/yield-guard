@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { analyze } from "@/lib/api";
 import type { InvestmentInput, InvestmentResult } from "@/types/investment";
 import { toMan, toPct, fromPct } from "@/lib/utils";
-import { Plus, Trash2, BarChart3 } from "lucide-react";
+import { Plus, Trash2, BarChart3, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface LoanScenario {
   name: string;
@@ -227,16 +228,41 @@ export function LoanComparePanel({ baseInput }: Props) {
                         </td>
                       );
                     const dscr = res.dscr;
-                    const colorClass =
-                      dscr >= 1.2 ? "text-green-600 font-semibold" : "text-red-600 font-semibold";
+                    const dscrSafe = dscr >= 1.2;
+                    const dscrCaution = dscr >= 1.0 && dscr < 1.2;
+                    const colorClass = dscrSafe
+                      ? "text-green-600 font-semibold"
+                      : dscrCaution
+                        ? "text-yellow-600 font-semibold"
+                        : "text-red-600 font-semibold";
+                    const dscrBadge = dscrSafe ? (
+                      <Badge variant="success" className="flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        安全
+                      </Badge>
+                    ) : dscrCaution ? (
+                      <Badge variant="warning" className="flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        注意
+                      </Badge>
+                    ) : (
+                      <Badge variant="danger" className="flex items-center gap-1">
+                        <XCircle className="h-3 w-3" />
+                        危険
+                      </Badge>
+                    );
                     return (
                       <td key={i} className="px-3 py-2 text-center">
-                        <span className={colorClass}>{dscr.toFixed(2)}</span>
-                        {dscr < 1.0 && (
-                          <div className="text-xs text-amber-600 mt-0.5">
-                            ⚠️ 参考: DSCR &lt; 1.0 は審査通過を保証しません
-                          </div>
-                        )}
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={colorClass}>{dscr.toFixed(2)}</span>
+                          {dscrBadge}
+                          {dscr < 1.0 && (
+                            <div className="flex items-center gap-1 text-xs text-amber-600 mt-0.5">
+                              <AlertTriangle className="h-3 w-3 shrink-0" />
+                              参考: DSCR &lt; 1.0 は審査通過を保証しません
+                            </div>
+                          )}
+                        </div>
                       </td>
                     );
                   })}
