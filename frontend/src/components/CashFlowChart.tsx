@@ -131,9 +131,11 @@ function CashFlowChart({ result, equityInvested }: Props) {
               }
             />
             <Tooltip
-              formatter={(value: number | null, name: string) => {
-                if (name === "DSCR")
-                  return [value == null ? "―" : (value as number).toFixed(2), name];
+              formatter={(value, name: string) => {
+                if (name === "DSCR") {
+                  const n = typeof value === "number" ? value : null;
+                  return [n == null ? "―" : n.toFixed(2), name];
+                }
                 return [`${value}万円`, name];
               }}
               labelStyle={{ fontWeight: "bold" }}
@@ -193,13 +195,13 @@ function CashFlowChart({ result, equityInvested }: Props) {
             <ReferenceLine
               yAxisId="dscr"
               y={1.2}
-              stroke="#f59e0b"
+              stroke="#22c55e"
               strokeDasharray="3 3"
               label={{
                 value: "安全",
                 position: "insideTopRight",
                 fontSize: 9,
-                fill: "#f59e0b",
+                fill: "#22c55e",
               }}
             />
             <Line
