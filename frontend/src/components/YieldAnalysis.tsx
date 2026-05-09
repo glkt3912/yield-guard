@@ -41,6 +41,35 @@ export function getDscrBadge(dscr: number): React.ReactElement {
   return <Badge variant="danger">危険</Badge>;
 }
 
+function getDscrBadge(dscr: number) {
+  if (dscr >= 1.2)
+    return (
+      <Badge variant="success" className="flex items-center gap-1">
+        <CheckCircle2 className="h-3 w-3" />
+        安全
+      </Badge>
+    );
+  if (dscr >= 1.0)
+    return (
+      <Badge variant="warning" className="flex items-center gap-1">
+        <AlertTriangle className="h-3 w-3" />
+        注意
+      </Badge>
+    );
+  return (
+    <Badge variant="danger" className="flex items-center gap-1">
+      <XCircle className="h-3 w-3" />
+      危険
+    </Badge>
+  );
+}
+
+function getDscrIcon(dscr: number) {
+  if (dscr >= 1.2) return <CheckCircle2 className="h-3 w-3" />;
+  if (dscr >= 1.0) return <AlertTriangle className="h-3 w-3" />;
+  return <XCircle className="h-3 w-3" />;
+}
+
 /**
  * Mobile 1×2 KPI strip showing metrics not already in MobileSummaryCard.
  * MobileSummaryCard covers yield/DSCR/dead-cross; this adds investment totals.
@@ -262,31 +291,8 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
             {stressScenarios.map((s, idx) => {
               const isCompound = s.label === "複合ストレス";
               const isExpanded = expandedScenario === idx;
-              const dscrIcon =
-                s.dscr >= 1.2 ? (
-                  <CheckCircle2 className="h-3 w-3" />
-                ) : s.dscr >= 1.0 ? (
-                  <AlertTriangle className="h-3 w-3" />
-                ) : (
-                  <XCircle className="h-3 w-3" />
-                );
-              const safeBadge =
-                s.dscr >= 1.2 ? (
-                  <Badge variant="success" className="flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" />
-                    安全
-                  </Badge>
-                ) : s.dscr >= 1.0 ? (
-                  <Badge variant="warning" className="flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    注意
-                  </Badge>
-                ) : (
-                  <Badge variant="danger" className="flex items-center gap-1">
-                    <XCircle className="h-3 w-3" />
-                    危険
-                  </Badge>
-                );
+              const dscrIcon = getDscrIcon(s.dscr);
+              const safeBadge = getDscrBadge(s.dscr);
               return (
                 <div
                   key={s.label}
@@ -420,31 +426,8 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                 {stressScenarios.map((s) => {
                   const isCompound = s.label === "複合ストレス";
                   const rowBg = isCompound ? "bg-orange-50" : "";
-                  const safeBadge =
-                    s.dscr >= 1.2 ? (
-                      <Badge variant="success" className="flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        安全
-                      </Badge>
-                    ) : s.dscr >= 1.0 ? (
-                      <Badge variant="warning" className="flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        注意
-                      </Badge>
-                    ) : (
-                      <Badge variant="danger" className="flex items-center gap-1">
-                        <XCircle className="h-3 w-3" />
-                        危険
-                      </Badge>
-                    );
-                  const dscrIcon =
-                    s.dscr >= 1.2 ? (
-                      <CheckCircle2 className="h-3 w-3" />
-                    ) : s.dscr >= 1.0 ? (
-                      <AlertTriangle className="h-3 w-3" />
-                    ) : (
-                      <XCircle className="h-3 w-3" />
-                    );
+                  const safeBadge = getDscrBadge(s.dscr);
+                  const dscrIcon = getDscrIcon(s.dscr);
                   return (
                     <tr key={s.label} className={`border-b last:border-0 ${rowBg}`}>
                       <td className="py-2 font-medium">

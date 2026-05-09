@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { InvestmentInput, InvestmentResult } from "@/types/investment";
 import { formatMan } from "@/lib/utils";
-import { CheckCircle, AlertTriangle, CheckCircle2, XCircle, FileText } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle, FileText } from "lucide-react";
 import { downloadReportPDF } from "@/lib/generatePdf";
 
 interface Props {
@@ -49,7 +49,7 @@ export function MobileSummaryCard({ result, input, yieldPct, netYieldPct }: Prop
         <p className="text-sm font-semibold text-foreground">物件サマリー</p>
         {result.isAboveYieldTarget ? (
           <Badge variant="success" className="flex items-center gap-1">
-            <CheckCircle className="h-3 w-3" />
+            <CheckCircle2 className="h-3 w-3" />
             目標利回り達成
           </Badge>
         ) : (
