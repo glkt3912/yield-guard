@@ -279,7 +279,7 @@ export function YieldAnalysis({ result, input, populationForecast, landPriceStat
                     ? "secondary"
                     : yieldBenchmark.judgment === "slightly-high"
                       ? "warning"
-                      : "destructive"
+                      : "danger"
                 }
               >
                 {yieldBenchmark.judgment === "realistic"
