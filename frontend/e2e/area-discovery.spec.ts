@@ -1,12 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { setupApiMocks, setSwTestMode } from "./helpers/routes";
+import { setupApiMocks } from "./helpers/routes";
 import { ONBOARDING_KEY } from "./helpers/constants";
 
 test.beforeEach(async ({ page }) => {
   await setupApiMocks(page);
   await page.addInitScript((key) => localStorage.setItem(key, "1"), ONBOARDING_KEY);
   await page.goto("/");
-  await setSwTestMode(page);
 });
 
 test("@p3 エリア探索タブ：市区町村ランキングが表示される", async ({ page }) => {

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { setupApiMocks, setSwTestMode } from "./helpers/routes";
+import { setupApiMocks } from "./helpers/routes";
 import { ONBOARDING_KEY } from "./helpers/constants";
 
 test.describe("Quick mode ハッピーパス", () => {
@@ -7,7 +7,6 @@ test.describe("Quick mode ハッピーパス", () => {
     await setupApiMocks(page);
     await page.addInitScript((key) => localStorage.setItem(key, "1"), ONBOARDING_KEY);
     await page.goto("/");
-    await setSwTestMode(page);
   });
 
   test("@p1 利回りバッジが緑でDSCRが表示される", async ({ page }) => {
@@ -36,7 +35,6 @@ test.describe("Quick mode リクエストボディ検証", () => {
     });
     await page.addInitScript((key) => localStorage.setItem(key, "1"), ONBOARDING_KEY);
     await page.goto("/");
-    await setSwTestMode(page);
 
     await page.getByLabel("物件価格（土地＋建物の総額）").fill("1700");
     await page.getByLabel("想定月額賃料").fill("15");

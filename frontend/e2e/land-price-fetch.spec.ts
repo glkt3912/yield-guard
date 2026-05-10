@@ -1,12 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { setupApiMocks, setSwTestMode } from "./helpers/routes";
+import { setupApiMocks } from "./helpers/routes";
 import { ONBOARDING_KEY } from "./helpers/constants";
 
 test.beforeEach(async ({ page }) => {
   await setupApiMocks(page);
   await page.addInitScript((key) => localStorage.setItem(key, "1"), ONBOARDING_KEY);
   await page.goto("/");
-  await setSwTestMode(page);
   await page.getByRole("radio", { name: "詳細" }).click();
 });
 

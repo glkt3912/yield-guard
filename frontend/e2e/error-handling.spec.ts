@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { setupApiMocks, setSwTestMode } from "./helpers/routes";
+import { setupApiMocks } from "./helpers/routes";
 import { ONBOARDING_KEY } from "./helpers/constants";
 import criticalFixture from "./fixtures/analyze-response-critical.json";
 import hazardFixture from "./fixtures/hazard-alert.json";
@@ -13,7 +13,6 @@ test("@p1 バックエンド503エラー：エラーバナーが表示されク�
     analyze: { status: 503, body: { error: "Service Unavailable" } },
   });
   await page.goto("/");
-  await setSwTestMode(page);
 
   await page.getByLabel("物件価格（土地＋建物の総額）").fill("1700");
   await page.getByLabel("想定月額賃料").fill("15");
@@ -30,7 +29,6 @@ test("@p2 バックエンド429レートリミット：エラーバナーが表�
     analyze: { status: 429, body: { error: "Too Many Requests" } },
   });
   await page.goto("/");
-  await setSwTestMode(page);
 
   await page.getByLabel("物件価格（土地＋建物の総額）").fill("1700");
   await page.getByLabel("想定月額賃料").fill("15");
@@ -45,7 +43,6 @@ test("@p3 criticalErrors バナー：⛔一発退場が表示される", async (
     analyze: { status: 200, body: criticalFixture },
   });
   await page.goto("/");
-  await setSwTestMode(page);
 
   await page.getByLabel("物件価格（土地＋建物の総額）").fill("1700");
   await page.getByLabel("想定月額賃料").fill("5");
@@ -62,7 +59,6 @@ test("@p3 ハザードアラートバナー：洪水リスクが表示される"
     hazard: { status: 200, body: hazardFixture },
   });
   await page.goto("/");
-  await setSwTestMode(page);
 
   await page.getByRole("radio", { name: "詳細" }).click();
   await page.getByLabel("土地取得価格").fill("1200");
