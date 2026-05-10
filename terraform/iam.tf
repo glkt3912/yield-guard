@@ -153,6 +153,14 @@ resource "google_project_iam_member" "deployer_cloudfunctions_admin" {
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+resource "google_billing_account_iam_member" "deployer_billing_admin" {
+  # Required to create and update Billing Budgets via terraform apply.
+  # billing.admin is needed; billing.costsManager does not include budgets.update in practice.
+  billing_account_id = var.billing_account_id
+  role               = "roles/billing.admin"
+  member             = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 # --- Runtime SA permissions (Cloud Run only) ---
 
 resource "google_secret_manager_secret_iam_member" "mlit_accessor" {
