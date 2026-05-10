@@ -60,6 +60,9 @@ export function LoanOptimizationPanel({
             <p className="text-xs text-muted-foreground mt-0.5">
               <TermTooltip term="noi">NOI</TermTooltip> ÷ 年間返済額（1年目）
             </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              <TermTooltip term="dscrThreshold">判定基準を確認</TermTooltip>
+            </p>
           </div>
           {!hasLoan ? (
             <Badge className="flex items-center gap-1 bg-gray-100 text-gray-500 border-gray-200 ml-auto">

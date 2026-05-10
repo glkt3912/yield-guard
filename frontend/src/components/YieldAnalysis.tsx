@@ -416,7 +416,8 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                   <th className="pb-2 text-right font-medium">金利△</th>
                   <th className="pb-2 text-right font-medium">空室△</th>
                   <th className="pb-2 text-right font-medium">
-                    <TermTooltip term="dscr">DSCR</TermTooltip>
+                    <TermTooltip term="dscr">DSCR</TermTooltip>{" "}
+                    <TermTooltip term="dscrThreshold">基準</TermTooltip>
                   </th>
                   <th className="pb-2 text-right font-medium">CF黒転年</th>
                   <th className="pb-2 text-right font-medium">判定</th>
