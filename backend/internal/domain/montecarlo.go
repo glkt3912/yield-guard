@@ -138,10 +138,15 @@ func calcIRR(result InvestmentResult, input InvestmentInput) float64 {
 		holdN = len(result.YearlyResults)
 	}
 
-	// CF系列: year0 = -TotalInvestment, year1..holdN = AfterTaxCashFlow
+	// CF系列: year0 = -equity (自己資本のみ), year1..holdN = AfterTaxCashFlow (返済後CF)
+	// ローン返済後のキャッシュフローに対応するため、初期投資額は equity ベースで計算する
 	// 最終年に売却手取りを加算
 	cfs := make([]float64, holdN+1)
-	cfs[0] = -result.TotalInvestment
+	equity := result.TotalInvestment - input.LoanAmount
+	if equity <= 0 {
+		return math.NaN()
+	}
+	cfs[0] = -equity
 	for i := 1; i <= holdN; i++ {
 		yr := result.YearlyResults[i-1]
 		cfs[i] = yr.AfterTaxCashFlow
