@@ -21,6 +21,10 @@ frontend/.claude/
 # TypeScript ビルドキャッシュ
 frontend/tsconfig.tsbuildinfo
 
+# Playwright
+frontend/playwright-report/
+frontend/test-results/
+
 # Terraform
 terraform/.terraform/
 terraform/terraform.tfvars

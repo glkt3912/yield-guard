@@ -230,9 +230,14 @@ go test -race -coverprofile=coverage.out ./...
 # カバレッジ確認（テキスト形式）
 go tool cover -func=coverage.out
 
-# フロントエンド（Vitest）
+# フロントエンド（Vitest ユニットテスト）
 cd frontend
 npm test
+
+# フロントエンド（Playwright E2E テスト）
+make e2e        # テスト実行（make dev 起動中なら既存サーバーを再利用）
+make e2e-ui     # Playwright Inspector でステップ実行
+make e2e-report # 最後のレポートをブラウザで表示
 ```
 
 CI（GitHub Actions）では `go test -race -coverprofile=coverage.out` を実行し、カバレッジサマリーを GitHub Actions Job Summary に出力する。最新のカバレッジ率は README のバッジで確認できる。
@@ -245,6 +250,7 @@ CI（GitHub Actions）では `go test -race -coverprofile=coverage.out` を実�
 | 理論価格推定 | `backend/internal/domain/theoretical_price_test.go` | go test | 9 |
 | MLIT クライアント | `backend/internal/mlit/client_test.go` | go test / httptest | 複数 |
 | フロントエンド UI | `frontend/src/components/__tests__/*.test.tsx` | Vitest + RTL | 複数 |
+| E2E（ユーザーフロー） | `frontend/e2e/**/*.spec.ts` | Playwright + page.route() | 10 |
 
 境界値テストは `acquisition_costs`・`investment`・`property_tax` の各計算に追加されている。
 
@@ -261,6 +267,15 @@ CI（GitHub Actions）では `go test -race -coverprofile=coverage.out` を実�
   - `DeadCrossChart`: デッドクロスゾーンのバッジ・警告テキスト
   - `CashFlowChart`: 自己資金回収年の表示、exitTotalEquity の色分け
   - `InvestmentForm`: コールバック呼び出し、ローディング中のボタン無効化、詳細設定トグル
+
+#### E2E テストの方針（Playwright）
+
+- **ツール**: [Playwright](https://playwright.dev/) v1.50+ / Chromium
+- **モック戦略**: `page.route()` でブラウザネットワーク層の `/api/**` をインターセプト。バックエンド不要で実行可能
+- **テストデータ**: `frontend/e2e/fixtures/` の JSON フィクスチャ（`InvestmentResult` 型準拠）
+- **localStorage 分離**: `storageState: { cookies: [], origins: [] }` でテスト間の状態汚染を防止
+- **優先度タグ**: `@p1`（PR必須）/ `@p2`（PR必須）/ `@p3`（main のみ）
+- **カバーするユーザーフロー**: Quick mode / Full mode / 地価取得 / URL共有 / ウォッチリスト / モード切替 / エリア探索 / PDF出力 / エラーハンドリング
 
 > **`@emnapi` の `devDependencies` 明示について**: `@emnapi/core` と `@emnapi/runtime` は `next` → `sharp` のトランジティブ依存。npm 11（macOS arm64）は `optionalDependencies` に記載しても Linux 向けバイナリを lock ファイルから除外するため、`devDependencies` に移動して常に lock ファイルへの収録を強制するワークアラウンドを適用している。
 

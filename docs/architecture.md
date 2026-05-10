@@ -45,6 +45,7 @@ graph TD
     PR["Pull Request / main push"]
     CI_BE["GitHub Actions\nBackend CI\n(golangci-lint / go test -race / go build)"]
     CI_FE["GitHub Actions\nFrontend CI\n(lint / tsc / vitest / build)"]
+    CI_E2E["GitHub Actions\nE2E\n(Playwright / Chromium)"]
     Docker["Docker Build\n(マルチステージビルド)"]
     Compose["docker-compose up\n(backend :8080 + frontend :3000)"]
     Vercel["Vercel Deploy\n(Next.js フロントエンド)"]
@@ -58,6 +59,7 @@ graph TD
     PR --> Terraform
     CI_BE --> Docker
     CI_FE --> Docker
+    CI_FE --> CI_E2E
     Docker --> Compose
     CI_FE --> Vercel
     Docker --> CloudRun
@@ -72,6 +74,7 @@ graph TD
 |---|---|---|
 | Backend CI | `backend/**`, `backend-ci.yml` | `golangci-lint` / `go test -race` / `go build` |
 | Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `vitest run` / `build` / Vercel デプロイ（main push: 本番 / PR: プレビュー URL を PR コメントに自動投稿） |
+| E2E（Frontend CI内） | `frontend/**`, `frontend-ci.yml` | `playwright test`（PR: `@p1`+`@p2` のみ / main push: 全10件） |
 
 Dependabot により Go modules・npm の依存パッケージが毎週月曜（JST）に自動更新される（エコシステムごとに1PR）。
 
