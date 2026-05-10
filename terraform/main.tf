@@ -22,6 +22,16 @@ provider "google" {
   region  = var.region
 }
 
+# Billing Account-scoped resources (e.g. google_billing_budget) require a quota
+# project to be specified explicitly; without it the API returns 403.
+provider "google" {
+  alias                 = "billing"
+  project               = var.project_id
+  region                = var.region
+  user_project_override = true
+  billing_project       = var.project_id
+}
+
 data "google_project" "project" {}
 
 locals {

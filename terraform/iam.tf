@@ -154,6 +154,7 @@ resource "google_project_iam_member" "deployer_cloudfunctions_admin" {
 }
 
 resource "google_billing_account_iam_member" "deployer_billing_admin" {
+  provider = google.billing
   # Required to create and update Billing Budgets via terraform apply.
   # billing.admin is needed; billing.costsManager does not include budgets.update in practice.
   billing_account_id = var.billing_account_id

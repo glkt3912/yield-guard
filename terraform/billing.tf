@@ -1,12 +1,14 @@
 # ─────────────────────────────────────────────────────
 # 予算アラート (#256)
-# 前提: Deployer SA に請求アカウントレベルの roles/billing.costsManager が必要。
-# Terraform 管理外のため初回のみ手動付与:
+# 前提: Deployer SA に請求アカウントレベルの roles/billing.admin が必要。
+# google_billing_account_iam_member.deployer_billing_admin で Terraform 管理済み。
+# 初回ブートストラップのみ手動付与が必要:
 #   gcloud billing accounts add-iam-policy-binding <BILLING_ACCOUNT_ID> \
 #     --member="serviceAccount:<deployer-sa-email>" \
-#     --role="roles/billing.costsManager"
+#     --role="roles/billing.admin"
 # ─────────────────────────────────────────────────────
 resource "google_billing_budget" "monthly" {
+  provider        = google.billing
   billing_account = var.billing_account_id
   display_name    = "Yield Guard 月次予算アラート"
 
