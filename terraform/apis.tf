@@ -34,3 +34,9 @@ resource "google_project_service" "billingbudgets" {
   service            = "billingbudgets.googleapis.com"
   disable_on_destroy = false
 }
+
+resource "google_project_service" "cloudbilling" {
+  # Required for google_billing_account_iam_member to retrieve and set billing account IAM policies.
+  service            = "cloudbilling.googleapis.com"
+  disable_on_destroy = false
+}

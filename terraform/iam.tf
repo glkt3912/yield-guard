@@ -159,6 +159,8 @@ resource "google_billing_account_iam_member" "deployer_billing_admin" {
   billing_account_id = var.billing_account_id
   role               = "roles/billing.admin"
   member             = "serviceAccount:${google_service_account.deployer.email}"
+
+  depends_on = [google_project_service.cloudbilling]
 }
 
 # --- Runtime SA permissions (Cloud Run only) ---
