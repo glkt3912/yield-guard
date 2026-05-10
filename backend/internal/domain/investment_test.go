@@ -1655,6 +1655,83 @@ func TestCalcLTVSensitivity_WithRateSchedule(t *testing.T) {
 	}
 }
 
+// TestCalcLTVSensitivity_RateScheduleYear1 は変動金利スケジュールが初年度から適用される場合に
+// CalcLTVSensitivity がベース金利ではなくスケジュール金利（3%）を使って計算することを検証する。
+// ベース金利 2%、スケジュール AfterYear=1 で 3% に切り替わる → 初年度実効金利は 3% になる。
+//
+// NOTE: AfterYear=1 は Validate() の制約（>= 2）を下回るため、実際の API リクエストでは
+// 弾かれる値である。本テストは API レイヤーのバリデーションをバイパスし、
+// ドメインロジック単体の動作を検証することを意図している。
+func TestCalcLTVSensitivity_RateScheduleYear1(t *testing.T) {
+	baseRate := 0.020
+	scheduleRate := 0.030
+	input := InvestmentInput{
+		LandPrice:      5_000_000,
+		BuildingCost:   10_000_000,
+		MonthlyRent:    150_000,
+		VacancyRate:    0.05,
+		AnnualLoanRate: baseRate,
+		LoanYears:      35,
+		ExpenseRate:    0.20,
+		RateAdjustmentSchedule: []RateAdjustment{
+			{AfterYear: 1, Rate: scheduleRate}, // 1年目から 3% に切り替わる
+		},
+	}
+	input.Defaults()
+
+	// スケジュール適用あり（初年度金利 = 3%）
+	rowsScheduled := CalcLTVSensitivity(input, nil)
+
+	// 比較用: スケジュールなし・3% 固定で計算した結果（初年度実効金利が同じになるはず）
+	inputFixed3 := InvestmentInput{
+		LandPrice:      5_000_000,
+		BuildingCost:   10_000_000,
+		MonthlyRent:    150_000,
+		VacancyRate:    0.05,
+		AnnualLoanRate: scheduleRate,
+		LoanYears:      35,
+		ExpenseRate:    0.20,
+	}
+	inputFixed3.Defaults()
+	rowsFixed3 := CalcLTVSensitivity(inputFixed3, nil)
+
+	if len(rowsScheduled) != 5 || len(rowsFixed3) != 5 {
+		t.Fatalf("unexpected row counts: scheduled=%d fixed3=%d", len(rowsScheduled), len(rowsFixed3))
+	}
+
+	// 初年度実効金利が 3% の場合、スケジュール版も固定3%版も同じ DSCR・CF になるべき
+	for i := range rowsScheduled {
+		if !approxEqual(rowsScheduled[i].DSCR, rowsFixed3[i].DSCR, 0.0001) {
+			t.Errorf("rows[%d]: DSCR mismatch: scheduled(rate=3%%)=%.6f, fixed3%%=%.6f — schedule was not applied",
+				i, rowsScheduled[i].DSCR, rowsFixed3[i].DSCR)
+		}
+		if !approxEqual(rowsScheduled[i].AnnualCF, rowsFixed3[i].AnnualCF, 1.0) {
+			t.Errorf("rows[%d]: AnnualCF mismatch: scheduled=%.0f, fixed3%%=%.0f",
+				i, rowsScheduled[i].AnnualCF, rowsFixed3[i].AnnualCF)
+		}
+	}
+
+	// 比較用: ベース金利 2% のみの場合（スケジュール不適用）の DSCR は上記より高いはず
+	inputBase := InvestmentInput{
+		LandPrice:      5_000_000,
+		BuildingCost:   10_000_000,
+		MonthlyRent:    150_000,
+		VacancyRate:    0.05,
+		AnnualLoanRate: baseRate,
+		LoanYears:      35,
+		ExpenseRate:    0.20,
+	}
+	inputBase.Defaults()
+	rowsBase := CalcLTVSensitivity(inputBase, nil)
+
+	for i := range rowsScheduled {
+		if rowsScheduled[i].DSCR >= rowsBase[i].DSCR {
+			t.Errorf("rows[%d]: DSCR(%.6f) should be < base 2%% DSCR(%.6f) when schedule bumps rate to 3%%",
+				i, rowsScheduled[i].DSCR, rowsBase[i].DSCR)
+		}
+	}
+}
+
 // TestCalcLTVSensitivity_LoanRateDelta は LoanRateDelta が LTV 感度に反映されることを検証する。
 func TestCalcLTVSensitivity_LoanRateDelta(t *testing.T) {
 	base := InvestmentInput{
