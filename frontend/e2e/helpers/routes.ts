@@ -49,6 +49,19 @@ function fulfill(override: Override | undefined, defaultBody: unknown) {
 }
 
 export async function setupApiMocks(page: Page, overrides: ApiOverrides = {}): Promise<void> {
+  // キャッチオールを最初に登録 → Playwright の LIFO 評価で最低優先度になる
+  // 以降の特定ルートが常にキャッチオールより優先される
+  await page.route("**/api/**", async (route) => {
+    console.warn(`[E2E] Unexpected API call: ${route.request().url()}`);
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: `Unexpected API call in test: ${route.request().url()}`,
+      }),
+    });
+  });
+
   await page.route("**/api/investment/analyze", async (route) => {
     if (route.request().method() === "POST") {
       overrides.analyze?.onRequest?.(route.request().postDataJSON());
@@ -131,18 +144,10 @@ export async function setupApiMocks(page: Page, overrides: ApiOverrides = {}): P
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ lat: 35.658, lng: 139.701, locationType: "APPROXIMATE" }),
-    });
-  });
-
-  // 未登録エンドポイントの検知
-  await page.route("**/api/**", async (route) => {
-    console.warn(`[E2E] Unexpected API call: ${route.request().url()}`);
-    await route.fulfill({
-      status: 500,
-      contentType: "application/json",
       body: JSON.stringify({
-        error: `Unexpected API call in test: ${route.request().url()}`,
+        lat: 35.658,
+        lng: 139.701,
+        locationType: "APPROXIMATE",
       }),
     });
   });
