@@ -43,7 +43,11 @@ function badge(
 }
 
 export function RentValidationHint({ monthlyRent, area, city }: RentValidationHintProps) {
-  const { deviationPct, level, loading } = useRentValidation(monthlyRent, area, city);
+  const { stats, deviationPct, level, loading, lowSample } = useRentValidation(
+    monthlyRent,
+    area,
+    city
+  );
 
   if (loading) {
     return <p className="text-xs text-muted-foreground mt-1">賃料相場を確認中…</p>;
@@ -54,5 +58,14 @@ export function RentValidationHint({ monthlyRent, area, city }: RentValidationHi
   const info = badge(level, deviationPct);
   if (!info) return null;
 
-  return <p className={`text-xs mt-1 ${info.className}`}>{info.message}</p>;
+  return (
+    <div className="mt-1">
+      <p className={`text-xs ${info.className}`}>{info.message}</p>
+      {lowSample && stats && (
+        <p className="text-xs text-muted-foreground mt-0.5">
+          ※ サンプル数が少ないため参考値です（{stats.count}件）
+        </p>
+      )}
+    </div>
+  );
 }
