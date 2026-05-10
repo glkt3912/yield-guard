@@ -101,6 +101,14 @@ resource "google_service_account_iam_member" "deployer_act_as_billing_stop" {
   member             = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+resource "google_service_account_iam_member" "deployer_act_as_default_compute" {
+  # Cloud Functions Gen2 build (Cloud Build) runs as the default Compute SA.
+  # deployer SA must be able to act as it to submit the build job.
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 resource "google_storage_bucket_iam_member" "deployer_tfstate_admin" {
   # storage.admin includes getIamPolicy/setIamPolicy needed for terraform apply.
   bucket = "yield-guard-tfstate"
