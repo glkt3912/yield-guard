@@ -137,7 +137,6 @@ These rules define the safety boundary for autonomous Claude Code operations.
 - **Never force-push** (`git push --force`) — prevents overwriting remote history
 - **Never skip hooks** (`git commit --no-verify`) — pre-commit hooks must always run
 - **`git reset --hard` only on explicit instruction** — prevents loss of uncommitted work
-- All commits must be made on a `feature/*` branch
 
 ### Secrets and environment variables
 
@@ -147,9 +146,10 @@ These rules define the safety boundary for autonomous Claude Code operations.
 
 ### Infrastructure
 
-- **`terraform destroy` and `terraform apply` only on explicit instruction** — prevents accidental deletion of Cloud Run services or IAM resources
+- **`terraform destroy` only on explicit instruction** — prevents accidental deletion of Cloud Run services or IAM resources
+- **`terraform apply` requires confirmation** — always review the plan output before applying
 - **Never modify GCS bucket contents or Secret Manager secrets directly** — these are managed by Terraform
-- **`make docker-down` followed by data-destructive commands requires confirmation**
+- **Destructive local operations** (`docker volume rm`, `rm -rf`, etc.) require confirmation before execution
 
 ### PR and external actions
 
