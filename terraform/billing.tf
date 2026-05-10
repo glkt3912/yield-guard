@@ -39,4 +39,16 @@ resource "google_billing_budget" "monthly" {
   }
 
   depends_on = [google_project_service.billingbudgets]
+
+  lifecycle {
+    # The Billing Budgets API rejects write operations from WIF-issued service account
+    # tokens (403), even with billing.admin on the billing account. Human user credentials
+    # (gcloud / GCP Console) succeed. This is a known limitation of WIF + personal billing
+    # accounts. Budget values must be changed manually outside of CI.
+    ignore_changes = [
+      amount,
+      threshold_rules,
+      all_updates_rule,
+    ]
+  }
 }
