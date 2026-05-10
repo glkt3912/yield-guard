@@ -14,6 +14,16 @@ const (
 	BuildingTypeSRC         BuildingType = "SRC造"            // 耐用年数 47年 (鉄骨鉄筋コンクリート)
 )
 
+// IsValid は定義済みの建物種別定数のいずれかであるかを返す
+func (b BuildingType) IsValid() bool {
+	switch b {
+	case BuildingTypeWood, BuildingTypeLightSteel, BuildingTypeLightSteelThin,
+		BuildingTypeHeavySteel, BuildingTypeRC, BuildingTypeSRC:
+		return true
+	}
+	return false
+}
+
 // UsefulLife は建物種別の法定耐用年数（住宅用）を返す
 // 根拠: 減価償却資産の耐用年数等に関する省令 別表第一
 func (b BuildingType) UsefulLife() int {
