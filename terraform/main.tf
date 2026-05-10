@@ -22,6 +22,8 @@ provider "google" {
   region  = var.region
 }
 
+data "google_project" "project" {}
+
 locals {
   service_name     = "yield-guard-${var.env}-backend"
   sa_name          = "sa-yield-guard-${var.env}"
