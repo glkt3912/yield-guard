@@ -36,12 +36,6 @@ export function getDscrColorClass(dscr: number): string {
 }
 
 export function getDscrBadge(dscr: number): React.ReactElement {
-  if (dscr >= 1.2) return <Badge variant="success">安全</Badge>;
-  if (dscr >= 1.0) return <Badge variant="warning">注意</Badge>;
-  return <Badge variant="danger">危険</Badge>;
-}
-
-function getDscrBadge(dscr: number) {
   if (dscr >= 1.2)
     return (
       <Badge variant="success" className="flex items-center gap-1">
@@ -319,7 +313,6 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                   {isExpanded && (
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t px-3 pb-3 pt-2 text-sm">
                       <span className="text-muted-foreground">DSCR</span>
-<<<<<<< HEAD
                       <span
                         className={`flex items-center justify-end gap-1 font-medium ${getDscrColorClass(s.dscr)}`}
                       >
@@ -445,7 +438,6 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                           ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%`
                           : "±0"}
                       </td>
-<<<<<<< HEAD
                       <td className={`py-2 text-right font-medium ${getDscrColorClass(s.dscr)}`}>
                         <span className="inline-flex items-center justify-end gap-1">
                           {dscrIcon}
