@@ -223,18 +223,20 @@ gh secret set MLIT_API_KEY --body "your-mlit-api-key"
 
 ## OpenTelemetry 観測基盤のセキュリティ考慮
 
-### OTEL_EXPORTER_OTLP_ENDPOINT
+### OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
 
-`OTEL_EXPORTER_OTLP_ENDPOINT` はシークレットではなく、通常の環境変数として Cloud Run に設定する（Secret Manager 管理不要）。ただし、エンドポイント URL 自体がインフラ構成情報を含む場合は適宜アクセス制御を検討すること。
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` はシークレットではなく、通常の環境変数として Cloud Run に設定する（Secret Manager 管理不要）。未設定時は `https://telemetry.googleapis.com/v1/traces`（Cloud Trace OTLP ネイティブエンドポイント）がデフォルトとして使用される。
 
 | 環境 | 値 | 管理方法 |
 |---|---|---|
 | ローカル開発 | 未設定（stdout 出力） | 不要 |
-| Cloud Run 本番 | OTLP gRPC エンドポイント | Cloud Run 環境変数（Terraform） |
+| Cloud Run 本番 | `https://telemetry.googleapis.com/v1/traces`（デフォルト） | 変更時のみ Cloud Run 環境変数で設定 |
+
+認証は `gcpAuthTransport` が `google.DefaultTokenSource` （ADC）を使って自動取得したトークンを `Authorization: Bearer` ヘッダーに付与する。エンドポイント自体は公開 URL のため機密情報ではない。
 
 ### stdout エクスポーターのデータスコープ（ローカル開発）
 
-`OTEL_EXPORTER_OTLP_ENDPOINT` が未設定の場合、トレース・メトリクスは **stdout（コンソール）** に出力される。出力される情報は以下の通り。
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` が未設定かつ `GOOGLE_CLOUD_PROJECT` も未設定の場合、トレース・メトリクスは **stdout（コンソール）** に出力される。出力される情報は以下の通り。
 
 - スパン名・開始/終了時刻・ステータス
 - スパン属性（下記「スパン属性ポリシー」参照）

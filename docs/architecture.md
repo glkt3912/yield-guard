@@ -71,7 +71,7 @@ graph TD
 | ワークフロー | トリガーパス | チェック内容 |
 |---|---|---|
 | Backend CI | `backend/**`, `backend-ci.yml` | `golangci-lint` / `go test -race` / `go build` |
-| Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `vitest run` / `build` |
+| Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `vitest run` / `build` / Vercel デプロイ（main push: 本番 / PR: プレビュー URL を PR コメントに自動投稿） |
 
 Dependabot により Go modules・npm の依存パッケージが毎週月曜（JST）に自動更新される（エコシステムごとに1PR）。
 
@@ -171,7 +171,7 @@ flowchart LR
 | ローカル開発 | 未設定 | stdout（整形JSON） | stdout |
 | Cloud Run 本番 | GCP プロジェクト ID | Cloud Trace（ADC 認証） | Cloud Monitoring（ADC 認証） |
 
-Cloud Run ランタイム SA には `roles/cloudtrace.agent` と `roles/monitoring.metricWriter` が必要（`terraform/iam.tf` で管理）。認証は ADC（Application Default Credentials）が自動処理するため、コード内での認証設定は不要。
+Cloud Run ランタイム SA には `roles/cloudtrace.agent` と `roles/monitoring.metricWriter` が必要（`terraform/iam.tf` で管理）。トレースエクスポーターは `otlptracehttp` + `gcpAuthTransport` を使用し、`google.DefaultTokenSource`（ADC）でトークンを取得して `Authorization: Bearer` ヘッダーに付与する。エンドポイントは `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` 環境変数で変更可能（デフォルト: `https://telemetry.googleapis.com/v1/traces`）。
 
 ### 構造化ログフォーマット（Cloud Logging 準拠）
 
