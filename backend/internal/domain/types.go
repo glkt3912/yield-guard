@@ -183,6 +183,12 @@ func (i *InvestmentInput) Validate() error {
 			)
 		}
 	}
+	// 建物は平成10年（1998年）4月以降、定率法不可（国税庁 No.2100）
+	if i.DepreciationMethod == DepreciationMethodDecliningBalance && i.BuildingCost > 0 {
+		return fmt.Errorf(
+			"建物の償却方法は定額法のみです（1998年4月以降取得の建物は定率法を選択できません）",
+		)
+	}
 	return nil
 }
 
