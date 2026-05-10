@@ -136,7 +136,14 @@ yield-guard はインシデント発生時点で Trivy を未使用だったた�
 
 ## Secret Manager
 
-`MLIT_API_KEY` と `APP_INTERNAL_API_KEY` は Google Secret Manager で管理し、Cloud Run 起動時に環境変数として注入される（`secretKeyRef` 参照）。平文の環境変数としてデプロイ設定に含まれることはない。
+以下のシークレットを Google Secret Manager で管理し、Cloud Run 起動時に環境変数として注入される（`secretKeyRef` 参照）。平文の環境変数としてデプロイ設定に含まれることはない。
+
+| シークレット名 | 環境変数 | 用途 | 必須 |
+|--------------|---------|------|------|
+| `mlit-api-key-{env}` | `MLIT_API_KEY` | 国交省 API 認証 | ✅ |
+| `app-internal-api-key-{env}` | `APP_INTERNAL_API_KEY` | Vercel-Cloud Run 間認証 | ✅ |
+| `google-maps-api-key-{env}` | `GOOGLE_MAPS_API_KEY` | 住所→座標変換 | — |
+| `gemini-api-key-{env}` | `GEMINI_API_KEY` | AI 投資サマリー（Google AI Studio） | — |
 
 - Cloud Run のサービスアカウントには、プロジェクト全体ではなく **対象シークレットのみ** に `roles/secretmanager.secretAccessor` を付与（最小権限）
 - Secret の値は `terraform apply` 時に変数として渡す、または `gcloud` CLI で手動登録する
@@ -144,6 +151,8 @@ yield-guard はインシデント発生時点で Trivy を未使用だったた�
 ```bash
 echo -n "your-mlit-key" | gcloud secrets versions add mlit-api-key-prod --data-file=-
 ```
+
+`GEMINI_API_KEY` は [Google AI Studio](https://aistudio.google.com/app/apikey) で取得する。未設定時は AI サマリー機能が無効になるだけで他機能に影響しない。月 ~45,000 リクエストまで無料枠あり（`roles/aiplatform.user` 等の IAM ロール不要）。
 
 ---
 

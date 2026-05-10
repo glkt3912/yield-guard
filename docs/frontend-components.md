@@ -368,6 +368,14 @@ const allUrbanRisks: UrbanRisk[] = [
 - `populationForecast?: PopulationForecastResult | null`
 - `landPriceStats?: LandPriceStats | null` — 地価データ（未取得時は表示なし）
 
+**AI レポートカード**:
+
+`result.aiSummary` が空でない場合、コンポーネント最上部に折りたたみ式「AIレポート」カードを表示する。バックエンドの `POST /api/investment/analyze` が Gemini（Google AI Studio）を呼び出して生成した 3〜4 文の日本語サマリーを表示する。
+
+- `GEMINI_API_KEY` 未設定時は `aiSummary` が空文字になりカード自体が非表示（他の UI に変化なし）
+- デフォルトで展開済み（`useState(true)`）、クリックで折りたたみ可能
+- `ChevronUp` / `ChevronDown` アイコンで開閉状態を表示
+
 **市場実勢利回りベンチマーク**（PR #478 で追加）:
 
 `landPriceStats` が有効な場合（`medianTsubo > 0` かつ `monthlyRent > 0`）、利回りゲージ直下に市場実勢利回りと判定バッジを表示する。

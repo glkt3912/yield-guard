@@ -435,7 +435,8 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
     { "ltv": 0.70, "equity": 4815000, "loanAmount": 11235000, "dscr": 1.20, "annualCF": 100000, "cfYield": 0.006 },
     { "ltv": 0.80, "equity": 3210000, "loanAmount": 12840000, "dscr": 0.90, "annualCF": -100000,"cfYield": -0.006 },
     { "ltv": 0.90, "equity": 1605000, "loanAmount": 14445000, "dscr": 0.60, "annualCF": -300000,"cfYield": -0.019 }
-  ]
+  ],
+  "aiSummary": "この物件は表面利回り9.0%と高水準ですが、デッドクロスが12年目と比較的早く訪れます。DSCR1.25は安全圏ですが、変動金利リスクに備えた出口戦略を10年以内に検討してください。"
 }
 ```
 
