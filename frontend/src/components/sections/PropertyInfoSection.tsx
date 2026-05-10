@@ -1,13 +1,178 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ShieldCheck, HelpCircle } from "lucide-react";
 import type { InvestmentInput, BuildingType, RentDeclineHint } from "@/types/investment";
 import { toMan, fromMan, toPct, fromPct } from "@/lib/utils";
 import { BUILDING_TYPES, RENT_DECLINE_DEFAULTS } from "@/lib/investmentFormConstants";
 import { ZONING_TYPES, ZONING_META, type ZoningType } from "@/lib/zoning";
+
+// ---------------------------------------------------------------------------
+// Static market-average hint data
+// ---------------------------------------------------------------------------
+
+interface HintRow {
+  label: string;
+  range: string;
+  highlight?: boolean;
+}
+
+function getVacancyHints(buildingType: BuildingType): HintRow[] {
+  const isRC = buildingType === "RC造" || buildingType === "SRC造";
+  const isWood = buildingType === "木造";
+  return [
+    {
+      label: "RC造/SRC造（区分マンション）都市部",
+      range: "3〜5%",
+      highlight: isRC,
+    },
+    {
+      label: "RC造/SRC造（区分マンション）地方",
+      range: "8〜15%",
+      highlight: isRC,
+    },
+    {
+      label: "木造アパート（一棟）",
+      range: "10〜20%",
+      highlight: isWood,
+    },
+    {
+      label: "RC造マンション（一棟）",
+      range: "5〜10%",
+      highlight: isRC,
+    },
+  ];
+}
+
+function getExpenseHints(buildingType: BuildingType): HintRow[] {
+  const isRC = buildingType === "RC造" || buildingType === "SRC造";
+  const isWood = buildingType === "木造";
+  const isLightSteel = buildingType === "軽量鉄骨(3mm以下)" || buildingType === "軽量鉄骨(4mm以下)";
+  const isIttou = isWood || isLightSteel || buildingType === "重量鉄骨";
+  return [
+    {
+      label: "区分マンション（管理費込み）",
+      range: "15〜25%",
+      /* MVP近似: RC/SRC構造を区分マンション扱いとしてハイライト */
+      highlight: isRC,
+    },
+    {
+      label: "一棟（自主管理）",
+      range: "10〜15%",
+      highlight: isIttou,
+    },
+    {
+      label: "一棟（管理委託）",
+      range: "20〜30%",
+      highlight: isIttou,
+    },
+  ];
+}
+
+function getRentDeclineHints(buildingAge: number): HintRow[] {
+  const isNew = buildingAge < 10;
+  const isMid = buildingAge >= 10 && buildingAge < 20;
+  const isOld = buildingAge >= 20;
+  return [
+    {
+      label: "築0〜10年",
+      range: "0〜1%/年",
+      highlight: isNew,
+    },
+    {
+      label: "築10〜20年",
+      range: "1〜2%/年",
+      highlight: isMid,
+    },
+    {
+      label: "築20年以上",
+      range: "0.5〜1.5%/年（底打ち傾向）",
+      highlight: isOld,
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// HintPopover component
+// ---------------------------------------------------------------------------
+
+interface HintPopoverProps {
+  id: string;
+  title: string;
+  rows: HintRow[];
+  open: boolean;
+  onToggle: () => void;
+}
+
+function HintPopover({ title, rows, open, onToggle }: HintPopoverProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        onToggle();
+      }
+    }
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") onToggle();
+    }
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [open, onToggle]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        aria-label={`${title}の市場平均ヒントを表示`}
+        onClick={onToggle}
+        className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+      >
+        <HelpCircle className="h-3.5 w-3.5" />
+        <span>市場平均</span>
+      </button>
+      {open && (
+        <div className="absolute mt-1 rounded-md border border-border bg-popover shadow-md p-2.5 text-xs z-10 w-64">
+          <p className="font-semibold text-foreground mb-1.5">{title}</p>
+          <table className="w-full border-collapse">
+            <tbody>
+              {rows.map((row) => (
+                <tr
+                  key={row.label}
+                  className={
+                    row.highlight
+                      ? "bg-primary/10 font-medium text-primary"
+                      : "text-muted-foreground"
+                  }
+                >
+                  <td className="py-0.5 pr-2">{row.label}</td>
+                  <td className="py-0.5 text-right whitespace-nowrap">{row.range}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-1.5 text-muted-foreground leading-tight">
+            ※ハイライト行が現在の設定に近い目安です
+          </p>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="mt-1.5 text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function calcFromTax(taxMan: number): number {
   return taxMan / 0.1;
@@ -218,6 +383,7 @@ export function PropertyInfoSection({
   setZoningType,
 }: PropertyInfoSectionProps) {
   const [showBuildingHelper, setShowBuildingHelper] = useState(false);
+  const [openHint, setOpenHint] = useState<"vacancy" | "expense" | "rentDecline" | null>(null);
 
   return (
     <>
@@ -306,6 +472,15 @@ export function PropertyInfoSection({
             <p className="text-xs text-muted-foreground mt-1">
               建物構造から自動設定（例: 木造1%/年）
             </p>
+            <div className="mt-1">
+              <HintPopover
+                id="rentDecline"
+                title="賃料下落率の市場平均"
+                rows={getRentDeclineHints(input.buildingAge)}
+                open={openHint === "rentDecline"}
+                onToggle={() => setOpenHint(openHint === "rentDecline" ? null : "rentDecline")}
+              />
+            </div>
             <RentDeclineHintDisplay
               hint={rentHint}
               loading={rentHintLoading}
@@ -371,26 +546,48 @@ export function PropertyInfoSection({
             value={toPct(input.actualVacancyRate, 0)}
             onChange={(e) => setNum("actualVacancyRate", fromPct(e.target.value))}
           />
-          <Input
-            label="想定空室率（長期）"
-            type="number"
-            inputMode="numeric"
-            suffix="%"
-            step="1"
-            value={toPct(input.vacancyRate, 0)}
-            onChange={(e) => setNum("vacancyRate", fromPct(e.target.value))}
-            error={fieldError("vacancyRate")}
-          />
-          <Input
-            label="運営経費率※"
-            type="number"
-            inputMode="numeric"
-            suffix="%"
-            step="1"
-            value={toPct(input.expenseRate, 0)}
-            onChange={(e) => setNum("expenseRate", fromPct(e.target.value))}
-            error={fieldError("expenseRate")}
-          />
+          <div>
+            <Input
+              label="想定空室率（長期）"
+              type="number"
+              inputMode="numeric"
+              suffix="%"
+              step="1"
+              value={toPct(input.vacancyRate, 0)}
+              onChange={(e) => setNum("vacancyRate", fromPct(e.target.value))}
+              error={fieldError("vacancyRate")}
+            />
+            <div className="mt-1">
+              <HintPopover
+                id="vacancy"
+                title="空室率の市場平均"
+                rows={getVacancyHints(input.buildingType)}
+                open={openHint === "vacancy"}
+                onToggle={() => setOpenHint(openHint === "vacancy" ? null : "vacancy")}
+              />
+            </div>
+          </div>
+          <div>
+            <Input
+              label="運営経費率※"
+              type="number"
+              inputMode="numeric"
+              suffix="%"
+              step="1"
+              value={toPct(input.expenseRate, 0)}
+              onChange={(e) => setNum("expenseRate", fromPct(e.target.value))}
+              error={fieldError("expenseRate")}
+            />
+            <div className="mt-1">
+              <HintPopover
+                id="expense"
+                title="運営経費率の市場平均"
+                rows={getExpenseHints(input.buildingType)}
+                open={openHint === "expense"}
+                onToggle={() => setOpenHint(openHint === "expense" ? null : "expense")}
+              />
+            </div>
+          </div>
           <Input
             label="諸経費率"
             type="number"
