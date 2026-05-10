@@ -7,10 +7,6 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 2 : undefined,
   timeout: 30_000,
-  reporter: [
-    ["list"],
-    ["html", { outputFolder: "playwright-report", open: "never" }],
-  ],
   use: {
     baseURL: "http://localhost:3000",
     trace: "retain-on-failure",
