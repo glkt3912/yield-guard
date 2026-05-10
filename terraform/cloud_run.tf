@@ -47,17 +47,17 @@ resource "google_cloud_run_v2_service" "backend" {
 
       volume_mounts {
         name       = "mlit-api-key"
-        mount_path = "/secrets"
+        mount_path = "/secrets/mlit-api-key"
       }
 
       volume_mounts {
         name       = "app-internal-api-key"
-        mount_path = "/secrets"
+        mount_path = "/secrets/app-internal-api-key"
       }
 
       volume_mounts {
         name       = "google-maps-api-key"
-        mount_path = "/secrets"
+        mount_path = "/secrets/google-maps-api-key"
       }
 
       dynamic "env" {
@@ -97,7 +97,7 @@ resource "google_cloud_run_v2_service" "backend" {
       secret {
         secret = google_secret_manager_secret.mlit_api_key.secret_id
         items {
-          path    = "mlit-api-key"
+          path    = "value"
           version = "latest"
         }
       }
@@ -108,7 +108,7 @@ resource "google_cloud_run_v2_service" "backend" {
       secret {
         secret = google_secret_manager_secret.app_internal_api_key.secret_id
         items {
-          path    = "app-internal-api-key"
+          path    = "value"
           version = "latest"
         }
       }
@@ -119,7 +119,7 @@ resource "google_cloud_run_v2_service" "backend" {
       secret {
         secret = google_secret_manager_secret.google_maps_api_key.secret_id
         items {
-          path    = "google-maps-api-key"
+          path    = "value"
           version = "latest"
         }
       }
