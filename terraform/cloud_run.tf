@@ -45,34 +45,19 @@ resource "google_cloud_run_v2_service" "backend" {
         value = "release"
       }
 
-      env {
-        name = "MLIT_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.mlit_api_key.secret_id
-            version = "latest"
-          }
-        }
+      volume_mounts {
+        name       = "mlit-api-key"
+        mount_path = "/secrets"
       }
 
-      env {
-        name = "APP_INTERNAL_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.app_internal_api_key.secret_id
-            version = "latest"
-          }
-        }
+      volume_mounts {
+        name       = "app-internal-api-key"
+        mount_path = "/secrets"
       }
 
-      env {
-        name = "GOOGLE_MAPS_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.google_maps_api_key.secret_id
-            version = "latest"
-          }
-        }
+      volume_mounts {
+        name       = "google-maps-api-key"
+        mount_path = "/secrets"
       }
 
       dynamic "env" {
@@ -104,6 +89,39 @@ resource "google_cloud_run_v2_service" "backend" {
         initial_delay_seconds = 5
         period_seconds        = 5
         failure_threshold     = 10
+      }
+    }
+
+    volumes {
+      name = "mlit-api-key"
+      secret {
+        secret = google_secret_manager_secret.mlit_api_key.secret_id
+        items {
+          path    = "mlit-api-key"
+          version = "latest"
+        }
+      }
+    }
+
+    volumes {
+      name = "app-internal-api-key"
+      secret {
+        secret = google_secret_manager_secret.app_internal_api_key.secret_id
+        items {
+          path    = "app-internal-api-key"
+          version = "latest"
+        }
+      }
+    }
+
+    volumes {
+      name = "google-maps-api-key"
+      secret {
+        secret = google_secret_manager_secret.google_maps_api_key.secret_id
+        items {
+          path    = "google-maps-api-key"
+          version = "latest"
+        }
       }
     }
   }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -15,6 +16,19 @@ import (
 	"github.com/yield-guard/backend/internal/telemetry"
 )
 
+// readSecret reads a secret from a volume-mounted file, falling back to an env var for local dev.
+// Non-existence is silent; other errors (e.g. permission denied) are logged as warnings to aid debugging.
+func readSecret(filePath, envKey string) string {
+	data, err := os.ReadFile(filePath)
+	if err == nil {
+		return strings.TrimSpace(string(data))
+	}
+	if !os.IsNotExist(err) {
+		slog.Warn("failed to read secret file, falling back to env", "path", filePath, "error", err)
+	}
+	return os.Getenv(envKey)
+}
+
 func main() {
 	logger.Init(os.Stderr)
 
@@ -23,12 +37,14 @@ func main() {
 		port = "8080"
 	}
 
-	if os.Getenv("MLIT_API_KEY") == "" {
+	mlitAPIKey := readSecret("/secrets/mlit-api-key", "MLIT_API_KEY")
+	if mlitAPIKey == "" {
 		slog.Error("MLIT_API_KEY is not set")
 		os.Exit(1)
 	}
 
-	if os.Getenv("GIN_MODE") == "release" && os.Getenv("APP_INTERNAL_API_KEY") == "" {
+	appInternalAPIKey := readSecret("/secrets/app-internal-api-key", "APP_INTERNAL_API_KEY")
+	if os.Getenv("GIN_MODE") == "release" && appInternalAPIKey == "" {
 		slog.Error("APP_INTERNAL_API_KEY must be set in production (GIN_MODE=release)")
 		os.Exit(1)
 	}
@@ -40,10 +56,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	mlitClient := mlit.NewClient()
-	geocodeClient := api.NewGoogleGeocodeClient(os.Getenv("GOOGLE_MAPS_API_KEY"))
+	googleMapsAPIKey := readSecret("/secrets/google-maps-api-key", "GOOGLE_MAPS_API_KEY")
+
+	mlitClient := mlit.NewClient(mlitAPIKey)
+	geocodeClient := api.NewGoogleGeocodeClient(googleMapsAPIKey)
 	handler := api.NewHandler(mlitClient, geocodeClient)
-	router := api.NewRouter(handler)
+	router := api.NewRouter(handler, appInternalAPIKey)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
