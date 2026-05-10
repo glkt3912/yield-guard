@@ -130,10 +130,11 @@ resource "google_project_iam_member" "deployer_storage_admin" {
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
-resource "google_project_iam_member" "deployer_pubsub_admin" {
+resource "google_project_iam_member" "deployer_pubsub_editor" {
   # Required to create Pub/Sub topics and subscriptions via terraform apply.
+  # pubsub.editor covers create/delete/update without IAM management (unlike pubsub.admin).
   project = var.project_id
-  role    = "roles/pubsub.admin"
+  role    = "roles/pubsub.editor"
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
