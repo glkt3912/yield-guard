@@ -65,6 +65,7 @@ Copy `.env.example` → `.env` (project root).
 | `GET` | `/api/hazard` | Hazard info: flood/storm/tsunami/landslide (tile coords) |
 | `GET` | `/api/investment-score` | Investment suitability score (tile coords) |
 | `GET` | `/api/investment-score-heatmap` | Batch investment scores for viewport bbox (minLat, maxLat, minLng, maxLng, z=11-15) |
+| `GET` | `/api/rent-stats` | Area rent market stats: median/average/count from MLIT rental data (area, municipality, area_sqm) |
 
 ## Directory structure
 
@@ -83,6 +84,7 @@ yield-guard/
 │       │   └── types.go            # API response types
 │       └── api/
 │           ├── handler.go          # HTTP handlers
+│           ├── rent_handler.go     # GET /api/rent-stats handler
 │           └── router.go           # Gin router + CORS + auth middleware
 ├── frontend/src/
 │   ├── app/                        # Next.js App Router pages
