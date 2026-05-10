@@ -8,6 +8,7 @@ import type { InvestmentInput, BuildingType, RentDeclineHint } from "@/types/inv
 import { toMan, fromMan, toPct, fromPct } from "@/lib/utils";
 import { BUILDING_TYPES, RENT_DECLINE_DEFAULTS } from "@/lib/investmentFormConstants";
 import { ZONING_TYPES, ZONING_META, type ZoningType } from "@/lib/zoning";
+import { RentValidationHint } from "@/components/RentValidationHint";
 
 // ---------------------------------------------------------------------------
 // Static market-average hint data
@@ -368,6 +369,8 @@ interface PropertyInfoSectionProps {
   handleFetchRentHint: () => Promise<void>;
   zoningType: ZoningType;
   setZoningType: (v: ZoningType) => void;
+  area: string;
+  city: string;
 }
 
 export function PropertyInfoSection({
@@ -381,6 +384,8 @@ export function PropertyInfoSection({
   handleFetchRentHint,
   zoningType,
   setZoningType,
+  area,
+  city,
 }: PropertyInfoSectionProps) {
   const [showBuildingHelper, setShowBuildingHelper] = useState(false);
   const [openHint, setOpenHint] = useState<"vacancy" | "expense" | "rentDecline" | null>(null);
@@ -528,15 +533,18 @@ export function PropertyInfoSection({
       <div className="border-t pt-4">
         <p className="text-sm font-semibold text-foreground mb-3">収益条件</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input
-            label="想定月額賃料"
-            type="number"
-            inputMode="numeric"
-            suffix="円"
-            value={String(input.monthlyRent)}
-            onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
-            error={fieldError("monthlyRent")}
-          />
+          <div>
+            <Input
+              label="想定月額賃料"
+              type="number"
+              inputMode="numeric"
+              suffix="円"
+              value={String(input.monthlyRent)}
+              onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
+              error={fieldError("monthlyRent")}
+            />
+            <RentValidationHint monthlyRent={input.monthlyRent} area={area} city={city} />
+          </div>
           <Input
             label="現況空室率"
             type="number"

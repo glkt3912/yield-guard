@@ -9,6 +9,7 @@ import { toMan, fromMan, toPct, fromPct } from "@/lib/utils";
 import type { Municipality } from "@/lib/api";
 import { PREFECTURES, getPeriodLabel } from "@/lib/investmentFormConstants";
 import { Search, Calculator, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { RentValidationHint } from "@/components/RentValidationHint";
 
 export interface QuickHistoryEntry {
   totalPriceMan: string;
@@ -203,15 +204,18 @@ export function QuickModeForm({
                 内部で土地70%・建物30%に按分して計算します
               </p>
             </div>
-            <Input
-              label="想定月額賃料"
-              type="number"
-              inputMode="numeric"
-              suffix="円"
-              value={String(input.monthlyRent)}
-              onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
-              error={fieldError("monthlyRent")}
-            />
+            <div>
+              <Input
+                label="想定月額賃料"
+                type="number"
+                inputMode="numeric"
+                suffix="円"
+                value={String(input.monthlyRent)}
+                onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
+                error={fieldError("monthlyRent")}
+              />
+              <RentValidationHint monthlyRent={input.monthlyRent} area={area} city={city} />
+            </div>
             <div className="space-y-2">
               <label className="flex items-center gap-2 cursor-pointer select-none min-h-[44px]">
                 <input
