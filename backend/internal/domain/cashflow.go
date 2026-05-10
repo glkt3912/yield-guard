@@ -91,7 +91,7 @@ func initDepreciationParams(input InvestmentInput) depreciationParams {
 	var bookValue, decliningRate float64
 	if input.DepreciationMethod == DepreciationMethodDecliningBalance {
 		bookValue = input.BuildingCost
-		decliningRate = 1.5 / float64(usefulLife)
+		decliningRate = 2.0 / float64(usefulLife)
 	}
 	return depreciationParams{
 		usefulLife:         usefulLife,
