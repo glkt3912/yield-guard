@@ -10,9 +10,9 @@ func CalcLTVSensitivity(input InvestmentInput, ltvRange []float64) []LTVSensitiv
 		ltvRange = []float64{0.5, 0.6, 0.7, 0.8, 0.9}
 	}
 
-	miscExpenses := (input.LandPrice + input.BuildingCost) * input.MiscExpenseRate
-	totalInvestment := input.LandPrice + input.BuildingCost + miscExpenses
-	if totalInvestment <= 0 {
+	baseMiscExpenses := (input.LandPrice + input.BuildingCost) * input.MiscExpenseRate
+	baseCost := input.LandPrice + input.BuildingCost + baseMiscExpenses
+	if baseCost <= 0 {
 		return nil
 	}
 
@@ -25,8 +25,10 @@ func CalcLTVSensitivity(input InvestmentInput, ltvRange []float64) []LTVSensitiv
 
 	rows := make([]LTVSensitivityRow, 0, len(ltvRange))
 	for _, ltv := range ltvRange {
-		loanAmount := totalInvestment * ltv
-		equity := totalInvestment * (1 - ltv)
+		loanAmount := baseCost * ltv
+		loanFee := loanAmount * input.LoanFeeRate
+		totalInvestment := baseCost + loanFee
+		equity := totalInvestment - loanAmount
 
 		var annualDebtService float64
 		if input.LoanMethod == LoanMethodEqualPrincipal && input.LoanYears > 0 {
