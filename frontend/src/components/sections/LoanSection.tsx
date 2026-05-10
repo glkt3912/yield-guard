@@ -147,15 +147,20 @@ export function LoanSection({
               onChange={(e) => setNum("priceDeclineRate", fromPct(e.target.value))}
               error={fieldError("priceDeclineRate")}
             />
-            <Select
-              label="減価償却方式"
-              value={input.depreciationMethod ?? "straight-line"}
-              onChange={(e) => setStr("depreciationMethod", e.target.value)}
-              options={[
-                { value: "straight-line", label: "定額法" },
-                { value: "declining-balance", label: "定率法" },
-              ]}
-            />
+            <div className="flex flex-col gap-1">
+              <Select
+                label="減価償却方式"
+                value={input.depreciationMethod ?? "straight-line"}
+                onChange={(e) => setStr("depreciationMethod", e.target.value)}
+                options={[
+                  { value: "straight-line", label: "定額法" },
+                  { value: "declining-balance", label: "定率法" },
+                ]}
+              />
+              <p className="text-xs text-muted-foreground">
+                ※ 定率法は建物には適用不可（1998年4月以降取得）
+              </p>
+            </div>
           </div>
         </div>
       </div>
