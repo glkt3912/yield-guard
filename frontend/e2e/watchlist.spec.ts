@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { setupApiMocks } from "./helpers/routes";
-
-const ONBOARDING_KEY = "yield-guard:onboarded";
+import { ONBOARDING_KEY } from "./helpers/constants";
 
 test.beforeEach(async ({ page }) => {
   await setupApiMocks(page);
@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
-async function runQuickAnalysis(page: Parameters<typeof setupApiMocks>[0]) {
+async function runQuickAnalysis(page: Page) {
   await page.getByLabel("物件価格（土地＋建物の総額）").fill("1700");
   await page.getByLabel("想定月額賃料").fill("15");
   await page.getByText("シミュレーション実行").click();

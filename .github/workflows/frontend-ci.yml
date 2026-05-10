@@ -111,7 +111,7 @@ jobs:
       - name: Run E2E tests
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            npm run e2e:ci -- --grep "@p1|@p2"
+            npm run e2e:ci -- --grep "@p1[^0-9]|@p2[^0-9]"
           else
             npm run e2e:ci
           fi
@@ -129,7 +129,7 @@ jobs:
   deploy:
     name: Deploy to Vercel
     runs-on: ubuntu-24.04
-    needs: ci
+    needs: [ci, e2e]
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'pull_request' &&

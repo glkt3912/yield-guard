@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { setupApiMocks } from "./helpers/routes";
-
-const ONBOARDING_KEY = "yield-guard:onboarded";
+import { ONBOARDING_KEY } from "./helpers/constants";
 
 test("@p2 URL共有：分析後のURLを開くとフォームが復元され結果が表示される", async ({
   page,

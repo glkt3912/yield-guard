@@ -15,7 +15,12 @@ import rentDeclineHintFixture from "../fixtures/rent-decline-hint.json";
 import rentStatsFixture from "../fixtures/rent-stats.json";
 import areaDiscoveryFixture from "../fixtures/area-discovery.json";
 
-type Override = { status: number; body: unknown };
+type Override = {
+  status: number;
+  body: unknown;
+  /** POST リクエストボディをキャプチャするコールバック */
+  onRequest?: (body: unknown) => void;
+};
 export type ApiOverrides = Partial<{
   analyze: Override;
   simulate: Override;
@@ -46,6 +51,7 @@ function fulfill(override: Override | undefined, defaultBody: unknown) {
 export async function setupApiMocks(page: Page, overrides: ApiOverrides = {}): Promise<void> {
   await page.route("**/api/investment/analyze", async (route) => {
     if (route.request().method() === "POST") {
+      overrides.analyze?.onRequest?.(route.request().postDataJSON());
       await route.fulfill(fulfill(overrides.analyze, analyzeFixture));
     } else {
       await route.continue();
@@ -97,7 +103,11 @@ export async function setupApiMocks(page: Page, overrides: ApiOverrides = {}): P
   });
 
   await page.route("**/api/investment-score-heatmap**", async (route) => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: "[]",
+    });
   });
 
   await page.route("**/api/population-forecast**", async (route) => {
@@ -114,6 +124,15 @@ export async function setupApiMocks(page: Page, overrides: ApiOverrides = {}): P
 
   await page.route("**/api/area-discovery**", async (route) => {
     await route.fulfill(fulfill(overrides.areaDiscovery, areaDiscoveryFixture));
+  });
+
+  // geocode は住所入力テストが追加されるまで空レスポンスを返す
+  await page.route("**/api/geocode**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ lat: 35.658, lng: 139.701, locationType: "APPROXIMATE" }),
+    });
   });
 
   // 未登録エンドポイントの検知

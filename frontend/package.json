@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "e2e:ci": "playwright test",
+    "e2e:ci": "playwright test --reporter=list,html",
     "e2e:ui": "playwright test --ui"
   },
   "dependencies": {

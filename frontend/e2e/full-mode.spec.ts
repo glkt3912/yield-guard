@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { setupApiMocks } from "./helpers/routes";
-
-const ONBOARDING_KEY = "yield-guard:onboarded";
+import { ONBOARDING_KEY } from "./helpers/constants";
 
 test.beforeEach(async ({ page }) => {
   await setupApiMocks(page);
@@ -31,15 +30,15 @@ test("@p1 Full mode ハッピーパス：利回りとチャートが描画され
 test("@p1 Full mode：送信時にリクエストボディが正しく構成される", async ({ page }) => {
   let capturedBody: Record<string, unknown> | null = null;
 
-  await page.route("**/api/investment/analyze", async (route) => {
-    if (route.request().method() === "POST") {
-      capturedBody = route.request().postDataJSON() as Record<string, unknown>;
-    }
-    await route.fulfill({
+  // onRequest コールバックでボディをキャプチャ（二重登録を回避）
+  await setupApiMocks(page, {
+    analyze: {
       status: 200,
-      contentType: "application/json",
-      body: JSON.stringify((await import("./fixtures/analyze-response.json")).default),
-    });
+      body: (await import("./fixtures/analyze-response.json")).default,
+      onRequest: (body) => {
+        capturedBody = body as Record<string, unknown>;
+      },
+    },
   });
 
   await page.getByLabel("土地取得価格").fill("1200");
