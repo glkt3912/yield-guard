@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -99,19 +99,40 @@ function getRentDeclineHints(buildingAge: number): HintRow[] {
 // ---------------------------------------------------------------------------
 
 interface HintPopoverProps {
+  id: string;
   title: string;
   rows: HintRow[];
+  open: boolean;
+  onToggle: () => void;
 }
 
-function HintPopover({ title, rows }: HintPopoverProps) {
-  const [open, setOpen] = useState(false);
+function HintPopover({ title, rows, open, onToggle }: HintPopoverProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        onToggle();
+      }
+    }
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") onToggle();
+    }
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [open, onToggle]);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         type="button"
         aria-label={`${title}の市場平均ヒントを表示`}
-        onClick={() => setOpen((v) => !v)}
+        onClick={onToggle}
         className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors"
       >
         <HelpCircle className="h-3.5 w-3.5" />
@@ -142,7 +163,7 @@ function HintPopover({ title, rows }: HintPopoverProps) {
           </p>
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={onToggle}
             className="mt-1.5 text-muted-foreground hover:text-foreground underline underline-offset-2"
           >
             閉じる
@@ -362,6 +383,7 @@ export function PropertyInfoSection({
   setZoningType,
 }: PropertyInfoSectionProps) {
   const [showBuildingHelper, setShowBuildingHelper] = useState(false);
+  const [openHint, setOpenHint] = useState<"vacancy" | "expense" | "rentDecline" | null>(null);
 
   return (
     <>
@@ -452,8 +474,11 @@ export function PropertyInfoSection({
             </p>
             <div className="mt-1">
               <HintPopover
+                id="rentDecline"
                 title="賃料下落率の市場平均"
                 rows={getRentDeclineHints(input.buildingAge)}
+                open={openHint === "rentDecline"}
+                onToggle={() => setOpenHint(openHint === "rentDecline" ? null : "rentDecline")}
               />
             </div>
             <RentDeclineHintDisplay
@@ -533,7 +558,13 @@ export function PropertyInfoSection({
               error={fieldError("vacancyRate")}
             />
             <div className="mt-1">
-              <HintPopover title="空室率の市場平均" rows={getVacancyHints(input.buildingType)} />
+              <HintPopover
+                id="vacancy"
+                title="空室率の市場平均"
+                rows={getVacancyHints(input.buildingType)}
+                open={openHint === "vacancy"}
+                onToggle={() => setOpenHint(openHint === "vacancy" ? null : "vacancy")}
+              />
             </div>
           </div>
           <div>
@@ -549,8 +580,11 @@ export function PropertyInfoSection({
             />
             <div className="mt-1">
               <HintPopover
+                id="expense"
                 title="運営経費率の市場平均"
                 rows={getExpenseHints(input.buildingType)}
+                open={openHint === "expense"}
+                onToggle={() => setOpenHint(openHint === "expense" ? null : "expense")}
               />
             </div>
           </div>
