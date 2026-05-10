@@ -49,6 +49,15 @@ function fulfill(override: Override | undefined, defaultBody: unknown) {
 }
 
 export async function setupApiMocks(page: Page, overrides: ApiOverrides = {}): Promise<void> {
+  // SW 登録を無効化: navigator.serviceWorker.register を no-op にすることで
+  // production モードでも SW が起動せず、全 API リクエストが page.route() に届く
+  await page.addInitScript(() => {
+    if ("serviceWorker" in navigator) {
+      ServiceWorkerContainer.prototype.register = () =>
+        Promise.resolve({} as ServiceWorkerRegistration);
+    }
+  });
+
   // キャッチオールを最初に登録 → Playwright の LIFO 評価で最低優先度になる
   // 以降の特定ルートが常にキャッチオールより優先される
   await page.route("**/api/**", async (route) => {

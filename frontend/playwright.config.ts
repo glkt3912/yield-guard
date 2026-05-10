@@ -15,7 +15,6 @@ export default defineConfig({
     locale: "ja-JP",
     timezoneId: "Asia/Tokyo",
     storageState: { cookies: [], origins: [] },
-    serviceWorkers: "block",
   },
   projects: [
     {
@@ -24,10 +23,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev",
+    command: process.env.CI ? "npm run start" : "npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 60_000,
     env: {
       BACKEND_URL: "http://127.0.0.1:1",
     },
