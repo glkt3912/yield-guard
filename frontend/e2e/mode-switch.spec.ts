@@ -1,11 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { setupApiMocks } from "./helpers/routes";
+import { setupApiMocks, setSwTestMode } from "./helpers/routes";
 import { ONBOARDING_KEY } from "./helpers/constants";
 
 test.beforeEach(async ({ page }) => {
   await setupApiMocks(page);
   await page.addInitScript((key) => localStorage.setItem(key, "1"), ONBOARDING_KEY);
   await page.goto("/");
+  await setSwTestMode(page);
 });
 
 test("@p2 モード切替：Quick分析後に詳細へ切り替えると結果がクリアされバナーが表示される", async ({

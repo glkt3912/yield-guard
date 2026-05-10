@@ -48,16 +48,20 @@ function fulfill(override: Override | undefined, defaultBody: unknown) {
   };
 }
 
-export async function setupApiMocks(page: Page, overrides: ApiOverrides = {}): Promise<void> {
-  // SW 登録を無効化: navigator.serviceWorker.register を no-op にすることで
-  // production モードでも SW が起動せず、全 API リクエストが page.route() に届く
-  await page.addInitScript(() => {
-    if ("serviceWorker" in navigator) {
-      ServiceWorkerContainer.prototype.register = () =>
-        Promise.resolve({} as ServiceWorkerRegistration);
-    }
+/** page.goto() の後に呼ぶ。SW に TEST_MODE を通知し、GET /api/** を page.route() に委ねる。 */
+export async function setSwTestMode(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    if (!("serviceWorker" in navigator)) return;
+    // 最大 1s 待って SW が active になったら TEST_MODE を送る（dev モードなどで SW がない場合はタイムアウトを無視）
+    const timeout = new Promise<void>((resolve) => setTimeout(resolve, 1000));
+    const notify = navigator.serviceWorker.ready.then((reg) => {
+      reg.active?.postMessage({ type: "TEST_MODE" });
+    });
+    await Promise.race([notify, timeout]);
   });
+}
 
+export async function setupApiMocks(page: Page, overrides: ApiOverrides = {}): Promise<void> {
   // キャッチオールを最初に登録 → Playwright の LIFO 評価で最低優先度になる
   // 以降の特定ルートが常にキャッチオールより優先される
   await page.route("**/api/**", async (route) => {

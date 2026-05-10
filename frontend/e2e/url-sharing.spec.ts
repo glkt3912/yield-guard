@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { setupApiMocks } from "./helpers/routes";
+import { setupApiMocks, setSwTestMode } from "./helpers/routes";
 import { ONBOARDING_KEY } from "./helpers/constants";
 
 test("@p2 URL共有：分析後のURLを開くとフォームが復元され結果が表示される", async ({
@@ -9,6 +9,7 @@ test("@p2 URL共有：分析後のURLを開くとフォームが復元され結�
   await setupApiMocks(page);
   await page.addInitScript((key) => localStorage.setItem(key, "1"), ONBOARDING_KEY);
   await page.goto("/");
+  await setSwTestMode(page);
 
   await page.getByLabel("物件価格（土地＋建物の総額）").fill("1700");
   await page.getByLabel("想定月額賃料").fill("15");
@@ -29,6 +30,7 @@ test("@p2 URL共有：分析後のURLを開くとフォームが復元され結�
   await setupApiMocks(newPage);
   await newPage.addInitScript((key) => localStorage.setItem(key, "1"), ONBOARDING_KEY);
   await newPage.goto(sharedUrl);
+  await setSwTestMode(newPage);
 
   // フォームが復元されている（quickTotalPriceMan パラメータ経由）
   await expect(newPage.getByLabel("物件価格（土地＋建物の総額）")).toHaveValue("1700", {

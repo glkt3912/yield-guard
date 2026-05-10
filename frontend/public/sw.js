@@ -1,4 +1,9 @@
 const API_CACHE = 'api-cache';
+// E2E テスト時はページから TEST_MODE メッセージを受け取り、全リクエストをパススルーする
+let testMode = false;
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'TEST_MODE') testMode = true;
+});
 const STATIC_CACHE = 'static-cache-v1'; // new deploy → bump to v2, v3, ... to purge old entries
 const MAX_ENTRIES = 64;
 const MAX_AGE_SECONDS = 300;
@@ -26,6 +31,8 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   if (request.method !== 'GET') return;
+  // テストモード時は SW をバイパスして page.route() に委ねる
+  if (testMode) return;
   if (
     url.pathname.startsWith('/_next/static/') ||
     url.pathname.startsWith('/icons/') ||
