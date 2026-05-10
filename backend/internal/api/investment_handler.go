@@ -37,7 +37,7 @@ func (h *Handler) Analyze(c *gin.Context) {
 	// run Gemini in background; collect result within remaining context budget
 	aiCh := make(chan string, 1)
 	go func() {
-		aiCh <- h.summarizer.GenerateSummary(c.Request.Context(), result)
+		aiCh <- h.summarizer.GenerateSummary(c.Request.Context(), input, result)
 	}()
 	select {
 	case result.AISummary = <-aiCh:
