@@ -321,6 +321,8 @@ type InvestmentResult struct {
 	DSCR           float64             `json:"dscr"`           // 1年目の借入金償還余裕率（NOI/年間返済額）
 	LTVSensitivity []LTVSensitivityRow `json:"ltvSensitivity"` // LTV感度分析（50%〜90%）
 	TotalInterest  float64             `json:"totalInterest"`  // 保有期間の総支払利息
+
+	AISummary string `json:"aiSummary"` // Gemini 生成の投資サマリー（空文字 = 未生成）
 }
 
 // AcquisitionCostBreakdown は物件取得時の諸経費内訳
