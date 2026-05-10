@@ -16,6 +16,8 @@ import {
   TrendingDown,
   AlertTriangle,
   CheckCircle,
+  CheckCircle2,
+  XCircle,
   Users,
   ChevronDown,
   ChevronUp,
@@ -34,9 +36,32 @@ export function getDscrColorClass(dscr: number): string {
 }
 
 export function getDscrBadge(dscr: number): React.ReactElement {
-  if (dscr >= 1.2) return <Badge variant="success">安全</Badge>;
-  if (dscr >= 1.0) return <Badge variant="warning">注意</Badge>;
-  return <Badge variant="danger">危険</Badge>;
+  if (dscr >= 1.2)
+    return (
+      <Badge variant="success" className="flex items-center gap-1">
+        <CheckCircle2 className="h-3 w-3" />
+        安全
+      </Badge>
+    );
+  if (dscr >= 1.0)
+    return (
+      <Badge variant="warning" className="flex items-center gap-1">
+        <AlertTriangle className="h-3 w-3" />
+        注意
+      </Badge>
+    );
+  return (
+    <Badge variant="danger" className="flex items-center gap-1">
+      <XCircle className="h-3 w-3" />
+      危険
+    </Badge>
+  );
+}
+
+function getDscrIcon(dscr: number) {
+  if (dscr >= 1.2) return <CheckCircle2 className="h-3 w-3" />;
+  if (dscr >= 1.0) return <AlertTriangle className="h-3 w-3" />;
+  return <XCircle className="h-3 w-3" />;
 }
 
 /**
@@ -260,14 +285,8 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
             {stressScenarios.map((s, idx) => {
               const isCompound = s.label === "複合ストレス";
               const isExpanded = expandedScenario === idx;
-              const safeBadge =
-                s.dscr >= 1.2 ? (
-                  <Badge variant="success">安全</Badge>
-                ) : s.dscr >= 1.0 ? (
-                  <Badge variant="warning">注意</Badge>
-                ) : (
-                  <Badge variant="danger">危険</Badge>
-                );
+              const dscrIcon = getDscrIcon(s.dscr);
+              const safeBadge = getDscrBadge(s.dscr);
               return (
                 <div
                   key={s.label}
@@ -294,7 +313,10 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                   {isExpanded && (
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t px-3 pb-3 pt-2 text-sm">
                       <span className="text-muted-foreground">DSCR</span>
-                      <span className={`text-right font-medium ${getDscrColorClass(s.dscr)}`}>
+                      <span
+                        className={`flex items-center justify-end gap-1 font-medium ${getDscrColorClass(s.dscr)}`}
+                      >
+                        {dscrIcon}
                         {s.dscr.toFixed(2)}
                       </span>
                       <span className="text-muted-foreground">CF黒転年</span>
@@ -387,7 +409,8 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                   <th className="pb-2 text-right font-medium">金利△</th>
                   <th className="pb-2 text-right font-medium">空室△</th>
                   <th className="pb-2 text-right font-medium">
-                    <TermTooltip term="dscr">DSCR</TermTooltip>
+                    <TermTooltip term="dscr">DSCR</TermTooltip>{" "}
+                    <TermTooltip term="dscrThreshold">基準</TermTooltip>
                   </th>
                   <th className="pb-2 text-right font-medium">CF黒転年</th>
                   <th className="pb-2 text-right font-medium">判定</th>
@@ -397,14 +420,8 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                 {stressScenarios.map((s) => {
                   const isCompound = s.label === "複合ストレス";
                   const rowBg = isCompound ? "bg-orange-50" : "";
-                  const safeBadge =
-                    s.dscr >= 1.2 ? (
-                      <Badge variant="success">安全</Badge>
-                    ) : s.dscr >= 1.0 ? (
-                      <Badge variant="warning">注意</Badge>
-                    ) : (
-                      <Badge variant="danger">危険</Badge>
-                    );
+                  const safeBadge = getDscrBadge(s.dscr);
+                  const dscrIcon = getDscrIcon(s.dscr);
                   return (
                     <tr key={s.label} className={`border-b last:border-0 ${rowBg}`}>
                       <td className="py-2 font-medium">
@@ -422,7 +439,10 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                           : "±0"}
                       </td>
                       <td className={`py-2 text-right font-medium ${getDscrColorClass(s.dscr)}`}>
-                        {s.dscr.toFixed(2)}
+                        <span className="inline-flex items-center justify-end gap-1">
+                          {dscrIcon}
+                          {s.dscr.toFixed(2)}
+                        </span>
                       </td>
                       <td className="py-2 text-right text-muted-foreground">
                         {s.breakEvenYear === -1 ? "なし" : `${s.breakEvenYear}年目`}
@@ -499,8 +519,9 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                     <Users className="h-4 w-4" />
                     人口減少シナリオ（30年後推計）
                     {isDeficit && (
-                      <Badge variant="danger" className="ml-2">
-                        赤字転落 ⚠️
+                      <Badge variant="danger" className="ml-2 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        赤字転落
                       </Badge>
                     )}
                   </p>
@@ -521,8 +542,9 @@ export function YieldAnalysis({ result, input, populationForecast }: Props) {
                     </div>
                     <div className="text-muted-foreground">年間CF（概算）</div>
                     <div
-                      className={`text-right font-bold ${isDeficit ? "text-red-700" : "text-green-700"}`}
+                      className={`flex items-center justify-end gap-1 font-bold ${isDeficit ? "text-red-700" : "text-green-700"}`}
                     >
+                      {isDeficit && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
                       {formatMan(popCF)}
                     </div>
                   </div>

@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { InvestmentResult, LoanMethod } from "@/types/investment";
 import { formatMan, formatPct } from "@/lib/utils";
-import { AlertTriangle, CheckCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
 
 interface Props {
@@ -22,7 +22,8 @@ export function LoanOptimizationPanel({
 }: Props) {
   const dscr = result.dscr ?? 0;
   const hasLoan = (loanAmount ?? 0) > 0;
-  const dscrSafe = dscr >= 1.0;
+  const dscrSafe = dscr >= 1.2;
+  const dscrCaution = dscr >= 1.0 && dscr < 1.2;
 
   return (
     <Card>
@@ -59,6 +60,9 @@ export function LoanOptimizationPanel({
             <p className="text-xs text-muted-foreground mt-0.5">
               <TermTooltip term="noi">NOI</TermTooltip> ÷ 年間返済額（1年目）
             </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              <TermTooltip term="dscrThreshold">判定基準を確認</TermTooltip>
+            </p>
           </div>
           {!hasLoan ? (
             <Badge className="flex items-center gap-1 bg-gray-100 text-gray-500 border-gray-200 ml-auto">
@@ -66,12 +70,17 @@ export function LoanOptimizationPanel({
             </Badge>
           ) : dscrSafe ? (
             <Badge className="flex items-center gap-1 bg-green-100 text-green-700 border-green-200 ml-auto">
-              <CheckCircle className="h-3.5 w-3.5" />
-              安全（≥ 1.0）
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              安全（≥ 1.2）
+            </Badge>
+          ) : dscrCaution ? (
+            <Badge className="flex items-center gap-1 bg-yellow-100 text-yellow-700 border-yellow-200 ml-auto">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              注意（1.0〜1.2）
             </Badge>
           ) : (
             <Badge className="flex items-center gap-1 bg-red-100 text-red-700 border-red-200 ml-auto">
-              <AlertTriangle className="h-3.5 w-3.5" />
+              <XCircle className="h-3.5 w-3.5" />
               危険（&lt; 1.0）
             </Badge>
           )}
@@ -103,7 +112,20 @@ export function LoanOptimizationPanel({
                 </thead>
                 <tbody>
                   {result.ltvSensitivity.map((row) => {
-                    const safe = row.dscr >= 1.0;
+                    const rowDscrSafe = row.dscr >= 1.2;
+                    const rowDscrCaution = row.dscr >= 1.0 && row.dscr < 1.2;
+                    const dscrColorClass = rowDscrSafe
+                      ? "text-green-600 font-medium"
+                      : rowDscrCaution
+                        ? "text-yellow-600 font-medium"
+                        : "text-red-600 font-medium";
+                    const dscrIcon = rowDscrSafe ? (
+                      <CheckCircle2 className="h-3 w-3 shrink-0" />
+                    ) : rowDscrCaution ? (
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <XCircle className="h-3 w-3 shrink-0" />
+                    );
                     return (
                       <tr
                         key={row.ltv}
@@ -118,20 +140,25 @@ export function LoanOptimizationPanel({
                         </td>
                         <td className="text-right py-1.5 pr-3 tabular-nums">
                           <span
-                            className={
-                              safe ? "text-green-600 font-medium" : "text-red-600 font-medium"
-                            }
+                            className={`inline-flex items-center justify-end gap-1 ${dscrColorClass}`}
                           >
+                            {dscrIcon}
                             {row.dscr.toFixed(2)}
                           </span>
                         </td>
                         <td className="text-right py-1.5 pr-3 tabular-nums">
-                          <span className={row.annualCF >= 0 ? "" : "text-red-600"}>
+                          <span
+                            className={`inline-flex items-center justify-end gap-1 ${row.annualCF >= 0 ? "" : "text-red-600"}`}
+                          >
+                            {row.annualCF < 0 && <AlertTriangle className="h-3 w-3 shrink-0" />}
                             {formatMan(row.annualCF)}
                           </span>
                         </td>
                         <td className="text-right py-1.5 tabular-nums">
-                          <span className={row.cfYield >= 0 ? "" : "text-red-600"}>
+                          <span
+                            className={`inline-flex items-center justify-end gap-1 ${row.cfYield >= 0 ? "" : "text-red-600"}`}
+                          >
+                            {row.cfYield < 0 && <AlertTriangle className="h-3 w-3 shrink-0" />}
                             {formatPct(row.cfYield)}
                           </span>
                         </td>
