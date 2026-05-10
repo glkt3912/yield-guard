@@ -126,3 +126,32 @@ yield-guard/
 ## MCP servers
 
 `docs` server is configured in `.mcp.json` — use `mcp__docs__*` tools to read `docs/` design documents (overview, API reference, domain specs, etc.).
+
+## Claude Code operating rules
+
+These rules define the safety boundary for autonomous Claude Code operations.
+
+### Git operations
+
+- **Never push directly to `main`** — always work on a `feature/*` branch and open a PR
+- **Never force-push** (`git push --force`) — prevents overwriting remote history
+- **Never skip hooks** (`git commit --no-verify`) — pre-commit hooks must always run
+- **`git reset --hard` only on explicit instruction** — prevents loss of uncommitted work
+- All commits must be made on a `feature/*` branch
+
+### Secrets and environment variables
+
+- **Never read, display, or log the contents of `.env`** — `MLIT_API_KEY`, `APP_INTERNAL_API_KEY`, and other secrets must not appear in output
+- **Never stage or commit `.env`** — it is gitignored; do not force-add it
+- **Never include secret values in API responses, test output, or error messages**
+
+### Infrastructure
+
+- **`terraform destroy` and `terraform apply` only on explicit instruction** — prevents accidental deletion of Cloud Run services or IAM resources
+- **Never modify GCS bucket contents or Secret Manager secrets directly** — these are managed by Terraform
+- **`make docker-down` followed by data-destructive commands requires confirmation**
+
+### PR and external actions
+
+- **Never merge a PR without explicit instruction** — even if CI passes
+- **Never post comments to Issues or PRs without explicit instruction** — unintended external communication must be avoided
