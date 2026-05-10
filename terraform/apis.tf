@@ -17,6 +17,8 @@ locals {
     "pubsub.googleapis.com",
     "cloudfunctions.googleapis.com",
     "cloudbuild.googleapis.com",
+    # Required for Cloud Functions Gen2 Pub/Sub event triggers (Eventarc backend).
+    "eventarc.googleapis.com",
   ])
 }
 
