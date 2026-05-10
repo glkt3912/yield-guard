@@ -2864,3 +2864,55 @@ func TestTotalInterest(t *testing.T) {
 		t.Errorf("TotalInterest = %.2f, want Σ AnnualInterest = %.2f", result.TotalInterest, sumInterest)
 	}
 }
+
+// TestCalcStressScenario_IsSafe_DSCR_Between1And1_2 は、DSCR が 1.0〜1.2 の範囲（例: 1.05 前後）のとき
+// IsSafe=false になることを検証する。
+//
+// 設計: dscrSafeThreshold = 1.2 であるため、DSCR < 1.2 なら IsSafe は false になるべき。
+// BreakEvenYear が保有期間内に達成されていても、DSCR 閾値未達で IsSafe=false となることを確認する。
+//
+//	条件設定（IncomeTaxRate=0 で税引後 CF をシンプルに保つ）:
+//	  - LoanAmount    = 10,000,000 / rate=1.5% / 35年
+//	  - 年間返済額   ≈ 367,284
+//	  - MonthlyRent   = 40,000（VacancyRate=0, ExpenseRate=0.20）
+//	  - NOI           = 40,000×12×0.80 = 384,000
+//	  - DSCR          = 384,000 / 367,284 ≈ 1.045（1.0〜1.2 の範囲）
+//	  - afterTaxCF    = NOI - ADS = 384,000 - 367,284 > 0 → BreakEvenYear=1
+//	→ DSCR < 1.2 かつ BreakEvenYear=1 → IsSafe は false であるべき
+func TestCalcStressScenario_IsSafe_DSCR_Between1And1_2(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:      0,
+		BuildingCost:   10_000_000,
+		MonthlyRent:    40_000, // NOI ≈ 1.045 × 年間返済額 → DSCR 1.0〜1.2
+		VacancyRate:    0,
+		LoanAmount:     10_000_000,
+		AnnualLoanRate: 0.015,
+		LoanYears:      35,
+		ExpenseRate:    0.20,
+		IncomeTaxRate:  0, // 税なし → afterTaxCF = NOI - ADS > 0 でブレークイーン確実
+		HoldingYears:   10,
+		BuildingType:   BuildingTypeWood,
+	}
+
+	result := calcStressScenario(context.Background(), input, "DSCR 1.0〜1.2テスト", 0, 0)
+
+	// 前提確認: DSCR が 1.0 以上 1.2 未満の範囲にある
+	if result.DSCR < 1.0 {
+		t.Fatalf("前提条件未充足: DSCR=%.4f < 1.0 (入力値を見直してください)", result.DSCR)
+	}
+	if result.DSCR >= 1.2 {
+		t.Fatalf("前提条件未充足: DSCR=%.4f >= 1.2 (テストが DSCR 閾値境界を検証できていません)", result.DSCR)
+	}
+
+	// 前提確認: 保有期間内にブレークイーンしていること（DSCR のみが IsSafe=false の原因であることを確認）
+	if result.BreakEvenYear == -1 || result.BreakEvenYear > input.HoldingYears {
+		t.Fatalf("前提条件未充足: BreakEvenYear=%d (CF が保有期間内に黒転していないため DSCR 閾値の検証にならない)", result.BreakEvenYear)
+	}
+
+	// 主検証: DSCR < dscrSafeThreshold(1.2) → IsSafe は false
+	if result.IsSafe {
+		t.Errorf("IsSafe = true, want false: DSCR=%.4f は 1.0〜1.2 の範囲だが dscrSafeThreshold(1.2) 未達のため unsafe であるべき",
+			result.DSCR)
+	}
+	t.Logf("DSCR=%.4f, BreakEvenYear=%d, IsSafe=%v", result.DSCR, result.BreakEvenYear, result.IsSafe)
+}
