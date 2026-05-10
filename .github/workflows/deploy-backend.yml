@@ -71,6 +71,8 @@ jobs:
           key: trivy-db-${{ runner.os }}-${{ github.run_id }}
           restore-keys: trivy-db-${{ runner.os }}-
 
+      # AR Standard scanning was deprecated on 2025-07-31 (issue #457).
+      # Vulnerability scanning relies solely on Trivy; AR Advanced scanning is intentionally omitted.
       - name: Scan Docker image for vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
