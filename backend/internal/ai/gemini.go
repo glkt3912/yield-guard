@@ -16,7 +16,7 @@ import (
 
 const (
 	aiCacheTTL         = 24 * time.Hour
-	aiCallTimeout      = 3 * time.Second
+	aiCallTimeout      = 5 * time.Second
 	defaultGeminiModel = "gemini-2.5-flash"
 )
 
@@ -29,7 +29,8 @@ const systemPrompt = `あなたは日本の不動産投資専門アドバイザ�
 - 表面利回りはエリア・建物種別・築年数で判断が変わる
 - 木造（耐用年数22年）は減価償却が早くデッドクロスが来やすい
 - RC造・SRC造（耐用年数47年）は長期保有向き
-- 軽量鉄骨・重量鉄骨は耐用年数19〜34年で木造とRC造の中間的特性`
+- 軽量鉄骨・重量鉄骨は耐用年数19〜34年で木造とRC造の中間的特性
+回答は3〜4文の日本語のみで返すこと。`
 
 func envOrDefault(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
@@ -144,7 +145,7 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 	}
 
 	return fmt.Sprintf(
-		`以下の不動産投資シミュレーション結果を分析し、強み・リスク・推奨アクションを含む3〜4文の日本語で簡潔にまとめてください。専門家が初心者に説明するスタイルで、数値を引用しながら答えてください。
+		`以下の不動産投資シミュレーション結果を分析し、強み・リスク・推奨アクションを専門家が初心者に説明するスタイルで、数値を引用しながらまとめてください。
 
 【物件・ローン条件】
 - 建物種別: %s（築%s）
@@ -158,9 +159,7 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 - デッドクロス発生: %s
 - DSCR（借入金償還余裕率）: %.2f
 - 保有期間最終手残り: %.0f万円
-- NPV（正味現在価値）: %.0f万円
-
-回答は3〜4文の日本語のみで返してください。`,
+- NPV（正味現在価値）: %.0f万円`,
 		input.BuildingType,
 		buildingAge,
 		input.LoanAmount/10000,
