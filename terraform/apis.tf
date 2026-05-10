@@ -14,6 +14,9 @@ locals {
     # Managed explicitly to prevent unintended disablement after AR Standard scan deprecation (2025-07-31).
     # Vulnerability scanning is handled by Trivy in CI only; AR Advanced scanning is intentionally omitted.
     "containeranalysis.googleapis.com",
+    "pubsub.googleapis.com",
+    "cloudfunctions.googleapis.com",
+    "cloudbuild.googleapis.com",
   ])
 }
 
