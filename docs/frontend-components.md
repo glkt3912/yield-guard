@@ -178,6 +178,22 @@ const equityInvested = result.totalInvestment - input.loanAmount
 
 すべての入力グリッドは `grid-cols-1 sm:grid-cols-2`（または `sm:grid-cols-3`）で実装されており、モバイル（`sm` ブレークポイント未満）では縦1列に、タブレット以上では2〜3列に切り替わる。
 
+**Fullモードドラフト自動保存**（PR #477 で追加）:
+
+Fullモードの入力内容を `localStorage` にデバウンス保存し、次回アクセス時に復元できる。
+
+| 項目 | 仕様 |
+|------|------|
+| localStorage キー | `yield-guard:full-draft` |
+| 保存タイミング | `input` または `isQuick` が変化してから 500ms 後（デバウンス） |
+| 保存対象 | Fullモード時のみ。Quickモードでは保存しない |
+| 復元 | マウント時にドラフトが存在すれば `pendingDraft` にセットし、フォーム上部に黄色バナーを表示 |
+| バナー操作 | 「復元する」→ `input` にマージして適用 / 「破棄する」→ ドラフト削除 |
+| 自動クリア | シミュレーション実行時（`handleAnalyze` Fullモード分岐）にドラフトを削除 |
+| 安全性 | `JSON.parse` 後に `rateAdjustmentSchedule`・`capexSchedule` の `Array.isArray` チェックを実施し、破損データによるランタイムエラーを防止 |
+
+Quickモードの既存履歴（`yield-guard:quick-history`）とはキーが分離されており、相互に影響しない。
+
 **クライアントサイドバリデーション**:
 「シミュレーション実行」押下時に `validateQuick` または `validateFull` を実行し、エラーがあれば API を呼ばずフィールド直下にエラーメッセージを表示する。フィールドの値を変更するとそのフィールドのエラーをクリアする。
 
@@ -350,6 +366,29 @@ const allUrbanRisks: UrbanRisk[] = [
 - `result: InvestmentResult`
 - `input: InvestmentInput`
 - `populationForecast?: PopulationForecastResult | null`
+- `landPriceStats?: LandPriceStats | null` — 地価データ（未取得時は表示なし）
+
+**市場実勢利回りベンチマーク**（PR #478 で追加）:
+
+`landPriceStats` が有効な場合（`medianTsubo > 0` かつ `monthlyRent > 0`）、利回りゲージ直下に市場実勢利回りと判定バッジを表示する。
+
+```typescript
+// 実際の入力値から利回りを計算してエリア相場と比較
+const userYield = (input.monthlyRent * 12) / (input.landPrice + input.buildingCost)
+// calcYieldBenchmark に渡してエリア市場利回りと比較
+```
+
+`calcYieldBenchmark`（`frontend/src/lib/yieldBenchmark.ts`）が返す `judgment` に応じてバッジを表示:
+
+| `judgment` | バッジラベル | バッジ variant | 意味 |
+|-----------|------------|--------------|------|
+| `"realistic"` | 現実的 | `secondary`（グレー） | 実利回り ÷ 市場利回り ≦ 1.0 |
+| `"slightly-high"` | やや高め | `outline`（枠線） | 比率 1.0〜1.2。賃料設定の根拠要確認 |
+| `"high"` | 大幅に高め | `destructive`（赤） | 比率 > 1.2。エリア相場を大幅に上回る |
+
+バッジの `title` 属性に `judgmentLabel`（詳細説明文）を設定しており、ホバーで確認可能。
+
+`ResultsSection.tsx` が `comparison?.stats ?? null` を `landPriceStats` prop として渡す。地価データ未取得時は `null` が渡り、ベンチマークブロックは非表示。
 
 **ゲージ設計**:
 ```typescript
@@ -522,10 +561,34 @@ const breakEvenYear = yearlyResults.find(
 ```
 
 **グラフ仕様**:
-- 左軸: 税引後CF（棒グラフ）
-- 右軸: 累積CF（折れ線グラフ・黄色）
+- 左軸（`yAxisId="left"`）: 税引後CF（棒グラフ）
+- 右軸（`yAxisId="right"`）: 累積CF（折れ線グラフ・黄色 `#f59e0b`）
+- DSCR軸（`yAxisId="dscr"`）: 右外側に追加された第3軸。domain `[0, 3]`、紫色 `#8b5cf6`
 - デッドクロスゾーンの棒: `#fca5a5`（赤）、通常: `#60a5fa`（青）
 - 回収年の縦線: `#22c55e`（緑）
+
+**DSCR年次推移ライン**（PR #475 で追加）:
+
+年次 DSCR を `yAxisId="dscr"` の折れ線（紫・`#8b5cf6`）で重ね描画する。
+
+```typescript
+// YearlyResult に dscr フィールドがないため、フロントで計算
+// capex は NOI から除外（バックエンドの calcDSCR と同定義: NOI = annualRent - annualExpenses）
+DSCR: y.annualLoanPayment > 0
+  ? Math.round(((y.annualRent - y.annualExpenses) / y.annualLoanPayment) * 100) / 100
+  : null  // 無借入年は null → connectNulls でライン断絶
+```
+
+参照ライン:
+
+| ライン | y値 | 色 | 意味 |
+|--------|-----|-----|------|
+| 危険ライン | 1.0 | `#ef4444`（赤） | NOI = 返済額。余裕ゼロ |
+| 安全ライン | 1.2 | `#22c55e`（緑） | 業界慣行の最低安全基準 |
+
+Tooltip: DSCR は `"X.XX"` 形式（単位なし）で表示。CF 系は `"X万円"` 形式と別フォーマット。
+
+モバイルでは `<details>` 要素で説明文を初期折りたたみ表示。
 
 **出口戦略サマリー**（グラフ下部）:
 - `exitSalePrice`: 売却価格（NOI基準）
@@ -785,3 +848,61 @@ useEffect(() => {
 - `updateItem` でセルフ toggle OFF 時に `selfLaborHours = 0` にリセット（仮想人件費の誤計上を防止）
 - テーブル内の入力欄は共通クラス変数 `cellInput` で統一
 - `Dashboard.tsx` では投資シミュレーション結果セクションの末尾に `<RenovationPanel />` を常時表示
+
+---
+
+## Toast / Modal UI プリミティブ
+
+`frontend/src/components/ui/toast.tsx` / `frontend/src/components/ui/modal.tsx`
+
+PR #424 で追加。PR #476 でユニットテストを追加。
+
+### Toast
+
+アプリ全体に通知を表示する Context ベースのトーストシステム。`layout.tsx` の `<ToastProvider>` がアプリルートを包んでおり、任意のコンポーネントから `useToast()` で呼び出せる。
+
+```typescript
+const { toast } = useToast();
+toast({ message: "保存しました", variant: "success" });
+```
+
+| prop | 型 | 説明 |
+|------|----|------|
+| `message` | `string` | 表示するメッセージ |
+| `variant` | `"success" \| "warning" \| "danger"` | 色・アイコンを決定 |
+
+**挙動**:
+- `role="alert"` の要素として DOM に追加される（スクリーンリーダー対応）
+- 4000ms 後に自動消去（`setTimeout` で管理）
+- X ボタンクリックで即時消去
+- 複数トーストは `fixed top-4 right-4` に縦積みで表示
+- `useToast()` を `ToastProvider` 外で呼ぶと `Error` をスロー
+
+**テストカバレッジ** (`__tests__/toast.test.tsx`): 表示・自動消去（`vi.useFakeTimers`）・即時消去・複数表示・Provider外エラーの5ケース
+
+### Modal
+
+アクセシビリティ対応のモーダルダイアログ。
+
+```tsx
+<Modal open={isOpen} onClose={() => setIsOpen(false)} title="タイトル">
+  <p>コンテンツ</p>
+</Modal>
+```
+
+| prop | 型 | 説明 |
+|------|----|------|
+| `open` | `boolean` | `false` のとき `null` を返す（DOM に追加されない） |
+| `onClose` | `() => void` | 閉じる操作時のコールバック |
+| `title` | `string?` | ヘッダータイトル（省略時はヘッダー・閉じるボタン非表示） |
+
+**挙動**:
+- `open=true` で `role="dialog" aria-modal="true"` の要素をレンダリング
+- ESC キーで `onClose` を呼び出し（`document.addEventListener("keydown", ...)` でグローバル監視）
+- バックドロップ（`aria-hidden="true"`）クリックで `onClose`
+- フォーカストラップ: Tab / Shift+Tab でパネル内フォーカスがループ
+- `open=true` 時に `document.body.style.overflow = "hidden"`（スクロールロック）
+- 複数モーダル同時対応: `document.body.dataset.modalCount` で参照カウントを管理し、最後のモーダルが閉じるまでスクロールロックを維持
+
+**テストカバレッジ** (`__tests__/modal.test.tsx`): 表示/非表示・ESCキー・バックドロップ・スクロールロック・Tab/Shift+Tabフォーカストラップの9ケース
+
