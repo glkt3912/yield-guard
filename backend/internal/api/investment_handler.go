@@ -123,8 +123,22 @@ func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 	c.JSON(http.StatusOK, hint)
 }
 
+var validBuildingTypes = map[domain.BuildingType]struct{}{
+	domain.BuildingTypeWood:          {},
+	domain.BuildingTypeLightSteel:    {},
+	domain.BuildingTypeLightSteelThin: {},
+	domain.BuildingTypeHeavySteel:    {},
+	domain.BuildingTypeRC:            {},
+	domain.BuildingTypeSRC:           {},
+}
+
 // validateInvestmentInput は投資入力値の範囲チェックを行う
 func validateInvestmentInput(in domain.InvestmentInput) error {
+	if in.BuildingType != "" {
+		if _, ok := validBuildingTypes[in.BuildingType]; !ok {
+			return errors.New("buildingType が不正な値です")
+		}
+	}
 	if in.LandPrice <= 0 || in.LandPrice > 10_000_000_000 {
 		return errors.New("landPrice は 1〜100億円の範囲で指定してください")
 	}
