@@ -1,7 +1,19 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { YieldAnalysis } from "@/components/YieldAnalysis";
+import type { LandPriceStats } from "@/types/investment";
 import { makeInput, makeResult } from "./helpers";
+
+const makeLandPriceStats = (overrides?: Partial<LandPriceStats>): LandPriceStats => ({
+  count: 10,
+  averageTsubo: 200_000,
+  medianTsubo: 200_000,
+  minTsubo: 150_000,
+  maxTsubo: 250_000,
+  transactions: [],
+  lowDataWarning: false,
+  ...overrides,
+});
 
 describe("YieldAnalysis", () => {
   it("表面利回りの数値を表示する", () => {
@@ -39,5 +51,65 @@ describe("YieldAnalysis", () => {
     render(<YieldAnalysis result={result} input={makeInput()} />);
     expect(screen.getByText("8%超え達成！余裕度")).toBeInTheDocument();
     expect(screen.queryByText("8%達成のために必要な改善（いずれか一方）")).not.toBeInTheDocument();
+  });
+
+  it("landPriceStats が有効なとき市場想定利回りテキストが表示される", () => {
+    const result = makeResult({ isAboveYieldTarget: true, grossYield: 0.09 });
+    render(
+      <YieldAnalysis result={result} input={makeInput()} landPriceStats={makeLandPriceStats()} />
+    );
+    expect(screen.getByText(/市場想定利回り/)).toBeInTheDocument();
+  });
+
+  it("judgment が realistic のとき 現実的 Badge が表示される", () => {
+    // makeInput defaults: landPrice=10M, buildingCost=5M, monthlyRent=120K
+    // userYield = 120K*12 / 15M ≈ 0.096
+    // estimatedYieldTypical with medianTsubo=200K, area=100sqm ≈ 0.130
+    // ratio ≈ 0.737 → realistic
+    const result = makeResult({ isAboveYieldTarget: true, grossYield: 0.09 });
+    render(
+      <YieldAnalysis result={result} input={makeInput()} landPriceStats={makeLandPriceStats()} />
+    );
+    expect(screen.getByText("現実的")).toBeInTheDocument();
+  });
+
+  it("landPriceStats が null のとき市場想定利回りブロックが表示されない", () => {
+    const result = makeResult({ isAboveYieldTarget: true, grossYield: 0.09 });
+    render(<YieldAnalysis result={result} input={makeInput()} landPriceStats={null} />);
+    expect(screen.queryByText(/市場想定利回り/)).not.toBeInTheDocument();
+  });
+
+  it("judgment が slightly-high のとき 'やや高め' Badge が表示される", () => {
+    // userYield = (120_000*12) / (10_000_000+5_000_000) = 1_440_000/15_000_000 = 0.096
+    // medianTsubo=380_000, areaTsubo=100/3.30578≈30.25
+    // totalTypical = 380_000*30.25+5_000_000 ≈ 16_495_000
+    // estimatedYieldTypical ≈ 1_440_000/16_495_000 ≈ 0.0873
+    // ratio = 0.096/0.0873 ≈ 1.10 → "slightly-high"
+    const result = makeResult({ isAboveYieldTarget: true, grossYield: 0.09 });
+    render(
+      <YieldAnalysis
+        result={result}
+        input={makeInput()}
+        landPriceStats={makeLandPriceStats({ medianTsubo: 380_000 })}
+      />
+    );
+    expect(screen.getByText("やや高め")).toBeInTheDocument();
+  });
+
+  it("judgment が high のとき '大幅に高め' Badge が表示される", () => {
+    // userYield = 0.096
+    // medianTsubo=500_000, areaTsubo≈30.25
+    // totalTypical = 500_000*30.25+5_000_000 ≈ 20_125_000
+    // estimatedYieldTypical ≈ 1_440_000/20_125_000 ≈ 0.0716
+    // ratio = 0.096/0.0716 ≈ 1.34 → "high"
+    const result = makeResult({ isAboveYieldTarget: true, grossYield: 0.09 });
+    render(
+      <YieldAnalysis
+        result={result}
+        input={makeInput()}
+        landPriceStats={makeLandPriceStats({ medianTsubo: 500_000 })}
+      />
+    );
+    expect(screen.getByText("大幅に高め")).toBeInTheDocument();
   });
 });

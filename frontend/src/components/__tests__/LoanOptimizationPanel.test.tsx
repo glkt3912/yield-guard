@@ -50,7 +50,7 @@ const makeLTVRows = (): LTVSensitivityRow[] => [
 const WITH_LOAN = 13_000_000;
 
 describe("LoanOptimizationPanel", () => {
-  it("DSCR >= 1.0 のとき緑バッジ（安全）を表示する", () => {
+  it("DSCR >= 1.2 のとき緑バッジ（安全）を表示する", () => {
     const result = makeResult({ dscr: 1.2, ltvSensitivity: [] });
     render(
       <LoanOptimizationPanel
@@ -60,7 +60,7 @@ describe("LoanOptimizationPanel", () => {
         loanAmount={WITH_LOAN}
       />
     );
-    expect(screen.getByText("安全（≥ 1.0）")).toBeInTheDocument();
+    expect(screen.getByText("安全（≥ 1.2）")).toBeInTheDocument();
   });
 
   it("DSCR < 1.0 のとき赤バッジ（危険）を表示する", () => {
@@ -76,7 +76,7 @@ describe("LoanOptimizationPanel", () => {
     expect(screen.getByText("危険（< 1.0）")).toBeInTheDocument();
   });
 
-  it("DSCR = 1.0 ちょうどのとき安全バッジを表示する", () => {
+  it("DSCR = 1.0 ちょうどのとき注意バッジを表示する", () => {
     const result = makeResult({ dscr: 1.0, ltvSensitivity: [] });
     render(
       <LoanOptimizationPanel
@@ -86,7 +86,7 @@ describe("LoanOptimizationPanel", () => {
         loanAmount={WITH_LOAN}
       />
     );
-    expect(screen.getByText("安全（≥ 1.0）")).toBeInTheDocument();
+    expect(screen.getByText("注意（1.0〜1.2）")).toBeInTheDocument();
   });
 
   it("LTV 感度テーブルの5行が描画される", () => {
