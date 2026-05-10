@@ -23,6 +23,7 @@ jobs:
       contents: read
       id-token: write
       security-events: write
+      actions: write
 
     env:
       IMAGE: asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/yield-guard/backend
@@ -54,9 +55,11 @@ jobs:
           # mode=max: builder ステージ（Go コンパイル結果）を含む全レイヤーを保存。
           # min だと最終 alpine ステージのみでコンパイルが毎回走る。
           # --load: Trivy スキャンのためローカル Docker daemon にイメージを展開する。
+          # type=gha: GitHub Actions キャッシュを使用することで Artifact Registry への
+          # egress 転送（GCP→Azure）が発生しなくなりコストを削減できる。
           docker buildx build \
-            --cache-from "type=registry,ref=${{ env.IMAGE }}:buildcache" \
-            --cache-to   "type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max" \
+            --cache-from "type=gha,scope=${{ github.workflow }}" \
+            --cache-to   "type=gha,scope=${{ github.workflow }},mode=max" \
             --tag "${{ env.IMAGE }}:${{ env.DEPLOY_SHA }}" \
             --load \
             ./backend
