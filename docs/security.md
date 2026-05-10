@@ -154,6 +154,8 @@ echo -n "your-mlit-key" | gcloud secrets versions add mlit-api-key-prod --data-f
 
 `GEMINI_API_KEY` は [Google AI Studio](https://aistudio.google.com/app/apikey) で取得する。未設定時は AI サマリー機能が無効になるだけで他機能に影響しない。月 ~45,000 リクエストまで無料枠あり（`roles/aiplatform.user` 等の IAM ロール不要）。
 
+**プロンプトインジェクション対策**: `buildingType` はユーザー入力文字列を Gemini プロンプトに直接展開するフィールドのため、APIバウンダリで定義済み6種別のアローリストによるバリデーションを行っている（`domain.BuildingType.IsValid()`）。アローリスト外の値は `400 Bad Request` を返す。数値フィールドはフォーマット変換時に文字列注入が不可能なため対象外。
+
 ---
 
 ## Artifact Registry クリーンアップポリシー

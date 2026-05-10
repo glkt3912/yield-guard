@@ -37,7 +37,7 @@ func (h *Handler) Analyze(c *gin.Context) {
 	// run Gemini in background; collect result within remaining context budget
 	aiCh := make(chan string, 1)
 	go func() {
-		aiCh <- h.summarizer.GenerateSummary(c.Request.Context(), result)
+		aiCh <- h.summarizer.GenerateSummary(c.Request.Context(), input, result)
 	}()
 	select {
 	case result.AISummary = <-aiCh:
@@ -125,6 +125,9 @@ func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 
 // validateInvestmentInput は投資入力値の範囲チェックを行う
 func validateInvestmentInput(in domain.InvestmentInput) error {
+	if in.BuildingType != "" && !in.BuildingType.IsValid() {
+		return errors.New("buildingType が不正な値です")
+	}
 	if in.LandPrice <= 0 || in.LandPrice > 10_000_000_000 {
 		return errors.New("landPrice は 1〜100億円の範囲で指定してください")
 	}
