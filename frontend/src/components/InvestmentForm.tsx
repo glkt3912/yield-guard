@@ -235,6 +235,8 @@ export function InvestmentForm({
       const raw = typeof window !== "undefined" ? localStorage.getItem(FULL_DRAFT_KEY) : null;
       if (!raw) return;
       const draft = JSON.parse(raw) as Partial<InvestmentInput>;
+      if (!Array.isArray(draft.rateAdjustmentSchedule)) delete draft.rateAdjustmentSchedule;
+      if (!Array.isArray(draft.capexSchedule)) delete draft.capexSchedule;
       setPendingDraft(draft);
     } catch {
       // ignore
