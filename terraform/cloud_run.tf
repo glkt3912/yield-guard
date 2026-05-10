@@ -75,6 +75,16 @@ resource "google_cloud_run_v2_service" "backend" {
         }
       }
 
+      env {
+        name = "GEMINI_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.gemini_api_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+
       liveness_probe {
         http_get {
           path = "/health"
@@ -106,6 +116,7 @@ resource "google_cloud_run_v2_service" "backend" {
     google_secret_manager_secret_iam_member.mlit_accessor,
     google_secret_manager_secret_iam_member.internal_key_accessor,
     google_secret_manager_secret_iam_member.google_maps_accessor,
+    google_secret_manager_secret_iam_member.gemini_accessor,
     google_project_iam_member.backend_trace_agent,
     google_project_iam_member.backend_metric_writer,
   ]

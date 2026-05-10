@@ -36,3 +36,17 @@ resource "google_secret_manager_secret_version" "google_maps_api_key" {
   secret      = google_secret_manager_secret.google_maps_api_key.id
   secret_data = var.google_maps_api_key
 }
+
+resource "google_secret_manager_secret" "gemini_api_key" {
+  secret_id = "gemini-api-key-${var.env}"
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "gemini_api_key" {
+  count       = var.gemini_api_key != "" ? 1 : 0
+  secret      = google_secret_manager_secret.gemini_api_key.id
+  secret_data = var.gemini_api_key
+}

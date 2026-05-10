@@ -37,6 +37,13 @@ variable "google_maps_api_key" {
   sensitive   = true
 }
 
+variable "gemini_api_key" {
+  description = "Google AI Studio API key for Gemini AI investment summary"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "billing_account_id" {
   description = "GCP billing account ID for budget alerts (format: XXXXXX-XXXXXX-XXXXXX)"
   type        = string
