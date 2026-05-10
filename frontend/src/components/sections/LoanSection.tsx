@@ -160,6 +160,12 @@ export function LoanSection({
               <p className="text-xs text-muted-foreground">
                 ※ 定率法は建物には適用不可（1998年4月以降取得）
               </p>
+              {(input.depreciationMethod ?? "straight-line") === "declining-balance" && (
+                <p className="text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2 text-xs">
+                  ⚠️
+                  定率法は建物には適用できません。バックエンドでエラーになります。定額法を選択してください。
+                </p>
+              )}
             </div>
           </div>
         </div>
