@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 
 	monitoring "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric"
-	cloudtrace "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/metric"
@@ -17,7 +18,25 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
+
+// gcpAuthTransport injects a GCP OAuth2 Bearer token into every outbound request.
+type gcpAuthTransport struct {
+	base     http.RoundTripper
+	tokenSrc oauth2.TokenSource
+}
+
+func (t *gcpAuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	token, err := t.tokenSrc.Token()
+	if err != nil {
+		return nil, err
+	}
+	req = req.Clone(req.Context())
+	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	return t.base.RoundTrip(req)
+}
 
 // Package-level metric instruments. Initialised by Setup(); before that they are no-ops.
 var (
@@ -74,7 +93,21 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (func(contex
 	if gcpProject == "" {
 		traceExporter, err = stdouttrace.New(stdouttrace.WithPrettyPrint())
 	} else {
-		traceExporter, err = cloudtrace.New()
+		otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+		if otlpEndpoint == "" {
+			otlpEndpoint = "https://telemetry.googleapis.com/v1/traces"
+		}
+		var tokenSrc oauth2.TokenSource
+		tokenSrc, err = google.DefaultTokenSource(ctx, "https://www.googleapis.com/auth/trace.append")
+		if err != nil {
+			return nil, fmt.Errorf("GCP trace auth: %w", err)
+		}
+		traceExporter, err = otlptracehttp.New(ctx,
+			otlptracehttp.WithEndpointURL(otlpEndpoint),
+			otlptracehttp.WithHTTPClient(&http.Client{
+				Transport: &gcpAuthTransport{base: http.DefaultTransport, tokenSrc: tokenSrc},
+			}),
+		)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("trace exporter: %w", err)
