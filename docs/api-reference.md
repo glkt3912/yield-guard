@@ -394,6 +394,12 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
 { "error": "loanMethod は equal-payment または equal-principal を指定してください" }
 ```
 
+`buildingType` にアローリスト外の値を指定した場合もバリデーションエラー（プロンプトインジェクション防止のため、定義済み6種別のみ受け付ける）:
+
+```json
+{ "error": "buildingType が不正な値です" }
+```
+
 ### レスポンス: `InvestmentResult`
 
 ```json
@@ -436,7 +442,7 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
     { "ltv": 0.80, "equity": 3210000, "loanAmount": 12840000, "dscr": 0.90, "annualCF": -100000,"cfYield": -0.006 },
     { "ltv": 0.90, "equity": 1605000, "loanAmount": 14445000, "dscr": 0.60, "annualCF": -300000,"cfYield": -0.019 }
   ],
-  "aiSummary": "この物件は表面利回り9.0%と高水準ですが、デッドクロスが12年目と比較的早く訪れます。DSCR1.25は安全圏ですが、変動金利リスクに備えた出口戦略を10年以内に検討してください。"
+  "aiSummary": "木造（築10年）のため減価償却は残り12年で終了し、デッドクロスが12年目に到来する点に注意が必要です。DSCR1.25は安全域（1.2以上）を確保しており返済余力はありますが、金利上昇リスクに備えて10年以内の出口戦略を検討してください。表面利回り9.0%はエリア相場水準と比較して高めですが、木造の耐久性を踏まえると長期保有より中期売却が適切です。"
 }
 ```
 
