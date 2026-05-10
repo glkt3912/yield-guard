@@ -18,7 +18,7 @@ test.describe("Full mode ハッピーパス", () => {
     await page.getByLabel("ローン金額").fill("1600");
     await page.getByText("シミュレーション実行").click();
 
-    await expect(page.getByText("9.89%")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("9.89%").first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText("8.0%超え ✓")).toBeVisible();
 
     await expect(page.getByText("キャッシュフロー推移")).toBeVisible();
@@ -49,7 +49,7 @@ test.describe("Full mode リクエストボディ検証", () => {
     await page.getByLabel("想定月額賃料").fill("15");
     await page.getByText("シミュレーション実行").click();
 
-    await expect(page.getByText("9.89%")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("9.89%").first()).toBeVisible({ timeout: 10_000 });
 
     expect(capturedBody).not.toBeNull();
     expect(capturedBody!["landPrice"]).toBe(12000000);

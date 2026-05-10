@@ -13,7 +13,7 @@ test("@p2 URL共有：分析後のURLを開くとフォームが復元され結�
   await page.getByLabel("物件価格（土地＋建物の総額）").fill("1700");
   await page.getByLabel("想定月額賃料").fill("15");
   await page.getByText("シミュレーション実行").click();
-  await expect(page.getByText("9.89%")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("9.89%").first()).toBeVisible({ timeout: 10_000 });
 
   // Clipboard 権限を付与してシェアボタンをクリック
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -35,5 +35,5 @@ test("@p2 URL共有：分析後のURLを開くとフォームが復元され結�
     timeout: 5_000,
   });
   // 結果も自動的に表示される
-  await expect(newPage.getByText("9.89%")).toBeVisible({ timeout: 10_000 });
+  await expect(newPage.getByText("9.89%").first()).toBeVisible({ timeout: 10_000 });
 });

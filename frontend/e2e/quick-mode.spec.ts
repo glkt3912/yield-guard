@@ -14,9 +14,9 @@ test.describe("Quick mode ハッピーパス", () => {
     await page.getByLabel("想定月額賃料").fill("15");
     await page.getByText("シミュレーション実行").click();
 
-    await expect(page.getByText("9.89%")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("9.89%").first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText("8.0%超え ✓")).toBeVisible();
-    await expect(page.getByText("2.71")).toBeVisible();
+    await expect(page.getByText("2.71").first()).toBeVisible();
   });
 });
 
@@ -40,7 +40,7 @@ test.describe("Quick mode リクエストボディ検証", () => {
     await page.getByLabel("想定月額賃料").fill("15");
     await page.getByText("シミュレーション実行").click();
 
-    await expect(page.getByText("9.89%")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("9.89%").first()).toBeVisible({ timeout: 10_000 });
 
     expect(capturedBody).not.toBeNull();
     expect(capturedBody!["monthlyRent"]).toBe(150000);

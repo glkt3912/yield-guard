@@ -14,7 +14,7 @@ test("@p2 モード切替：Quick分析後に詳細へ切り替えると結果�
   await page.getByLabel("物件価格（土地＋建物の総額）").fill("1700");
   await page.getByLabel("想定月額賃料").fill("15");
   await page.getByText("シミュレーション実行").click();
-  await expect(page.getByText("9.89%")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("9.89%").first()).toBeVisible({ timeout: 10_000 });
 
   // 詳細モードに切り替え
   await page.getByRole("radio", { name: "詳細" }).click();
@@ -25,5 +25,5 @@ test("@p2 モード切替：Quick分析後に詳細へ切り替えると結果�
     )
   ).toBeVisible({ timeout: 3_000 });
   // 結果値が消えている
-  await expect(page.getByText("9.89%")).not.toBeVisible();
+  await expect(page.getByText("9.89%").first()).not.toBeVisible();
 });

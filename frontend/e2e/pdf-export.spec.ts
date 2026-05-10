@@ -12,7 +12,7 @@ test("@p3 PDF出力：ダウンロードイベントが発生しファイル名�
   await page.getByLabel("物件価格（土地＋建物の総額）").fill("1700");
   await page.getByLabel("想定月額賃料").fill("15");
   await page.getByText("シミュレーション実行").click();
-  await expect(page.getByText("9.89%")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("9.89%").first()).toBeVisible({ timeout: 10_000 });
 
   const downloadPromise = page.waitForEvent("download", { timeout: 30_000 });
   await page.getByText("PDFレポート出力").click();
