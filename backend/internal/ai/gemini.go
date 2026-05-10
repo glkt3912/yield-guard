@@ -9,15 +9,15 @@ import (
 	"sync"
 	"time"
 
-	"cloud.google.com/go/vertexai/genai"
+	"github.com/google/generative-ai-go/genai"
 	"github.com/yield-guard/backend/internal/domain"
+	"google.golang.org/api/option"
 )
 
 const (
 	aiCacheTTL         = 24 * time.Hour
 	aiCallTimeout      = 3 * time.Second
-	defaultGeminiModel = "gemini-2.5-flash-preview-04-17"
-	defaultGCPLocation = "us-central1"
+	defaultGeminiModel = "gemini-2.5-flash"
 )
 
 func envOrDefault(key, fallback string) string {
@@ -43,28 +43,26 @@ type cacheEntry struct {
 	expiresAt time.Time
 }
 
-// GeminiSummarizer calls Vertex AI Gemini to generate a Japanese investment summary.
+// GeminiSummarizer calls Google AI Studio Gemini to generate a Japanese investment summary.
 type GeminiSummarizer struct {
 	client  *genai.Client
-	project string
 	mu      sync.RWMutex
 	entries map[string]cacheEntry
 }
 
-// NewSummarizer returns a Gemini-backed Summarizer, or a no-op if GOOGLE_CLOUD_PROJECT is unset.
+// NewSummarizer returns a Gemini-backed Summarizer, or a no-op if GEMINI_API_KEY is unset.
 func NewSummarizer() Summarizer {
-	project := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	if project == "" {
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
 		return noopSummarizer{}
 	}
-	client, err := genai.NewClient(context.Background(), project, envOrDefault("VERTEX_AI_LOCATION", defaultGCPLocation))
+	client, err := genai.NewClient(context.Background(), option.WithAPIKey(apiKey))
 	if err != nil {
 		slog.Warn("Gemini init failed, AI summary disabled", "error", err)
 		return noopSummarizer{}
 	}
 	return &GeminiSummarizer{
 		client:  client,
-		project: project,
 		entries: make(map[string]cacheEntry),
 	}
 }
@@ -141,10 +139,9 @@ func buildPrompt(r domain.InvestmentResult) string {
 }
 
 func summaryKey(r domain.InvestmentResult) string {
-	// round to 2 decimal places to avoid floating-point drift
 	gross := math.Round(r.GrossYield*10000) / 10000
 	net := math.Round(r.NetYield*10000) / 10000
-	equity := math.Round(r.ExitTotalEquity / 1000) // nearest 1000 yen
+	equity := math.Round(r.ExitTotalEquity / 1000)
 	npv := math.Round(r.NPV / 1000)
 	dscr := math.Round(r.DSCR*100) / 100
 	return fmt.Sprintf("%g:%g:%d:%g:%g:%g", gross, net, r.DeadCrossYear, equity, npv, dscr)
