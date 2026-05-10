@@ -276,7 +276,7 @@ export function YieldAnalysis({ result, input, populationForecast, landPriceStat
                 title={yieldBenchmark.judgmentLabel}
                 variant={
                   yieldBenchmark.judgment === "realistic"
-                    ? "secondary"
+                    ? "outline"
                     : yieldBenchmark.judgment === "slightly-high"
                       ? "warning"
                       : "danger"
