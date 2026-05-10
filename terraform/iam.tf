@@ -94,6 +94,13 @@ resource "google_service_account_iam_member" "deployer_act_as_backend" {
   member             = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+resource "google_service_account_iam_member" "deployer_act_as_billing_stop" {
+  # deployer SA impersonates billing_stop SA when deploying Cloud Function.
+  service_account_id = google_service_account.billing_stop.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 resource "google_storage_bucket_iam_member" "deployer_tfstate_admin" {
   # storage.admin includes getIamPolicy/setIamPolicy needed for terraform apply.
   bucket = "yield-guard-tfstate"
@@ -113,6 +120,27 @@ resource "google_project_iam_member" "deployer_secret_manager_admin" {
   # Required to create and manage Secret Manager secrets via terraform apply.
   project = var.project_id
   role    = "roles/secretmanager.admin"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+resource "google_project_iam_member" "deployer_storage_admin" {
+  # Required to create GCS buckets (e.g. Cloud Function source bucket) via terraform apply.
+  project = var.project_id
+  role    = "roles/storage.admin"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+resource "google_project_iam_member" "deployer_pubsub_admin" {
+  # Required to create Pub/Sub topics and subscriptions via terraform apply.
+  project = var.project_id
+  role    = "roles/pubsub.admin"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+resource "google_project_iam_member" "deployer_cloudfunctions_admin" {
+  # Required to deploy Cloud Functions Gen2 via terraform apply.
+  project = var.project_id
+  role    = "roles/cloudfunctions.admin"
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 

@@ -37,13 +37,13 @@ func main() {
 		port = "8080"
 	}
 
-	mlitAPIKey := readSecret("/secrets/mlit-api-key", "MLIT_API_KEY")
+	mlitAPIKey := readSecret("/secrets/mlit-api-key/value", "MLIT_API_KEY")
 	if mlitAPIKey == "" {
 		slog.Error("MLIT_API_KEY is not set")
 		os.Exit(1)
 	}
 
-	appInternalAPIKey := readSecret("/secrets/app-internal-api-key", "APP_INTERNAL_API_KEY")
+	appInternalAPIKey := readSecret("/secrets/app-internal-api-key/value", "APP_INTERNAL_API_KEY")
 	if os.Getenv("GIN_MODE") == "release" && appInternalAPIKey == "" {
 		slog.Error("APP_INTERNAL_API_KEY must be set in production (GIN_MODE=release)")
 		os.Exit(1)
@@ -56,7 +56,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	googleMapsAPIKey := readSecret("/secrets/google-maps-api-key", "GOOGLE_MAPS_API_KEY")
+	googleMapsAPIKey := readSecret("/secrets/google-maps-api-key/value", "GOOGLE_MAPS_API_KEY")
 
 	mlitClient := mlit.NewClient(mlitAPIKey)
 	geocodeClient := api.NewGoogleGeocodeClient(googleMapsAPIKey)
