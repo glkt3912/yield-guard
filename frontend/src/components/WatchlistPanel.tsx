@@ -154,7 +154,13 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
                 />
                 {nameError && <p className="mt-0.5 text-xs text-destructive">{nameError}</p>}
               </div>
-              <Button type="button" size="sm" onClick={handleAdd} className="shrink-0" data-testid="watchlist-add-button">
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleAdd}
+                className="shrink-0"
+                data-testid="watchlist-add-button"
+              >
                 追加
               </Button>
             </div>
@@ -184,7 +190,12 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
                   {/* Left: name + meta */}
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-sm font-medium" data-testid="watchlist-item-name">{item.name}</span>
+                      <span
+                        className="truncate text-sm font-medium"
+                        data-testid="watchlist-item-name"
+                      >
+                        {item.name}
+                      </span>
                       <span
                         className={`inline-flex shrink-0 rounded px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[item.status]}`}
                       >
