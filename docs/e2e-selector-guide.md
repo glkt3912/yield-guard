@@ -245,4 +245,13 @@ API 待ちがある場合は明示的に指定すること。
 | `getByText("キャッシュフロー推移")` が見つからない | 実テキストは `"キャッシュフロー推移（35年）"` | `getByRole("heading", { name: /キャッシュフロー推移/ })` に変更 |
 | `getByText("渋谷区").toBeVisible()` が失敗 | `<option>` は Playwright では常に hidden | `waitFor({ state: "attached" })` に変更 |
 | GET モックが効かない（ECONNREFUSED） | SW が `page.route()` より先にリクエストを横取り | `serviceWorkers: "block"` を設定 |
-| watchlist「追加」ボタンが strict mode violation | 同名ボタンが3箇所存在 | `div.flex.gap-2` でスコープを絞る（→ 将来 `data-testid` で置き換え） |
+| watchlist「追加」ボタンが strict mode violation | 同名ボタンが3箇所存在 | `getByTestId("watchlist-add-button")` に変更（本 PR で対応済み） |
+
+---
+
+## 参考資料
+
+- [Locators](https://playwright.dev/docs/locators) — セレクタ優先順位・各ロケータ API の解説
+- [Best Practices](https://playwright.dev/docs/best-practices) — `data-testid` の使いどころ・安定したテストの書き方
+- [Assertions](https://playwright.dev/docs/test-assertions) — `toBeVisible` / `toBeHidden` / `toBeAttached` 等の Web-first assertion 一覧
+- [Network](https://playwright.dev/docs/network) — `page.route()` によるリクエスト傍受・`serviceWorkers` オプション
