@@ -15,6 +15,7 @@ export default defineConfig({
     locale: "ja-JP",
     timezoneId: "Asia/Tokyo",
     storageState: { cookies: [], origins: [] },
+    serviceWorkers: "block",
   },
   projects: [
     {
