@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-25T00:00:00",
+  "lastUpdated": "2026-05-12T00:00:00",
   "documents": [
     {
       "id": "overview",
@@ -1365,6 +1365,73 @@
         "setPropertyLng"
       ],
       "updatedAt": "2026-04-24"
+    },
+    {
+      "id": "e2e-selector-guide",
+      "path": "docs/e2e-selector-guide.md",
+      "title": "E2E セレクタ ガイドライン",
+      "description": "Playwright E2Eテスト追加・変更時のセレクタ選択指針。PR #513実装で得た知見と公式推奨を集約。セレクタ優先順位（getByRole>getByLabel>getByText>getByTestId>locator）、getByText の strict mode violation 回避（exact:true の必要性・テキスト分割要素の扱い）、CSS非表示要素（lg:hidden等）に対する toBeVisible/toBeHidden/toBeAttached の使い分け、<option>要素は常にhidden扱いのため selectOption+toHaveValue で検証、serviceWorkers:'block' が必須な理由（SW が page.route() をバイパスする仕組み・LIFOルール）、data-testid の付与基準と命名規則（付与が必要なケース/不要なケース）、waitForSelector より expect(locator).toBeVisible() を使う理由（自動リトライ）、タイムアウト目安（API呼び出し10秒/ローカルstate変更3-5秒）。PR #513で実際に発生した問題と対処一覧（MobileSummaryCard hidden・TermTooltip多重マッチ・<option>hidden・SW bypass等）を付録として収録。",
+      "tags": [
+        "E2E",
+        "テスト",
+        "Playwright",
+        "セレクタ",
+        "ベストプラクティス",
+        "getByRole",
+        "getByLabel",
+        "getByText",
+        "getByTestId",
+        "strict mode",
+        "Service Worker",
+        "serviceWorkers",
+        "page.route",
+        "data-testid",
+        "toBeVisible",
+        "toBeHidden",
+        "toBeAttached",
+        "lg:hidden",
+        "option",
+        "select",
+        "LIFO"
+      ],
+      "industry": [
+        "不動産",
+        "フィンテック"
+      ],
+      "topics": [
+        "getByRole",
+        "getByLabel",
+        "getByPlaceholder",
+        "getByText",
+        "getByTestId",
+        "locator",
+        "exact:true",
+        "strict mode violation",
+        "serviceWorkers:'block'",
+        "page.route",
+        "setupApiMocks",
+        "toBeVisible",
+        "toBeHidden",
+        "toBeAttached",
+        "toBeEnabled",
+        "toHaveValue",
+        "waitFor",
+        "selectOption",
+        "MobileSummaryCard",
+        "lg:hidden",
+        "TermTooltip",
+        "option",
+        "select",
+        "Service Worker",
+        "networkFirst",
+        "LIFO",
+        "data-testid",
+        "watchlist-add-button",
+        "watchlist-item-name",
+        "Web-first assertions",
+        "timeout"
+      ],
+      "updatedAt": "2026-05-12"
     }
   ]
 }
