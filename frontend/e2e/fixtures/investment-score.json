@@ -1,0 +1,12 @@
+{
+  "score": 72,
+  "rank": "B",
+  "label": "良好",
+  "components": {
+    "yieldScore": 85,
+    "populationScore": 70,
+    "ridershipScore": 80,
+    "hazardScore": 60,
+    "landPriceScore": 65
+  }
+}

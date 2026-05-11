@@ -2,7 +2,8 @@
         mlit-land-prices mlit-municipalities mlit-station-ridership mlit-population-forecast mlit-land-appraisals \
         mlit-urban-zoning mlit-liquefaction mlit-flood-hazard mlit-storm-hazard mlit-tsunami-hazard mlit-landslide-hazard \
         api-station-ridership api-estimate-ridership api-population-forecast api-land-appraisals api-investment-score \
-        integration integration-population integration-land-appraisals
+        integration integration-population integration-land-appraisals \
+        e2e e2e-ui e2e-report
 
 ## dev: バックエンド・フロントエンドの開発サーバーを起動
 dev:
@@ -61,12 +62,24 @@ logs:
 	  echo "Docker コンテナが起動していません。先に 'make docker-up' を実行してください。"; \
 	fi
 
-## test: 全テストを実行
+## test: 全ユニットテストを実行（E2E は make e2e で実行）
 test:
 	@echo "==> Backend tests"
 	cd backend && go test -race ./... -timeout 120s
-	@echo "==> Frontend tests"
+	@echo "==> Frontend unit tests"
 	cd frontend && npm test
+
+## e2e: フロントエンド E2E テスト実行 (Playwright / Chromium)
+e2e:
+	cd frontend && npm run e2e
+
+## e2e-ui: Playwright UI モードで E2E テストを起動
+e2e-ui:
+	cd frontend && npm run e2e:ui
+
+## e2e-report: 最後の Playwright レポートをブラウザで表示
+e2e-report:
+	cd frontend && npx playwright show-report playwright-report
 
 ## lint: 全lintを実行
 lint:
