@@ -20,7 +20,7 @@ test.describe("Full mode ハッピーパス", () => {
     await page.getByText("シミュレーション実行").click();
 
     await expect(page.getByText("9.89", { exact: true })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/8.*%超え/)).toBeVisible();
+    await expect(page.getByText("8%超え ✓", { exact: true })).toBeVisible({ timeout: 5_000 });
 
     await expect(page.getByText("キャッシュフロー推移")).toBeVisible();
     await expect(page.getByText("デッドクロス")).toBeVisible();

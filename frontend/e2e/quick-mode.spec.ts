@@ -16,7 +16,7 @@ test.describe("Quick mode ハッピーパス", () => {
     await page.getByText("シミュレーション実行").click();
 
     await expect(page.getByText("9.89", { exact: true })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/8.*%超え/)).toBeVisible();
+    await expect(page.getByText("8%超え ✓", { exact: true })).toBeVisible({ timeout: 5_000 });
     await expect(page.getByRole("cell", { name: "2.71" }).first()).toBeVisible();
   });
 });

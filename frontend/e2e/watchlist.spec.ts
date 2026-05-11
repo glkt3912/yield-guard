@@ -25,7 +25,7 @@ test("@p2 ウォッチリスト：追加するとトーストが表示される"
   await expect(page.getByText("「渋谷区テスト物件」をウォッチリストに追加しました")).toBeVisible({
     timeout: 5_000,
   });
-  await expect(page.getByText("渋谷区テスト物件")).toBeVisible();
+  await expect(page.getByText("渋谷区テスト物件", { exact: true })).toBeVisible({ timeout: 5_000 });
 });
 
 test("@p2 ウォッチリスト：ページリロード後もエントリが残る", async ({ page }) => {
@@ -33,9 +33,9 @@ test("@p2 ウォッチリスト：ページリロード後もエントリが残�
 
   await page.getByRole("textbox", { name: "物件名" }).fill("永続化テスト物件");
   await page.locator("div.flex.gap-2").filter({ has: page.locator('[aria-label="物件名"]') }).getByRole("button", { name: "追加" }).click();
-  await expect(page.getByText("永続化テスト物件")).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByText("永続化テスト物件", { exact: true })).toBeVisible({ timeout: 5_000 });
 
   // リロード後も localStorage から復元される（addInitScript は beforeEach で登録済み）
   await page.reload();
-  await expect(page.getByText("永続化テスト物件")).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByText("永続化テスト物件", { exact: true })).toBeVisible({ timeout: 5_000 });
 });

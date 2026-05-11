@@ -23,7 +23,7 @@ test("@p2 地価データ取得：市区町村を選択して相場取得ボタ�
   await page.getByText("相場データを取得").click();
 
   // land-price-compare フィクスチャの assessment が表示される
-  await expect(page.getByText("割高")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("割高", { exact: true })).toBeVisible({ timeout: 10_000 });
 });
 
 test("@p2 地価データ取得：市区町村ドロップダウンに選択肢が表示される", async ({ page }) => {
