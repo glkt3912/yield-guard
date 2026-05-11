@@ -9,6 +9,7 @@ import (
 
 	monitoring "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -76,17 +77,23 @@ func initInstruments(mp metric.MeterProvider) {
 // Otherwise stdout exporters are used (local dev).
 // Returns a shutdown function that must be deferred by the caller.
 func Setup(ctx context.Context, serviceName, serviceVersion string) (func(context.Context) error, error) {
+	gcpProject := os.Getenv("GOOGLE_CLOUD_PROJECT")
+
+	resAttrs := []attribute.KeyValue{
+		semconv.ServiceName(serviceName),
+		semconv.ServiceVersion(serviceVersion),
+	}
+	// telemetry.googleapis.com/v1/traces requires "gcp.project_id" in the OTel resource.
+	if gcpProject != "" {
+		resAttrs = append(resAttrs, attribute.String("gcp.project_id", gcpProject))
+	}
+
 	res, err := resource.New(ctx,
-		resource.WithAttributes(
-			semconv.ServiceName(serviceName),
-			semconv.ServiceVersion(serviceVersion),
-		),
+		resource.WithAttributes(resAttrs...),
 	)
 	if err != nil {
 		return nil, err
 	}
-
-	gcpProject := os.Getenv("GOOGLE_CLOUD_PROJECT")
 
 	// --- Trace exporter ---
 	var traceExporter sdktrace.SpanExporter
