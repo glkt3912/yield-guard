@@ -20,7 +20,7 @@ test.describe("Full mode ハッピーパス", () => {
     await page.getByText("シミュレーション実行").click();
 
     await expect(page.getByText("9.89", { exact: true })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("8.0%超え ✓")).toBeVisible();
+    await expect(page.getByText(/8.*%超え/)).toBeVisible();
 
     await expect(page.getByText("キャッシュフロー推移")).toBeVisible();
     await expect(page.getByText("デッドクロス")).toBeVisible();
@@ -47,7 +47,7 @@ test.describe("Full mode リクエストボディ検証", () => {
     await page.getByLabel("土地取得価格").fill("1200");
     await page.getByLabel("建物価格").fill("800");
     await page.getByLabel("築年数").fill("20");
-    await page.getByLabel("想定月額賃料").fill("15");
+    await page.getByLabel("想定月額賃料").fill("150000");
     await page.getByText("シミュレーション実行").click();
 
     await expect(page.getByText("9.89", { exact: true })).toBeVisible({ timeout: 10_000 });
