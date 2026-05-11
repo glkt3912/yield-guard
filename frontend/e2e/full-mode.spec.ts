@@ -22,8 +22,8 @@ test.describe("Full mode ハッピーパス", () => {
     await expect(page.getByText("9.89", { exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText("8%超え ✓", { exact: true })).toBeVisible({ timeout: 5_000 });
 
-    await expect(page.getByText("キャッシュフロー推移", { exact: true })).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText("デッドクロス", { exact: true })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole("heading", { name: /キャッシュフロー推移/ })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole("heading", { name: /デッドクロス/ })).toBeVisible({ timeout: 5_000 });
   });
 });
 
