@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import analyzeFixture from "./fixtures/analyze-response.json";
 import { setupApiMocks } from "./helpers/routes";
 import { ONBOARDING_KEY } from "./helpers/constants";
 
@@ -18,7 +19,7 @@ test.describe("Full mode ハッピーパス", () => {
     await page.getByLabel("ローン金額").fill("1600");
     await page.getByText("シミュレーション実行").click();
 
-    await expect(page.getByText("9.89%").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("9.89", { exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText("8.0%超え ✓")).toBeVisible();
 
     await expect(page.getByText("キャッシュフロー推移")).toBeVisible();
@@ -33,7 +34,7 @@ test.describe("Full mode リクエストボディ検証", () => {
     await setupApiMocks(page, {
       analyze: {
         status: 200,
-        body: (await import("./fixtures/analyze-response.json")).default,
+        body: analyzeFixture,
         onRequest: (body) => {
           capturedBody = body as Record<string, unknown>;
         },
@@ -49,7 +50,7 @@ test.describe("Full mode リクエストボディ検証", () => {
     await page.getByLabel("想定月額賃料").fill("15");
     await page.getByText("シミュレーション実行").click();
 
-    await expect(page.getByText("9.89%").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("9.89", { exact: true })).toBeVisible({ timeout: 10_000 });
 
     expect(capturedBody).not.toBeNull();
     expect(capturedBody!["landPrice"]).toBe(12000000);
