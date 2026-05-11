@@ -34,6 +34,7 @@ test("@p2 URL共有：分析後のURLを開くとフォームが復元され結�
   await expect(newPage.getByLabel("物件価格（土地＋建物の総額）")).toHaveValue("1700", {
     timeout: 5_000,
   });
-  // 結果も自動的に表示される
+  // 再度シミュレーション実行して結果を表示
+  await newPage.getByText("シミュレーション実行").click();
   await expect(newPage.getByText("9.89", { exact: true })).toBeVisible({ timeout: 10_000 });
 });

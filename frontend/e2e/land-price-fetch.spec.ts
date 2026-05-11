@@ -12,12 +12,14 @@ test.beforeEach(async ({ page }) => {
 test("@p2 地価データ取得：市区町村を選択して相場取得ボタンを押すと比較結果が表示される", async ({
   page,
 }) => {
-  // 都道府県を選択（東京都）
   await page.getByLabel("都道府県").selectOption("13");
-  // 市区町村ドロップダウンが埋まるのを待つ
-  await expect(page.getByText("渋谷区")).toBeVisible({ timeout: 5_000 });
+  // <option> elements are not "visible"; wait for DOM attachment after mock returns
+  await page.locator("option", { hasText: "渋谷区" }).first().waitFor({ state: "attached", timeout: 5_000 });
+  // Select 渋谷区 via the select that contains the option
+  await page
+    .locator("select", { has: page.locator("option", { hasText: "渋谷区" }) })
+    .selectOption({ label: "渋谷区" });
 
-  // 「相場データを取得」ボタンをクリック
   await page.getByText("相場データを取得").click();
 
   // land-price-compare フィクスチャの assessment が表示される
@@ -27,6 +29,6 @@ test("@p2 地価データ取得：市区町村を選択して相場取得ボタ�
 test("@p2 地価データ取得：市区町村ドロップダウンに選択肢が表示される", async ({ page }) => {
   await page.getByLabel("都道府県").selectOption("13");
 
-  await expect(page.getByText("千代田区")).toBeVisible({ timeout: 5_000 });
-  await expect(page.getByText("渋谷区")).toBeVisible();
+  await page.locator("option", { hasText: "千代田区" }).first().waitFor({ state: "attached", timeout: 5_000 });
+  await page.locator("option", { hasText: "渋谷区" }).first().waitFor({ state: "attached" });
 });
