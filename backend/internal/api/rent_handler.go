@@ -35,6 +35,12 @@ func (h *Handler) GetRentStats(c *gin.Context) {
 	now := time.Now()
 	toYear := now.Year()
 	fromYear := toYear - 2
+	currentQuarter := (int(now.Month())-1)/3 + 1
+	toQuarter := currentQuarter - 1
+	if toQuarter == 0 {
+		toQuarter = 4
+		toYear--
+	}
 
 	q := mlit.LandPriceQuery{
 		Area:      area,
@@ -42,7 +48,7 @@ func (h *Handler) GetRentStats(c *gin.Context) {
 		Year:      fromYear,
 		Quarter:   1,
 		ToYear:    toYear,
-		ToQuarter: 4,
+		ToQuarter: toQuarter,
 	}
 
 	result, err := h.mlitClient.FetchRentStats(c.Request.Context(), q, areaSqm)
