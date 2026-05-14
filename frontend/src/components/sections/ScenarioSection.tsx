@@ -306,7 +306,7 @@ export function ScenarioSection({
               suffix="万円"
               min="0"
               step="1"
-              placeholder="例: 家賃1ヶ月分"
+              placeholder="例: 10"
               value={input.adFee != null ? String(Math.round(input.adFee / 10_000)) : ""}
               onChange={(e) => setNum("adFee", (parseFloat(e.target.value) || 0) * 10_000)}
             />
