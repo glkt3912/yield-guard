@@ -543,7 +543,7 @@ export function PropertyInfoSection({
               onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
               error={fieldError("monthlyRent")}
             />
-            <RentValidationHint monthlyRent={input.monthlyRent} area={area} city={city} />
+            <RentValidationHint monthlyRent={input.monthlyRent} area={area} city={city} landArea={input.landArea} />
           </div>
           <Input
             label="現況空室率"

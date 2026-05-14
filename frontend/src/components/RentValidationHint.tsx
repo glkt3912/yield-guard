@@ -6,6 +6,7 @@ interface RentValidationHintProps {
   monthlyRent: number;
   area: string;
   city: string;
+  landArea?: number;
 }
 
 function badge(
@@ -44,11 +45,12 @@ function badge(
   }
 }
 
-export function RentValidationHint({ monthlyRent, area, city }: RentValidationHintProps) {
+export function RentValidationHint({ monthlyRent, area, city, landArea }: RentValidationHintProps) {
   const { stats, deviationPct, level, loading, lowSample } = useRentValidation(
     monthlyRent,
     area,
-    city
+    city,
+    landArea
   );
 
   if (loading) {
