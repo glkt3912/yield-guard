@@ -41,7 +41,7 @@ export function StatusSummary({ result }: StatusSummaryProps) {
 
   const grossYieldPct = (result.grossYield * 100).toFixed(2);
   const dscrVal = result.dscr.toFixed(2);
-  const dcYear = result.deadCrossYear > 0 ? `Y${result.deadCrossYear}年目` : "なし";
+  const dcYear = result.deadCrossYear > 0 ? `${result.deadCrossYear}年目` : "なし";
 
   return (
     <div

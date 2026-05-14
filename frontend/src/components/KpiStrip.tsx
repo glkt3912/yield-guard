@@ -41,21 +41,20 @@ function KpiCell({ icon, label, value, sub, subPositive }: KpiCellProps) {
 export function KpiStrip({ result, yieldTarget = 0.08 }: KpiStripProps) {
   const grossYieldPct = result.grossYield * 100;
   const yieldDiff = grossYieldPct - yieldTarget * 100;
-  const yieldDiffStr =
-    (yieldDiff >= 0 ? "+" : "") + yieldDiff.toFixed(2) + "pp vs 目標";
+  const yieldDiffStr = (yieldDiff >= 0 ? "+" : "") + yieldDiff.toFixed(2) + "pp vs 目標";
 
   const dscrDiff = result.dscr - 1.0;
   const dscrDiffStr = (dscrDiff >= 0 ? "+" : "") + dscrDiff.toFixed(2) + " vs 1.0";
 
+  // deadCrossYear: -1 or 0 = なし、正の数 = 発生年
   const dcYear = result.deadCrossYear > 0 ? `${result.deadCrossYear}年目` : "なし";
   const dcSub =
     result.deadCrossYear > 0
-      ? result.deadCrossYear >= 10
+      ? result.deadCrossYear > 10
         ? "保有期間内は安全圏"
         : "保有期間内に発生"
       : "デッドクロスなし";
-  const dcPositive =
-    result.deadCrossYear <= 0 || result.deadCrossYear >= 10;
+  const dcPositive = result.deadCrossYear <= 0 || result.deadCrossYear > 10;
 
   const equityMan = Math.round(result.exitTotalEquity / 10_000);
   const equityStr =
@@ -66,10 +65,7 @@ export function KpiStrip({ result, yieldTarget = 0.08 }: KpiStripProps) {
   const equitySub = equityPositive ? "出口時プラス" : "出口時マイナス";
 
   return (
-    <div
-      aria-label="KPIサマリ"
-      className="grid grid-cols-2 gap-3 sm:grid-cols-4"
-    >
+    <div aria-label="KPIサマリ" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <KpiCell
         icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden />}
         label="表面利回り"
