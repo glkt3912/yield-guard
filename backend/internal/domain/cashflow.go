@@ -56,7 +56,7 @@ func initYieldParams(input InvestmentInput) yieldParams {
 	if totalInvestment > 0 {
 		grossYield = (input.MonthlyRent * 12) / totalInvestment
 	}
-	annualExpenses := annualRent * input.ExpenseRate
+	annualExpenses := annualRent * calcEffectiveExpenseRate(input)
 	netYield := 0.0
 	if totalInvestment > 0 {
 		netYield = (annualRent - annualExpenses) / totalInvestment
@@ -101,6 +101,16 @@ func initDepreciationParams(input InvestmentInput) depreciationParams {
 		bookValue:          bookValue,
 		decliningRate:      decliningRate,
 	}
+}
+
+// calcEffectiveExpenseRate は詳細経費フィールドの合計が 0 より大きければその合計を返し、
+// 合計が 0 の場合は従来の ExpenseRate にフォールバックする（後方互換）。
+func calcEffectiveExpenseRate(input InvestmentInput) float64 {
+	detail := input.ManagementFeeRate + input.RepairReserveRate + input.InsuranceFeeRate + input.OtherExpenseRate
+	if detail > 0 {
+		return detail
+	}
+	return input.ExpenseRate
 }
 
 // capexForYear は CapexSchedule から指定年の修繕費合計を返す。
@@ -191,7 +201,8 @@ func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanPara
 		}
 
 		yearAnnualRent := rentForYear(yp.annualRent, input.RentDeclineRate, input.RentGrowthRate, input.RentGrowthYears, y)
-		yearExpenses := yearAnnualRent*input.ExpenseRate + input.AnnualPropertyTax
+		yearExpenseRate := calcEffectiveExpenseRate(input) * math.Pow(1+input.ExpenseInflationRate, float64(y))
+		yearExpenses := yearAnnualRent*yearExpenseRate + input.AnnualPropertyTax
 
 		// 減価償却（定額法または定率法）
 		var yearDepreciation float64
@@ -381,7 +392,8 @@ func calcStressScenario(ctx context.Context, base InvestmentInput, label string,
 		// RentGrowthRate を考慮した楽観シナリオはメインの Analyze() で rentForYear() が担う。
 		declineFactor := math.Pow(1-in.RentDeclineRate, float64(y-1))
 		yearRent := annualRent * declineFactor
-		yearExpenses := yearRent*in.ExpenseRate + in.AnnualPropertyTax
+		stressExpenseRate := calcEffectiveExpenseRate(in) * math.Pow(1+in.ExpenseInflationRate, float64(y-1))
+		yearExpenses := yearRent*stressExpenseRate + in.AnnualPropertyTax
 		yearNOI := yearRent - yearExpenses
 
 		if yearLoan > 0 {
