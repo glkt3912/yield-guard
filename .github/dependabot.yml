@@ -40,6 +40,7 @@ updates:
           - "minor"
           - "patch"
     ignore:
+      # メジャーアップは破壊的変更リスクが高いため個別で判断する
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react"
