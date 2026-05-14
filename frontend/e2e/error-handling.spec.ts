@@ -65,6 +65,17 @@ test("@p3 ハザードアラートバナー：洪水リスクが表示される"
   await page.getByLabel("建物価格").fill("800");
   await page.getByLabel("築年数").fill("20");
   await page.getByLabel("想定月額賃料").fill("15");
+
+  // 住所から座標を取得してハザード情報フェッチをトリガー
+  // （hazard API は座標設定済みの「相場データを取得」経由でのみ呼ばれる）
+  await page.getByLabel("物件住所").fill("東京都渋谷区");
+  await page.getByRole("button", { name: "座標を取得" }).click();
+  await expect(page.getByText("座標を取得しました")).toBeVisible({ timeout: 10_000 });
+
+  const hazardResponse = page.waitForResponse("**/api/hazard**");
+  await page.getByRole("button", { name: "相場データを取得" }).click();
+  await hazardResponse;
+
   await page.getByText("シミュレーション実行").click();
 
   const hazardBanner = page.getByRole("alert", { name: "ハザード警告" });
