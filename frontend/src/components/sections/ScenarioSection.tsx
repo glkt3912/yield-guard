@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Plus, Trash2 } from "lucide-react";
 import type { InvestmentInput, RateAdjustment } from "@/types/investment";
+import { formatPct } from "@/lib/utils";
 
 const ALL_EXIT_YEARS = [5, 10, 15, 20] as const;
-import { formatPct } from "@/lib/utils";
 
 export interface RateScheduleHandlers {
   enabled: boolean;
