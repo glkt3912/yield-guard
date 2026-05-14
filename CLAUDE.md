@@ -114,9 +114,16 @@ yield-guard/
 
 ## Conventions
 
-- **Branch**: `feature/<content>` (no issue numbers)
+- **Branch**: prefix by type, no issue numbers
+  - `feature/<content>` — new features
+  - `fix/<content>` — bug fixes
+  - `chore/<content>` — dependency updates, config changes
+  - `docs/<content>` — documentation only
+  - `refactor/<content>` — refactoring without behavior change
+  - `test/<content>` — test additions or fixes
 - **Commits**: English, small logical units (types / logic / API / frontend / tests)
 - **PR body**: Japanese, follow `.github/pull_request_template.md`
+- **PR title**: Japanese
 - **No `Co-Authored-By`** lines in commits
 
 ### UI デザインルール
@@ -152,7 +159,7 @@ These rules define the safety boundary for autonomous Claude Code operations.
 
 ### Git operations
 
-- **Never push directly to `main`** — always work on a `feature/*` branch and open a PR
+- **Never push directly to `main`** — always work on a typed branch (`feature/*`, `fix/*`, `chore/*`, `docs/*`, `refactor/*`, `test/*`) and open a PR
 - **Never force-push** (`git push --force`) — prevents overwriting remote history
 - **Never skip hooks** (`git commit --no-verify`) — pre-commit hooks must always run
 - **`git reset --hard` only on explicit instruction** — prevents loss of uncommitted work
