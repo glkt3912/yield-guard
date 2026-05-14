@@ -601,6 +601,98 @@ export function PropertyInfoSection({
               />
             </div>
           </div>
+          <div className="col-span-full">
+            <details className="group">
+              <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground select-none">
+                ▶ 詳細経費入力（任意）— 管理委託費・修繕積立・保険料を個別設定
+              </summary>
+              <div className="mt-2 pl-2 border-l-2 border-muted space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  合計が 0%
+                  の場合は上記「運営経費率」を使用します。設定した場合は合計値が優先されます。
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="管理委託費率"
+                    type="number"
+                    inputMode="decimal"
+                    suffix="%"
+                    step="0.1"
+                    min="0"
+                    max="30"
+                    value={toPct(input.managementFeeRate ?? 0, 1)}
+                    onChange={(e) => setNum("managementFeeRate", fromPct(e.target.value))}
+                  />
+                  <Input
+                    label="修繕積立費率"
+                    type="number"
+                    inputMode="decimal"
+                    suffix="%"
+                    step="0.1"
+                    min="0"
+                    max="20"
+                    value={toPct(input.repairReserveRate ?? 0, 1)}
+                    onChange={(e) => setNum("repairReserveRate", fromPct(e.target.value))}
+                  />
+                  <Input
+                    label="保険料率"
+                    type="number"
+                    inputMode="decimal"
+                    suffix="%"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    value={toPct(input.insuranceFeeRate ?? 0, 1)}
+                    onChange={(e) => setNum("insuranceFeeRate", fromPct(e.target.value))}
+                  />
+                  <Input
+                    label="その他経費率"
+                    type="number"
+                    inputMode="decimal"
+                    suffix="%"
+                    step="0.1"
+                    min="0"
+                    max="20"
+                    value={toPct(input.otherExpenseRate ?? 0, 1)}
+                    onChange={(e) => setNum("otherExpenseRate", fromPct(e.target.value))}
+                  />
+                </div>
+                {/* 合計経費率の表示と検証 */}
+                {(() => {
+                  const total =
+                    (input.managementFeeRate ?? 0) +
+                    (input.repairReserveRate ?? 0) +
+                    (input.insuranceFeeRate ?? 0) +
+                    (input.otherExpenseRate ?? 0);
+                  const totalPct = total * 100;
+                  return (
+                    <>
+                      <p
+                        className={`text-xs font-medium ${totalPct > 50 ? "text-amber-600" : "text-foreground"}`}
+                      >
+                        合計経費率: {toPct(total, 1)}%
+                        {totalPct > 50 && " ⚠ 合計が50%を超えています"}
+                      </p>
+                    </>
+                  );
+                })()}
+                <Input
+                  label="経費インフレ率/年"
+                  type="number"
+                  inputMode="decimal"
+                  suffix="%"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value={toPct(input.expenseInflationRate ?? 0, 1)}
+                  onChange={(e) => setNum("expenseInflationRate", fromPct(e.target.value))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  経費インフレ率: 毎年この割合だけ実質経費が増加します（例: 1% = 物価上昇分）
+                </p>
+              </div>
+            </details>
+          </div>
           <Input
             label="諸経費率"
             type="number"

@@ -97,6 +97,12 @@ export interface InvestmentInput {
   rentGrowthYears?: number; // 賃料上昇が続く年数
   loanFeeRate?: number; // 融資諸費用率（保証料・登記費用等の合算）
   exitYears?: number[]; // 複数保有年数の出口比較（省略時 = [5, 10, 15, 20]）
+  // 詳細経費内訳（全てoptional・後方互換）。合計 > 0 の場合は expenseRate より優先される。
+  managementFeeRate?: number; // 管理委託費率 (例: 0.05 = 5%)
+  repairReserveRate?: number; // 修繕積立費率 (例: 0.01 = 1%)
+  insuranceFeeRate?: number; // 保険料率 (例: 0.003 = 0.3%)
+  otherExpenseRate?: number; // その他経費率 (例: 0.005 = 0.5%)
+  expenseInflationRate?: number; // 経費インフレ率/年 (例: 0.01 = 1%)
 }
 
 export interface CapexEvent {
