@@ -5,10 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { InvestmentScoreResult, ScoreItem } from "@/types/investment";
-import {
-  getRidershipRecommend,
-  getPopulationVacancyDelta,
-} from "@/lib/vacancyRateRecommender";
+import { getRidershipRecommend, getPopulationVacancyDelta } from "@/lib/vacancyRateRecommender";
 
 interface Props {
   score: InvestmentScoreResult;
@@ -63,9 +60,7 @@ export function InvestmentScoreCard({ score, populationChangeRate, onApplyRecomm
   // Compute recommendation from ridership score (0–20 range from backend)
   const recommend = getRidershipRecommend(breakdown.ridership.score);
   const popDelta =
-    populationChangeRate !== undefined
-      ? getPopulationVacancyDelta(populationChangeRate)
-      : 0;
+    populationChangeRate !== undefined ? getPopulationVacancyDelta(populationChangeRate) : 0;
   const recommendedVacancy = recommend.vacancyRate + popDelta;
   const recommendedRentDecline = recommend.rentDeclineRate;
 
