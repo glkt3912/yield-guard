@@ -76,9 +76,11 @@ func CalcEqualPrincipalPayment(principal, annualRate float64, months, month int)
 	return monthlyPrincipal + monthlyInterest
 }
 
-// resolveRateForYear はスケジュールと基準金利から指定年の適用金利を返す。
+// resolveRateForYear は基準金利・変動スケジュール・ストレスΔから指定年の実効金利を返す。
+// 変動金利スケジュールが設定されている場合、スケジュールで指定された絶対金利に
+// rateDelta（ストレスΔ）を上乗せした値が実効金利となる。
+// 例: schedule で 3年目から 2.0%、rateDelta=+1% → 3年目以降の実効金利は 3.0%
 // schedule が空の場合は baseRate + rateDelta を返す（固定金利）。
-// rateDelta はストレステスト用の追加オフセット。
 func resolveRateForYear(baseRate, rateDelta float64, schedule []RateAdjustment, year int) float64 {
 	rate := baseRate
 	for _, adj := range schedule {

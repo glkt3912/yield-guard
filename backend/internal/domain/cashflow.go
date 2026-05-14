@@ -298,7 +298,10 @@ func calcAllStressScenarios(ctx context.Context, input InvestmentInput) []Stress
 	return scenarioResults
 }
 
-// calcStressScenario は指定の金利・空室率オフセットでシナリオ計算を行い結果を返す
+// calcStressScenario は指定の金利・空室率オフセットでシナリオ計算を行い結果を返す。
+// RateAdjustmentSchedule が設定されている場合、rateDelta はスケジュール金利にも
+// 上乗せされる（resolveRateForYear の仕様による）。
+// この挙動はフロントエンドの注釈で明示されている。
 func calcStressScenario(ctx context.Context, base InvestmentInput, label string, rateDelta, vacDelta float64) StressScenarioResult {
 	_, span := otel.Tracer(domainTracerName).Start(ctx, "domain.calcStressScenario")
 	defer span.End()
