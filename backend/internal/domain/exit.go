@@ -163,19 +163,24 @@ func calcMultiExitComparison(input InvestmentInput, yearly []YearlyResult, accum
 		// 累積CF（税引後）
 		cumCF := exitYear.CumulativeCashFlow
 
+		// ExitYieldTarget が 0 以下の場合は売却価格が未定義になるためスキップ
+		if input.ExitYieldTarget <= 0 {
+			continue
+		}
+
 		// 売却価格: NOI / exitYieldTarget（その年のNOIを使用）
 		noi := exitYear.AnnualRent - exitYear.AnnualExpenses
-		salePrice := 0.0
-		if input.ExitYieldTarget > 0 {
-			salePrice = noi / input.ExitYieldTarget
-		}
+		salePrice := noi / input.ExitYieldTarget
 
 		// 売却費用（仲介手数料上限・消費税込み）
 		sellExpenses := (salePrice*0.03 + 60_000) * 1.10
 
-		// 建物の税務上の簿価（年次シミュレーション時点の累計減価償却は accumulatedDepreciation が保有年数終了時点）
-		// 各年の簿価は比例按分で近似する
-		bookValueBuilding := input.BuildingCost - accumulatedDepreciation
+		// 建物の税務上の簿価: yearly[0..yr-1] の AnnualDepreciation を積算
+		yearDepreciation := 0.0
+		for i := 0; i < yr; i++ {
+			yearDepreciation += yearly[i].AnnualDepreciation
+		}
+		bookValueBuilding := input.BuildingCost - yearDepreciation
 		if bookValueBuilding < 0 {
 			bookValueBuilding = 0
 		}
