@@ -118,7 +118,6 @@ yield-guard/
 - **Commits**: English, small logical units (types / logic / API / frontend / tests)
 - **PR body**: Japanese, follow `.github/pull_request_template.md`
 - **No `Co-Authored-By`** lines in commits
-- **色は単独の情報源にしない** — Badge/アイコンを必ず併記する（WCAG 1.4.1）
 
 ### UI デザインルール
 
