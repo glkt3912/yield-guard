@@ -214,7 +214,12 @@ export function QuickModeForm({
                 onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
                 error={fieldError("monthlyRent")}
               />
-              <RentValidationHint monthlyRent={input.monthlyRent} area={area} city={city} landArea={input.landArea} />
+              <RentValidationHint
+                monthlyRent={input.monthlyRent}
+                area={area}
+                city={city}
+                landArea={input.landArea}
+              />
             </div>
             <div className="space-y-2">
               <label className="flex items-center gap-2 cursor-pointer select-none min-h-[44px]">
