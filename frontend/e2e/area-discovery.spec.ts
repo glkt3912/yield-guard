@@ -9,7 +9,11 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("@p3 エリア探索タブ：市区町村ランキングが表示される", async ({ page }) => {
-  await page.getByText("エリアを探す").click();
+  // タブを切り替え（最初の「エリアを探す」はタブボタン）
+  await page.getByRole("button", { name: "エリアを探す" }).first().click();
+
+  // AreaDiscovery 内の検索ボタンをクリックしてデータを取得
+  await page.getByRole("button", { name: "エリアを探す" }).last().click();
 
   // フィクスチャの市区町村データが表示される
   await expect(page.getByText("前橋市")).toBeVisible({ timeout: 10_000 });
