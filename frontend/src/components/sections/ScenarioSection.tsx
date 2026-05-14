@@ -27,16 +27,24 @@ export interface CapexHandlers {
 interface ScenarioSectionProps {
   input: InvestmentInput;
   setNum: (key: keyof InvestmentInput, value: number) => void;
-  setField: (key: keyof InvestmentInput, value: unknown) => void;
+  setField: <K extends keyof InvestmentInput>(key: K, value: InvestmentInput[K]) => void;
   rateSchedule: RateScheduleHandlers;
   capex: CapexHandlers;
 }
 
-export function ScenarioSection({ input, setNum, setField, rateSchedule, capex }: ScenarioSectionProps) {
+export function ScenarioSection({
+  input,
+  setNum,
+  setField,
+  rateSchedule,
+  capex,
+}: ScenarioSectionProps) {
   const exitYears: number[] = input.exitYears ?? [...ALL_EXIT_YEARS];
 
   function toggleExitYear(yr: number) {
-    const next = exitYears.includes(yr) ? exitYears.filter((y) => y !== yr) : [...exitYears, yr].sort((a, b) => a - b);
+    const next = exitYears.includes(yr)
+      ? exitYears.filter((y) => y !== yr)
+      : [...exitYears, yr].sort((a, b) => a - b);
     setField("exitYears", next.length > 0 ? next : [...ALL_EXIT_YEARS]);
   }
   return (

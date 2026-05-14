@@ -204,7 +204,7 @@ export function InvestmentForm({
   const setStr = (key: keyof InvestmentInput, value: string) =>
     setInput((prev) => ({ ...prev, [key]: value }));
 
-  const setField = (key: keyof InvestmentInput, value: unknown) =>
+  const setField = <K extends keyof InvestmentInput>(key: K, value: InvestmentInput[K]) =>
     setInput((prev) => ({ ...prev, [key]: value }));
 
   useEffect(() => {

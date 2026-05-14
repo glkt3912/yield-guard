@@ -35,7 +35,7 @@ interface FullModeFormProps {
   input: InvestmentInput;
   setNum: (key: keyof InvestmentInput, value: number) => void;
   setStr: (key: keyof InvestmentInput, value: string) => void;
-  setField: (key: keyof InvestmentInput, value: unknown) => void;
+  setField: <K extends keyof InvestmentInput>(key: K, value: InvestmentInput[K]) => void;
   fieldError: (key: string) => string | undefined;
   rentHint: RentDeclineHint | null;
   rentHintLoading: boolean;
