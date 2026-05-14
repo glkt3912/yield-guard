@@ -2916,3 +2916,87 @@ func TestCalcStressScenario_IsSafe_DSCR_Between1And1_2(t *testing.T) {
 	}
 	t.Logf("DSCR=%.4f, BreakEvenYear=%d, IsSafe=%v", result.DSCR, result.BreakEvenYear, result.IsSafe)
 }
+
+// TestAnalyze_LossOffsetting は不動産所得が赤字の場合に損益通算（税還付）が
+// キャッシュフローに反映されることを検証する（所得税法69条）。
+// 設計: 高額建物（木造・大きな減価償却）＋高金利ローンで taxableIncome を意図的に負にする。
+func TestAnalyze_LossOffsetting(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    20_000_000, // 木造22年 → 年間償却 ≈ 909,090円
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     80_000,    // 低家賃: 年間実効賃料 ≈ 912,000円
+		VacancyRate:     0.05,
+		LoanAmount:      15_000_000,
+		AnnualLoanRate:  0.03,      // 高金利: 1年目利息 ≈ 450,000円
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,      // 経費 ≈ 182,400円
+		IncomeTaxRate:   0.33,
+		HoldingYears:    5,
+		ExitYieldTarget: 0.06,
+	}
+	// 1年目の taxableIncome ≈ 912,000 - 450,000 - 909,090 - 182,400 ≈ -629,490（赤字）
+
+	result := Analyze(context.Background(), input)
+	if len(result.YearlyResults) == 0 {
+		t.Fatal("YearlyResults is empty")
+	}
+
+	yr := result.YearlyResults[0]
+
+	// 損益通算: 課税所得が負 → IncomeTax も負（税還付）
+	if yr.IncomeTax >= 0 {
+		t.Errorf("IncomeTax = %.0f, want negative (tax refund from loss offsetting)", yr.IncomeTax)
+	}
+
+	// 税還付分だけ AfterTaxCashFlow > CashFlow になる
+	if yr.AfterTaxCashFlow <= yr.CashFlow {
+		t.Errorf("AfterTaxCashFlow (%.0f) <= CashFlow (%.0f): loss offsetting should increase after-tax CF",
+			yr.AfterTaxCashFlow, yr.CashFlow)
+	}
+
+	// 税還付額の近似検証: |IncomeTax| ≈ |taxableIncome| * IncomeTaxRate
+	// taxableIncome は直接取得できないため AfterTaxCashFlow - CashFlow = -incomeTax で逆算
+	taxBenefit := yr.AfterTaxCashFlow - yr.CashFlow
+	if taxBenefit <= 0 {
+		t.Errorf("tax benefit (AfterTaxCF - CashFlow) = %.0f, want positive", taxBenefit)
+	}
+	t.Logf("IncomeTax=%.0f, CashFlow=%.0f, AfterTaxCashFlow=%.0f, TaxBenefit=%.0f",
+		yr.IncomeTax, yr.CashFlow, yr.AfterTaxCashFlow, taxBenefit)
+}
+
+// TestAnalyze_LossOffsetting_ZeroRate は IncomeTaxRate=0 のとき
+// 課税所得が負でも税効果がゼロになることを検証する。
+func TestAnalyze_LossOffsetting_ZeroRate(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    20_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     80_000,
+		VacancyRate:     0.05,
+		LoanAmount:      15_000_000,
+		AnnualLoanRate:  0.03,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeWood,
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0, // 税率ゼロ → 損益通算効果なし
+		HoldingYears:    5,
+		ExitYieldTarget: 0.06,
+	}
+
+	result := Analyze(context.Background(), input)
+	if len(result.YearlyResults) == 0 {
+		t.Fatal("YearlyResults is empty")
+	}
+
+	yr := result.YearlyResults[0]
+
+	if yr.IncomeTax != 0 {
+		t.Errorf("IncomeTax = %.0f, want 0 when IncomeTaxRate=0", yr.IncomeTax)
+	}
+	if yr.AfterTaxCashFlow != yr.CashFlow {
+		t.Errorf("AfterTaxCashFlow (%.0f) != CashFlow (%.0f) when IncomeTaxRate=0",
+			yr.AfterTaxCashFlow, yr.CashFlow)
+	}
+}
