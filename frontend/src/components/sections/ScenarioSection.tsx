@@ -50,6 +50,7 @@ export function ScenarioSection({ input, setNum, rateSchedule, capex }: Scenario
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
               指定年以降の適用金利（絶対値）を設定します。最大3ステップ。
+              ストレステストを併用する場合、ストレスΔはここで設定した金利にも加算されます。
             </p>
             {input.rateAdjustmentSchedule.map((step, i) => {
               const maxYear = input.loanYears || 35;
@@ -140,9 +141,10 @@ export function ScenarioSection({ input, setNum, rateSchedule, capex }: Scenario
           onChange={(v) => setNum("loanRateDelta", v)}
           formatValue={(v) => `+${formatPct(v)}`}
         />
-        {rateSchedule.enabled && input.loanRateDelta > 0 && (
-          <p className="text-xs text-muted-foreground">
-            金利上昇分はスケジュール後の金利にも上乗せされます
+        {rateSchedule.enabled && input.rateAdjustmentSchedule && input.rateAdjustmentSchedule.length > 0 && (
+          <p className="text-xs text-amber-600 mt-1">
+            ※ 変動金利スケジュールが設定されています。
+            ストレスΔはスケジュールの各年金利にも上乗せされます。
           </p>
         )}
       </div>
