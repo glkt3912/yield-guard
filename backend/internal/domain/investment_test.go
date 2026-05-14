@@ -2951,7 +2951,6 @@ func TestCalcStressScenario_IsSafe_DSCR_Between1And1_2(t *testing.T) {
 	t.Logf("DSCR=%.4f, BreakEvenYear=%d, IsSafe=%v", result.DSCR, result.BreakEvenYear, result.IsSafe)
 }
 
-<<<<<<< HEAD
 // TestAnalyze_LossOffsetting は不動産所得が赤字の場合に損益通算（税還付）が
 // キャッシュフローに反映されることを検証する（所得税法69条）。
 // 設計: 高額建物（木造・大きな減価償却）＋高金利ローンで taxableIncome を意図的に負にする。
