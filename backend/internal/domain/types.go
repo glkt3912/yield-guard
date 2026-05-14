@@ -138,6 +138,13 @@ type InvestmentInput struct {
 
 	// 複数保有年数の出口比較: 空の場合は [5, 10, 15, 20] をデフォルトとして使用
 	ExitYears []int `json:"exitYears,omitempty"`
+
+	// 詳細経費内訳（全てoptional・後方互換）。合計 > 0 の場合は ExpenseRate より優先される。
+	ManagementFeeRate    float64 `json:"managementFeeRate,omitempty"`    // 管理委託費率 (例: 0.05 = 5%)
+	RepairReserveRate    float64 `json:"repairReserveRate,omitempty"`    // 修繕積立費率 (例: 0.01 = 1%)
+	InsuranceFeeRate     float64 `json:"insuranceFeeRate,omitempty"`     // 保険料率 (例: 0.003 = 0.3%)
+	OtherExpenseRate     float64 `json:"otherExpenseRate,omitempty"`     // その他経費率 (例: 0.005 = 0.5%)
+	ExpenseInflationRate float64 `json:"expenseInflationRate,omitempty"` // 経費インフレ率/年 (例: 0.01 = 1%)
 }
 
 // CapexEvent は大規模修繕費の発生スケジュール1件
