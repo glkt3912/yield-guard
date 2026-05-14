@@ -66,9 +66,9 @@ const METRIC_ROWS: MetricRow[] = [
     key: "deadCrossYear",
     format: (v) => {
       if (v == null) return "-";
-      return Number(v) === -1 ? "なし（最良）" : `${Number(v)}年目`;
+      return Number(v) <= 0 ? "なし（最良）" : `${Number(v)}年目`;
     },
-    best: "max", // -1 (none) is best, larger deadCrossYear means it arrives later = better
+    best: "max", // <=0 (none) is best, larger deadCrossYear means it arrives later = better
   },
   {
     label: "NPV",
@@ -85,8 +85,8 @@ function getValue(metrics: WatchlistMetrics | undefined, key: MetricKey): number
   if (!metrics) return null;
   const v = metrics[key];
   if (v == null) return null;
-  // deadCrossYear: -1 means "no dead cross" which is the best possible value
-  if (key === "deadCrossYear" && Number(v) === -1) return Infinity;
+  // deadCrossYear: -1 or 0 means "no dead cross" which is the best possible value
+  if (key === "deadCrossYear" && Number(v) <= 0) return Infinity;
   return Number(v);
 }
 
