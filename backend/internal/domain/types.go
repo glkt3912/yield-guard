@@ -135,6 +135,9 @@ type InvestmentInput struct {
 
 	// 融資諸費用率（保証料・登記費用等の合算）。LoanAmount × LoanFeeRate を取得費に加算。
 	LoanFeeRate float64 `json:"loanFeeRate,omitempty"`
+
+	// 複数保有年数の出口比較: 空の場合は [5, 10, 15, 20] をデフォルトとして使用
+	ExitYears []int `json:"exitYears,omitempty"`
 }
 
 // CapexEvent は大規模修繕費の発生スケジュール1件
@@ -305,6 +308,19 @@ type LTVSensitivityRow struct {
 	CFYield    float64 `json:"cfYield"`    // CF利回り（AnnualCF / 総投資額）
 }
 
+// MultiExitRow は複数保有年数の出口比較テーブルの1行
+type MultiExitRow struct {
+	Year            int      `json:"year"`
+	SalePrice       float64  `json:"salePrice"`
+	TransferTaxRate float64  `json:"transferTaxRate"`
+	TransferTax     float64  `json:"transferTax"`
+	RemainingLoan   float64  `json:"remainingLoan"`
+	CumulativeCF    float64  `json:"cumulativeCf"`
+	ExitEquity      float64  `json:"exitEquity"`
+	IRR             *float64 `json:"irr,omitempty"`
+	IsShortTermWarn bool     `json:"isShortTermWarn"`
+}
+
 // InvestmentResult は収支シミュレーションの結果
 type InvestmentResult struct {
 	TotalInvestment float64 `json:"totalInvestment"` // 総投資額（土地+建物+諸経費）
@@ -340,6 +356,8 @@ type InvestmentResult struct {
 	TotalInterest  float64             `json:"totalInterest"`  // 保有期間の総支払利息
 
 	AISummary string `json:"aiSummary"` // Gemini 生成の投資サマリー（空文字 = 未生成）
+
+	MultiExitComparison []MultiExitRow `json:"multiExitComparison,omitempty"` // 複数保有年数の出口比較
 }
 
 // AcquisitionCostBreakdown は物件取得時の諸経費内訳

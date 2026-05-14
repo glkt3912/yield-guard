@@ -208,6 +208,9 @@ export function InvestmentForm({
   const setStr = (key: keyof InvestmentInput, value: string) =>
     setInput((prev) => ({ ...prev, [key]: value }));
 
+  const setField = <K extends keyof InvestmentInput>(key: K, value: InvestmentInput[K]) =>
+    setInput((prev) => ({ ...prev, [key]: value }));
+
   useEffect(() => {
     if (externalLat !== undefined && externalLng !== undefined) {
       setPropertyLat(externalLat.toFixed(6));
@@ -583,6 +586,7 @@ export function InvestmentForm({
           input={input}
           setNum={setNum}
           setStr={setStr}
+          setField={setField}
           fieldError={fieldError}
           rentHint={rentHint}
           rentHintLoading={rentHintLoading}

@@ -7,6 +7,8 @@ import { Plus, Trash2 } from "lucide-react";
 import type { InvestmentInput, RateAdjustment } from "@/types/investment";
 import { formatPct } from "@/lib/utils";
 
+const ALL_EXIT_YEARS = [5, 10, 15, 20] as const;
+
 export interface RateScheduleHandlers {
   enabled: boolean;
   onToggle: (v: boolean) => void;
@@ -25,11 +27,26 @@ export interface CapexHandlers {
 interface ScenarioSectionProps {
   input: InvestmentInput;
   setNum: (key: keyof InvestmentInput, value: number) => void;
+  setField: <K extends keyof InvestmentInput>(key: K, value: InvestmentInput[K]) => void;
   rateSchedule: RateScheduleHandlers;
   capex: CapexHandlers;
 }
 
-export function ScenarioSection({ input, setNum, rateSchedule, capex }: ScenarioSectionProps) {
+export function ScenarioSection({
+  input,
+  setNum,
+  setField,
+  rateSchedule,
+  capex,
+}: ScenarioSectionProps) {
+  const exitYears: number[] = input.exitYears ?? [...ALL_EXIT_YEARS];
+
+  function toggleExitYear(yr: number) {
+    const next = exitYears.includes(yr)
+      ? exitYears.filter((y) => y !== yr)
+      : [...exitYears, yr].sort((a, b) => a - b);
+    setField("exitYears", next.length > 0 ? next : [...ALL_EXIT_YEARS]);
+  }
   return (
     <>
       {/* 変動金利シミュレーション */}
@@ -150,6 +167,25 @@ export function ScenarioSection({ input, setNum, rateSchedule, capex }: Scenario
               ストレスΔはスケジュールの各年金利にも上乗せされます。
             </p>
           )}
+      </div>
+
+      {/* 複数保有年数 出口比較 */}
+      <div className="border-t pt-4 space-y-2">
+        <p className="text-sm font-semibold text-foreground">出口比較（保有年数）</p>
+        <p className="text-xs text-muted-foreground">比較する保有年数を選択してください</p>
+        <div className="flex gap-4 flex-wrap">
+          {ALL_EXIT_YEARS.map((yr) => (
+            <label key={yr} className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={exitYears.includes(yr)}
+                onChange={() => toggleExitYear(yr)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <span className="text-sm">{yr}年</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       {/* 大規模修繕費スケジュール */}

@@ -52,6 +52,18 @@ export interface RateAdjustment {
   rate: number; // 絶対値の年利（例: 0.02 = 2%）
 }
 
+export interface MultiExitRow {
+  year: number;
+  salePrice: number;
+  transferTaxRate: number;
+  transferTax: number;
+  remainingLoan: number;
+  cumulativeCf: number;
+  exitEquity: number;
+  irr?: number | null;
+  isShortTermWarn: boolean;
+}
+
 export interface InvestmentInput {
   landPrice: number;
   landArea: number; // 土地面積 (m²)
@@ -84,6 +96,7 @@ export interface InvestmentInput {
   rentGrowthRate?: number; // 年間賃料上昇率（新築・リノベ向け、例: 0.02 = 2%）
   rentGrowthYears?: number; // 賃料上昇が続く年数
   loanFeeRate?: number; // 融資諸費用率（保証料・登記費用等の合算）
+  exitYears?: number[]; // 複数保有年数の出口比較（省略時 = [5, 10, 15, 20]）
 }
 
 export interface CapexEvent {
@@ -167,6 +180,7 @@ export interface InvestmentResult {
   npv: number; // 正味現在価値
   totalInterest: number; // 保有期間の総支払利息
   aiSummary?: string;
+  multiExitComparison?: MultiExitRow[]; // 複数保有年数の出口比較
 }
 
 export interface LandTransaction {
