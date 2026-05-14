@@ -201,6 +201,7 @@ func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanPara
 		}
 
 		yearAnnualRent := rentForYear(yp.annualRent, input.RentDeclineRate, input.RentGrowthRate, input.RentGrowthYears, y)
+		// y は 0-indexed のため float64(y) で 1年目は乗数 1.0 になる（スタート時点の経費率を維持）
 		yearExpenseRate := calcEffectiveExpenseRate(input) * math.Pow(1+input.ExpenseInflationRate, float64(y))
 		yearExpenses := yearAnnualRent*yearExpenseRate + input.AnnualPropertyTax
 
@@ -392,6 +393,7 @@ func calcStressScenario(ctx context.Context, base InvestmentInput, label string,
 		// RentGrowthRate を考慮した楽観シナリオはメインの Analyze() で rentForYear() が担う。
 		declineFactor := math.Pow(1-in.RentDeclineRate, float64(y-1))
 		yearRent := annualRent * declineFactor
+		// y は 1-indexed のため float64(y-1) で 1年目は乗数 1.0 になる（simulateYears と同一の挙動）
 		stressExpenseRate := calcEffectiveExpenseRate(in) * math.Pow(1+in.ExpenseInflationRate, float64(y-1))
 		yearExpenses := yearRent*stressExpenseRate + in.AnnualPropertyTax
 		yearNOI := yearRent - yearExpenses
