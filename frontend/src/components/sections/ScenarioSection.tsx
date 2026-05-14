@@ -1,9 +1,9 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import type { InvestmentInput, RateAdjustment } from "@/types/investment";
 import { formatPct } from "@/lib/utils";
 
@@ -39,6 +39,7 @@ export function ScenarioSection({
   rateSchedule,
   capex,
 }: ScenarioSectionProps) {
+  const [turnoverOpen, setTurnoverOpen] = useState(false);
   const exitYears: number[] = input.exitYears ?? [...ALL_EXIT_YEARS];
 
   function toggleExitYear(yr: number) {
@@ -243,6 +244,84 @@ export function ScenarioSection({
                 </Button>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+      {/* 入退去コスト（任意） */}
+      <div className="border-t pt-4">
+        <button
+          type="button"
+          className="flex items-center gap-2 w-full text-left"
+          onClick={() => setTurnoverOpen((v) => !v)}
+          aria-expanded={turnoverOpen}
+        >
+          {turnoverOpen ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+          <p className="text-sm font-semibold text-foreground">入退去コスト（任意）</p>
+          <span className="text-xs text-muted-foreground ml-1">原状回復・AD・フリーレント</span>
+        </button>
+
+        {turnoverOpen && (
+          <div className="mt-3 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              入居期間・退去時コストを入力すると、年間ターンオーバーコストがキャッシュフローに反映されます。
+              未入力の場合はコスト = 0（後方互換）。
+            </p>
+            <Input
+              label="平均入居期間"
+              type="number"
+              inputMode="decimal"
+              suffix="年"
+              min="0.5"
+              max="30"
+              step="0.5"
+              placeholder="例: 2.0"
+              value={input.avgTenancyYears != null ? String(input.avgTenancyYears) : ""}
+              onChange={(e) => setNum("avgTenancyYears", parseFloat(e.target.value) || 0)}
+            />
+            <Input
+              label="原状回復費（1回あたり）"
+              type="number"
+              inputMode="numeric"
+              suffix="万円"
+              min="0"
+              step="1"
+              placeholder="例: 15"
+              value={
+                input.restorationCost != null
+                  ? String(Math.round(input.restorationCost / 10_000))
+                  : ""
+              }
+              onChange={(e) =>
+                setNum("restorationCost", (parseFloat(e.target.value) || 0) * 10_000)
+              }
+            />
+            <Input
+              label="AD（広告料・1回あたり）"
+              type="number"
+              inputMode="numeric"
+              suffix="万円"
+              min="0"
+              step="1"
+              placeholder="例: 家賃1ヶ月分"
+              value={input.adFee != null ? String(Math.round(input.adFee / 10_000)) : ""}
+              onChange={(e) => setNum("adFee", (parseFloat(e.target.value) || 0) * 10_000)}
+            />
+            <Input
+              label="フリーレント"
+              type="number"
+              inputMode="decimal"
+              suffix="ヶ月"
+              min="0"
+              max="6"
+              step="0.5"
+              placeholder="例: 0.5"
+              value={input.rentFreePeriod != null ? String(input.rentFreePeriod) : ""}
+              onChange={(e) => setNum("rentFreePeriod", parseFloat(e.target.value) || 0)}
+            />
           </div>
         )}
       </div>
