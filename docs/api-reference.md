@@ -1020,3 +1020,126 @@ if allowOrigins == "" {
 - 許可メソッド: `GET`, `POST`, `OPTIONS`
 - 許可ヘッダー: `Content-Type`, `Accept`
 - `AllowCredentials: false`
+
+---
+
+## GET /api/area-discovery
+
+都道府県内の市区町村を土地価格データで評価し、投資有望エリアをランキング形式で返す。
+
+**レート制限**: `analyzeRL`（10 req/min, burst 5）を適用。
+
+### クエリパラメータ
+
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `prefecture` | string | ○ | 都道府県コード（例: `"13"` = 東京都） |
+| `budget` | float | - | 物件取得予算（円）。省略時は坪単価中央値×30坪+建物代1,000万円で試算 |
+| `yield` | float | - | 目標表面利回り（例: `0.07` = 7%）。省略時は `0.08`（8%） |
+
+### レスポンス: `AreaDiscoveryResponse`
+
+```json
+{
+  "items": [
+    {
+      "municipalityCode": "13101",
+      "municipalityName": "千代田区",
+      "medianTsubo": 2500000,
+      "transactionCount": 18,
+      "yieldDifficulty": "achievable",
+      "yieldDifficultyLabel": "達成可能",
+      "landPriceTrend": "データなし",
+      "dataSufficient": true
+    }
+  ],
+  "prefecture": "13"
+}
+```
+
+#### `AreaDiscoveryItem` フィールド
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `municipalityCode` | string | 市区町村コード |
+| `municipalityName` | string | 市区町村名 |
+| `medianTsubo` | float64 | 坪単価中央値（円） |
+| `transactionCount` | int | 直近2年間の取引件数 |
+| `yieldDifficulty` | string | 利回り達成難易度（下記参照） |
+| `yieldDifficultyLabel` | string | 難易度の日本語ラベル |
+| `landPriceTrend` | string | 地価トレンド（現在は常に `"データなし"`) |
+| `dataSufficient` | bool | 取引件数が3件以上の場合 `true` |
+
+#### `yieldDifficulty` 判定基準
+
+目標利回りを達成するために必要な1坪あたり月額賃料（推定値）で判定する。
+
+| 値 | 日本語ラベル | 条件（坪単価月額） |
+|----|------------|----------------|
+| `"achievable"` | 達成可能 | ≤ 8,000円/坪 |
+| `"slightly-difficult"` | やや困難 | 8,001〜15,000円/坪 |
+| `"difficult"` | 困難 | > 15,000円/坪 またはデータ不足 |
+
+ソート順: `achievable` → `slightly-difficult` → `difficult`。同一難易度内は取引件数降順。
+
+### 実装詳細
+
+- 対象は上位30市区町村に絞る（タイムアウト防止）
+- 各市区町村の直近2年間（現在年の2年前〜現在年）の土地取引データを並列取得（最大同時5件）
+- 結果は TTL 24時間でインメモリキャッシュされる
+
+### エラー
+
+| コード | 説明 |
+|--------|------|
+| `400` | `prefecture` パラメータが未指定 |
+| `500` | 市区町村一覧の取得失敗 |
+
+### 実装
+
+`backend/internal/api/handler.go` の `HandleAreaDiscovery` 関数。
+
+---
+
+## GET /api/geocode
+
+住所文字列を緯度・経度に変換する（Google Maps Geocoding API 経由）。APIキーはサーバーサイドのみで保持し、フロントには露出しない。
+
+### クエリパラメータ
+
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `address` | string | ○ | 変換対象の住所（例: `東京都渋谷区道玄坂1-1`） |
+
+### レスポンス: `GeocodeResult`
+
+```json
+{
+  "lat": 35.6595,
+  "lng": 139.6984,
+  "locationType": "ROOFTOP"
+}
+```
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `lat` | float64 | 緯度 |
+| `lng` | float64 | 経度 |
+| `locationType` | string | Google Maps の精度種別（例: `"ROOFTOP"` / `"RANGE_INTERPOLATED"` / `"GEOMETRIC_CENTER"` / `"APPROXIMATE"`） |
+
+### プライバシー保護
+
+住所はPIIになりうるため、アクセスログには先頭10文字のみを記録し、残りは `***` でマスクする。
+
+### エラー
+
+| コード | 説明 |
+|--------|------|
+| `400` | `address` パラメータが空 |
+| `400` | 該当住所なし（Google Maps から `ZERO_RESULTS`） |
+| `503` | `GOOGLE_MAPS_API_KEY` が未設定（ジオコーディング無効） |
+| `502` | Google Maps API へのリクエスト失敗 |
+
+### 実装
+
+`backend/internal/api/handler.go` の `GetGeocode` 関数 / `backend/internal/api/geocode_client.go` の `GoogleGeocodeClient`。
