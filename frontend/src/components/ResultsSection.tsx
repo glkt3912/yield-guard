@@ -1,6 +1,8 @@
 "use client";
 import React, { useCallback, useState } from "react";
 import { YieldAnalysis } from "@/components/YieldAnalysis";
+import { StatusSummary } from "@/components/StatusSummary";
+import { KpiStrip } from "@/components/KpiStrip";
 import CashFlowChart from "@/components/CashFlowChart";
 import DeadCrossChart from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
@@ -198,6 +200,12 @@ export function ResultsSection({
           {result && lastInput && (
             <>
               <CriticalErrorBanner errors={result.criticalErrors} />
+              <StatusSummary result={result} />
+              <KpiStrip
+                result={result}
+                yieldTarget={lastInput.yieldTarget}
+                holdingYears={lastInput.holdingYears}
+              />
               <YieldAnalysis
                 result={result}
                 input={lastInput}
