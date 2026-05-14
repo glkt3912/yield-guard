@@ -103,6 +103,12 @@ export interface InvestmentInput {
   insuranceFeeRate?: number; // 保険料率 (例: 0.003 = 0.3%)
   otherExpenseRate?: number; // その他経費率 (例: 0.005 = 0.5%)
   expenseInflationRate?: number; // 経費インフレ率/年 (例: 0.01 = 1%)
+
+  // 入退去コスト（全て optional。0 または未入力の場合はターンオーバーコスト = 0）
+  avgTenancyYears?: number; // 平均入居期間（年）例: 2.0
+  restorationCost?: number; // 原状回復費（円/回）例: 150000
+  adFee?: number; // 入居者募集 AD（円/回）例: 家賃1ヶ月分
+  rentFreePeriod?: number; // フリーレント（ヶ月）例: 0.5
 }
 
 export interface CapexEvent {
