@@ -8,6 +8,7 @@ import CostBreakdown from "@/components/CostBreakdown";
 import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
 import { LoanComparePanel } from "@/components/LoanComparePanel";
 import RenovationPanel from "@/components/RenovationPanel";
+import MultiExitCompareTable from "@/components/MultiExitCompareTable";
 import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { HazardAlertBanner } from "@/components/HazardAlertBanner";
@@ -241,6 +242,9 @@ export function ResultsSection({
                   </div>
                   {monteCarloResult && <MonteCarloChart result={monteCarloResult} />}
                 </>
+              )}
+              {result.multiExitComparison && result.multiExitComparison.length > 0 && (
+                <MultiExitCompareTable rows={result.multiExitComparison} />
               )}
             </>
           )}

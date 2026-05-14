@@ -35,6 +35,7 @@ interface FullModeFormProps {
   input: InvestmentInput;
   setNum: (key: keyof InvestmentInput, value: number) => void;
   setStr: (key: keyof InvestmentInput, value: string) => void;
+  setField: (key: keyof InvestmentInput, value: unknown) => void;
   fieldError: (key: string) => string | undefined;
   rentHint: RentDeclineHint | null;
   rentHintLoading: boolean;
@@ -70,6 +71,7 @@ export function FullModeForm({
   input,
   setNum,
   setStr,
+  setField,
   fieldError,
   rentHint,
   rentHintLoading,
@@ -140,6 +142,7 @@ export function FullModeForm({
           <ScenarioSection
             input={input}
             setNum={setNum}
+            setField={setField}
             rateSchedule={rateSchedule}
             capex={capex}
           />
