@@ -116,6 +116,18 @@ func calcEffectiveExpenseRate(input InvestmentInput) float64 {
 	return input.ExpenseRate
 }
 
+// calcAnnualTurnoverCost は平均入居期間・原状回復費・AD・フリーレントから
+// 年間のターンオーバーコストを算出して返す。
+// AvgTenancyYears が 0 以下の場合は 0 を返す（後方互換）。
+func calcAnnualTurnoverCost(input InvestmentInput, monthlyRent float64) float64 {
+	if input.AvgTenancyYears <= 0 {
+		return 0
+	}
+	turnoverPerYear := 1.0 / input.AvgTenancyYears
+	freeLeaseLoss := monthlyRent * input.RentFreePeriod * turnoverPerYear
+	return (input.RestorationCost+input.AdFee)*turnoverPerYear + freeLeaseLoss
+}
+
 // capexForYear は CapexSchedule から指定年の修繕費合計を返す。
 func capexForYear(schedule []CapexEvent, year int) float64 {
 	total := 0.0
@@ -233,7 +245,14 @@ func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanPara
 		incomeTax := taxableIncome * input.IncomeTaxRate
 
 		capex := capexForYear(input.CapexSchedule, year)
-		cashFlow := yearAnnualRent - annualLoanPayment - yearExpenses - capex
+		// 年間ターンオーバーコスト（入退去に伴う原状回復費・AD・フリーレント損失）
+		// monthlyRent は当年の実効月額賃料を元にする（空室率は考慮しない）
+		monthlyRentForYear := yearAnnualRent / (12 * (1 - math.Min(input.VacancyRate+input.VacancyRateDelta, 0.99)))
+		if math.IsNaN(monthlyRentForYear) || math.IsInf(monthlyRentForYear, 0) {
+			monthlyRentForYear = input.MonthlyRent
+		}
+		annualTurnoverCost := calcAnnualTurnoverCost(input, monthlyRentForYear)
+		cashFlow := yearAnnualRent - annualLoanPayment - yearExpenses - capex - annualTurnoverCost
 		afterTaxCF := cashFlow - incomeTax
 		cumulativeCF += afterTaxCF
 
