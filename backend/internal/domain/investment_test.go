@@ -2951,6 +2951,7 @@ func TestCalcStressScenario_IsSafe_DSCR_Between1And1_2(t *testing.T) {
 	t.Logf("DSCR=%.4f, BreakEvenYear=%d, IsSafe=%v", result.DSCR, result.BreakEvenYear, result.IsSafe)
 }
 
+<<<<<<< HEAD
 // TestAnalyze_LossOffsetting は不動産所得が赤字の場合に損益通算（税還付）が
 // キャッシュフローに反映されることを検証する（所得税法69条）。
 // 設計: 高額建物（木造・大きな減価償却）＋高金利ローンで taxableIncome を意図的に負にする。
@@ -3032,5 +3033,42 @@ func TestAnalyze_LossOffsetting_ZeroRate(t *testing.T) {
 	if yr.AfterTaxCashFlow != yr.CashFlow {
 		t.Errorf("AfterTaxCashFlow (%.0f) != CashFlow (%.0f) when IncomeTaxRate=0",
 			yr.AfterTaxCashFlow, yr.CashFlow)
+	}
+}
+
+func TestCalcAnnualTurnoverCost(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       InvestmentInput
+		monthlyRent float64
+		want        float64
+	}{
+		{
+			name:        "avgTenancyYears=0 returns 0 (backward compat)",
+			input:       InvestmentInput{AvgTenancyYears: 0},
+			monthlyRent: 100000,
+			want:        0,
+		},
+		{
+			name: "normal calculation",
+			input: InvestmentInput{
+				AvgTenancyYears: 2.0,
+				RestorationCost: 150000,
+				AdFee:           60000,
+				RentFreePeriod:  0.5,
+			},
+			monthlyRent: 100000,
+			// turnoverPerYear = 0.5
+			// (150000+60000)*0.5 + 100000*0.5*0.5 = 105000 + 25000 = 130000
+			want: 130000,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := calcAnnualTurnoverCost(tt.input, tt.monthlyRent)
+			if math.Abs(got-tt.want) > 1 {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
