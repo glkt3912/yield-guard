@@ -5,6 +5,7 @@ import type { InvestmentResult } from "@/types/investment";
 interface KpiStripProps {
   result: InvestmentResult;
   yieldTarget?: number;
+  holdingYears?: number;
 }
 
 interface KpiCellProps {
@@ -38,7 +39,7 @@ function KpiCell({ icon, label, value, sub, subPositive }: KpiCellProps) {
   );
 }
 
-export function KpiStrip({ result, yieldTarget = 0.08 }: KpiStripProps) {
+export function KpiStrip({ result, yieldTarget = 0.08, holdingYears = 30 }: KpiStripProps) {
   const grossYieldPct = result.grossYield * 100;
   const yieldDiff = grossYieldPct - yieldTarget * 100;
   const yieldDiffStr = (yieldDiff >= 0 ? "+" : "") + yieldDiff.toFixed(2) + "pp vs 目標";
@@ -50,11 +51,11 @@ export function KpiStrip({ result, yieldTarget = 0.08 }: KpiStripProps) {
   const dcYear = result.deadCrossYear > 0 ? `${result.deadCrossYear}年目` : "なし";
   const dcSub =
     result.deadCrossYear > 0
-      ? result.deadCrossYear > 10
-        ? "保有期間内は安全圏"
+      ? result.deadCrossYear > holdingYears
+        ? "保有期間外（安全）"
         : "保有期間内に発生"
       : "デッドクロスなし";
-  const dcPositive = result.deadCrossYear <= 0 || result.deadCrossYear > 10;
+  const dcPositive = result.deadCrossYear <= 0 || result.deadCrossYear > holdingYears;
 
   const equityMan = Math.round(result.exitTotalEquity / 10_000);
   const equityStr =

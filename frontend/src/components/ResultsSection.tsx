@@ -201,7 +201,11 @@ export function ResultsSection({
             <>
               <CriticalErrorBanner errors={result.criticalErrors} />
               <StatusSummary result={result} />
-              <KpiStrip result={result} yieldTarget={lastInput.yieldTarget} />
+              <KpiStrip
+                result={result}
+                yieldTarget={lastInput.yieldTarget}
+                holdingYears={lastInput.holdingYears}
+              />
               <YieldAnalysis
                 result={result}
                 input={lastInput}
