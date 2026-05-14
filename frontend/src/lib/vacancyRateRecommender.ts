@@ -22,6 +22,7 @@ export interface VacancyRecommendation {
  *   D:  1– 5万 → score ≥ 1
  *   E:    <1万 → score < 1
  */
+// Backend clamps ridership score to [0, 20] via math.Min, so >= 20 safely captures the top grade.
 export function ridershipGradeFromScore(score: number): RidershipGrade {
   if (score >= 20) return "A";
   if (score >= 10) return "B";
@@ -30,14 +31,11 @@ export function ridershipGradeFromScore(score: number): RidershipGrade {
   return "E";
 }
 
-const GRADE_RECOMMEND: Record<
-  RidershipGrade,
-  { vacancyRate: number; rentDeclineRate: number }
-> = {
+const GRADE_RECOMMEND: Record<RidershipGrade, { vacancyRate: number; rentDeclineRate: number }> = {
   A: { vacancyRate: 0.03, rentDeclineRate: 0.005 },
   B: { vacancyRate: 0.05, rentDeclineRate: 0.01 },
   C: { vacancyRate: 0.07, rentDeclineRate: 0.015 },
-  D: { vacancyRate: 0.10, rentDeclineRate: 0.02 },
+  D: { vacancyRate: 0.1, rentDeclineRate: 0.02 },
   E: { vacancyRate: 0.15, rentDeclineRate: 0.03 },
 };
 
@@ -50,10 +48,13 @@ export function getRidershipRecommend(ridershipScore: number): VacancyRecommenda
   return { grade, ...GRADE_RECOMMEND[grade] };
 }
 
+const POPULATION_DECLINE_THRESHOLD = -0.3;
+const POPULATION_VACANCY_PENALTY = 0.03;
+
 /**
  * Returns the vacancy rate delta to add when population 30-year change rate
  * is −30% or worse (i.e. changeRate30yr ≤ −0.30).
  */
 export function getPopulationVacancyDelta(changeRate30yr: number): number {
-  return changeRate30yr <= -0.3 ? 0.03 : 0;
+  return changeRate30yr <= POPULATION_DECLINE_THRESHOLD ? POPULATION_VACANCY_PENALTY : 0;
 }
