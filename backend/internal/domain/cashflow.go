@@ -213,10 +213,9 @@ func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanPara
 
 		// 課税所得 = 収入 - 利息 - 減価償却 - 経費
 		taxableIncome := yearAnnualRent - annualInterest - yearDepreciation - yearExpenses
-		incomeTax := 0.0
-		if taxableIncome > 0 {
-			incomeTax = taxableIncome * input.IncomeTaxRate
-		}
+		// 損益通算: 不動産所得が赤字の場合、給与所得との通算により税還付が発生する（負値）
+		// 所得税法69条に基づき、負の課税所得は負の incomeTax（税還付）として扱う
+		incomeTax := taxableIncome * input.IncomeTaxRate
 
 		capex := capexForYear(input.CapexSchedule, year)
 		cashFlow := yearAnnualRent - annualLoanPayment - yearExpenses - capex
