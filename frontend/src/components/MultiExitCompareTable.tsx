@@ -9,8 +9,8 @@ interface MultiExitCompareTableProps {
 
 function formatYen(value: number): string {
   const abs = Math.abs(value);
-  if (abs >= 1_0000_0000) {
-    return `${(value / 1_0000_0000).toFixed(2)}億円`;
+  if (abs >= 100_000_000) {
+    return `${(value / 100_000_000).toFixed(2)}億円`;
   }
   if (abs >= 1_0000) {
     return `${Math.round(value / 1_0000)}万円`;
@@ -111,7 +111,8 @@ export default function MultiExitCompareTable({ rows }: MultiExitCompareTablePro
         </table>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        ※ 緑ハイライト列が出口エクイティ最大。短期譲渡税（5年以下）は税率39.63%が適用されます。
+        ※
+        緑ハイライト列が出口エクイティ最大。短期譲渡税（保有5年以下）は税率39.63%、長期（5年超）は20.315%が適用されます。
       </p>
     </div>
   );
