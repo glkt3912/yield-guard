@@ -131,7 +131,7 @@ function CashFlowChart({ result, equityInvested }: Props) {
               }
             />
             <Tooltip
-              formatter={(value, name: string) => {
+              formatter={(value, name) => {
                 if (name === "DSCR") {
                   const n = typeof value === "number" ? value : null;
                   return [n == null ? "―" : n.toFixed(2), name];

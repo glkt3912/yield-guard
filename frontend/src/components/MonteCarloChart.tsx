@@ -96,7 +96,7 @@ export function MonteCarloChart({ result }: Props) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v: number) => [`${v} 件`, "頻度"]} />
+                <Tooltip formatter={(v) => [`${v} 件`, "頻度"]} />
                 <Bar dataKey="count" maxBarSize={24} radius={[2, 2, 0, 0]}>
                   {irrData.map((entry, i) => (
                     <Cell key={i} fill={entry.positive ? "#60a5fa" : "#fca5a5"} />
@@ -115,7 +115,7 @@ export function MonteCarloChart({ result }: Props) {
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
               <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v: number) => [`${v} 件`, "頻度"]} />
+              <Tooltip formatter={(v) => [`${v} 件`, "頻度"]} />
               <Bar dataKey="count" maxBarSize={24} radius={[2, 2, 0, 0]}>
                 {equityData.map((entry, i) => (
                   <Cell key={i} fill={entry.positive ? "#34d399" : "#fca5a5"} />

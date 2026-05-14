@@ -284,7 +284,7 @@ export function LoanComparePanel({ baseInput }: Props) {
                           <LineChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 0 }}>
                             <YAxis domain={["auto", "auto"]} hide />
                             <Tooltip
-                              formatter={(v: number) => [v.toFixed(2), "DSCR"]}
+                              formatter={(v) => [Number(v).toFixed(2), "DSCR"]}
                               labelFormatter={(l) => `${l}年目`}
                             />
                             <ReferenceLine y={1.2} stroke="#ef4444" strokeDasharray="3 3" />

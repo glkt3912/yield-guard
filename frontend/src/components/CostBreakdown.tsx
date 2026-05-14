@@ -117,7 +117,7 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
                   <Cell key={item.name} fill={COLORS[idx % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v: number) => fmt(v)} />
+              <Tooltip formatter={(v) => fmt(Number(v))} />
             </PieChart>
           </ResponsiveContainer>
 
@@ -201,7 +201,7 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
                     <Cell key={item.name} fill={COLORS[idx % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => fmt(v)} />
+                <Tooltip formatter={(v) => fmt(Number(v))} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>

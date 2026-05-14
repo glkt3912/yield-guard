@@ -340,7 +340,7 @@ export default function RenovationPanel() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="year" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}万`} />
-                    <Tooltip formatter={(value: number) => [`${value}万円`]} />
+                    <Tooltip formatter={(value) => `${value}万円`} />
                     <Legend />
                     <Line type="monotone" dataKey="累積賃料増加額" stroke="#2563eb" dot={false} />
                     <Line
