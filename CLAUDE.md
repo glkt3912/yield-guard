@@ -120,6 +120,22 @@ yield-guard/
 - **No `Co-Authored-By`** lines in commits
 - **色は単独の情報源にしない** — Badge/アイコンを必ず併記する（WCAG 1.4.1）
 
+### UI デザインルール
+
+**Don't**
+- グラデーション（`bg-gradient-*`）を背景色に使用しない — ブランドカラーのみ使用する
+- Lucide 以外のアイコンライブラリを混在させない（`lucide-react` 統一）
+- 色のみで状態（エラー・警告・成功）を表現しない — Badge やアイコンを必ず併記する（WCAG 1.4.1）
+- ネストされた可変幅コンテナを3段以上重ねない — レイアウト崩れの原因になる
+- ラベルなしのアイコンボタンを使用しない — `aria-label` か `Tooltip` を必ず付ける
+
+**Must**
+- 投資シミュレーション結果には必ず免責事項ブロック（`<Alert>`）を表示する（`YieldAnalysis.tsx` 参照）
+- ステータス表示は `<Badge>` + アイコンを併記する（`WatchlistPanel.tsx` 参照）
+- `Recharts` の `<ResponsiveContainer>` で必ずチャートをラップする（`DeadCrossChart.tsx` 参照）
+- 削除・リセット系操作は `AlertDialog` で確認ステップを挟む
+- ローディング中は Skeleton UI を使用する（`<Spinner>` は使わない）
+
 ## CI (GitHub Actions)
 
 | Workflow | Trigger paths | Checks |
