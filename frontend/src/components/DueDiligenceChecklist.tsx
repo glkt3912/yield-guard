@@ -81,8 +81,9 @@ export default function DueDiligenceChecklist({ propertyKey }: DueDiligenceCheck
     mounted: boolean;
   }>({ state: {}, mounted: false });
 
-  // Single setState call avoids cascading renders from two sequential setState calls
   useEffect(() => {
+    // localStorage is an external system; setState in effect is the correct React pattern here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setChecklistState({ state: getChecklist(propertyKey), mounted: true });
   }, [propertyKey]);
 
