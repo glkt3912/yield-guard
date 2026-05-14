@@ -5,7 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { Trash2, ClipboardList, CheckCircle2, AlertTriangle, XCircle, BarChart2 } from "lucide-react";
+import {
+  Trash2,
+  ClipboardList,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  BarChart2,
+} from "lucide-react";
 import type { WatchlistItem, WatchlistStatus, InvestmentResult } from "@/types/investment";
 import WatchlistCompareTable from "@/components/WatchlistCompareTable";
 
@@ -118,6 +125,7 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
     if (!pendingDeleteId) return;
     const target = items.find((item) => item.id === pendingDeleteId);
     setItems((prev) => prev.filter((item) => item.id !== pendingDeleteId));
+    setSelectedIds((prev) => prev.filter((id) => id !== pendingDeleteId));
     setPendingDeleteId(null);
     toast({
       message: target ? `「${target.name}」を削除しました` : "削除しました",
@@ -307,9 +315,7 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
       </Card>
 
       {/* Comparison table */}
-      {compareMode && selectedItems.length >= 2 && (
-        <WatchlistCompareTable items={selectedItems} />
-      )}
+      {compareMode && selectedItems.length >= 2 && <WatchlistCompareTable items={selectedItems} />}
 
       {/* Delete confirmation modal */}
       <Modal

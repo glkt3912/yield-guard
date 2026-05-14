@@ -85,6 +85,8 @@ function getValue(metrics: WatchlistMetrics | undefined, key: MetricKey): number
   if (!metrics) return null;
   const v = metrics[key];
   if (v == null) return null;
+  // deadCrossYear: -1 means "no dead cross" which is the best possible value
+  if (key === "deadCrossYear" && Number(v) === -1) return Infinity;
   return Number(v);
 }
 
@@ -97,8 +99,7 @@ function findBestIndex(items: WatchlistItem[], row: MetricRow): number {
   const validValues = values.filter((v): v is number => v !== null);
   if (validValues.length === 0) return -1;
 
-  const bestValue =
-    row.best === "max" ? Math.max(...validValues) : Math.min(...validValues);
+  const bestValue = row.best === "max" ? Math.max(...validValues) : Math.min(...validValues);
 
   // Only highlight if there's a unique best (no tie)
   const bestCount = validValues.filter((v) => v === bestValue).length;
@@ -108,7 +109,7 @@ function findBestIndex(items: WatchlistItem[], row: MetricRow): number {
 }
 
 function DscrTrendIcon({ dscr }: { dscr: number | null }) {
-  if (dscr === null) return <Minus className="h-3 w-3 text-muted-foreground" />;
+  if (dscr === null) return <Minus className="h-3 w-3 text-muted-foreground" aria-hidden="true" />;
   if (dscr >= 1.2) return <TrendingUp className="h-3 w-3 text-green-600" aria-hidden="true" />;
   if (dscr >= 1.0) return <Minus className="h-3 w-3 text-yellow-600" aria-hidden="true" />;
   return <TrendingDown className="h-3 w-3 text-red-600" aria-hidden="true" />;
@@ -163,7 +164,11 @@ export default function WatchlistCompareTable({ items }: WatchlistCompareTablePr
                       {row.label}
                     </td>
                     {items.map((item, colIdx) => {
+                      // raw: comparison value (Infinity for deadCrossYear=-1)
                       const raw = getValue(item.metrics, row.key);
+                      // displayValue: original metric value, used for formatting only
+                      const metricVal = item.metrics?.[row.key];
+                      const displayValue = metricVal != null ? Number(metricVal) : null;
                       const isBest = bestIdx !== -1 && colIdx === bestIdx;
                       const isUnavailable = raw === null;
                       return (
@@ -178,28 +183,22 @@ export default function WatchlistCompareTable({ items }: WatchlistCompareTablePr
                           }`}
                           aria-label={
                             isBest
-                              ? `${item.name} ${row.label}: ${row.format(raw)} (最優位)`
+                              ? `${item.name} ${row.label}: ${row.format(displayValue)} (最優位)`
                               : undefined
                           }
                         >
                           {/* DSCR行はアイコンを併記してWCAG 1.4.1準拠 */}
                           {row.key === "dscr" ? (
                             <span className="inline-flex items-center justify-center gap-1">
-                              <DscrTrendIcon dscr={raw} />
-                              <span>{row.format(raw)}</span>
-                              {isBest && (
-                                <span className="sr-only">（最優位）</span>
-                              )}
+                              <DscrTrendIcon dscr={displayValue} />
+                              <span>{row.format(displayValue)}</span>
+                              {isBest && <span className="sr-only">（最優位）</span>}
                             </span>
                           ) : (
                             <span className="inline-flex items-center justify-center gap-1">
-                              {row.format(raw)}
+                              {row.format(displayValue)}
                               {isBest && (
-                                <span
-                                  className="text-green-600"
-                                  title="最優位"
-                                  aria-hidden="true"
-                                >
+                                <span className="text-green-600" title="最優位" aria-hidden="true">
                                   ★
                                 </span>
                               )}
