@@ -118,11 +118,7 @@ export default function DueDiligenceChecklist({ propertyKey }: DueDiligenceCheck
               デューデリ完了
             </span>
           ) : (
-            <span
-              className="text-sm text-muted-foreground"
-              role="status"
-              aria-live="polite"
-            >
+            <span className="text-sm text-muted-foreground" role="status" aria-live="polite">
               {checkedCount} / {totalCount} 完了
             </span>
           )}
@@ -158,7 +154,10 @@ export default function DueDiligenceChecklist({ propertyKey }: DueDiligenceCheck
                           aria-hidden="true"
                         />
                       ) : (
-                        <Circle className="h-4 w-4 shrink-0 text-muted-foreground/40" aria-hidden="true" />
+                        <Circle
+                          className="h-4 w-4 shrink-0 text-muted-foreground/40"
+                          aria-hidden="true"
+                        />
                       )}
                       <span className={checked ? "line-through opacity-60" : ""}>{item.label}</span>
                       {item.autoLinked && (
