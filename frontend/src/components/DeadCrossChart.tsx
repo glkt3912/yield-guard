@@ -130,7 +130,7 @@ function DeadCrossChart({ result }: Props) {
               width={isMobile ? 32 : 50}
             />
             <Tooltip
-              formatter={(value: number, name: string) => [`${value}万円`, name]}
+              formatter={(value, name) => [`${value}万円`, name]}
               labelStyle={{ fontWeight: "bold" }}
             />
             <Legend />

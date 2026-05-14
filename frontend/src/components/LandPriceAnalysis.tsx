@@ -446,7 +446,7 @@ export function LandPriceAnalysis({
                   width={isMobile ? 32 : 50}
                 />
                 <Tooltip
-                  formatter={(v: number, name: string) => [
+                  formatter={(v, name) => [
                     name === "tsubo" ? `${v}万円/坪` : `${v}m²`,
                     name === "tsubo" ? "坪単価" : "面積",
                   ]}
