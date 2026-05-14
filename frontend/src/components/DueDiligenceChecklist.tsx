@@ -76,18 +76,19 @@ interface DueDiligenceChecklistProps {
 }
 
 export default function DueDiligenceChecklist({ propertyKey }: DueDiligenceChecklistProps) {
-  const [state, setState] = useState<DueDiligenceState>({});
-  const [mounted, setMounted] = useState(false);
+  const [{ state, mounted }, setChecklistState] = useState<{
+    state: DueDiligenceState;
+    mounted: boolean;
+  }>({ state: {}, mounted: false });
 
-  // Hydrate from localStorage on mount
+  // Single setState call avoids cascading renders from two sequential setState calls
   useEffect(() => {
-    setState(getChecklist(propertyKey));
-    setMounted(true);
+    setChecklistState({ state: getChecklist(propertyKey), mounted: true });
   }, [propertyKey]);
 
   const toggle = (id: string) => {
     const next = { ...state, [id]: !state[id] };
-    setState(next);
+    setChecklistState({ state: next, mounted: true });
     saveChecklist(propertyKey, next);
   };
 
