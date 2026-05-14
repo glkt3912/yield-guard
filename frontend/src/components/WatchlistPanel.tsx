@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { Trash2, ClipboardList, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { Trash2, ClipboardList, CheckCircle2, AlertTriangle, XCircle, BarChart2 } from "lucide-react";
 import type { WatchlistItem, WatchlistStatus, InvestmentResult } from "@/types/investment";
+import WatchlistCompareTable from "@/components/WatchlistCompareTable";
 
 const STORAGE_KEY = "yg_watchlist";
 
@@ -64,6 +65,8 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
   const [memoInput, setMemoInput] = useState("");
   const [nameError, setNameError] = useState("");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -95,6 +98,8 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
               irr: currentResult.irr ?? null,
               totalInvestment: currentResult.totalInvestment,
               exitTotalEquity: currentResult.exitTotalEquity,
+              deadCrossYear: currentResult.deadCrossYear,
+              npv: currentResult.npv,
             },
           }
         : {}),
@@ -124,16 +129,46 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
     if (e.key === "Enter") handleAdd();
   }
 
+  function toggleCompareMode() {
+    setCompareMode((prev) => {
+      if (prev) setSelectedIds([]);
+      return !prev;
+    });
+  }
+
+  function toggleSelectItem(id: string) {
+    setSelectedIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 4) return prev; // max 4
+      return [...prev, id];
+    });
+  }
+
+  const selectedItems = items.filter((item) => selectedIds.includes(item.id));
   const pendingDeleteName = items.find((item) => item.id === pendingDeleteId)?.name ?? "";
 
   return (
     <>
       <Card className="rounded-xl shadow-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <ClipboardList className="h-4 w-4 text-primary" />
-            物件候補ウォッチリスト
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <ClipboardList className="h-4 w-4 text-primary" />
+              物件候補ウォッチリスト
+            </CardTitle>
+            {items.length >= 2 && (
+              <Button
+                type="button"
+                size="sm"
+                variant={compareMode ? "default" : "outline"}
+                onClick={toggleCompareMode}
+                className="flex items-center gap-1.5 text-xs"
+              >
+                <BarChart2 className="h-3.5 w-3.5" />
+                {compareMode ? "比較終了" : "比較表示"}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Add form */}
@@ -169,6 +204,13 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
             />
           </div>
 
+          {/* Compare mode hint */}
+          {compareMode && (
+            <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
+              比較する物件を最大4件選択してください（{selectedIds.length}/4 件選択中）
+            </p>
+          )}
+
           {/* List */}
           {items.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
@@ -181,6 +223,20 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
                   key={item.id}
                   className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-3"
                 >
+                  {/* Compare mode checkbox */}
+                  {compareMode && (
+                    <div className="flex shrink-0 items-center pt-0.5">
+                      <input
+                        type="checkbox"
+                        id={`compare-${item.id}`}
+                        checked={selectedIds.includes(item.id)}
+                        onChange={() => toggleSelectItem(item.id)}
+                        disabled={!selectedIds.includes(item.id) && selectedIds.length >= 4}
+                        className="h-4 w-4 rounded border-input accent-primary"
+                        aria-label={`${item.name} を比較対象に追加`}
+                      />
+                    </div>
+                  )}
                   {/* Left: name + meta */}
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <div className="flex flex-wrap items-center gap-2">
@@ -249,6 +305,11 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Comparison table */}
+      {compareMode && selectedItems.length >= 2 && (
+        <WatchlistCompareTable items={selectedItems} />
+      )}
 
       {/* Delete confirmation modal */}
       <Modal
