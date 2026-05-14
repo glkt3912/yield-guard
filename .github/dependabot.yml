@@ -31,11 +31,14 @@ updates:
       interval: weekly
       day: monday
       timezone: "Asia/Tokyo"
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 5
     groups:
-      all-dependencies:
+      minor-and-patch:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
     ignore:
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
