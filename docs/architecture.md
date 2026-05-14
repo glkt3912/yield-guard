@@ -29,7 +29,7 @@ GCE（常時起動 VM）や GKE（Kubernetes クラスター）と比べ、リ�
 ### OpenTelemetry + slog
 
 OpenTelemetry SDK を使うことで、ベンダーロックインなしに GCP Cloud Trace へトレースを送信できる。将来的に Jaeger や Datadog へ切り替える場合もコード変更が最小限。
-Go 1.21 標準ライブラリ `log/slog` を採用することで外部ロギングライブラリへの依存をゼロにし、構造化ログを標準的な方法で出力する。
+Go 標準ライブラリ `log/slog`（Go 1.21 で導入）を採用することで外部ロギングライブラリへの依存をゼロにし、構造化ログを標準的な方法で出力する。
 Cloud Run の stdout ログが Cloud Logging に自動収集されるため、別途エージェントやサイドカーが不要。
 
 ---
