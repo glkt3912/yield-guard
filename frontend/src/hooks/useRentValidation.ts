@@ -25,7 +25,8 @@ const DEBOUNCE_MS = 600;
 export function useRentValidation(
   monthlyRent: number,
   area: string,
-  city: string
+  city: string,
+  areaSqm?: number
 ): RentValidationState {
   const [stats, setStats] = useState<RentStatsResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,6 +50,7 @@ export function useRentValidation(
         const result = await fetchRentStats({
           area,
           municipality: city || undefined,
+          areaSqm: areaSqm && areaSqm > 0 ? areaSqm : undefined,
         });
         setStats(result);
       } catch {
@@ -64,7 +66,7 @@ export function useRentValidation(
         clearTimeout(timerRef.current);
       }
     };
-  }, [monthlyRent, area, city]);
+  }, [monthlyRent, area, city, areaSqm]);
 
   if (!stats || !stats.median || monthlyRent <= 0) {
     return { stats, deviationPct: null, level: null, loading, lowSample: false };
