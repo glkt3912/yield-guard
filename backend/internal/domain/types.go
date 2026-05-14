@@ -85,7 +85,8 @@ type InvestmentInput struct {
 	AnnualLoanRate  float64      `json:"annualLoanRate"`  // 年利 (例: 0.015)
 	LoanYears       int          `json:"loanYears"`       // ローン期間 (年)
 	BuildingType    BuildingType `json:"buildingType"`    // 建物構造
-	// 運営経費率 (管理費・修繕・固定資産税・保険等。ローン利息は含まない)
+	// 運営経費率 (管理費・修繕・保険等。固定資産税・ローン利息は含まない)
+	// 固定資産税は AnnualPropertyTax で別途指定する
 	ExpenseRate   float64 `json:"expenseRate"`   // 例: 0.20
 	IncomeTaxRate float64 `json:"incomeTaxRate"` // 所得税率 (例: 0.33。給与との合算後実効税率)
 	HoldingYears  int     `json:"holdingYears"`  // 出口戦略: 売却年数 (例: 10)
@@ -99,7 +100,7 @@ type InvestmentInput struct {
 	VacancyRateDelta float64 `json:"vacancyRateDelta"` // 空室率上昇分 (例: +0.10)
 	LoanRateDelta    float64 `json:"loanRateDelta"`    // 金利上昇分 (例: +0.015)
 
-	// 固定資産税・都市計画税（年間合計）。0 の場合は ExpenseRate に含まれる想定。
+	// 年間固定資産税 (円)。ExpenseRate には含めないこと（二重計上になる）
 	AnnualPropertyTax float64 `json:"annualPropertyTax"`
 
 	// 賃料下落率: 毎年この割合だけ実効賃料が低下する（例: 0.01 = 年1%下落）
