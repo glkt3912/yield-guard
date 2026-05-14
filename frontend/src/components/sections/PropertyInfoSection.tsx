@@ -608,7 +608,8 @@ export function PropertyInfoSection({
               </summary>
               <div className="mt-2 pl-2 border-l-2 border-muted space-y-3">
                 <p className="text-xs text-muted-foreground">
-                  合計が 0% の場合は上記「運営経費率」を使用します。設定した場合は合計値が優先されます。
+                  合計が 0%
+                  の場合は上記「運営経費率」を使用します。設定した場合は合計値が優先されます。
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <Input
@@ -656,19 +657,25 @@ export function PropertyInfoSection({
                     onChange={(e) => setNum("otherExpenseRate", fromPct(e.target.value))}
                   />
                 </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium text-foreground">
-                    合計経費率:{" "}
-                    {toPct(
-                      (input.managementFeeRate ?? 0) +
-                        (input.repairReserveRate ?? 0) +
-                        (input.insuranceFeeRate ?? 0) +
-                        (input.otherExpenseRate ?? 0),
-                      1
-                    )}
-                    %
-                  </p>
-                </div>
+                {/* 合計経費率の表示と検証 */}
+                {(() => {
+                  const total =
+                    (input.managementFeeRate ?? 0) +
+                    (input.repairReserveRate ?? 0) +
+                    (input.insuranceFeeRate ?? 0) +
+                    (input.otherExpenseRate ?? 0);
+                  const totalPct = total * 100;
+                  return (
+                    <>
+                      <p
+                        className={`text-xs font-medium ${totalPct > 50 ? "text-amber-600" : "text-foreground"}`}
+                      >
+                        合計経費率: {toPct(total, 1)}%
+                        {totalPct > 50 && " ⚠ 合計が50%を超えています"}
+                      </p>
+                    </>
+                  );
+                })()}
                 <Input
                   label="経費インフレ率/年"
                   type="number"
