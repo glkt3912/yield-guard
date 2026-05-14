@@ -34,13 +34,13 @@ func (h *Handler) GetRentStats(c *gin.Context) {
 	// 直近2年分のデータを取得する
 	now := time.Now()
 	toYear := now.Year()
-	fromYear := toYear - 2
 	currentQuarter := (int(now.Month())-1)/3 + 1
 	toQuarter := currentQuarter - 1
 	if toQuarter == 0 {
 		toQuarter = 4
 		toYear--
 	}
+	fromYear := toYear - 2
 
 	q := mlit.LandPriceQuery{
 		Area:      area,
