@@ -62,6 +62,7 @@ interface ResultsSectionProps {
   loanMethod: LoanMethod;
   onLoanMethodChange: (method: LoanMethod) => Promise<void>;
   onTileSelect: (lat: number, lng: number) => void;
+  onApplyRecommend?: (vacancyRate: number, rentDeclineRate: number) => void;
 }
 
 export function ResultsSection({
@@ -88,6 +89,7 @@ export function ResultsSection({
   loanMethod,
   onLoanMethodChange,
   onTileSelect,
+  onApplyRecommend,
 }: ResultsSectionProps) {
   const [municipalityCenter, setMunicipalityCenter] = useState<{
     lat: number;
@@ -174,7 +176,13 @@ export function ResultsSection({
         <>
           <HazardAlertBanner hazardRisks={hazardRisks} externalUrbanRisks={externalUrbanRisks} />
 
-          {investmentScore && <InvestmentScoreCard score={investmentScore} />}
+          {investmentScore && (
+            <InvestmentScoreCard
+              score={investmentScore}
+              populationChangeRate={populationForecast?.changeRate30yr}
+              onApplyRecommend={onApplyRecommend}
+            />
+          )}
 
           {propertyLat !== undefined && (
             <InvestmentScoreHeatmap

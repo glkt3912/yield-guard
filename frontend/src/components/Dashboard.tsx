@@ -41,6 +41,11 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
   const [showGuide, setShowGuide] = useState(false);
   const [activeTab, setActiveTab] = useState<"simulation" | "area-discovery">("simulation");
   const [selectedMunicipalityMsg, setSelectedMunicipalityMsg] = useState<string | null>(null);
+  const [recommend, setRecommend] = useState<{
+    vacancyRate: number;
+    rentDeclineRate: number;
+    version: number;
+  } | null>(null);
 
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -97,6 +102,14 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
       // localStorage unavailable (e.g. test environment or private browsing)
     }
   }, []);
+
+  const handleApplyRecommend = (vacancyRate: number, rentDeclineRate: number) => {
+    setRecommend((prev) => ({
+      vacancyRate,
+      rentDeclineRate,
+      version: (prev?.version ?? 0) + 1,
+    }));
+  };
 
   const handleModeChange = (mode: SimulationMode) => {
     if (result) {
@@ -240,6 +253,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
               isOnline={isOnline}
               externalLat={propertyLat}
               externalLng={propertyLng}
+              externalRecommend={recommend ?? undefined}
             />
           </aside>
 
@@ -267,6 +281,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             loanMethod={loanMethod}
             onLoanMethodChange={handleLoanMethodChange}
             onTileSelect={setPropertyCoords}
+            onApplyRecommend={handleApplyRecommend}
           />
         </div>
       </main>
@@ -304,6 +319,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           externalLat={propertyLat}
           externalLng={propertyLng}
           showModeToggle={true}
+          externalRecommend={recommend ?? undefined}
         />
       </FormSheet>
     </div>

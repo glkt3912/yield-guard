@@ -95,6 +95,9 @@ interface Props {
   externalLat?: number;
   externalLng?: number;
   showModeToggle?: boolean;
+  /** When set, applies vacancyRate and rentDeclineRate to the form state.
+   *  `version` must be incremented each time to trigger the effect. */
+  externalRecommend?: { vacancyRate: number; rentDeclineRate: number; version: number };
 }
 
 export function InvestmentForm({
@@ -109,6 +112,7 @@ export function InvestmentForm({
   externalLat,
   externalLng,
   showModeToggle = true,
+  externalRecommend,
 }: Props) {
   const [input, setInput] = useState<InvestmentInput>({ ...DEFAULT_INPUT, ...initialInput });
   const [area, setArea] = useState("10");
@@ -210,6 +214,19 @@ export function InvestmentForm({
       setPropertyLng(externalLng.toFixed(6));
     }
   }, [externalLat, externalLng]);
+
+  // Apply vacancy rate / rent decline rate from external recommendation
+  useEffect(() => {
+    if (!externalRecommend) return;
+    setInput((prev) => ({
+      ...prev,
+      vacancyRate: externalRecommend.vacancyRate,
+      rentDeclineRate: externalRecommend.rentDeclineRate,
+    }));
+    // externalRecommend 全体を依存配列に入れると親の再レンダー毎に発火してしまうため、
+    // version のみを依存とし、ボタン押下時（version インクリメント時）だけ適用する意図的な設計。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalRecommend?.version]);
 
   // モード切替時に現金購入フラグをリセットし、ローン値を復元する
   useEffect(() => {

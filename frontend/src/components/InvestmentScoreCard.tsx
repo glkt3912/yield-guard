@@ -3,10 +3,14 @@
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { InvestmentScoreResult, ScoreItem } from "@/types/investment";
+import { getRidershipRecommend, getPopulationVacancyDelta } from "@/lib/vacancyRateRecommender";
 
 interface Props {
   score: InvestmentScoreResult;
+  populationChangeRate?: number;
+  onApplyRecommend?: (vacancyRate: number, rentDeclineRate: number) => void;
 }
 
 const GRADE_STYLE: Record<
@@ -38,7 +42,7 @@ function ScoreRow({ item }: { item: ScoreItem }) {
   );
 }
 
-export function InvestmentScoreCard({ score }: Props) {
+export function InvestmentScoreCard({ score, populationChangeRate, onApplyRecommend }: Props) {
   const { totalScore, grade, breakdown } = score;
   const gradeStyle = GRADE_STYLE[grade] ?? GRADE_STYLE["普通"];
 
@@ -52,6 +56,25 @@ export function InvestmentScoreCard({ score }: Props) {
     breakdown.embankment,
     breakdown.disasterHistory,
   ];
+
+  // Compute recommendation from ridership score (0–20 range from backend)
+  const recommend = getRidershipRecommend(breakdown.ridership.score);
+  const popDelta =
+    populationChangeRate !== undefined ? getPopulationVacancyDelta(populationChangeRate) : 0;
+  const recommendedVacancy = recommend.vacancyRate + popDelta;
+  const recommendedRentDecline = recommend.rentDeclineRate;
+
+  const handleApply = () => {
+    onApplyRecommend?.(recommendedVacancy, recommendedRentDecline);
+  };
+
+  const tooltipText = [
+    `乗降客数スコア ${recommend.grade} → 空室率 ${(recommend.vacancyRate * 100).toFixed(0)}% 推奨`,
+    ...(popDelta > 0
+      ? [`人口30年予測 −30%以上 → 空室率 +${(popDelta * 100).toFixed(0)}% 加算`]
+      : []),
+    `賃料下落率 ${(recommendedRentDecline * 100).toFixed(1)}%/年 推奨`,
+  ].join(" / ");
 
   return (
     <Card className="border border-indigo-200">
@@ -94,6 +117,26 @@ export function InvestmentScoreCard({ score }: Props) {
             <ScoreRow key={item.label} item={item} />
           ))}
         </div>
+
+        {onApplyRecommend && (
+          <div className="mt-3 rounded-md border border-indigo-100 bg-indigo-50 px-3 py-2">
+            <p className="text-[11px] text-indigo-700 mb-2 leading-snug" title={tooltipText}>
+              <span className="font-medium">推奨値：</span>
+              {tooltipText}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs border-indigo-300 text-indigo-700 hover:bg-indigo-100"
+              onClick={handleApply}
+              title={tooltipText}
+            >
+              推奨空室率 {(recommendedVacancy * 100).toFixed(0)}% ・賃料下落率{" "}
+              {(recommendedRentDecline * 100).toFixed(1)}% を適用
+            </Button>
+          </div>
+        )}
+
         <p className="mt-2 text-[10px] text-gray-400 leading-tight">
           基準スコア50点 +
           各指標の加減点（0〜100にクランプ）。API取得失敗時は該当指標を0点として算出。
