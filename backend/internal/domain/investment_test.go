@@ -2085,6 +2085,40 @@ func TestValidateRateAdjustmentSchedule(t *testing.T) {
 	})
 }
 
+// TestCalcEffectiveExpenseRate は詳細経費フィールドのフォールバック挙動を検証する
+func TestCalcEffectiveExpenseRate(t *testing.T) {
+	tests := []struct {
+		name  string
+		input InvestmentInput
+		want  float64
+	}{
+		{
+			name:  "all detail fields zero falls back to ExpenseRate",
+			input: InvestmentInput{ExpenseRate: 0.15},
+			want:  0.15,
+		},
+		{
+			name: "detail fields sum used when non-zero",
+			input: InvestmentInput{
+				ExpenseRate:       0.15,
+				ManagementFeeRate: 0.05,
+				RepairReserveRate: 0.01,
+				InsuranceFeeRate:  0.003,
+				OtherExpenseRate:  0.005,
+			},
+			want: 0.068, // 0.05+0.01+0.003+0.005
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := calcEffectiveExpenseRate(tt.input)
+			if math.Abs(got-tt.want) > 1e-9 {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 // TestAnalyzeWithRateSchedule は変動金利スケジュール適用後の動作を検証する
 func TestAnalyzeWithRateSchedule(t *testing.T) {
 	base := InvestmentInput{
