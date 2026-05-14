@@ -9,16 +9,30 @@
 ```
 page.tsx
   └── Dashboard
-        ├── InvestmentForm         (入力 → onAnalyze, onFetchLandPrices)
-        ├── LandPriceAnalysis      (comparison + populationForecast を受け取り表示)
-        ├── YieldAnalysis          (result + populationForecast を受け取り表示)
-        ├── LoanOptimizationPanel  (result + loanMethod を受け取り DSCR・LTV感度を表示)
-        ├── CostBreakdown          (result.acquisitionCosts + yearlyResults を受け取り表示)
-        ├── CashFlowChart          (result + equityInvested を受け取り表示)
-        ├── DeadCrossChart         (result を受け取り表示)
-        ├── MonteCarloChart        (monteCarloResult を受け取り確率分布を表示。ボタン押下後のみ表示)
-        ├── RenovationPanel        (自己完結・独立状態管理)
-        ├── WatchlistPanel         (自己完結・localStorage 永続化)
+        ├── FirstTimerGuide        (初回訪問時モーダル・サンプル物件で試す)
+        ├── ServiceWorkerRegistrar (SW登録・レンダリングなし)
+        ├── CriticalErrorBanner    (result.criticalErrors を受け取り一発退場/警告を表示)
+        ├── FormSheet              (モバイル専用ボトムシート・lg:hidden)
+        │     └── InvestmentForm  (入力 → onAnalyze, onFetchLandPrices)
+        ├── InvestmentForm         (デスクトップサイドバー配置)
+        │     ├── SimulationModeToggle  (クイック/詳細モード切替)
+        │     ├── QuickModeForm         (クイックモード入力フォーム)
+        │     └── FullModeForm          (詳細モード入力フォーム)
+        ├── MobileSummaryCard      (result を受け取りモバイル専用サマリー表示・lg:hidden)
+        ├── ResultsSection         (シミュレーション結果＋エリア探しタブ)
+        │     ├── LandPriceAnalysis      (comparison + populationForecast を受け取り表示)
+        │     ├── YieldAnalysis          (result + populationForecast を受け取り表示)
+        │     ├── LoanOptimizationPanel  (result + loanMethod を受け取り DSCR・LTV感度を表示)
+        │     ├── LoanComparePanel       (baseInput を受け取り複数融資条件を横並び比較)
+        │     ├── NegotiationPanel       (result + comparison を受け取り逆算・交渉シミュレーション)
+        │     ├── InvestmentScoreCard    (score を受け取り投資適地スコアをレーダーチャートで表示)
+        │     ├── CostBreakdown          (result.acquisitionCosts + yearlyResults を受け取り表示)
+        │     ├── CashFlowChart          (result + equityInvested を受け取り表示)
+        │     ├── DeadCrossChart         (result を受け取り表示)
+        │     ├── MonteCarloChart        (monteCarloResult を受け取り確率分布を表示。ボタン押下後のみ表示)
+        │     ├── RenovationPanel        (自己完結・独立状態管理)
+        │     ├── WatchlistPanel         (自己完結・localStorage 永続化)
+        │     └── AreaDiscovery          (エリア探しタブ内・市区町村クリックで地図連携)
         └── (PDF出力はコンポーネントではなく downloadReportPDF() で処理)
 ```
 
@@ -925,4 +939,403 @@ toast({ message: "保存しました", variant: "success" });
 - 複数モーダル同時対応: `document.body.dataset.modalCount` で参照カウントを管理し、最後のモーダルが閉じるまでスクロールロックを維持
 
 **テストカバレッジ** (`__tests__/modal.test.tsx`): 表示/非表示・ESCキー・バックドロップ・スクロールロック・Tab/Shift+Tabフォーカストラップの9ケース
+
+---
+
+## AreaDiscovery
+
+`frontend/src/components/AreaDiscovery.tsx`
+
+### 概要
+
+都道府県・予算・目標利回りを入力し、`GET /api/area-discovery` を呼び出して候補市区町村をランキング表示するエリア探索コンポーネント。`ResultsSection` の「エリアを探す」タブ内に配置される。
+
+### Props
+
+| Prop | 型 | 必須 | 説明 |
+|------|-----|------|------|
+| `onMunicipalitySelect` | `(municipalityCode: string, municipalityName: string, prefecture: string) => void` | 任意 | 結果テーブルの行クリック時に呼び出されるコールバック。地図連携（`InvestmentScoreHeatmap` の中心座標更新）に使用 |
+
+### 責務
+
+- 都道府県セレクト・予算（万円）・目標利回り（%）の3フィールドを管理するローカル状態を持つ
+- 「エリアを探す」ボタン押下で `fetchAreaDiscovery` を呼び出し、`AreaDiscoveryItem[]` を取得
+- 結果をテーブルで表示: 市区町村名・坪単価中央値・取引件数・利回り達成難易度バッジ（`DifficultyBadge`）・土地価格トレンド
+- `dataSufficient=false` の場合は市区町村名に「（データ少）」を付記
+- 行クリックで `onMunicipalitySelect` を呼び出し、親コンポーネントへ市区町村情報を通知
+
+---
+
+## NegotiationPanel
+
+`frontend/src/components/NegotiationPanel.tsx`
+
+### 概要
+
+逆算モードと交渉シミュレーションの2セクションを持つパネル。目標利回りを達成するための最大買付可能価格を逆算し、市場取引実勢・理論価格との差額から交渉推奨価格レンジを算出する。
+
+### Props
+
+| Prop | 型 | 必須 | 説明 |
+|------|-----|------|------|
+| `result` | `InvestmentResult` | 必須 | 投資シミュレーション結果 |
+| `input` | `InvestmentInput` | 必須 | シミュレーション入力値 |
+| `comparison` | `LandPriceComparison \| null` | 必須 | 土地価格比較データ（市場実勢価格の計算に使用） |
+| `theoreticalPrice` | `TheoreticalPriceResult \| null` | 必須 | 理論価格推定結果 |
+
+### 責務
+
+- **逆算モード**: `result.totalInvestment - result.requiredCostReduction` から最大買付可能価格を算出し、売出価格との差額・値引き必要額を表示
+- **交渉シミュレーション**: `comparison.stats.medianTsubo` × 土地面積 + 建物費から市場実勢価格を、`theoreticalPrice.theoreticalPriceJPY` から理論価格をそれぞれ算出し、売出価格との差額を `DiffBadge` で表示
+- 市場実勢・理論価格・最大買付可能価格の最小〜最大を「交渉推奨価格レンジ」として青パネルで表示（複数の価格アンカーが存在する場合のみ）
+- 外部状態を持たず、受け取った props のみで計算を行う
+
+---
+
+## LoanComparePanel
+
+`frontend/src/components/LoanComparePanel.tsx`
+
+### 概要
+
+複数の融資条件シナリオ（最大4件）を横並びで比較するパネル。各シナリオの金利・融資期間・LTV・諸費用率を入力し、`POST /api/investment/analyze` を並列呼び出しして結果を比較する。
+
+### Props
+
+| Prop | 型 | 必須 | 説明 |
+|------|-----|------|------|
+| `baseInput` | `InvestmentInput` | 必須 | 比較の基準となる投資入力値。各シナリオは `loanAmount`・`annualLoanRate`・`loanYears`・`loanFeeRate` のみ上書きして使用 |
+
+### 責務
+
+- `LoanScenario[]`（最大4件）の追加・削除・更新を管理するローカル状態を持つ
+- 「比較実行」押下で全シナリオの `analyze` を `Promise.all` で並列呼び出し
+- 比較結果テーブルを表示: 月返済額・DSCR（初年度）・DSCR推移ミニグラフ（Recharts `LineChart`）・デッドクロス年・自己資金必要額・総支払利息
+- DSCR に応じて `CheckCircle2`（安全）・`AlertTriangle`（注意）・`XCircle`（危険）バッジを表示
+- DSCR < 1.0 の場合は「参考: DSCR < 1.0 は審査通過を保証しません」を追記
+
+---
+
+## FormSheet
+
+`frontend/src/components/FormSheet.tsx`
+
+### 概要
+
+モバイル向けのボトムシートコンテナ。`lg:hidden` クラスで大画面では非表示になり、モバイルでのみ `InvestmentForm` をオーバーレイ表示する。
+
+### Props
+
+| Prop | 型 | 必須 | 説明 |
+|------|-----|------|------|
+| `isOpen` | `boolean` | 必須 | シートの開閉状態。`false` のとき `null` を返す |
+| `onClose` | `() => void` | 必須 | バックドロップクリック・閉じるボタン押下時のコールバック |
+| `closeButtonRef` | `React.RefObject<HTMLButtonElement \| null>` | 必須 | 閉じるボタンへの ref（フォーカス管理に使用） |
+| `children` | `React.ReactNode` | 必須 | シート内に表示するコンテンツ（通常は `InvestmentForm`） |
+
+### 責務
+
+- `fixed inset-0 z-50 lg:hidden` のオーバーレイとして表示
+- 黒半透明バックドロップのクリックで `onClose` を呼び出す
+- シート本体は `max-h-[90vh]` でスクロール可能・角丸の `rounded-t-2xl` デザイン
+- 固定ヘッダー（「投資条件を編集」タイトル + 閉じるボタン）を `sticky top-0` で配置
+- `role="dialog" aria-modal="true"` でアクセシビリティ対応
+
+---
+
+## FullModeForm
+
+`frontend/src/components/FullModeForm.tsx`
+
+### 概要
+
+詳細（Full）モードの入力フォーム。4つのセクションコンポーネント（`LocationSection`・`PropertyInfoSection`・`LoanSection`・`ScenarioSection`）を組み合わせて全16項目以上の入力フィールドを提供する。`InvestmentForm` から分離されたプレゼンテーション層。
+
+### Props
+
+| Prop | 型 | 必須 | 説明 |
+|------|-----|------|------|
+| `area` | `string` | 必須 | 選択中の都道府県コード |
+| `handleAreaChange` | `(e: React.ChangeEvent<HTMLSelectElement>) => void` | 必須 | 都道府県変更ハンドラ |
+| `city` | `string` | 必須 | 選択中の市区町村コード |
+| `handleCityChange` | `(e: React.ChangeEvent<HTMLSelectElement>) => void` | 必須 | 市区町村変更ハンドラ |
+| `muniFilter` | `string` | 必須 | 市区町村フィルタテキスト |
+| `setMuniFilter` | `(v: string) => void` | 必須 | 市区町村フィルタ更新関数 |
+| `filteredMunicipalities` | `Municipality[]` | 必須 | フィルタ済み市区町村一覧 |
+| `muniLoading` | `boolean` | 必須 | 市区町村取得中フラグ |
+| `muniError` | `string \| null` | 必須 | 市区町村取得エラーメッセージ |
+| `isOnline` | `boolean \| null` | 必須 | オンライン状態 |
+| `geocode` | `GeocodeState` | 必須 | ジオコード入力状態 |
+| `onGeocodeChange` | `(patch: Partial<GeocodeState>) => void` | 必須 | ジオコード状態更新ハンドラ |
+| `showManualCoords` | `boolean` | 必須 | 手動座標入力の表示フラグ |
+| `handleGeocode` | `() => Promise<void>` | 必須 | ジオコード実行ハンドラ |
+| `loading` | `boolean` | 必須 | API呼び出し中フラグ |
+| `onFetchLandPrices` | `(area: string, city: string, lat?: number, lng?: number) => Promise<void>` | 必須 | 相場データ取得ハンドラ |
+| `input` | `InvestmentInput` | 必須 | 入力値 |
+| `setNum` | `(key: keyof InvestmentInput, value: number) => void` | 必須 | 数値フィールド更新関数 |
+| `setStr` | `(key: keyof InvestmentInput, value: string) => void` | 必須 | 文字列フィールド更新関数 |
+| `fieldError` | `(key: string) => string \| undefined` | 必須 | フィールドエラーメッセージ取得関数 |
+| `rentHint` | `RentDeclineHint \| null` | 必須 | 賃料下落ヒント |
+| `rentHintLoading` | `boolean` | 必須 | 賃料ヒント取得中フラグ |
+| `rentHintError` | `string \| null` | 必須 | 賃料ヒント取得エラー |
+| `handleFetchRentHint` | `() => Promise<void>` | 必須 | 賃料ヒント取得ハンドラ |
+| `isCashPurchase` | `boolean` | 必須 | 現金購入モードフラグ |
+| `handleCashPurchaseToggle` | `(checked: boolean) => void` | 必須 | 現金購入チェックボックスハンドラ |
+| `zoningType` | `ZoningType` | 必須 | 用途地域種別 |
+| `setZoningType` | `(v: ZoningType) => void` | 必須 | 用途地域更新関数 |
+| `rateSchedule` | `RateScheduleHandlers` | 必須 | 金利調整スケジュールの操作ハンドラ群 |
+| `capex` | `CapexHandlers` | 必須 | 大規模修繕スケジュールの操作ハンドラ群 |
+| `hasErrors` | `boolean` | 必須 | バリデーションエラーの有無 |
+| `handleAnalyze` | `() => void` | 必須 | シミュレーション実行ハンドラ |
+
+### 責務
+
+- `LocationSection`・`PropertyInfoSection`・`LoanSection`・`ScenarioSection` の4セクションをカードにまとめてレンダリングする薄いプレゼンテーション層
+- 状態は持たず、すべて `InvestmentForm` から受け取った props を各セクションに委譲する
+
+---
+
+## QuickModeForm
+
+`frontend/src/components/QuickModeForm.tsx`
+
+### 概要
+
+クイック（Quick）モードの入力フォーム。物件価格総額・月額賃料・ローン金額の3項目を主入力とし、「土地相場データ」セクションを折りたたみで任意表示する。`InvestmentForm` から分離されたプレゼンテーション層。
+
+### Props
+
+| Prop | 型 | 必須 | 説明 |
+|------|-----|------|------|
+| `area` | `string` | 必須 | 選択中の都道府県コード |
+| `handleAreaChange` | `(e: React.ChangeEvent<HTMLSelectElement>) => void` | 必須 | 都道府県変更ハンドラ |
+| `city` | `string` | 必須 | 選択中の市区町村コード |
+| `handleCityChange` | `(e: React.ChangeEvent<HTMLSelectElement>) => void` | 必須 | 市区町村変更ハンドラ |
+| `muniFilter` | `string` | 必須 | 市区町村フィルタテキスト |
+| `setMuniFilter` | `(v: string) => void` | 必須 | 市区町村フィルタ更新関数 |
+| `filteredMunicipalities` | `Municipality[]` | 必須 | フィルタ済み市区町村一覧 |
+| `muniLoading` | `boolean` | 必須 | 市区町村取得中フラグ |
+| `muniError` | `string \| null` | 必須 | 市区町村取得エラーメッセージ |
+| `showLandSection` | `boolean` | 必須 | 土地相場データセクションの表示フラグ |
+| `setShowLandSection` | `React.Dispatch<React.SetStateAction<boolean>>` | 必須 | 土地相場セクション表示切替 |
+| `isOnline` | `boolean \| null` | 必須 | オンライン状態 |
+| `propertyLat` | `string` | 必須 | 緯度入力値（文字列） |
+| `propertyLng` | `string` | 必須 | 経度入力値（文字列） |
+| `loading` | `boolean` | 必須 | API呼び出し中フラグ |
+| `onFetchLandPrices` | `(area: string, city: string, lat?: number, lng?: number) => Promise<void>` | 必須 | 相場データ取得ハンドラ |
+| `quickHistory` | `QuickHistoryEntry[]` | 必須 | クイックモードの入力履歴（`localStorage` 由来） |
+| `handleRestoreLastInput` | `() => void` | 必須 | 直近履歴を復元するハンドラ |
+| `quickTotalPriceMan` | `string` | 必須 | 物件価格総額（万円）の文字列入力値 |
+| `setQuickTotalPriceMan` | `(v: string) => void` | 必須 | 物件価格総額更新関数 |
+| `markTouched` | `(key: string) => void` | 必須 | フィールドのタッチ状態を更新する関数 |
+| `fieldError` | `(key: string) => string \| undefined` | 必須 | フィールドエラーメッセージ取得関数 |
+| `input` | `InvestmentInput` | 必須 | 入力値 |
+| `setNum` | `(key: keyof InvestmentInput, value: number) => void` | 必須 | 数値フィールド更新関数 |
+| `isCashPurchase` | `boolean` | 必須 | 現金購入モードフラグ |
+| `handleCashPurchaseToggle` | `(checked: boolean) => void` | 必須 | 現金購入チェックボックスハンドラ |
+| `showCustomLoan` | `boolean` | 必須 | ローン詳細設定の表示フラグ |
+| `setShowCustomLoan` | `(v: boolean) => void` | 必須 | ローン詳細設定表示切替 |
+| `hasErrors` | `boolean` | 必須 | バリデーションエラーの有無 |
+| `handleAnalyze` | `() => void` | 必須 | シミュレーション実行ハンドラ |
+
+### 責務
+
+- 物件価格総額・月額賃料・ローン金額の3項目をフラットに配置する薄いプレゼンテーション層
+- 土地相場データセクションを `ChevronDown/Up` で折りたたみ表示（初期非表示）
+- デフォルト値バナー（空室率5%・経費率20%等）を表示
+- 現金購入チェックボックスをローン金額フィールド直上に配置
+- `quickHistory` が存在する場合に「前回の入力を復元」ボタンを表示
+
+---
+
+## MobileSummaryCard
+
+`frontend/src/components/MobileSummaryCard.tsx`
+
+### 概要
+
+モバイル専用（`lg:hidden`）の結果サマリーカード。意思決定に重要な8指標を一画面に収め、PDF出力ボタンも提供する。
+
+### Props
+
+| Prop | 型 | 必須 | 説明 |
+|------|-----|------|------|
+| `result` | `InvestmentResult` | 必須 | 投資シミュレーション結果 |
+| `input` | `InvestmentInput` | 必須 | シミュレーション入力値（PDF出力・頭金計算に使用） |
+| `yieldPct` | `number` | 必須 | 表面利回り（%） |
+| `netYieldPct` | `number` | 必須 | 実質利回り（%） |
+
+### 責務
+
+- 表面利回り・実質利回り・DSCR・デッドクロス年・必要頭金・出口手取り・IRR・最終手残りの8指標を2列グリッドで表示
+- DSCR に応じて背景色と `CheckCircle2/AlertTriangle/XCircle` アイコンを切り替え
+- デッドクロスが10年以内の場合は赤、それ以降は黄、なしは緑で表示
+- 「詳細PDFを出力」ボタンで `downloadReportPDF(input, result)` を呼び出す（`pdfLoading` 状態管理を内包）
+- `lg:hidden` クラスにより大画面では非表示
+
+---
+
+## InvestmentScoreCard
+
+`frontend/src/components/InvestmentScoreCard.tsx`
+
+### 概要
+
+投資適地スコア（0〜100点）をレーダーチャートと内訳テーブルで表示するカード。XKT013/015/001/003/025〜029/020/XST001の複数APIデータを統合したスコアを可視化する。
+
+### Props
+
+| Prop | 型 | 必須 | 説明 |
+|------|-----|------|------|
+| `score` | `InvestmentScoreResult` | 必須 | 投資適地スコア結果（`totalScore`・`grade`・`breakdown` を含む） |
+
+### 責務
+
+- `totalScore`（0〜100）と `grade`（優良/良好/普通/注意/要注意）をヘッダーに表示。グレードに応じて `Badge` の variant と文字色を切り替え
+- `breakdown.radarData` が存在する場合、Recharts `RadarChart` でスコアの内訳をレーダー表示
+- `breakdown` の8指標（人口動態・駅乗降客数・都市計画区域・立地最適化・ハザードリスク・液状化リスク・盛土・災害履歴）を `ScoreRow` で一覧表示
+- 各 `ScoreRow` は正値を緑・負値を赤・ゼロを灰色で表示
+- フッターに「基準スコア50点 + 各指標の加減点（0〜100にクランプ）。API取得失敗時は該当指標を0点として算出。」を表示
+
+---
+
+## SimulationModeToggle
+
+`frontend/src/components/SimulationModeToggle.tsx`
+
+### 概要
+
+クイックモードと詳細モードを切り替えるトグルボタングループ。`InvestmentForm` のフォーム上部に配置される。
+
+### Props
+
+| Prop | 型 | 必須 | 説明 |
+|------|-----|------|------|
+| `mode` | `SimulationMode` | 必須 | 現在のモード（`"quick"` または `"full"`） |
+| `onChange` | `(mode: SimulationMode) => void` | 必須 | モード変更時のコールバック |
+| `className` | `string` | 任意 | 追加CSSクラス |
+
+### 責務
+
+- `role="group" aria-label="シミュレーションモード"` のコンテナとして `role="radio"` ボタンを2つ配置
+- クイックボタン: `Zap` アイコン・サブタイトル「内覧でサッと試す」
+- 詳細ボタン: `SlidersHorizontal` アイコン・サブタイトル「じっくり分析する」
+- 選択中のボタンは `bg-primary text-white shadow-sm` でハイライト
+
+---
+
+## ResultsSection
+
+`frontend/src/components/ResultsSection.tsx`
+
+### 概要
+
+シミュレーション結果と「エリアを探す」の2タブを管理するセクションコンポーネント。`Dashboard` から結果・比較・スコア等の全データを受け取り、各子コンポーネントへ適切に振り分ける。
+
+### Props
+
+| Prop | 型 | 必須 | 説明 |
+|------|-----|------|------|
+| `activeTab` | `"simulation" \| "area-discovery"` | 必須 | 現在のアクティブタブ |
+| `setActiveTab` | `(tab: "simulation" \| "area-discovery") => void` | 必須 | タブ切替関数 |
+| `selectedMunicipalityMsg` | `string \| null` | 必須 | エリア探しで選択した市区町村の通知メッセージ |
+| `setSelectedMunicipalityMsg` | `(msg: string \| null) => void` | 必須 | 市区町村メッセージ更新関数 |
+| `simulationMode` | `SimulationMode` | 必須 | クイック/詳細モード |
+| `result` | `InvestmentResult \| null` | 必須 | 投資シミュレーション結果 |
+| `comparison` | `LandPriceComparison \| null` | 必須 | 土地価格比較データ |
+| `theoreticalPrice` | `TheoreticalPriceResult \| null` | 必須 | 理論価格推定結果 |
+| `stationRidership` | `StationRidershipResult[] \| null` | 必須 | 駅別乗降客数データ |
+| `populationForecast` | `PopulationForecastResult \| null` | 必須 | 人口動態予測データ |
+| `landAppraisal` | `AppraisalComparisonResult \| null` | 必須 | 公示地価比較データ |
+| `externalUrbanRisks` | `UrbanRisk[] \| null` | 必須 | 外部都市計画リスクデータ |
+| `investmentScore` | `InvestmentScoreResult \| null` | 必須 | 投資適地スコア |
+| `hazardRisks` | `UrbanRisk[] \| null` | 必須 | ハザードリスクデータ |
+| `lastInput` | `InvestmentInput \| null` | 必須 | 直近のシミュレーション入力値 |
+| `propertyLat` | `number \| undefined` | 必須 | 物件緯度 |
+| `propertyLng` | `number \| undefined` | 必須 | 物件経度 |
+| `monteCarloResult` | `MonteCarloResult \| null` | 必須 | モンテカルロシミュレーション結果 |
+| `monteCarloLoading` | `boolean` | 必須 | モンテカルロ実行中フラグ |
+| `onMonteCarlo` | `() => Promise<void>` | 必須 | モンテカルロ実行ハンドラ |
+| `loanMethod` | `LoanMethod` | 必須 | 返済方式 |
+| `onLoanMethodChange` | `(method: LoanMethod) => Promise<void>` | 必須 | 返済方式変更ハンドラ |
+| `onTileSelect` | `(lat: number, lng: number) => void` | 必須 | ヒートマップタイル選択コールバック |
+
+### 責務
+
+- シミュレーション / エリア探しの2タブを管理し、`activeTab` に応じてコンテンツを切り替える
+- シミュレーションタブ: `result` が存在する場合に `YieldAnalysis`・`LandPriceAnalysis`・`NegotiationPanel`・`LoanOptimizationPanel`・`LoanComparePanel`・`InvestmentScoreCard`・`CostBreakdown`・`CashFlowChart`・`DeadCrossChart`・`MonteCarloChart`・`RenovationPanel`・`WatchlistPanel` を順に表示
+- エリア探しタブ: `AreaDiscovery`・`InvestmentScoreHeatmap`（SSR 回避のため `dynamic` import）を表示
+- `AreaDiscovery` の `onMunicipalitySelect` で市区町村選択時に都道府県センター座標をヒートマップ初期位置に設定
+- `comparison?.stats ?? null` を `YieldAnalysis` の `landPriceStats` として渡す
+
+---
+
+## CriticalErrorBanner
+
+`frontend/src/components/CriticalErrorBanner.tsx`
+
+### 概要
+
+投資分析結果の重大エラー（一発退場条件・警告）をバナー形式で表示するコンポーネント。エラーがない場合は `null` を返す。
+
+### Props
+
+| Prop | 型 | 必須 | 説明 |
+|------|-----|------|------|
+| `errors` | `CriticalError[]` | 必須 | 重大エラーの配列（`result.criticalErrors` を渡す） |
+
+### 責務
+
+- `errors` が空または未定義の場合は何も表示しない（`null` を返す）
+- `role="alert" aria-label="重大なリスク"` のコンテナ内に各エラーをリスト表示
+- `err.status === "REJECT"` の場合: 赤枠・赤背景・`XOctagon` アイコン・「⛔ 一発退場」ラベルで表示
+- `err.status !== "REJECT"`（警告）の場合: 黄枠・黄背景・`AlertTriangle` アイコン・「⚠ 警告」ラベルで表示
+- `key={err.code}` で安定したキーを使用
+
+---
+
+## FirstTimerGuide
+
+`frontend/src/components/FirstTimerGuide.tsx`
+
+### 概要
+
+初回訪問ユーザー向けのオンボーディングモーダル。不動産投資判断の4ステップを説明し、サンプル物件でのシミュレーション開始を促す。
+
+### Props
+
+| Prop | 型 | 必須 | 説明 |
+|------|-----|------|------|
+| `onUseSample` | `(input: InvestmentInput, sampleName: string) => void` | 必須 | 「サンプル物件で試す」ボタン押下時のコールバック。サンプル入力値とサンプル名を渡す |
+| `onDismiss` | `() => void` | 必須 | 「自分で入力する」ボタンまたは閉じるボタン押下時のコールバック |
+| `sampleProperty` | `InvestmentInput` | 必須 | サンプル物件の入力値（木造アパート 3,500万円・月額家賃25万円・借入2,400万円） |
+
+### 責務
+
+- `fixed inset-0 z-50` のフルスクリーンオーバーレイとして表示
+- 利回りチェック・デッドクロス確認・立地スコア・出口戦略の4ステップを `STEPS` 配列から生成してリスト表示
+- 「サンプル物件で試す」ボタンで `onUseSample(sampleProperty, "木造アパート（築15年・月25万円）")` を呼び出す
+- 「自分で入力する」ボタンと右上の×ボタンで `onDismiss` を呼び出す
+- 状態を持たない純粋なプレゼンテーションコンポーネント
+
+---
+
+## ServiceWorkerRegistrar
+
+`frontend/src/components/ServiceWorkerRegistrar.tsx`
+
+### 概要
+
+Service Worker（`/sw.js`）を登録するサイドエフェクト専用コンポーネント。レンダリング結果は常に `null`。
+
+### Props
+
+Props なし。
+
+### 責務
+
+- `useEffect` のマウント時に `"serviceWorker" in navigator` かつ `process.env.NODE_ENV === "production"` の場合のみ `navigator.serviceWorker.register("/sw.js")` を呼び出す
+- 開発環境では登録をスキップする（`NODE_ENV !== "production"` の場合は何もしない）
+- 失敗時は `console.error` のみ（ユーザーへの通知なし）
+- `layout.tsx` または `page.tsx` のルートレベルに配置する
 
