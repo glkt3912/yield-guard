@@ -142,6 +142,92 @@ func calcIRRNPV(
 	return irrNPVResult{irr: irr, npv: npv}
 }
 
+// calcMultiExitComparison は複数保有年数（デフォルト: 5/10/15/20年）の出口比較テーブルを生成する。
+// ExitYears が空なら [5, 10, 15, 20] を使用し、データが存在しない年はスキップする。
+func calcMultiExitComparison(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciation float64, miscExpenses float64) []MultiExitRow {
+	years := input.ExitYears
+	if len(years) == 0 {
+		years = []int{5, 10, 15, 20}
+	}
+
+	equity := input.LandPrice + input.BuildingCost + miscExpenses - input.LoanAmount
+
+	var rows []MultiExitRow
+	for _, yr := range years {
+		if yr <= 0 || yr > len(yearly) {
+			continue
+		}
+		idx := yr - 1
+		exitYear := yearly[idx]
+
+		// 累積CF（税引後）
+		cumCF := exitYear.CumulativeCashFlow
+
+		// 売却価格: NOI / exitYieldTarget（その年のNOIを使用）
+		noi := exitYear.AnnualRent - exitYear.AnnualExpenses
+		salePrice := 0.0
+		if input.ExitYieldTarget > 0 {
+			salePrice = noi / input.ExitYieldTarget
+		}
+
+		// 売却費用（仲介手数料上限・消費税込み）
+		sellExpenses := (salePrice*0.03 + 60_000) * 1.10
+
+		// 建物の税務上の簿価（年次シミュレーション時点の累計減価償却は accumulatedDepreciation が保有年数終了時点）
+		// 各年の簿価は比例按分で近似する
+		bookValueBuilding := input.BuildingCost - accumulatedDepreciation
+		if bookValueBuilding < 0 {
+			bookValueBuilding = 0
+		}
+
+		// 取得費 = 土地 + 建物簿価 + 諸経費
+		acquisitionCost := input.LandPrice + bookValueBuilding + miscExpenses
+
+		// 譲渡所得 = 売却価格 - 売却費用 - 取得費
+		capitalGain := salePrice - sellExpenses - acquisitionCost
+
+		// 譲渡税率: 5年以下=短期(39.63%)、5年超=長期(20.315%)
+		var taxRate float64
+		isShortTerm := yr <= 5
+		if isShortTerm {
+			taxRate = shortTermTransferTaxRate
+		} else {
+			taxRate = longTermTransferTaxRate
+		}
+
+		transferTax := 0.0
+		if capitalGain > 0 {
+			transferTax = capitalGain * taxRate
+		}
+
+		remainingLoan := exitYear.RemainingLoanBalance
+
+		// 出口エクイティ = 売却価格 - 売却費用 - 残債 - 譲渡税 + 累積税引後CF
+		exitEquity := salePrice - sellExpenses - remainingLoan - transferTax + cumCF
+
+		// IRR 計算
+		irrCFs := make([]float64, yr)
+		for i := 0; i < yr; i++ {
+			irrCFs[i] = yearly[i].AfterTaxCashFlow
+		}
+		netProceeds := salePrice - sellExpenses - transferTax - remainingLoan
+		irr, _ := CalcIRR(irrCFs, netProceeds, equity)
+
+		rows = append(rows, MultiExitRow{
+			Year:            yr,
+			SalePrice:       salePrice,
+			TransferTaxRate: taxRate,
+			TransferTax:     transferTax,
+			RemainingLoan:   remainingLoan,
+			CumulativeCF:    cumCF,
+			ExitEquity:      exitEquity,
+			IRR:             irr,
+			IsShortTermWarn: isShortTerm,
+		})
+	}
+	return rows
+}
+
 // CalcNPV は将来キャッシュフロー・ターミナルバリュー・割引率・初期投資から NPV を計算する
 func CalcNPV(cfs []float64, terminalValue, discountRate, initialInvestment float64) float64 {
 	pv := 0.0
