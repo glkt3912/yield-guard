@@ -145,6 +145,12 @@ type InvestmentInput struct {
 	InsuranceFeeRate     float64 `json:"insuranceFeeRate,omitempty"`     // 保険料率 (例: 0.003 = 0.3%)
 	OtherExpenseRate     float64 `json:"otherExpenseRate,omitempty"`     // その他経費率 (例: 0.005 = 0.5%)
 	ExpenseInflationRate float64 `json:"expenseInflationRate,omitempty"` // 経費インフレ率/年 (例: 0.01 = 1%)
+
+	// 入退去コスト（全て optional。0 または未入力の場合はターンオーバーコスト = 0）
+	AvgTenancyYears float64 `json:"avgTenancyYears,omitempty"` // 平均入居期間（年）例: 2.0
+	RestorationCost float64 `json:"restorationCost,omitempty"` // 原状回復費（円/回）例: 150000
+	AdFee           float64 `json:"adFee,omitempty"`           // 入居者募集 AD（円/回）例: 家賃1ヶ月分
+	RentFreePeriod  float64 `json:"rentFreePeriod,omitempty"`  // フリーレント（ヶ月）例: 0.5
 }
 
 // CapexEvent は大規模修繕費の発生スケジュール1件
