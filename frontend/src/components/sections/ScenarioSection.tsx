@@ -280,7 +280,11 @@ export function ScenarioSection({
               step="0.5"
               placeholder="例: 2.0"
               value={input.avgTenancyYears != null ? String(input.avgTenancyYears) : ""}
-              onChange={(e) => setNum("avgTenancyYears", parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                // Treat empty input as 0 (backward compat; setNum requires number)
+                const v = parseFloat(e.target.value);
+                setNum("avgTenancyYears", isNaN(v) ? 0 : v);
+              }}
             />
             <Input
               label="原状回復費（1回あたり）"
@@ -295,9 +299,11 @@ export function ScenarioSection({
                   ? String(Math.round(input.restorationCost / 10_000))
                   : ""
               }
-              onChange={(e) =>
-                setNum("restorationCost", (parseFloat(e.target.value) || 0) * 10_000)
-              }
+              onChange={(e) => {
+                // Treat empty input as 0 (backward compat; setNum requires number)
+                const v = parseFloat(e.target.value);
+                setNum("restorationCost", (isNaN(v) ? 0 : v) * 10_000);
+              }}
             />
             <Input
               label="AD（広告料・1回あたり）"
@@ -308,7 +314,11 @@ export function ScenarioSection({
               step="1"
               placeholder="例: 10"
               value={input.adFee != null ? String(Math.round(input.adFee / 10_000)) : ""}
-              onChange={(e) => setNum("adFee", (parseFloat(e.target.value) || 0) * 10_000)}
+              onChange={(e) => {
+                // Treat empty input as 0 (backward compat; setNum requires number)
+                const v = parseFloat(e.target.value);
+                setNum("adFee", (isNaN(v) ? 0 : v) * 10_000);
+              }}
             />
             <Input
               label="フリーレント"
@@ -320,7 +330,11 @@ export function ScenarioSection({
               step="0.5"
               placeholder="例: 0.5"
               value={input.rentFreePeriod != null ? String(input.rentFreePeriod) : ""}
-              onChange={(e) => setNum("rentFreePeriod", parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                // Treat empty input as 0 (backward compat; setNum requires number)
+                const v = parseFloat(e.target.value);
+                setNum("rentFreePeriod", isNaN(v) ? 0 : v);
+              }}
             />
           </div>
         )}
