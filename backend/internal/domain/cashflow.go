@@ -56,6 +56,9 @@ func initYieldParams(input InvestmentInput) yieldParams {
 	if totalInvestment > 0 {
 		grossYield = (input.MonthlyRent * 12) / totalInvestment
 	}
+	// initYieldParams は初年度の利回り指標を計算する。
+	// 経費インフレ率は年次シミュレーション（simulateYears）で複利適用するため、
+	// ここでは適用しない（初年度スナップショットとして扱う）。
 	annualExpenses := annualRent * calcEffectiveExpenseRate(input)
 	netYield := 0.0
 	if totalInvestment > 0 {
