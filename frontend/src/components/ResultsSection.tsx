@@ -249,7 +249,7 @@ export function ResultsSection({
           <WatchlistPanel currentResult={result ?? undefined} />
           {lastInput && (
             <DueDiligenceChecklist
-              propertyKey={btoa(encodeURIComponent(JSON.stringify(lastInput))).slice(0, 64)}
+              propertyKey={`${lastInput.landPrice}-${lastInput.buildingCost}-${lastInput.monthlyRent}-${lastInput.loanAmount}`}
             />
           )}
         </>

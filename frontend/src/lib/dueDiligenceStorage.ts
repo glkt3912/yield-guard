@@ -29,5 +29,9 @@ export function getChecklist(propertyKey: string): DueDiligenceState {
  */
 export function saveChecklist(propertyKey: string, state: DueDiligenceState): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(storageKey(propertyKey), JSON.stringify(state));
+  try {
+    localStorage.setItem(storageKey(propertyKey), JSON.stringify(state));
+  } catch {
+    // localStorage quota exceeded — silently ignore to prevent UI crash
+  }
 }
