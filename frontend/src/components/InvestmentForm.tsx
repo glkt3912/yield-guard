@@ -223,7 +223,9 @@ export function InvestmentForm({
       vacancyRate: externalRecommend.vacancyRate,
       rentDeclineRate: externalRecommend.rentDeclineRate,
     }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // externalRecommend 全体を依存配列に入れると親の再レンダー毎に発火してしまうため、
+    // version のみを依存とし、ボタン押下時（version インクリメント時）だけ適用する意図的な設計。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalRecommend?.version]);
 
   // モード切替時に現金購入フラグをリセットし、ローン値を復元する
