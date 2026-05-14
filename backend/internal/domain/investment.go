@@ -80,7 +80,7 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 	irrNPV := calcIRRNPV(input, sim.yearlyResults, equity, exitNet,
 		exitSalePrice, sim.accumulatedDepreciation, yp.miscExpenses)
 
-	multiExit := calcMultiExitComparison(input, sim.yearlyResults, sim.accumulatedDepreciation, yp.miscExpenses)
+	multiExit := calcMultiExitComparison(input, sim.yearlyResults, yp.miscExpenses)
 
 	return InvestmentResult{
 		TotalInvestment:       yp.totalInvestment,

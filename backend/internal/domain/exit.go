@@ -144,7 +144,7 @@ func calcIRRNPV(
 
 // calcMultiExitComparison は複数保有年数（デフォルト: 5/10/15/20年）の出口比較テーブルを生成する。
 // ExitYears が空なら [5, 10, 15, 20] を使用し、データが存在しない年はスキップする。
-func calcMultiExitComparison(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciation float64, miscExpenses float64) []MultiExitRow {
+func calcMultiExitComparison(input InvestmentInput, yearly []YearlyResult, miscExpenses float64) []MultiExitRow {
 	years := input.ExitYears
 	if len(years) == 0 {
 		years = []int{5, 10, 15, 20}
