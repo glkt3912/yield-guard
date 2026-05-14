@@ -31,12 +31,16 @@ updates:
       interval: weekly
       day: monday
       timezone: "Asia/Tokyo"
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 5
     groups:
-      all-dependencies:
+      minor-and-patch:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
     ignore:
+      # メジャーアップは破壊的変更リスクが高いため個別で判断する
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react"
