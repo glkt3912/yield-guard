@@ -17,6 +17,7 @@ import { HazardAlertBanner } from "@/components/HazardAlertBanner";
 import { MonteCarloChart } from "@/components/MonteCarloChart";
 import NegotiationPanel from "@/components/NegotiationPanel";
 import WatchlistPanel from "@/components/WatchlistPanel";
+import DueDiligenceChecklist from "@/components/DueDiligenceChecklist";
 import { AreaDiscovery } from "@/components/AreaDiscovery";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
@@ -266,6 +267,11 @@ export function ResultsSection({
           )}
           <RenovationPanel />
           <WatchlistPanel currentResult={result ?? undefined} />
+          {lastInput && (
+            <DueDiligenceChecklist
+              propertyKey={`${lastInput.landPrice}-${lastInput.buildingCost}-${lastInput.monthlyRent}-${lastInput.loanAmount}`}
+            />
+          )}
         </>
       )}
     </section>
