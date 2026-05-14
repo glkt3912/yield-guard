@@ -246,11 +246,8 @@ func simulateYears(input InvestmentInput, years int, yp yieldParams, lp loanPara
 
 		capex := capexForYear(input.CapexSchedule, year)
 		// 年間ターンオーバーコスト（入退去に伴う原状回復費・AD・フリーレント損失）
-		// monthlyRent は当年の実効月額賃料を元にする（空室率は考慮しない）
-		monthlyRentForYear := yearAnnualRent / (12 * (1 - math.Min(input.VacancyRate+input.VacancyRateDelta, 0.99)))
-		if math.IsNaN(monthlyRentForYear) || math.IsInf(monthlyRentForYear, 0) {
-			monthlyRentForYear = input.MonthlyRent
-		}
+		// yearAnnualRent はすでに空室率を加味した実効年間賃料のため、12で割るだけで月額賃料を得る
+		monthlyRentForYear := yearAnnualRent / 12
 		annualTurnoverCost := calcAnnualTurnoverCost(input, monthlyRentForYear)
 		cashFlow := yearAnnualRent - annualLoanPayment - yearExpenses - capex - annualTurnoverCost
 		afterTaxCF := cashFlow - incomeTax
@@ -427,7 +424,11 @@ func calcStressScenario(ctx context.Context, base InvestmentInput, label string,
 			}
 		}
 
-		cf := yearNOI - yearLoan
+		// 年間ターンオーバーコスト（simulateYears と同様のロジックで算出）
+		monthlyRentForYear := yearRent / 12
+		annualTurnoverCost := calcAnnualTurnoverCost(in, monthlyRentForYear)
+
+		cf := yearNOI - yearLoan - annualTurnoverCost
 		// 減価償却は省略した保守的近似（簡略ストレス計算のため過大に税を見積もる）
 		taxableIncome := yearNOI - yearInterest
 		incomeTax := 0.0
