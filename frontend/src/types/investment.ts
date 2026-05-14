@@ -437,6 +437,8 @@ export interface WatchlistMetrics {
   irr: number | null;
   totalInvestment: number;
   exitTotalEquity: number;
+  deadCrossYear?: number; // -1 = none (best)
+  npv?: number;
 }
 
 export interface WatchlistItem {
