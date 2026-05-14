@@ -66,6 +66,10 @@ Copy `.env.example` → `.env` (project root).
 | `GET` | `/api/investment-score` | Investment suitability score (tile coords) |
 | `GET` | `/api/investment-score-heatmap` | Batch investment scores for viewport bbox (minLat, maxLat, minLng, maxLng, z=11-15) |
 | `GET` | `/api/rent-stats` | Area rent market stats: median/average/count from MLIT rental data (area, municipality, area_sqm) |
+| `POST` | `/api/renovation/analyze` | Renovation cost & yield impact analysis |
+| `POST` | `/api/investment/simulate` | Monte Carlo cash-flow simulation |
+| `GET` | `/api/area-discovery` | Discover investment areas by tile coords |
+| `GET` | `/api/geocode` | Geocoding: address → lat/lng |
 
 ## Directory structure
 
