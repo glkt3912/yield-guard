@@ -156,7 +156,8 @@ jobs:
         if: github.event_name == 'pull_request'
         id: preview
         run: |
-          OUTPUT=$(vercel deploy --yes 2>&1)
+          # || true prevents set -e from exiting before we can inspect the output
+          OUTPUT=$(vercel deploy --yes 2>&1) || true
           echo "$OUTPUT"
           # Vercel CLI v51 outputs "✅  Preview: https://xxx.vercel.app [3s]"
           # tail -1 picks the Preview URL; the Inspect URL (vercel.com) is excluded by the pattern
