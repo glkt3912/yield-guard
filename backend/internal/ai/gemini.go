@@ -9,16 +9,19 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"github.com/google/generative-ai-go/genai"
 	"github.com/yield-guard/backend/internal/domain"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
-	aiCacheTTL          = 24 * time.Hour
-	aiCacheEvictInterval = time.Hour
-	aiCallTimeout        = 5 * time.Second
-	defaultGeminiModel   = "gemini-2.5-flash"
+	aiCacheTTL               = 24 * time.Hour
+	aiCallTimeout            = 5 * time.Second
+	defaultGeminiModel       = "gemini-2.5-flash"
+	aiSummaryCacheCollection = "ai_summary_cache"
 )
 
 const systemPrompt = `あなたは日本の不動産投資専門アドバイザーです。
@@ -56,15 +59,91 @@ type cacheEntry struct {
 	expiresAt time.Time
 }
 
-// GeminiSummarizer calls Google AI Studio Gemini to generate a Japanese investment summary.
-type GeminiSummarizer struct {
-	client  *genai.Client
+// summaryCache is the interface for L2 Firestore and L1 in-memory cache operations.
+type summaryCache interface {
+	get(ctx context.Context, key string) (string, bool)
+	set(ctx context.Context, key, summary string)
+}
+
+// inMemorySummaryCache is the fallback in-memory cache used when Firestore is unavailable.
+type inMemorySummaryCache struct {
 	mu      sync.RWMutex
 	entries map[string]cacheEntry
 }
 
+func newInMemorySummaryCache() *inMemorySummaryCache {
+	return &inMemorySummaryCache{entries: make(map[string]cacheEntry)}
+}
+
+func (c *inMemorySummaryCache) get(_ context.Context, key string) (string, bool) {
+	c.mu.RLock()
+	entry, ok := c.entries[key]
+	c.mu.RUnlock()
+	if !ok {
+		return "", false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.entries, key)
+		c.mu.Unlock()
+		return "", false
+	}
+	return entry.summary, true
+}
+
+func (c *inMemorySummaryCache) set(_ context.Context, key, summary string) {
+	c.mu.Lock()
+	c.entries[key] = cacheEntry{summary: summary, expiresAt: time.Now().Add(aiCacheTTL)}
+	c.mu.Unlock()
+}
+
+// firestoreSummaryCache stores AI summaries in Firestore with TTL.
+type firestoreSummaryCache struct {
+	client *firestore.Client
+}
+
+func (c *firestoreSummaryCache) get(ctx context.Context, key string) (string, bool) {
+	doc, err := c.client.Collection(aiSummaryCacheCollection).Doc(key).Get(ctx)
+	if err != nil {
+		if status.Code(err) != codes.NotFound {
+			slog.WarnContext(ctx, "Firestore ai_summary_cache get failed", "key", key, "error", err)
+		}
+		return "", false
+	}
+	expiresAt, ok := doc.Data()["expiresAt"].(time.Time)
+	if !ok {
+		slog.WarnContext(ctx, "ai_summary_cache: unexpected expiresAt type", "key", key)
+		return "", false
+	}
+	if time.Now().After(expiresAt) {
+		return "", false
+	}
+	summary, ok := doc.Data()["summary"].(string)
+	if !ok {
+		return "", false
+	}
+	return summary, true
+}
+
+func (c *firestoreSummaryCache) set(ctx context.Context, key, summary string) {
+	_, err := c.client.Collection(aiSummaryCacheCollection).Doc(key).Set(ctx, map[string]any{
+		"summary":   summary,
+		"expiresAt": time.Now().Add(aiCacheTTL),
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "Firestore ai_summary_cache set failed", "key", key, "error", err)
+	}
+}
+
+// GeminiSummarizer calls Google AI Studio Gemini to generate a Japanese investment summary.
+type GeminiSummarizer struct {
+	client *genai.Client
+	cache  summaryCache
+}
+
 // NewSummarizer returns a Gemini-backed Summarizer, or a no-op if GEMINI_API_KEY is unset.
-func NewSummarizer() Summarizer {
+// If fsClient is non-nil, Firestore is used as the L2 cache; otherwise falls back to in-memory.
+func NewSummarizer(fsClient *firestore.Client) Summarizer {
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
 		return noopSummarizer{}
@@ -74,41 +153,23 @@ func NewSummarizer() Summarizer {
 		slog.Warn("Gemini init failed, AI summary disabled", "error", err)
 		return noopSummarizer{}
 	}
-	s := &GeminiSummarizer{
-		client:  client,
-		entries: make(map[string]cacheEntry),
+	var cache summaryCache
+	if fsClient != nil {
+		cache = &firestoreSummaryCache{client: fsClient}
+	} else {
+		cache = newInMemorySummaryCache()
 	}
-	go s.evictLoop()
-	return s
-}
-
-// evictLoop は期限切れエントリを定期削除する。
-// GeminiSummarizer は Cloud Run プロセスと同じライフサイクルを持つシングルトンであり、
-// goroutine はプロセス終了まで稼働し続けることを意図している。
-// テスト時は GEMINI_API_KEY が未設定のため noopSummarizer が返され、この goroutine は起動しない。
-func (s *GeminiSummarizer) evictLoop() {
-	ticker := time.NewTicker(aiCacheEvictInterval)
-	defer ticker.Stop()
-	for range ticker.C {
-		now := time.Now()
-		s.mu.Lock()
-		for k, e := range s.entries {
-			if now.After(e.expiresAt) {
-				delete(s.entries, k)
-			}
-		}
-		s.mu.Unlock()
+	return &GeminiSummarizer{
+		client: client,
+		cache:  cache,
 	}
 }
 
 func (s *GeminiSummarizer) GenerateSummary(ctx context.Context, input domain.InvestmentInput, result domain.InvestmentResult) string {
 	key := summaryKey(input, result)
 
-	s.mu.RLock()
-	entry, ok := s.entries[key]
-	s.mu.RUnlock()
-	if ok && time.Now().Before(entry.expiresAt) {
-		return entry.summary
+	if cached, ok := s.cache.get(ctx, key); ok {
+		return cached
 	}
 
 	tctx, cancel := context.WithTimeout(ctx, aiCallTimeout)
@@ -120,9 +181,11 @@ func (s *GeminiSummarizer) GenerateSummary(ctx context.Context, input domain.Inv
 		return ""
 	}
 
-	s.mu.Lock()
-	s.entries[key] = cacheEntry{summary: summary, expiresAt: time.Now().Add(aiCacheTTL)}
-	s.mu.Unlock()
+	go func() {
+		setCtx, setCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer setCancel()
+		s.cache.set(setCtx, key, summary)
+	}()
 
 	return summary
 }

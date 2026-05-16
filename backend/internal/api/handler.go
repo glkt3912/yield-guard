@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/ai"
 	"github.com/yield-guard/backend/internal/domain"
@@ -48,11 +49,15 @@ type Handler struct {
 	summarizer    ai.Summarizer
 }
 
-func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient) *Handler {
+func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient, fsClient ...*firestore.Client) *Handler {
+	var fs *firestore.Client
+	if len(fsClient) > 0 {
+		fs = fsClient[0]
+	}
 	return &Handler{
 		mlitClient:    mlitClient,
 		geocodeClient: geocodeClient,
-		summarizer:    ai.NewSummarizer(),
+		summarizer:    ai.NewSummarizer(fs),
 	}
 }
 
