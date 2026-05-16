@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { YieldAnalysis } from "@/components/YieldAnalysis";
 import { StatusSummary } from "@/components/StatusSummary";
 import { KpiStrip } from "@/components/KpiStrip";
@@ -103,15 +103,17 @@ export function ResultsSection({
     lng: number;
   } | null>(null);
 
-  const [resultsTab, setResultsTab] = useState<ResultsTab>(DEFAULT_RESULTS_TAB);
-  const prevResultRef = useRef<InvestmentResult | null>(null);
+  const [tabState, setTabState] = useState<{
+    tab: ResultsTab;
+    seenResult: InvestmentResult | null;
+  }>({ tab: DEFAULT_RESULTS_TAB, seenResult: null });
 
-  useEffect(() => {
-    if (result !== null && result !== prevResultRef.current) {
-      setResultsTab("overview");
-      prevResultRef.current = result;
-    }
-  }, [result]);
+  // result が変わったら概要タブへ自動リセット（useEffect不使用）
+  const resultsTab = result !== tabState.seenResult ? DEFAULT_RESULTS_TAB : tabState.tab;
+
+  const handleResultsTabChange = (tab: ResultsTab) => {
+    setTabState({ tab, seenResult: result });
+  };
 
   const handleAreaTileSelect = useCallback(
     (lat: number, lng: number) => {
@@ -222,7 +224,7 @@ export function ResultsSection({
                   key={id}
                   role="tab"
                   aria-selected={resultsTab === id}
-                  onClick={() => setResultsTab(id)}
+                  onClick={() => handleResultsTabChange(id)}
                   className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors whitespace-nowrap ${
                     resultsTab === id
                       ? "bg-white shadow-sm text-foreground"
