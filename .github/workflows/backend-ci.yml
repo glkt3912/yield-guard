@@ -38,7 +38,7 @@ jobs:
           cache-dependency-path: backend/go.sum
 
       - name: Install swag
-        run: go install github.com/swaggo/swag/cmd/swag@v1.16.6
+        run: go install github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc5
 
       - name: Check schema drift (swagger.json)
         working-directory: .
