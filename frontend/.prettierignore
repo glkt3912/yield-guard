@@ -3,3 +3,6 @@ out/
 coverage/
 node_modules/
 public/
+
+# 自動生成ファイル（編集・フォーマット不要）
+src/types/api.generated.ts
