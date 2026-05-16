@@ -82,6 +82,10 @@ func NewSummarizer() Summarizer {
 	return s
 }
 
+// evictLoop は期限切れエントリを定期削除する。
+// GeminiSummarizer は Cloud Run プロセスと同じライフサイクルを持つシングルトンであり、
+// goroutine はプロセス終了まで稼働し続けることを意図している。
+// テスト時は GEMINI_API_KEY が未設定のため noopSummarizer が返され、この goroutine は起動しない。
 func (s *GeminiSummarizer) evictLoop() {
 	ticker := time.NewTicker(aiCacheEvictInterval)
 	defer ticker.Stop()

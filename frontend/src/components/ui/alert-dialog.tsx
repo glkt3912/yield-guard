@@ -5,6 +5,8 @@ import { AlertTriangle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
+const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 interface AlertDialogProps {
   open: boolean;
   onClose: () => void;
@@ -36,7 +38,6 @@ export function AlertDialog({
 
   React.useEffect(() => {
     if (!open) return;
-    const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
     function getFocusables() {
       return Array.from(panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
     }
@@ -80,11 +81,7 @@ export function AlertDialog({
 
   React.useEffect(() => {
     if (!open) return;
-    panelRef.current
-      ?.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      )
-      ?.focus();
+    panelRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
   }, [open]);
 
   if (!open) return null;
@@ -97,11 +94,8 @@ export function AlertDialog({
       aria-labelledby={titleId}
       aria-describedby={descId}
     >
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={() => onCloseRef.current()}
-        aria-hidden="true"
-      />
+      {/* alertdialog は backdrop クリックで閉じない（WAI-ARIA: ユーザーに明示的な選択を求める） */}
+      <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
       <div
         ref={panelRef}
         className={cn(

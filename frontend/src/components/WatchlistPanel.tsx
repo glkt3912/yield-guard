@@ -126,6 +126,7 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
     const target = items.find((item) => item.id === pendingDeleteId);
     setItems((prev) => prev.filter((item) => item.id !== pendingDeleteId));
     setSelectedIds((prev) => prev.filter((id) => id !== pendingDeleteId));
+    // setPendingDeleteId(null) は AlertDialog の onClose コールバックが担う
     toast({
       message: target ? `「${target.name}」を削除しました` : "削除しました",
       variant: "warning",
