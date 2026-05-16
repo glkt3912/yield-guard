@@ -800,13 +800,37 @@ func (c *Client) fetchTileGeoJSON(ctx context.Context, endpoint string, z, x, y 
 // FetchLocationOptimization はタイル座標で XKT003 を呼び出し立地適正化計画区域情報を取得する。
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchLocationOptimization(ctx context.Context, z, x, y int) ([]domain.LocationOptimizationItem, error) {
+	ctx, span := otel.Tracer(mlitTracerName).Start(ctx, "mlit.FetchLocationOptimization")
+	defer span.End()
+
+	span.SetAttributes(
+		semconv.ServerAddress("www.reinfolib.mlit.go.jp"),
+		semconv.ServerPort(443),
+		semconv.URLScheme("https"),
+		attribute.String("mlit.endpoint", "XKT003"),
+		attribute.Int("mlit.query.tile_z", z),
+		attribute.Int("mlit.query.tile_x", x),
+		attribute.Int("mlit.query.tile_y", y),
+	)
+
 	key := fmt.Sprintf("location_optimization:%d:%d:%d", z, x, y)
 	if cached, ok := c.cache.locationOptimization.get(key); ok {
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT003")))
 		return cached, nil
 	}
+	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT003")))
+	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
+	start := time.Now()
 	var geoResp LocationOptimizationGeoJSON
-	if err := c.fetchTileGeoJSON(ctx, endpointLocationOptimization, z, x, y, &geoResp); err != nil {
+	err := c.fetchTileGeoJSON(ctx, endpointLocationOptimization, z, x, y, &geoResp)
+	latencySec := time.Since(start).Seconds()
+	telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
+		metric.WithAttributes(attribute.String("mlit.endpoint", "XKT003")))
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -814,6 +838,7 @@ func (c *Client) FetchLocationOptimization(ctx context.Context, z, x, y int) ([]
 	for _, f := range geoResp.Features {
 		result = append(result, domain.LocationOptimizationItem{KubunNameJa: f.Properties.KubunNameJa})
 	}
+	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
 	c.cache.locationOptimization.set(key, result)
 	return result, nil
 }
@@ -821,13 +846,37 @@ func (c *Client) FetchLocationOptimization(ctx context.Context, z, x, y int) ([]
 // FetchEmbankment はタイル座標で XKT020 を呼び出し大規模盛土造成地情報を取得する。
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.EmbankmentItem, error) {
+	ctx, span := otel.Tracer(mlitTracerName).Start(ctx, "mlit.FetchEmbankment")
+	defer span.End()
+
+	span.SetAttributes(
+		semconv.ServerAddress("www.reinfolib.mlit.go.jp"),
+		semconv.ServerPort(443),
+		semconv.URLScheme("https"),
+		attribute.String("mlit.endpoint", "XKT020"),
+		attribute.Int("mlit.query.tile_z", z),
+		attribute.Int("mlit.query.tile_x", x),
+		attribute.Int("mlit.query.tile_y", y),
+	)
+
 	key := fmt.Sprintf("embankment:%d:%d:%d", z, x, y)
 	if cached, ok := c.cache.embankment.get(key); ok {
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT020")))
 		return cached, nil
 	}
+	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT020")))
+	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
+	start := time.Now()
 	var geoResp EmbankmentGeoJSON
-	if err := c.fetchTileGeoJSON(ctx, endpointEmbankment, z, x, y, &geoResp); err != nil {
+	err := c.fetchTileGeoJSON(ctx, endpointEmbankment, z, x, y, &geoResp)
+	latencySec := time.Since(start).Seconds()
+	telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
+		metric.WithAttributes(attribute.String("mlit.endpoint", "XKT020")))
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -835,6 +884,7 @@ func (c *Client) FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.Emb
 	for _, f := range geoResp.Features {
 		result = append(result, domain.EmbankmentItem{Classification: f.Properties.EmbankmentClassification})
 	}
+	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
 	c.cache.embankment.set(key, result)
 	return result, nil
 }
@@ -842,13 +892,37 @@ func (c *Client) FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.Emb
 // FetchUrbanRoad はタイル座標で XKT030 を呼び出し都市計画道路情報を取得する。
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.UrbanRoadItem, error) {
+	ctx, span := otel.Tracer(mlitTracerName).Start(ctx, "mlit.FetchUrbanRoad")
+	defer span.End()
+
+	span.SetAttributes(
+		semconv.ServerAddress("www.reinfolib.mlit.go.jp"),
+		semconv.ServerPort(443),
+		semconv.URLScheme("https"),
+		attribute.String("mlit.endpoint", "XKT030"),
+		attribute.Int("mlit.query.tile_z", z),
+		attribute.Int("mlit.query.tile_x", x),
+		attribute.Int("mlit.query.tile_y", y),
+	)
+
 	key := fmt.Sprintf("urban_road:%d:%d:%d", z, x, y)
 	if cached, ok := c.cache.urbanRoad.get(key); ok {
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT030")))
 		return cached, nil
 	}
+	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT030")))
+	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
+	start := time.Now()
 	var geoResp UrbanRoadGeoJSON
-	if err := c.fetchTileGeoJSON(ctx, endpointUrbanRoad, z, x, y, &geoResp); err != nil {
+	err := c.fetchTileGeoJSON(ctx, endpointUrbanRoad, z, x, y, &geoResp)
+	latencySec := time.Since(start).Seconds()
+	telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
+		metric.WithAttributes(attribute.String("mlit.endpoint", "XKT030")))
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -859,6 +933,7 @@ func (c *Client) FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.Urba
 			KubunID:        f.Properties.KubunID,
 		})
 	}
+	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
 	c.cache.urbanRoad.set(key, result)
 	return result, nil
 }
@@ -866,13 +941,37 @@ func (c *Client) FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.Urba
 // FetchDisasterHistory はタイル座標で XST001 を呼び出し災害履歴情報を取得する。
 // キャッシュヒット時はAPIコールをスキップする（TTL: 24時間）。
 func (c *Client) FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domain.DisasterHistoryItem, error) {
+	ctx, span := otel.Tracer(mlitTracerName).Start(ctx, "mlit.FetchDisasterHistory")
+	defer span.End()
+
+	span.SetAttributes(
+		semconv.ServerAddress("www.reinfolib.mlit.go.jp"),
+		semconv.ServerPort(443),
+		semconv.URLScheme("https"),
+		attribute.String("mlit.endpoint", "XST001"),
+		attribute.Int("mlit.query.tile_z", z),
+		attribute.Int("mlit.query.tile_x", x),
+		attribute.Int("mlit.query.tile_y", y),
+	)
+
 	key := fmt.Sprintf("disaster:%d:%d:%d", z, x, y)
 	if cached, ok := c.cache.disaster.get(key); ok {
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XST001")))
 		return cached, nil
 	}
+	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XST001")))
+	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
+	start := time.Now()
 	var geoResp DisasterHistoryGeoJSON
-	if err := c.fetchTileGeoJSON(ctx, endpointDisasterHistory, z, x, y, &geoResp); err != nil {
+	err := c.fetchTileGeoJSON(ctx, endpointDisasterHistory, z, x, y, &geoResp)
+	latencySec := time.Since(start).Seconds()
+	telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
+		metric.WithAttributes(attribute.String("mlit.endpoint", "XST001")))
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -887,6 +986,7 @@ func (c *Client) FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domai
 			Year: year,
 		})
 	}
+	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
 	c.cache.disaster.set(key, result)
 	return result, nil
 }
