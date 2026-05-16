@@ -180,3 +180,431 @@ func spanNames(spans tracetest.SpanStubs) []string {
 
 // Ensure domain import is used (referenced by makeSuccessHandler indirectly through parseTransactions).
 var _ = domain.LandTransaction{}
+
+// makeGeoJSONHandler returns an httptest handler that responds with the given GeoJSON body.
+func makeGeoJSONHandler(body []byte) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(body)
+	}
+}
+
+// ---- FetchLocationOptimization (XKT003) ----
+
+func TestFetchLocationOptimization_SpanCreated(t *testing.T) {
+	exp := setupTestTracer(t)
+
+	resp := LocationOptimizationGeoJSON{
+		Type: "FeatureCollection",
+		Features: []LocationOptimizationFeature{
+			{Properties: LocationOptimizationProperties{KubunNameJa: "居住誘導区域"}},
+		},
+	}
+	body, _ := json.Marshal(resp)
+	srv := httptest.NewServer(makeGeoJSONHandler(body))
+	defer srv.Close()
+
+	client := newOtelTestClient(srv)
+	_, err := client.FetchLocationOptimization(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("FetchLocationOptimization returned unexpected error: %v", err)
+	}
+
+	spans := exp.GetSpans()
+	var found bool
+	for _, s := range spans {
+		if s.Name == "mlit.FetchLocationOptimization" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("span 'mlit.FetchLocationOptimization' not found; got: %v", spanNames(spans))
+	}
+}
+
+func TestFetchLocationOptimization_CacheHitAttribute(t *testing.T) {
+	exp := setupTestTracer(t)
+
+	resp := LocationOptimizationGeoJSON{Type: "FeatureCollection", Features: []LocationOptimizationFeature{}}
+	body, _ := json.Marshal(resp)
+	srv := httptest.NewServer(makeGeoJSONHandler(body))
+	defer srv.Close()
+
+	client := newOtelTestClient(srv)
+	// First call — cache miss.
+	_, err := client.FetchLocationOptimization(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("first call error: %v", err)
+	}
+
+	exp.Reset()
+
+	// Second call — cache hit.
+	_, err = client.FetchLocationOptimization(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("second call error: %v", err)
+	}
+
+	spans := exp.GetSpans()
+	var cacheHit *bool
+	for _, s := range spans {
+		if s.Name != "mlit.FetchLocationOptimization" {
+			continue
+		}
+		for _, attr := range s.Attributes {
+			if string(attr.Key) == "mlit.cache.hit" {
+				v := attr.Value.AsBool()
+				cacheHit = &v
+			}
+		}
+	}
+	if cacheHit == nil {
+		t.Fatal("attribute 'mlit.cache.hit' not found on span")
+	}
+	if !*cacheHit {
+		t.Errorf("expected mlit.cache.hit=true on second call, got false")
+	}
+}
+
+func TestFetchLocationOptimization_ErrorSpanStatus(t *testing.T) {
+	exp := setupTestTracer(t)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	client := newOtelTestClient(srv)
+	_, err := client.FetchLocationOptimization(context.Background(), 14, 14547, 6451)
+	if err == nil {
+		t.Fatal("expected error from 500 server, got nil")
+	}
+
+	spans := exp.GetSpans()
+	var foundError bool
+	for _, s := range spans {
+		if s.Name == "mlit.FetchLocationOptimization" && s.Status.Code.String() == "Error" {
+			foundError = true
+			break
+		}
+	}
+	if !foundError {
+		t.Errorf("expected span with Error status; spans: %v", spanNames(spans))
+	}
+}
+
+// ---- FetchEmbankment (XKT020) ----
+
+func TestFetchEmbankment_SpanCreated(t *testing.T) {
+	exp := setupTestTracer(t)
+
+	resp := EmbankmentGeoJSON{
+		Type: "FeatureCollection",
+		Features: []EmbankmentFeature{
+			{Properties: EmbankmentProperties{EmbankmentClassification: "谷埋め型"}},
+		},
+	}
+	body, _ := json.Marshal(resp)
+	srv := httptest.NewServer(makeGeoJSONHandler(body))
+	defer srv.Close()
+
+	client := newOtelTestClient(srv)
+	_, err := client.FetchEmbankment(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("FetchEmbankment returned unexpected error: %v", err)
+	}
+
+	spans := exp.GetSpans()
+	var found bool
+	for _, s := range spans {
+		if s.Name == "mlit.FetchEmbankment" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("span 'mlit.FetchEmbankment' not found; got: %v", spanNames(spans))
+	}
+}
+
+func TestFetchEmbankment_CacheHitAttribute(t *testing.T) {
+	exp := setupTestTracer(t)
+
+	resp := EmbankmentGeoJSON{Type: "FeatureCollection", Features: []EmbankmentFeature{}}
+	body, _ := json.Marshal(resp)
+	srv := httptest.NewServer(makeGeoJSONHandler(body))
+	defer srv.Close()
+
+	client := newOtelTestClient(srv)
+	// First call — cache miss.
+	_, err := client.FetchEmbankment(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("first call error: %v", err)
+	}
+
+	exp.Reset()
+
+	// Second call — cache hit.
+	_, err = client.FetchEmbankment(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("second call error: %v", err)
+	}
+
+	spans := exp.GetSpans()
+	var cacheHit *bool
+	for _, s := range spans {
+		if s.Name != "mlit.FetchEmbankment" {
+			continue
+		}
+		for _, attr := range s.Attributes {
+			if string(attr.Key) == "mlit.cache.hit" {
+				v := attr.Value.AsBool()
+				cacheHit = &v
+			}
+		}
+	}
+	if cacheHit == nil {
+		t.Fatal("attribute 'mlit.cache.hit' not found on span")
+	}
+	if !*cacheHit {
+		t.Errorf("expected mlit.cache.hit=true on second call, got false")
+	}
+}
+
+func TestFetchEmbankment_ErrorSpanStatus(t *testing.T) {
+	exp := setupTestTracer(t)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	client := newOtelTestClient(srv)
+	_, err := client.FetchEmbankment(context.Background(), 14, 14547, 6451)
+	if err == nil {
+		t.Fatal("expected error from 500 server, got nil")
+	}
+
+	spans := exp.GetSpans()
+	var foundError bool
+	for _, s := range spans {
+		if s.Name == "mlit.FetchEmbankment" && s.Status.Code.String() == "Error" {
+			foundError = true
+			break
+		}
+	}
+	if !foundError {
+		t.Errorf("expected span with Error status; spans: %v", spanNames(spans))
+	}
+}
+
+// ---- FetchUrbanRoad (XKT030) ----
+
+func TestFetchUrbanRoad_SpanCreated(t *testing.T) {
+	exp := setupTestTracer(t)
+
+	resp := UrbanRoadGeoJSON{
+		Type: "FeatureCollection",
+		Features: []UrbanRoadFeature{
+			{Properties: UrbanRoadProperties{PlanningRoadJa: "都市計画道路A", KubunID: 3011}},
+		},
+	}
+	body, _ := json.Marshal(resp)
+	srv := httptest.NewServer(makeGeoJSONHandler(body))
+	defer srv.Close()
+
+	client := newOtelTestClient(srv)
+	_, err := client.FetchUrbanRoad(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("FetchUrbanRoad returned unexpected error: %v", err)
+	}
+
+	spans := exp.GetSpans()
+	var found bool
+	for _, s := range spans {
+		if s.Name == "mlit.FetchUrbanRoad" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("span 'mlit.FetchUrbanRoad' not found; got: %v", spanNames(spans))
+	}
+}
+
+func TestFetchUrbanRoad_CacheHitAttribute(t *testing.T) {
+	exp := setupTestTracer(t)
+
+	resp := UrbanRoadGeoJSON{Type: "FeatureCollection", Features: []UrbanRoadFeature{}}
+	body, _ := json.Marshal(resp)
+	srv := httptest.NewServer(makeGeoJSONHandler(body))
+	defer srv.Close()
+
+	client := newOtelTestClient(srv)
+	// First call — cache miss.
+	_, err := client.FetchUrbanRoad(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("first call error: %v", err)
+	}
+
+	exp.Reset()
+
+	// Second call — cache hit.
+	_, err = client.FetchUrbanRoad(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("second call error: %v", err)
+	}
+
+	spans := exp.GetSpans()
+	var cacheHit *bool
+	for _, s := range spans {
+		if s.Name != "mlit.FetchUrbanRoad" {
+			continue
+		}
+		for _, attr := range s.Attributes {
+			if string(attr.Key) == "mlit.cache.hit" {
+				v := attr.Value.AsBool()
+				cacheHit = &v
+			}
+		}
+	}
+	if cacheHit == nil {
+		t.Fatal("attribute 'mlit.cache.hit' not found on span")
+	}
+	if !*cacheHit {
+		t.Errorf("expected mlit.cache.hit=true on second call, got false")
+	}
+}
+
+func TestFetchUrbanRoad_ErrorSpanStatus(t *testing.T) {
+	exp := setupTestTracer(t)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	client := newOtelTestClient(srv)
+	_, err := client.FetchUrbanRoad(context.Background(), 14, 14547, 6451)
+	if err == nil {
+		t.Fatal("expected error from 500 server, got nil")
+	}
+
+	spans := exp.GetSpans()
+	var foundError bool
+	for _, s := range spans {
+		if s.Name == "mlit.FetchUrbanRoad" && s.Status.Code.String() == "Error" {
+			foundError = true
+			break
+		}
+	}
+	if !foundError {
+		t.Errorf("expected span with Error status; spans: %v", spanNames(spans))
+	}
+}
+
+// ---- FetchDisasterHistory (XST001) ----
+
+func TestFetchDisasterHistory_SpanCreated(t *testing.T) {
+	exp := setupTestTracer(t)
+
+	resp := DisasterHistoryGeoJSON{
+		Type: "FeatureCollection",
+		Features: []DisasterHistoryFeature{
+			{Properties: DisasterHistoryProperties{DisasterNameJa: "浸水域", DisasterDate: "20190101"}},
+		},
+	}
+	body, _ := json.Marshal(resp)
+	srv := httptest.NewServer(makeGeoJSONHandler(body))
+	defer srv.Close()
+
+	client := newOtelTestClient(srv)
+	_, err := client.FetchDisasterHistory(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("FetchDisasterHistory returned unexpected error: %v", err)
+	}
+
+	spans := exp.GetSpans()
+	var found bool
+	for _, s := range spans {
+		if s.Name == "mlit.FetchDisasterHistory" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("span 'mlit.FetchDisasterHistory' not found; got: %v", spanNames(spans))
+	}
+}
+
+func TestFetchDisasterHistory_CacheHitAttribute(t *testing.T) {
+	exp := setupTestTracer(t)
+
+	resp := DisasterHistoryGeoJSON{Type: "FeatureCollection", Features: []DisasterHistoryFeature{}}
+	body, _ := json.Marshal(resp)
+	srv := httptest.NewServer(makeGeoJSONHandler(body))
+	defer srv.Close()
+
+	client := newOtelTestClient(srv)
+	// First call — cache miss.
+	_, err := client.FetchDisasterHistory(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("first call error: %v", err)
+	}
+
+	exp.Reset()
+
+	// Second call — cache hit.
+	_, err = client.FetchDisasterHistory(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("second call error: %v", err)
+	}
+
+	spans := exp.GetSpans()
+	var cacheHit *bool
+	for _, s := range spans {
+		if s.Name != "mlit.FetchDisasterHistory" {
+			continue
+		}
+		for _, attr := range s.Attributes {
+			if string(attr.Key) == "mlit.cache.hit" {
+				v := attr.Value.AsBool()
+				cacheHit = &v
+			}
+		}
+	}
+	if cacheHit == nil {
+		t.Fatal("attribute 'mlit.cache.hit' not found on span")
+	}
+	if !*cacheHit {
+		t.Errorf("expected mlit.cache.hit=true on second call, got false")
+	}
+}
+
+func TestFetchDisasterHistory_ErrorSpanStatus(t *testing.T) {
+	exp := setupTestTracer(t)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	client := newOtelTestClient(srv)
+	_, err := client.FetchDisasterHistory(context.Background(), 14, 14547, 6451)
+	if err == nil {
+		t.Fatal("expected error from 500 server, got nil")
+	}
+
+	spans := exp.GetSpans()
+	var foundError bool
+	for _, s := range spans {
+		if s.Name == "mlit.FetchDisasterHistory" && s.Status.Code.String() == "Error" {
+			foundError = true
+			break
+		}
+	}
+	if !foundError {
+		t.Errorf("expected span with Error status; spans: %v", spanNames(spans))
+	}
+}
