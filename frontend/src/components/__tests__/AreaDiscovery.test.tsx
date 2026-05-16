@@ -32,7 +32,7 @@ describe("AreaDiscovery", () => {
 
   it("初期状態でフォームが表示される", () => {
     render(<AreaDiscovery />);
-    expect(screen.getByText("エリアを探す")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "エリアを探す" })).toBeInTheDocument();
     expect(screen.getByText(/予算と目標利回りを入力/)).toBeInTheDocument();
   });
 

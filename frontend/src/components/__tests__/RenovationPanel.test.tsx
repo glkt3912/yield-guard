@@ -113,15 +113,22 @@ describe("RenovationPanel", () => {
 
   it("工事項目が0件で実行するとバリデーションエラーが表示される", async () => {
     render(<RenovationPanel />);
-    // 全項目削除
+    // 削除ボタンは items.length > 1 のときのみ表示される。
+    // 項目を2つ追加して合計3件にしてから2件削除し、残り1件の状態で
+    // コスト未入力のまま実行 → 工事費バリデーションエラーが出ることを確認する。
     await userEvent.click(screen.getByRole("button", { name: "工事項目を追加" }));
-    const deleteButtons = screen.getAllByRole("button", { name: /工事項目.*を削除/ });
-    await userEvent.click(deleteButtons[1]);
+    await userEvent.click(screen.getByRole("button", { name: "工事項目を追加" }));
+    // 3件 → 削除ボタンが3つ表示される
+    expect(screen.getAllByRole("button", { name: /工事項目.*を削除/ })).toHaveLength(3);
     await userEvent.click(screen.getAllByRole("button", { name: /工事項目.*を削除/ })[0]);
+    // 2件 → 削除ボタンが2つ
+    await userEvent.click(screen.getAllByRole("button", { name: /工事項目.*を削除/ })[0]);
+    // 1件 → 削除ボタン非表示（最低1件を維持する仕様）
+    expect(screen.queryByRole("button", { name: /工事項目.*を削除/ })).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "リフォーム分析を実行" }));
 
-    expect(screen.getByText("工事項目を1件以上追加してください")).toBeInTheDocument();
+    expect(screen.getByText("工事費は正の値を入力してください")).toBeInTheDocument();
     expect(api.analyzeRenovation).not.toHaveBeenCalled();
   });
 

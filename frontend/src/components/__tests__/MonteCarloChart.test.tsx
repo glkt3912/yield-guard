@@ -66,8 +66,8 @@ describe("MonteCarloChart", () => {
   it("IRR中央値が表示される", () => {
     render(<MonteCarloChart result={makeMonteCarloResult()} />);
     expect(screen.getByText("IRR中央値")).toBeInTheDocument();
-    // p50 = 0.05 → 5.0%
-    expect(screen.getByText("5.0%")).toBeInTheDocument();
+    // p50 = 0.05 → 5.0% (appears in both StatCard and percentile table; take first = StatCard)
+    expect(screen.getAllByText("5.0%")[0]).toBeInTheDocument();
   });
 
   it("パーセンタイル表が表示される", () => {
