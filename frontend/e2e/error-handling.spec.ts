@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { setupApiMocks } from "./helpers/routes";
 import { ONBOARDING_KEY } from "./helpers/constants";
-import { analyzeCriticalFixture as criticalFixture } from "./fixtures/analyze-response-critical";
-import { hazardAlertFixture as hazardFixture } from "./fixtures/hazard-alert";
+import { analyzeCriticalFixture } from "./fixtures/analyze-response-critical";
+import { hazardAlertFixture } from "./fixtures/hazard-alert";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((key) => localStorage.setItem(key, "1"), ONBOARDING_KEY);
@@ -40,7 +40,7 @@ test("@p2 バックエンド429レートリミット：エラーバナーが表�
 
 test("@p3 criticalErrors バナー：⛔一発退場が表示される", async ({ page }) => {
   await setupApiMocks(page, {
-    analyze: { status: 200, body: criticalFixture },
+    analyze: { status: 200, body: analyzeCriticalFixture },
   });
   await page.goto("/");
 
@@ -56,7 +56,7 @@ test("@p3 criticalErrors バナー：⛔一発退場が表示される", async (
 
 test("@p3 ハザードアラートバナー：洪水リスクが表示される", async ({ page }) => {
   await setupApiMocks(page, {
-    hazard: { status: 200, body: hazardFixture },
+    hazard: { status: 200, body: hazardAlertFixture },
   });
   await page.goto("/");
 
