@@ -485,7 +485,8 @@ DeviationPct         = (price - TheoreticalPrice) / TheoreticalPrice × 100
   "miscExpenses": 1050000,
   "grossYield": 0.0897,
   "netYield": 0.0673,
-  "isAbove8Percent": true,
+  "isAboveYieldTarget": true,
+  "yieldTarget": 0.08,
   "requiredCostReduction": 0,
   "requiredMonthlyRent": 107000,
   "deadCrossYear": 12,
@@ -833,25 +834,6 @@ vacancyRateDelta = max(0, -changeRate30yr × 0.5)
 
 ---
 
-## GET /api/prefectures
-
-都道府県一覧をコード順（昇順）で返す。
-
-### レスポンス
-
-```json
-[
-  { "code": "01", "name": "北海道" },
-  { "code": "02", "name": "青森県" },
-  ...
-  { "code": "47", "name": "沖縄県" }
-]
-```
-
-47都道府県すべてを含む。コードは2桁ゼロパディング。
-
----
-
 ## POST /api/investment/simulate
 
 モンテカルロ法による確率的ストレステストを実行する。空室率・金利を正規分布でサンプリングした N 試行を実施し、IRR・最終純資産の分布と統計量を返す。
@@ -1027,7 +1009,7 @@ vacancyRateDelta = max(0, -changeRate30yr × 0.5)
 | `maxLat` | 必須 | 緯度上限（20〜46、minLat より大きい値） |
 | `minLng` | 必須 | 経度下限（122〜154） |
 | `maxLng` | 必須 | 経度上限（122〜154、minLng より大きい値） |
-| `z` | 任意 | ズームレベル（11〜15、デフォルト: 13）。z=15 時のタイル上限は 25 に縮小 |
+| `z` | 任意 | ズームレベル（11〜15、デフォルト: 13）。タイル上限はズームに応じて変化: z≤12: 20、z≤14: 30、z=15: 50 |
 
 ### レスポンス: `HeatmapResponse`
 
@@ -1072,7 +1054,7 @@ vacancyRateDelta = max(0, -changeRate30yr × 0.5)
 | コード | 条件 |
 |--------|------|
 | 400 | 必須パラメータ未指定・範囲外・minLat ≥ maxLat など |
-| 400 | タイル数が上限（z≤14: 50、z=15: 25）を超える場合 |
+| 400 | タイル数が上限（z≤12: 20、z≤14: 30、z=15: 50）を超える場合 |
 
 ---
 
