@@ -254,24 +254,45 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
   }
 }
 
-# 4. Cloud Scheduler warmup-ping が 45 分間実行されない（3 回連続スキップ相当）
-# condition_absent: メトリクスデータの欠如を検知するため、ラベルフィルタ不要で初回から動作する
+# 4. Cloud Scheduler ウォームアップジョブが失敗（ログベースメトリクス）
+# Cloud Scheduler はジョブ実行結果を Cloud Logging に書き込む（severity=ERROR で失敗）。
+# メトリクスと異なりジョブ初回実行前でも Terraform リソースとして作成できる。
+resource "google_logging_metric" "warmup_job_failure" {
+  name = "warmup-job-failure-${var.env}"
+  filter = join(" AND ", [
+    "resource.type=\"cloud_scheduler_job\"",
+    "resource.labels.job_id=~\"warmup-.*-${var.env}\"",
+    "severity=ERROR",
+  ])
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    labels {
+      key        = "job_id"
+      value_type = "STRING"
+    }
+  }
+  label_extractors = {
+    "job_id" = "EXTRACT(resource.labels.job_id)"
+  }
+}
+
 resource "google_monitoring_alert_policy" "warmup_job_failure" {
-  display_name = "[Yield Guard] ウォームアップ ping ジョブが停止"
+  display_name = "[Yield Guard] ウォームアップジョブが失敗"
   combiner     = "OR"
 
   conditions {
-    display_name = "warmup-ping-prod の実行データが 45 分間なし（3 回分スキップ相当）"
-    condition_absent {
-      filter = join(" AND ", [
-        "metric.type=\"cloudscheduler.googleapis.com/job/attempt_count\"",
-        "resource.type=\"cloud_scheduler_job\"",
-        "resource.labels.job_id=\"warmup-ping-${var.env}\"",
-      ])
-      duration = "2700s"
+    display_name = "warmup-ping または warmup-cache の ERROR ログが 30 分以内に 1 件以上"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/warmup-job-failure-${var.env}\" AND resource.type=\"cloud_scheduler_job\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
       aggregations {
-        alignment_period   = "300s"
-        per_series_aligner = "ALIGN_COUNT_TRUE"
+        alignment_period     = "1800s"
+        per_series_aligner   = "ALIGN_COUNT_TRUE"
+        cross_series_reducer = "REDUCE_SUM"
+        group_by_fields      = ["metric.labels.job_id"]
       }
     }
   }
@@ -280,6 +301,8 @@ resource "google_monitoring_alert_policy" "warmup_job_failure" {
   alert_strategy {
     auto_close = "86400s"
   }
+
+  depends_on = [google_logging_metric.warmup_job_failure]
 }
 
 # 5. Cloud Run インスタンス数が上限 (max_instance_count=2) に到達し 5 分継続
