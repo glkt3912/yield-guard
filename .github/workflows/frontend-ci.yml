@@ -155,16 +155,20 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          NO_COLOR: "1"
 
       - name: Deploy to Vercel (preview)
         if: github.event_name == 'pull_request'
         id: preview
         run: |
-          OUTPUT=$(vercel deploy --yes 2>&1)
+          # || true prevents set -e from exiting before we can inspect the output
+          OUTPUT=$(vercel deploy --yes 2>&1) || true
           echo "$OUTPUT"
-          URL=$(echo "$OUTPUT" | grep -E '^https://' | tail -1)
+          # Vercel CLI v51 outputs "✅  Preview: https://xxx.vercel.app [3s]"
+          # tail -1 picks the Preview URL; the Inspect URL (vercel.com) is excluded by the pattern
+          URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9._-]+\.vercel\.app' | tail -1)
           if [ -z "$URL" ]; then
-            echo "::error::Vercel deploy failed or URL not found"
+            echo "::error::Vercel deploy failed or preview URL not found in output"
             exit 1
           fi
           echo "url=$URL" >> $GITHUB_OUTPUT
@@ -173,6 +177,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          NO_COLOR: "1"
 
       - name: Comment preview URL on PR
         if: github.event_name == 'pull_request'
