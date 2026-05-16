@@ -20,7 +20,8 @@ make test         # go test -race ./... + vitest run
 make lint         # golangci-lint + eslint + tsc --noEmit
 make build        # go build + next build
 make integration  # integration tests against real MLIT API (needs MLIT_API_KEY)
-make swagger      # OpenAPI スキーマ生成 (docs/openapi/swagger.json)
+make swagger        # OpenAPI スキーマ生成 (docs/openapi/swagger.json)
+make swagger-check  # スキーマドリフトをローカルで確認 (PR 前チェック用)
 ```
 
 **Backend only:**
