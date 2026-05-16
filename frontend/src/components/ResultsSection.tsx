@@ -21,7 +21,7 @@ import DueDiligenceChecklist from "@/components/DueDiligenceChecklist";
 import { AreaDiscovery } from "@/components/AreaDiscovery";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
-import { ShieldAlert } from "lucide-react";
+import { BarChart3, ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
 import { PREFECTURE_CENTERS } from "@/lib/prefectureCenters";
 import type {
   InvestmentInput,
@@ -39,6 +39,9 @@ import type {
 } from "@/types/investment";
 
 const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
+
+type ResultsTab = "finance" | "loan";
+const DEFAULT_RESULTS_TAB: ResultsTab = "finance";
 
 interface ResultsSectionProps {
   activeTab: "simulation" | "area-discovery";
@@ -100,6 +103,18 @@ export function ResultsSection({
     lng: number;
   } | null>(null);
 
+  const [tabState, setTabState] = useState<{
+    tab: ResultsTab;
+    seenResult: InvestmentResult | null;
+  }>({ tab: DEFAULT_RESULTS_TAB, seenResult: null });
+
+  // result が変わったら概要タブへ自動リセット（useEffect不使用）
+  const resultsTab = result !== tabState.seenResult ? DEFAULT_RESULTS_TAB : tabState.tab;
+
+  const handleResultsTabChange = (tab: ResultsTab) => {
+    setTabState({ tab, seenResult: result });
+  };
+
   const handleAreaTileSelect = useCallback(
     (lat: number, lng: number) => {
       onTileSelect(lat, lng);
@@ -110,7 +125,7 @@ export function ResultsSection({
 
   return (
     <section className="space-y-6">
-      {/* Tab toggle */}
+      {/* 最上位タブ: シミュレーション | エリアを探す */}
       <div className="flex gap-1 rounded-lg border bg-muted/30 p-1 w-fit">
         <button
           onClick={() => setActiveTab("simulation")}
@@ -178,8 +193,21 @@ export function ResultsSection({
 
       {activeTab === "simulation" && (
         <>
+          {/* Hero: 判定・KPI を最上位に固定表示 */}
+          {result && lastInput && (
+            <div className="space-y-3">
+              <CriticalErrorBanner errors={result.criticalErrors} />
+              <StatusSummary result={result} />
+              <KpiStrip
+                result={result}
+                yieldTarget={lastInput.yieldTarget}
+                holdingYears={lastInput.holdingYears}
+              />
+            </div>
+          )}
           <HazardAlertBanner hazardRisks={hazardRisks} externalUrbanRisks={externalUrbanRisks} />
 
+          {/* コンテキストパネル: データが揃い次第タブ外に常時表示 */}
           {investmentScore && (
             <InvestmentScoreCard
               score={investmentScore}
@@ -187,7 +215,6 @@ export function ResultsSection({
               onApplyRecommend={onApplyRecommend}
             />
           )}
-
           {propertyLat !== undefined && (
             <InvestmentScoreHeatmap
               centerLat={propertyLat}
@@ -195,7 +222,6 @@ export function ResultsSection({
               onTileSelect={onTileSelect}
             />
           )}
-
           {comparison && (
             <LandPriceAnalysis
               comparison={comparison}
@@ -209,15 +235,37 @@ export function ResultsSection({
             />
           )}
 
-          {result && lastInput && (
-            <>
-              <CriticalErrorBanner errors={result.criticalErrors} />
-              <StatusSummary result={result} />
-              <KpiStrip
-                result={result}
-                yieldTarget={lastInput.yieldTarget}
-                holdingYears={lastInput.holdingYears}
-              />
+          {/* 結果タブナビゲーション */}
+          {result && (
+            <div
+              role="tablist"
+              aria-label="結果タブ"
+              className="flex gap-1 rounded-lg border bg-muted/30 p-1 w-full sm:w-fit overflow-x-auto"
+            >
+              {[
+                { id: "finance" as ResultsTab, label: "財務分析" },
+                { id: "loan" as ResultsTab, label: "ローン・交渉" },
+              ].map(({ id, label }) => (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={resultsTab === id}
+                  onClick={() => handleResultsTabChange(id)}
+                  className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors whitespace-nowrap ${
+                    resultsTab === id
+                      ? "bg-white shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Tab: 財務分析 */}
+          {result && lastInput && resultsTab === "finance" && (
+            <div className="space-y-6">
               <YieldAnalysis
                 result={result}
                 input={lastInput}
@@ -225,19 +273,9 @@ export function ResultsSection({
                 landPriceStats={comparison?.stats ?? null}
                 isAnalyzing={loading}
               />
-              <NegotiationPanel
-                result={result}
-                input={lastInput}
-                comparison={comparison}
-                theoreticalPrice={theoreticalPrice}
-              />
-              <LoanOptimizationPanel
-                result={result}
-                loanMethod={loanMethod}
-                onLoanMethodChange={onLoanMethodChange}
-                loanAmount={lastInput.loanAmount}
-              />
-              <LoanComparePanel baseInput={lastInput} />
+              {result.multiExitComparison && result.multiExitComparison.length > 0 && (
+                <MultiExitCompareTable rows={result.multiExitComparison} />
+              )}
               {simulationMode === "full" && (
                 <>
                   {result.acquisitionCosts && (
@@ -263,11 +301,28 @@ export function ResultsSection({
                   {monteCarloResult && <MonteCarloChart result={monteCarloResult} />}
                 </>
               )}
-              {result.multiExitComparison && result.multiExitComparison.length > 0 && (
-                <MultiExitCompareTable rows={result.multiExitComparison} />
+              {simulationMode === "quick" && (
+                <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-center text-sm text-muted-foreground">
+                  <p>キャッシュフローグラフ・デッドクロス分析・モンテカルロは</p>
+                  <p className="font-medium mt-1">詳細モードで利用できます</p>
+                </div>
               )}
-            </>
+            </div>
           )}
+
+          {/* Tab 3: ローン・交渉 */}
+          {result && lastInput && resultsTab === "loan" && (
+            <LoanTabContent
+              result={result}
+              lastInput={lastInput}
+              comparison={comparison}
+              theoreticalPrice={theoreticalPrice}
+              loanMethod={loanMethod}
+              onLoanMethodChange={onLoanMethodChange}
+            />
+          )}
+
+          {/* アクションパネル: タブ外に常時表示（reload後も見える） */}
           <RenovationPanel />
           <WatchlistPanel currentResult={result ?? undefined} />
           {lastInput && (
@@ -278,5 +333,65 @@ export function ResultsSection({
         </>
       )}
     </section>
+  );
+}
+
+interface LoanTabContentProps {
+  result: InvestmentResult;
+  lastInput: InvestmentInput;
+  comparison: LandPriceComparison | null;
+  theoreticalPrice: TheoreticalPriceResult | null;
+  loanMethod: LoanMethod;
+  onLoanMethodChange: (method: LoanMethod) => Promise<void>;
+}
+
+function LoanTabContent({
+  result,
+  lastInput,
+  comparison,
+  theoreticalPrice,
+  loanMethod,
+  onLoanMethodChange,
+}: LoanTabContentProps) {
+  const [isLoanCompareOpen, setIsLoanCompareOpen] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      <NegotiationPanel
+        result={result}
+        input={lastInput}
+        comparison={comparison}
+        theoreticalPrice={theoreticalPrice}
+      />
+      <LoanOptimizationPanel
+        result={result}
+        loanMethod={loanMethod}
+        onLoanMethodChange={onLoanMethodChange}
+        loanAmount={lastInput.loanAmount}
+      />
+      <div className="rounded-lg border bg-card shadow-sm">
+        <button
+          type="button"
+          onClick={() => setIsLoanCompareOpen((v) => !v)}
+          aria-expanded={isLoanCompareOpen}
+          className="flex w-full items-center justify-between px-5 py-4 text-left"
+        >
+          <span className="flex items-center gap-2 text-base font-semibold">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            複数融資条件の横並び比較
+          </span>
+          {isLoanCompareOpen ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
+        {isLoanCompareOpen && (
+          <div className="border-t">
+            <LoanComparePanel baseInput={lastInput} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
