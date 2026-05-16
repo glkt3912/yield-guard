@@ -345,7 +345,8 @@ resource "google_monitoring_alert_policy" "firestore_daily_reads" {
   conditions {
     display_name = "Firestore reads > 40,000/day"
     condition_threshold {
-      filter          = "metric.type=\"firestore.googleapis.com/document/read_count\" AND resource.type=\"firestore.googleapis.com/Database\""
+      # resource.type フィルタは GCP がメトリクスと組み合わせを検証して拒否するため除外
+      filter          = "metric.type=\"firestore.googleapis.com/document/read_count\""
       duration        = "0s"
       comparison      = "COMPARISON_GT"
       threshold_value = 40000
