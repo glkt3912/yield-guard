@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { setupApiMocks } from "./helpers/routes";
 import { ONBOARDING_KEY } from "./helpers/constants";
-import criticalFixture from "./fixtures/analyze-response-critical.json";
-import hazardFixture from "./fixtures/hazard-alert.json";
+import { analyzeCriticalFixture as criticalFixture } from "./fixtures/analyze-response-critical";
+import { hazardAlertFixture as hazardFixture } from "./fixtures/hazard-alert";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((key) => localStorage.setItem(key, "1"), ONBOARDING_KEY);

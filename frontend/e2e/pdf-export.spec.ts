@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import analyzeCriticalFixture from "./fixtures/analyze-response-critical.json";
+import { analyzeCriticalFixture } from "./fixtures/analyze-response-critical";
 import { SimulationPage } from "./pages/simulation.page";
 
 // デフォルト fixture (analyze-response.json) には multiExitComparison が含まれるため

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import analyzeFixture from "./fixtures/analyze-response.json";
+import { analyzeFixture } from "./fixtures/analyze-response";
 import { SimulationPage } from "./pages/simulation.page";
 
 test.describe("Quick mode ハッピーパス", () => {
