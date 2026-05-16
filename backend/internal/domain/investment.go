@@ -145,6 +145,19 @@ func calcCriticalErrors(input InvestmentInput, deadCrossYear, usefulLife int) []
 		})
 	}
 
+	// OVERLOAN: ローン金額が土地取得費＋建築費を超過
+	if input.LoanAmount > input.LandPrice+input.BuildingCost {
+		errs = append(errs, CriticalError{
+			Code:   "OVERLOAN",
+			Status: CriticalStatusWarning,
+			Message: fmt.Sprintf(
+				"ローン金額（%.0f万円）が物件取得費（%.0f万円）を超えています。"+
+					"オーバーローンは審査否決や担保割れリスクがあります。",
+				input.LoanAmount/10000, (input.LandPrice+input.BuildingCost)/10000,
+			),
+		})
+	}
+
 	if errs == nil {
 		errs = []CriticalError{}
 	}

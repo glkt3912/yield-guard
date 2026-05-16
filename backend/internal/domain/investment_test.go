@@ -3138,3 +3138,57 @@ func TestCalcAnnualTurnoverCost(t *testing.T) {
 		})
 	}
 }
+
+// TestOverloanWarning はローン金額が物件取得費を超える場合に OVERLOAN WARNING が返されることを検証する。
+func TestOverloanWarning(t *testing.T) {
+	t.Run("overloan emits WARNING", func(t *testing.T) {
+		input := InvestmentInput{
+			LandPrice:       5_000_000,
+			BuildingCost:    10_000_000,
+			LoanAmount:      16_000_000, // 土地+建物(15,000,000)を超過
+			MonthlyRent:     100_000,
+			VacancyRate:     0.05,
+			AnnualLoanRate:  0.015,
+			LoanYears:       35,
+			BuildingType:    BuildingTypeWood,
+			ExpenseRate:     0.20,
+			IncomeTaxRate:   0.33,
+			HoldingYears:    10,
+			ExitYieldTarget: 0.06,
+		}
+		result := Analyze(context.Background(), input)
+		var found bool
+		for _, ce := range result.CriticalErrors {
+			if ce.Code == "OVERLOAN" && ce.Status == CriticalStatusWarning {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected OVERLOAN WARNING in CriticalErrors, got: %v", result.CriticalErrors)
+		}
+	})
+
+	t.Run("no overloan within limit", func(t *testing.T) {
+		input := InvestmentInput{
+			LandPrice:       5_000_000,
+			BuildingCost:    10_000_000,
+			LoanAmount:      15_000_000, // 土地+建物と同額: 超過なし
+			MonthlyRent:     100_000,
+			VacancyRate:     0.05,
+			AnnualLoanRate:  0.015,
+			LoanYears:       35,
+			BuildingType:    BuildingTypeWood,
+			ExpenseRate:     0.20,
+			IncomeTaxRate:   0.33,
+			HoldingYears:    10,
+			ExitYieldTarget: 0.06,
+		}
+		result := Analyze(context.Background(), input)
+		for _, ce := range result.CriticalErrors {
+			if ce.Code == "OVERLOAN" {
+				t.Errorf("unexpected OVERLOAN in CriticalErrors: %v", ce)
+			}
+		}
+	})
+}
