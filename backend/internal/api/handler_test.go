@@ -1692,3 +1692,372 @@ func TestGetRentStats_FetchError(t *testing.T) {
 		t.Errorf("expected null response on error, got %s", body)
 	}
 }
+
+// ---- MonteCarlo (/api/investment/simulate) ----
+
+func TestMonteCarlo_ValidInput(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{}, nil)
+
+	input := domain.MonteCarloInput{
+		Base:        validBase,
+		Simulations: 100,
+	}
+	body, _ := json.Marshal(input)
+	req := httptest.NewRequest(http.MethodPost, "/api/investment/simulate", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var result domain.MonteCarloResult
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if result.SimulationCount != 100 {
+		t.Errorf("expected simulationCount=100, got %d", result.SimulationCount)
+	}
+	if result.SuccessRate < 0 || result.SuccessRate > 1 {
+		t.Errorf("successRate out of range: %f", result.SuccessRate)
+	}
+}
+
+func TestMonteCarlo_InvalidJSON(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{}, nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/investment/simulate", bytes.NewBufferString("not-json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestMonteCarlo_ValidationError(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{}, nil)
+
+	invalid := validBase
+	invalid.LandPrice = -1 // invalid
+	input := domain.MonteCarloInput{
+		Base:        invalid,
+		Simulations: 100,
+	}
+	body, _ := json.Marshal(input)
+	req := httptest.NewRequest(http.MethodPost, "/api/investment/simulate", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+	var resp map[string]string
+	_ = json.NewDecoder(w.Body).Decode(&resp)
+	if resp["error"] == "" {
+		t.Error("expected error message in response")
+	}
+}
+
+// ---- GetRentDeclineHint (/api/investment/rent-decline-hint) ----
+
+func TestGetRentDeclineHint_MissingArea(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{}, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment/rent-decline-hint", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetRentDeclineHint_AllYearsAPIError(t *testing.T) {
+	client := &mockMLITClient{
+		appraisalFunc: func(_ context.Context, _, _ string, _ int, _ string) ([]domain.LandAppraisalItem, error) {
+			return nil, errors.New("upstream error")
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment/rent-decline-hint?area=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetRentDeclineHint_DeclineTrend(t *testing.T) {
+	// 2022〜2024の3年分、各年5件ずつ地価下落傾向のデータを返す
+	client := &mockMLITClient{
+		appraisalFunc: func(_ context.Context, _, _ string, year int, _ string) ([]domain.LandAppraisalItem, error) {
+			switch year {
+			case 2022:
+				return []domain.LandAppraisalItem{
+					{Year: 2022, PricePerSqm: 200000, ChangeRate: -0.02},
+					{Year: 2022, PricePerSqm: 210000, ChangeRate: -0.02},
+					{Year: 2022, PricePerSqm: 190000, ChangeRate: -0.02},
+					{Year: 2022, PricePerSqm: 205000, ChangeRate: -0.02},
+					{Year: 2022, PricePerSqm: 195000, ChangeRate: -0.02},
+				}, nil
+			case 2024:
+				return []domain.LandAppraisalItem{
+					{Year: 2024, PricePerSqm: 180000, ChangeRate: -0.05},
+					{Year: 2024, PricePerSqm: 185000, ChangeRate: -0.05},
+					{Year: 2024, PricePerSqm: 175000, ChangeRate: -0.05},
+					{Year: 2024, PricePerSqm: 182000, ChangeRate: -0.05},
+					{Year: 2024, PricePerSqm: 178000, ChangeRate: -0.05},
+				}, nil
+			default:
+				return []domain.LandAppraisalItem{}, nil
+			}
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment/rent-decline-hint?area=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var hint domain.RentDeclineHint
+	if err := json.NewDecoder(w.Body).Decode(&hint); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if hint.Basis != "land_appraisal" {
+		t.Errorf("expected basis=land_appraisal, got %q", hint.Basis)
+	}
+	if hint.HintRate <= 0 {
+		t.Errorf("expected hintRate > 0 for declining land prices, got %f", hint.HintRate)
+	}
+	if hint.FallbackUsed {
+		t.Error("expected fallbackUsed=false for land_appraisal basis")
+	}
+}
+
+func TestGetRentDeclineHint_RisingTrend(t *testing.T) {
+	// 地価上昇傾向 → fallback を返す
+	client := &mockMLITClient{
+		appraisalFunc: func(_ context.Context, _, _ string, year int, _ string) ([]domain.LandAppraisalItem, error) {
+			switch year {
+			case 2022:
+				return []domain.LandAppraisalItem{
+					{Year: 2022, PricePerSqm: 100000, ChangeRate: 0.05},
+					{Year: 2022, PricePerSqm: 100000, ChangeRate: 0.05},
+					{Year: 2022, PricePerSqm: 100000, ChangeRate: 0.05},
+					{Year: 2022, PricePerSqm: 100000, ChangeRate: 0.05},
+					{Year: 2022, PricePerSqm: 100000, ChangeRate: 0.05},
+				}, nil
+			case 2024:
+				return []domain.LandAppraisalItem{
+					{Year: 2024, PricePerSqm: 120000, ChangeRate: 0.05},
+					{Year: 2024, PricePerSqm: 120000, ChangeRate: 0.05},
+					{Year: 2024, PricePerSqm: 120000, ChangeRate: 0.05},
+					{Year: 2024, PricePerSqm: 120000, ChangeRate: 0.05},
+					{Year: 2024, PricePerSqm: 120000, ChangeRate: 0.05},
+				}, nil
+			default:
+				return []domain.LandAppraisalItem{}, nil
+			}
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment/rent-decline-hint?area=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var hint domain.RentDeclineHint
+	if err := json.NewDecoder(w.Body).Decode(&hint); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if hint.Basis != "fallback" {
+		t.Errorf("expected basis=fallback for rising prices, got %q", hint.Basis)
+	}
+	if !hint.FallbackUsed {
+		t.Error("expected fallbackUsed=true for rising prices")
+	}
+}
+
+func TestGetRentDeclineHint_InsufficientData(t *testing.T) {
+	// データが5件未満 → fallback
+	client := &mockMLITClient{
+		appraisalFunc: func(_ context.Context, _, _ string, year int, _ string) ([]domain.LandAppraisalItem, error) {
+			if year == 2024 {
+				// 4件だけ返す（minDataPointsForHint=5未満）
+				return []domain.LandAppraisalItem{
+					{Year: 2024, PricePerSqm: 150000, ChangeRate: -0.01},
+					{Year: 2024, PricePerSqm: 160000, ChangeRate: -0.01},
+					{Year: 2024, PricePerSqm: 155000, ChangeRate: -0.01},
+					{Year: 2024, PricePerSqm: 145000, ChangeRate: -0.01},
+				}, nil
+			}
+			return []domain.LandAppraisalItem{}, nil
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment/rent-decline-hint?area=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var hint domain.RentDeclineHint
+	if err := json.NewDecoder(w.Body).Decode(&hint); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if hint.Basis != "fallback" {
+		t.Errorf("expected basis=fallback for insufficient data, got %q", hint.Basis)
+	}
+}
+
+// ---- HandleAreaDiscovery (/api/area-discovery) ----
+
+func TestHandleAreaDiscovery_MissingPrefecture(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{}, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/area-discovery", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleAreaDiscovery_MunicipalityFetchError(t *testing.T) {
+	client := &mockMLITClient{
+		muniFunc: func(_ context.Context, _ string) ([]mlit.Municipality, error) {
+			return nil, errors.New("upstream error")
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/area-discovery?prefecture=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	// HandleAreaDiscovery returns 500 on municipality fetch error
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleAreaDiscovery_Success(t *testing.T) {
+	client := &mockMLITClient{
+		muniFunc: func(_ context.Context, _ string) ([]mlit.Municipality, error) {
+			return []mlit.Municipality{
+				{ID: "13101", Name: "千代田区"},
+				{ID: "13102", Name: "中央区"},
+			}, nil
+		},
+		fetchFunc: func(_ context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
+			return []domain.LandTransaction{
+				{Period: "2024年第1四半期", TradePrice: 10_000_000, Area: 100, PricePerSqm: 100_000, PricePerTsubo: 330_578},
+				{Period: "2024年第2四半期", TradePrice: 11_000_000, Area: 110, PricePerSqm: 100_000, PricePerTsubo: 330_578},
+				{Period: "2024年第3四半期", TradePrice: 12_000_000, Area: 120, PricePerSqm: 100_000, PricePerTsubo: 330_578},
+			}, nil
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/area-discovery?prefecture=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.AreaDiscoveryResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.Prefecture != "13" {
+		t.Errorf("expected prefecture=13, got %q", resp.Prefecture)
+	}
+	if len(resp.Items) == 0 {
+		t.Error("expected non-empty items")
+	}
+}
+
+// ---- GetInvestmentScoreHeatmap (/api/investment-score-heatmap) ----
+
+func TestGetInvestmentScoreHeatmap_MissingParams(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{}, nil)
+	cases := []string{
+		"/api/investment-score-heatmap",
+		"/api/investment-score-heatmap?minLat=35.6&maxLat=35.7&minLng=139.6",
+		"/api/investment-score-heatmap?minLat=35.6&maxLat=35.7&maxLng=139.7",
+		"/api/investment-score-heatmap?minLat=35.6&minLng=139.6&maxLng=139.7",
+		"/api/investment-score-heatmap?maxLat=35.7&minLng=139.6&maxLng=139.7",
+	}
+	for _, url := range cases {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, url, nil))
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("url=%s: expected 400, got %d", url, w.Code)
+		}
+	}
+}
+
+func TestGetInvestmentScoreHeatmap_InvalidRange(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{}, nil)
+	cases := []string{
+		// minLat >= maxLat
+		"/api/investment-score-heatmap?minLat=35.7&maxLat=35.6&minLng=139.6&maxLng=139.7",
+		// minLng >= maxLng
+		"/api/investment-score-heatmap?minLat=35.6&maxLat=35.7&minLng=139.7&maxLng=139.6",
+		// lat outside Japan
+		"/api/investment-score-heatmap?minLat=10&maxLat=35.7&minLng=139.6&maxLng=139.7",
+		// lng outside Japan
+		"/api/investment-score-heatmap?minLat=35.6&maxLat=35.7&minLng=100&maxLng=139.7",
+		// invalid zoom
+		"/api/investment-score-heatmap?minLat=35.6&maxLat=35.7&minLng=139.6&maxLng=139.7&z=16",
+	}
+	for _, url := range cases {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, url, nil))
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("url=%s: expected 400, got %d", url, w.Code)
+		}
+	}
+}
+
+func TestGetInvestmentScoreHeatmap_Success(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{}, nil)
+	// Use a small bbox that yields a single tile at zoom 11
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/investment-score-heatmap?minLat=35.60&maxLat=35.70&minLng=139.60&maxLng=139.70&z=11",
+		nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.HeatmapResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.TileCount != len(resp.Tiles) {
+		t.Errorf("tileCount=%d does not match len(tiles)=%d", resp.TileCount, len(resp.Tiles))
+	}
+}
+
+func TestGetInvestmentScoreHeatmap_TooManyTiles(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{}, nil)
+	// z=15, large bbox → will exceed maxHeatmapTiles=50
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/investment-score-heatmap?minLat=35.0&maxLat=36.0&minLng=139.0&maxLng=140.0&z=15",
+		nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for too many tiles, got %d: %s", w.Code, w.Body.String())
+	}
+}
