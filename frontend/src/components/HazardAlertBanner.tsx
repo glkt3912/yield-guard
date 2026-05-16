@@ -10,7 +10,8 @@ const HAZARD_LABEL_MAP: Record<string, string> = {
   liquefaction: "液状化",
 };
 
-function getHazardTypeLabel(code: string): string | null {
+function getHazardTypeLabel(code: string | undefined): string | null {
+  if (!code) return null;
   const lower = code.toLowerCase();
   for (const [key, label] of Object.entries(HAZARD_LABEL_MAP)) {
     if (lower.includes(key)) return label;

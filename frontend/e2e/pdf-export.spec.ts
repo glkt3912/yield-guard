@@ -41,8 +41,8 @@ test.describe("PDF出力 — RISK判定 fixture (criticalErrors=REJECT / マイ�
     await page.getByLabel("物件価格（土地＋建物の総額）").fill("1700");
     await page.getByLabel("想定月額賃料").fill("15");
     await page.getByText("シミュレーション実行").click();
-    // criticalFixture では grossYield=0.033 → "3.30%" が表示される
-    await expect(page.getByText("3.30", { exact: false })).toBeVisible({ timeout: 10_000 });
+    // criticalFixture では RISK判定となり重大なリスクバナーが表示される
+    await expect(page.getByRole("alert", { name: "重大なリスク" })).toBeVisible({ timeout: 10_000 });
 
     const downloadPromise = page.waitForEvent("download", { timeout: 30_000 });
     await page.getByText("PDFレポート出力").click();
