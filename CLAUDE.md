@@ -20,6 +20,7 @@ make test         # go test -race ./... + vitest run
 make lint         # golangci-lint + eslint + tsc --noEmit
 make build        # go build + next build
 make integration  # integration tests against real MLIT API (needs MLIT_API_KEY)
+make swagger      # OpenAPI スキーマ生成 (docs/openapi/swagger.json)
 ```
 
 **Backend only:**
@@ -32,6 +33,7 @@ cd backend && go test -race ./... -timeout 120s
 ```bash
 cd frontend && npm run dev                 # :3000
 cd frontend && npm test
+cd frontend && npm run generate:types      # TypeScript 型を再生成 (要: make swagger 実行済み)
 ```
 
 **MLIT API debug:**
@@ -94,8 +96,14 @@ yield-guard/
 │   ├── app/                        # Next.js App Router pages
 │   ├── components/                 # UI components (see below)
 │   ├── lib/                        # API client, calc utilities
-│   └── types/                      # TypeScript types
-├── docs/                           # Design docs (read via docs MCP)
+│   └── types/
+│       ├── investment.ts           # 手動定義の TypeScript 型（フロントエンド用）
+│       └── api.generated.ts        # 自動生成型 (make swagger + npm run generate:types) ※編集禁止
+├── docs/
+│   ├── openapi/
+│   │   ├── swagger.json            # 自動生成: make swagger (Swagger 2.0) ※編集禁止
+│   │   └── openapi.json            # 自動生成: npm run generate:types (OpenAPI 3.0) ※編集禁止
+│   └── *.md                        # 設計ドキュメント (read via docs MCP)
 ├── terraform/                      # Cloud Run / infra
 ├── docker-compose.yml
 ├── Makefile
@@ -111,6 +119,43 @@ yield-guard/
 - `CashFlowChart.tsx` — stress-test cash flow
 - `CostBreakdown.tsx` — cost breakdown
 - `WatchlistPanel.tsx` — property watchlist (localStorage persistence)
+
+## OpenAPI 型自動生成パイプライン
+
+Go の型定義を Single Source of Truth として、TypeScript 型を自動生成する。
+
+```
+backend/internal/domain/*.go  (Go struct + swag アノテーション)
+    ↓ make swagger
+docs/openapi/swagger.json     (Swagger 2.0 — 編集禁止)
+    ↓ npm run generate:types  (swagger2openapi で変換)
+docs/openapi/openapi.json     (OpenAPI 3.0 — 編集禁止)
+    ↓ npm run generate:types  (openapi-typescript v7)
+frontend/src/types/api.generated.ts  (TypeScript 型 — 編集禁止)
+```
+
+### ルール
+
+- `api.generated.ts` / `swagger.json` / `openapi.json` は **直接編集禁止**。常に上記コマンドで再生成する
+- Go の型（レスポンス構造体）を変更したら必ず `make swagger && cd frontend && npm run generate:types` を実行してコミットする
+- CI がスキーマドリフトを検出する（生成ファイルに差分があると fail）
+- e2e fixtures は `satisfies components["schemas"]["domain.XxxType"]` で自動生成型を参照する
+
+### swag アノテーション記法
+
+```go
+// HandlerFunc はエンドポイントの説明
+// @Summary     概要（日本語可）
+// @Tags        タグ名
+// @Produce     json
+// @Param       name  query  string  true  "説明"
+// @Success     200  {object}  domain.ResponseType
+// @Failure     400  {object}  map[string]string
+// @Router      /api/path [get]
+func (h *Handler) HandlerFunc(c *gin.Context) {
+```
+
+> **注意**: `@title` 等のメタ情報アノテーションは `cmd/server/main.go` の `func main()` 直前に記述する（`doc.go` 単独では swag に読み取られない）。
 
 ## Conventions
 
