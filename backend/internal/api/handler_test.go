@@ -1734,6 +1734,11 @@ func TestMonteCarlo_InvalidJSON(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
+	var resp map[string]string
+	_ = json.NewDecoder(w.Body).Decode(&resp)
+	if resp["error"] == "" {
+		t.Error("expected error message in response body")
+	}
 }
 
 func TestMonteCarlo_ValidationError(t *testing.T) {
@@ -1772,6 +1777,11 @@ func TestGetRentDeclineHint_MissingArea(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
 	}
+	var resp map[string]string
+	_ = json.NewDecoder(w.Body).Decode(&resp)
+	if resp["error"] == "" {
+		t.Error("expected error message in response body")
+	}
 }
 
 func TestGetRentDeclineHint_AllYearsAPIError(t *testing.T) {
@@ -1787,6 +1797,60 @@ func TestGetRentDeclineHint_AllYearsAPIError(t *testing.T) {
 
 	if w.Code != http.StatusBadGateway {
 		t.Fatalf("expected 502, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetRentDeclineHint_PartialYearError(t *testing.T) {
+	// 2022, 2023 はエラー（5年中2年）、2024〜2026 は有効な下落データを返す
+	client := &mockMLITClient{
+		appraisalFunc: func(_ context.Context, _, _ string, year int, _ string) ([]domain.LandAppraisalItem, error) {
+			switch year {
+			case 2022, 2023:
+				return nil, errors.New("upstream error")
+			case 2024:
+				return []domain.LandAppraisalItem{
+					{Year: 2024, PricePerSqm: 180000, ChangeRate: -0.04},
+					{Year: 2024, PricePerSqm: 185000, ChangeRate: -0.04},
+					{Year: 2024, PricePerSqm: 175000, ChangeRate: -0.04},
+					{Year: 2024, PricePerSqm: 182000, ChangeRate: -0.04},
+					{Year: 2024, PricePerSqm: 178000, ChangeRate: -0.04},
+				}, nil
+			case 2025:
+				return []domain.LandAppraisalItem{
+					{Year: 2025, PricePerSqm: 170000, ChangeRate: -0.03},
+					{Year: 2025, PricePerSqm: 175000, ChangeRate: -0.03},
+					{Year: 2025, PricePerSqm: 168000, ChangeRate: -0.03},
+					{Year: 2025, PricePerSqm: 172000, ChangeRate: -0.03},
+					{Year: 2025, PricePerSqm: 165000, ChangeRate: -0.03},
+				}, nil
+			case 2026:
+				return []domain.LandAppraisalItem{
+					{Year: 2026, PricePerSqm: 162000, ChangeRate: -0.02},
+					{Year: 2026, PricePerSqm: 165000, ChangeRate: -0.02},
+					{Year: 2026, PricePerSqm: 160000, ChangeRate: -0.02},
+					{Year: 2026, PricePerSqm: 163000, ChangeRate: -0.02},
+					{Year: 2026, PricePerSqm: 158000, ChangeRate: -0.02},
+				}, nil
+			default:
+				return []domain.LandAppraisalItem{}, nil
+			}
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment/rent-decline-hint?area=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	// 一部年エラーでも有効データがあれば200を返す
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for partial year error, got %d: %s", w.Code, w.Body.String())
+	}
+	var hint domain.RentDeclineHint
+	if err := json.NewDecoder(w.Body).Decode(&hint); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if hint.Basis != "land_appraisal" {
+		t.Errorf("expected basis=land_appraisal, got %q", hint.Basis)
 	}
 }
 
@@ -1929,6 +1993,11 @@ func TestHandleAreaDiscovery_MissingPrefecture(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
 	}
+	var resp map[string]string
+	_ = json.NewDecoder(w.Body).Decode(&resp)
+	if resp["error"] == "" {
+		t.Error("expected error message in response body")
+	}
 }
 
 func TestHandleAreaDiscovery_MunicipalityFetchError(t *testing.T) {
@@ -1981,6 +2050,23 @@ func TestHandleAreaDiscovery_Success(t *testing.T) {
 	}
 	if len(resp.Items) == 0 {
 		t.Error("expected non-empty items")
+	} else {
+		// The mock returns municipalities "13101" and "13102"; verify the first item
+		// has a recognizable municipality code from the mock
+		found := false
+		for _, item := range resp.Items {
+			if item.MunicipalityCode == "13101" || item.MunicipalityCode == "13102" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected item with MunicipalityCode 13101 or 13102, got %+v", resp.Items)
+		}
+		// The mock transactions all have PricePerTsubo=330578, so MedianTsubo should be non-zero
+		if resp.Items[0].MedianTsubo == 0 {
+			t.Errorf("expected non-zero MedianTsubo, got %f", resp.Items[0].MedianTsubo)
+		}
 	}
 }
 
@@ -2000,6 +2086,11 @@ func TestGetInvestmentScoreHeatmap_MissingParams(t *testing.T) {
 		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, url, nil))
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("url=%s: expected 400, got %d", url, w.Code)
+		}
+		var resp map[string]string
+		_ = json.NewDecoder(w.Body).Decode(&resp)
+		if resp["error"] == "" {
+			t.Errorf("url=%s: expected error message in response body", url)
 		}
 	}
 }
@@ -2023,6 +2114,11 @@ func TestGetInvestmentScoreHeatmap_InvalidRange(t *testing.T) {
 		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, url, nil))
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("url=%s: expected 400, got %d", url, w.Code)
+		}
+		var resp map[string]string
+		_ = json.NewDecoder(w.Body).Decode(&resp)
+		if resp["error"] == "" {
+			t.Errorf("url=%s: expected error message in response body", url)
 		}
 	}
 }
@@ -2051,6 +2147,8 @@ func TestGetInvestmentScoreHeatmap_Success(t *testing.T) {
 func TestGetInvestmentScoreHeatmap_TooManyTiles(t *testing.T) {
 	r := newTestRouter(&mockMLITClient{}, nil)
 	// z=15, large bbox → will exceed maxHeatmapTiles=50
+	// At z=15 a 1°×1° bbox (35-36°N, 139-140°E) spans approximately 57×47 = ~2679 tiles,
+	// far exceeding the maxHeatmapTiles=50 limit.
 	req := httptest.NewRequest(http.MethodGet,
 		"/api/investment-score-heatmap?minLat=35.0&maxLat=36.0&minLng=139.0&maxLng=140.0&z=15",
 		nil)
