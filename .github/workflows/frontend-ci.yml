@@ -100,13 +100,15 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run E2E tests
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            npm run e2e:ci -- --grep "@p1[^0-9]|@p2[^0-9]"
-          else
-            npm run e2e:ci
-          fi
+      - name: E2E smoke tests
+        if: github.event_name == 'pull_request'
+        run: npm run e2e:ci -- --grep "@p1|@p2"
+        env:
+          CI: "true"
+
+      - name: E2E full suite
+        if: github.ref == 'refs/heads/main'
+        run: npm run e2e:ci
         env:
           CI: "true"
 
