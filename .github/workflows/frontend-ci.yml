@@ -5,12 +5,14 @@ on:
     branches: [main]
     paths:
       - "frontend/**"
+      - "docs/openapi/**"
       - ".github/workflows/frontend-ci.yml"
       - "Makefile"
   pull_request:
     branches: [main]
     paths:
       - "frontend/**"
+      - "docs/openapi/**"
       - ".github/workflows/frontend-ci.yml"
       - "Makefile"
   workflow_dispatch:
@@ -42,6 +44,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check schema drift (api.generated.ts)
+        run: |
+          npm run generate:types
+          git diff --exit-code src/types/api.generated.ts ../docs/openapi/openapi.json
 
       - name: Format check
         run: npm run format:check
