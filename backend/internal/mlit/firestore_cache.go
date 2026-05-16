@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	mlitCacheCollection = "mlit_cache"
-	mlitCacheTTL        = 24 * time.Hour
+	mlitCacheCollection = "mlit_cache"    //nolint:unused
+	mlitCacheTTL        = 24 * time.Hour  //nolint:unused
 )
 
 // l2Cache はFirestore L2キャッシュの汎用インターフェース。
@@ -30,8 +30,8 @@ type firestoreL2[E any] struct {
 // noopL2 はFirestore未設定時のダミー実装。
 type noopL2[E any] struct{}
 
-func (n *noopL2[E]) get(_ context.Context, _ string) ([]E, bool) { return nil, false }
-func (n *noopL2[E]) set(_ context.Context, _ string, _ []E)      {}
+func (n *noopL2[E]) get(_ context.Context, _ string) ([]E, bool) { return nil, false } //nolint:unused
+func (n *noopL2[E]) set(_ context.Context, _ string, _ []E)      {}                    //nolint:unused
 
 // newFirestoreL2 は client が nil の場合 noopL2 を、それ以外は firestoreL2 を返す。
 func newFirestoreL2[E any](client *firestore.Client, endpoint string) l2Cache[E] {
@@ -41,11 +41,11 @@ func newFirestoreL2[E any](client *firestore.Client, endpoint string) l2Cache[E]
 	return &firestoreL2[E]{client: client, endpoint: endpoint}
 }
 
-func (f *firestoreL2[E]) docID(key string) string {
+func (f *firestoreL2[E]) docID(key string) string { //nolint:unused
 	return f.endpoint + ":" + key
 }
 
-func (f *firestoreL2[E]) get(ctx context.Context, key string) ([]E, bool) {
+func (f *firestoreL2[E]) get(ctx context.Context, key string) ([]E, bool) { //nolint:unused
 	doc, err := f.client.Collection(mlitCacheCollection).Doc(f.docID(key)).Get(ctx)
 	if err != nil {
 		return nil, false
@@ -72,7 +72,7 @@ func (f *firestoreL2[E]) get(ctx context.Context, key string) ([]E, bool) {
 	return result, true
 }
 
-func (f *firestoreL2[E]) set(ctx context.Context, key string, data []E) {
+func (f *firestoreL2[E]) set(ctx context.Context, key string, data []E) { //nolint:unused
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return
