@@ -3192,3 +3192,46 @@ func TestOverloanWarning(t *testing.T) {
 		}
 	})
 }
+
+// TestValidateCapexScheduleYear は CapexSchedule の年数が HoldingYears を超える場合にエラーが返ることを検証する。
+func TestValidateCapexScheduleYear(t *testing.T) {
+	base := InvestmentInput{
+		VacancyRate:  0.05,
+		LoanYears:    35,
+		HoldingYears: 10,
+	}
+
+	t.Run("capex year within HoldingYears", func(t *testing.T) {
+		in := base
+		in.CapexSchedule = []CapexEvent{{Year: 10, Amount: 1_000_000}}
+		if err := in.Validate(); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("capex year exceeds HoldingYears", func(t *testing.T) {
+		in := base
+		in.CapexSchedule = []CapexEvent{{Year: 11, Amount: 1_000_000}}
+		if err := in.Validate(); err == nil {
+			t.Error("expected error for CapexSchedule year exceeding HoldingYears")
+		}
+	})
+
+	t.Run("multiple capex events with one exceeding", func(t *testing.T) {
+		in := base
+		in.CapexSchedule = []CapexEvent{
+			{Year: 5, Amount: 500_000},
+			{Year: 15, Amount: 1_000_000}, // 15 > HoldingYears(10)
+		}
+		if err := in.Validate(); err == nil {
+			t.Error("expected error for CapexSchedule year 15 exceeding HoldingYears 10")
+		}
+	})
+
+	t.Run("empty capex schedule passes", func(t *testing.T) {
+		in := base
+		if err := in.Validate(); err != nil {
+			t.Errorf("unexpected error for empty CapexSchedule: %v", err)
+		}
+	})
+}
