@@ -774,3 +774,1305 @@ func TestTileToLatLng_RoundTrip(t *testing.T) {
 		})
 	}
 }
+
+// ---- helpers for tile-based GeoJSON endpoint tests ----
+
+// tileGeoJSONResponse encodes a value as JSON and writes it to the ResponseWriter.
+func tileGeoJSONResponse(w http.ResponseWriter, v interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		panic(err)
+	}
+}
+
+// ---- FetchStationRidership ----
+
+func TestFetchStationRidership_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointStationRidership {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		q := r.URL.Query()
+		if q.Get("response_format") != "geojson" {
+			t.Errorf("response_format = %s, want geojson", q.Get("response_format"))
+		}
+		if q.Get("z") != "14" || q.Get("x") != "14547" || q.Get("y") != "6451" {
+			t.Errorf("unexpected tile params: z=%s x=%s y=%s", q.Get("z"), q.Get("x"), q.Get("y"))
+		}
+		resp := StationRidershipGeoJSON{
+			Type: "FeatureCollection",
+			Features: []StationRidershipFeature{
+				{
+					Type: "Feature",
+					Properties: StationRidershipProperties{
+						StationName:  "渋谷",
+						OperatorName: "東急電鉄",
+						LineName:     "田園都市線",
+						P2023:        500000,
+					},
+					Geometry: StationRidershipGeometry{Type: "LineString"},
+				},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchStationRidership(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].StationName != "渋谷" {
+		t.Errorf("StationName = %q, want 渋谷", result[0].StationName)
+	}
+	if result[0].Passengers != 500000 {
+		t.Errorf("Passengers = %d, want 500000", result[0].Passengers)
+	}
+}
+
+func TestFetchStationRidership_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchStationRidership(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
+func TestFetchStationRidership_5xxError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchStationRidership(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 5xx, got nil")
+	}
+}
+
+func TestFetchStationRidership_ConnectionError(t *testing.T) {
+	// closed server → connection refused
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchStationRidership(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for connection refused, got nil")
+	}
+}
+
+func TestFetchStationRidership_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := StationRidershipGeoJSON{
+			Type: "FeatureCollection",
+			Features: []StationRidershipFeature{
+				{Properties: StationRidershipProperties{StationName: "渋谷", LineName: "田園都市線", P2023: 100}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchStationRidership(context.Background(), 14, 1, 2); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchStationRidership(context.Background(), 14, 1, 2); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (2nd call should hit cache)", apiCallCount)
+	}
+}
+
+func TestFetchStationRidership_InvalidJSON(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("not-json"))
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchStationRidership(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected JSON decode error, got nil")
+	}
+}
+
+// ---- parseStationRiderships ----
+
+func TestParseStationRiderships_DeduplicationKeepsHighestPassengers(t *testing.T) {
+	features := []StationRidershipFeature{
+		{Properties: StationRidershipProperties{StationName: "新宿", LineName: "中央線", P2023: 800000}},
+		{Properties: StationRidershipProperties{StationName: "新宿", LineName: "中央線", P2023: 900000}},
+		{Properties: StationRidershipProperties{StationName: "新宿", LineName: "中央線", P2021: 700000}},
+	}
+	result := parseStationRiderships(features)
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1 (deduplication)", len(result))
+	}
+	if result[0].Passengers != 900000 {
+		t.Errorf("Passengers = %d, want 900000 (highest)", result[0].Passengers)
+	}
+}
+
+func TestParseStationRiderships_SkipsEmptyStationName(t *testing.T) {
+	features := []StationRidershipFeature{
+		{Properties: StationRidershipProperties{StationName: "", LineName: "山手線", P2023: 100}},
+		{Properties: StationRidershipProperties{StationName: "渋谷", LineName: "山手線", P2023: 200}},
+	}
+	result := parseStationRiderships(features)
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1 (empty name skipped)", len(result))
+	}
+	if result[0].StationName != "渋谷" {
+		t.Errorf("StationName = %q, want 渋谷", result[0].StationName)
+	}
+}
+
+func TestParseStationRiderships_LatestNonZeroPassengers(t *testing.T) {
+	// P2023=0, P2022=0, P2021=50000 → 最新の非ゼロは P2021
+	features := []StationRidershipFeature{
+		{Properties: StationRidershipProperties{StationName: "東京", LineName: "京葉線", P2023: 0, P2022: 0, P2021: 50000}},
+	}
+	result := parseStationRiderships(features)
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].Passengers != 50000 {
+		t.Errorf("Passengers = %d, want 50000", result[0].Passengers)
+	}
+}
+
+func TestParseStationRiderships_Empty(t *testing.T) {
+	result := parseStationRiderships([]StationRidershipFeature{})
+	if len(result) != 0 {
+		t.Errorf("len = %d, want 0", len(result))
+	}
+}
+
+// ---- FetchPopulationForecast ----
+
+func TestFetchPopulationForecast_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointPopulationForecast {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := PopulationForecastGeoJSON{
+			Type: "FeatureCollection",
+			Features: []PopulationForecastFeature{
+				{Properties: PopulationForecastProperties{
+					MeshID: "533945891",
+					PTN2020: 1000, PTN2025: 950, PTN2030: 900,
+					PTN2035: 850, PTN2040: 800, PTN2045: 750, PTN2050: 700,
+				}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchPopulationForecast(context.Background(), 14, 100, 200)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 7 {
+		t.Fatalf("len = %d, want 7 (one entry per year 2020-2050)", len(result))
+	}
+	if result[0].Year != 2020 || result[0].Pop != 1000 {
+		t.Errorf("result[0] = %+v, want {Year:2020, Pop:1000}", result[0])
+	}
+	if result[6].Year != 2050 || result[6].Pop != 700 {
+		t.Errorf("result[6] = %+v, want {Year:2050, Pop:700}", result[6])
+	}
+}
+
+func TestFetchPopulationForecast_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchPopulationForecast(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
+func TestFetchPopulationForecast_5xxError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchPopulationForecast(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 5xx, got nil")
+	}
+}
+
+func TestFetchPopulationForecast_ConnectionError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchPopulationForecast(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for connection refused, got nil")
+	}
+}
+
+func TestFetchPopulationForecast_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := PopulationForecastGeoJSON{
+			Type: "FeatureCollection",
+			Features: []PopulationForecastFeature{
+				{Properties: PopulationForecastProperties{PTN2020: 500}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchPopulationForecast(context.Background(), 13, 5, 6); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchPopulationForecast(context.Background(), 13, 5, 6); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
+
+func TestFetchPopulationForecast_InvalidJSON(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("not-json"))
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchPopulationForecast(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected JSON decode error, got nil")
+	}
+}
+
+// ---- parsePopulationForecasts ----
+
+func TestParsePopulationForecasts_Empty(t *testing.T) {
+	result := parsePopulationForecasts([]PopulationForecastFeature{})
+	if result != nil {
+		t.Errorf("expected nil for empty features, got %v", result)
+	}
+}
+
+func TestParsePopulationForecasts_MultiMeshAccumulation(t *testing.T) {
+	features := []PopulationForecastFeature{
+		{Properties: PopulationForecastProperties{PTN2020: 300, PTN2025: 280}},
+		{Properties: PopulationForecastProperties{PTN2020: 200, PTN2025: 190}},
+	}
+	result := parsePopulationForecasts(features)
+	if len(result) != 7 {
+		t.Fatalf("len = %d, want 7", len(result))
+	}
+	if result[0].Pop != 500 {
+		t.Errorf("PTN2020 accumulated = %v, want 500", result[0].Pop)
+	}
+	if result[1].Pop != 470 {
+		t.Errorf("PTN2025 accumulated = %v, want 470", result[1].Pop)
+	}
+}
+
+// ---- fetchTileGeoJSON (via FetchLocationOptimization) ----
+
+func TestFetchTileGeoJSON_InvalidJSON(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("not-json"))
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	// Use FetchLocationOptimization as a proxy to exercise fetchTileGeoJSON
+	_, err := c.FetchLocationOptimization(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected JSON decode error, got nil")
+	}
+}
+
+// ---- FetchLocationOptimization ----
+
+func TestFetchLocationOptimization_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointLocationOptimization {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := LocationOptimizationGeoJSON{
+			Type: "FeatureCollection",
+			Features: []LocationOptimizationFeature{
+				{Properties: LocationOptimizationProperties{KubunNameJa: "居住誘導区域"}},
+				{Properties: LocationOptimizationProperties{KubunNameJa: "都市機能誘導区域"}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchLocationOptimization(context.Background(), 14, 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("len = %d, want 2", len(result))
+	}
+	if result[0].KubunNameJa != "居住誘導区域" {
+		t.Errorf("KubunNameJa = %q, want 居住誘導区域", result[0].KubunNameJa)
+	}
+}
+
+func TestFetchLocationOptimization_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchLocationOptimization(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
+func TestFetchLocationOptimization_5xxError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchLocationOptimization(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 5xx, got nil")
+	}
+}
+
+func TestFetchLocationOptimization_ConnectionError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchLocationOptimization(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for connection refused, got nil")
+	}
+}
+
+func TestFetchLocationOptimization_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := LocationOptimizationGeoJSON{
+			Type: "FeatureCollection",
+			Features: []LocationOptimizationFeature{
+				{Properties: LocationOptimizationProperties{KubunNameJa: "居住誘導区域"}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchLocationOptimization(context.Background(), 14, 3, 4); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchLocationOptimization(context.Background(), 14, 3, 4); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
+
+// ---- FetchEmbankment ----
+
+func TestFetchEmbankment_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointEmbankment {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := EmbankmentGeoJSON{
+			Type: "FeatureCollection",
+			Features: []EmbankmentFeature{
+				{Properties: EmbankmentProperties{EmbankmentClassification: "谷埋め型"}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchEmbankment(context.Background(), 14, 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].Classification != "谷埋め型" {
+		t.Errorf("Classification = %q, want 谷埋め型", result[0].Classification)
+	}
+}
+
+func TestFetchEmbankment_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchEmbankment(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
+func TestFetchEmbankment_5xxError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchEmbankment(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 5xx, got nil")
+	}
+}
+
+func TestFetchEmbankment_ConnectionError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchEmbankment(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for connection refused, got nil")
+	}
+}
+
+func TestFetchEmbankment_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := EmbankmentGeoJSON{Features: []EmbankmentFeature{
+			{Properties: EmbankmentProperties{EmbankmentClassification: "腹付け型"}},
+		}}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchEmbankment(context.Background(), 14, 5, 6); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchEmbankment(context.Background(), 14, 5, 6); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
+
+// ---- FetchUrbanRoad ----
+
+func TestFetchUrbanRoad_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointUrbanRoad {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := UrbanRoadGeoJSON{
+			Type: "FeatureCollection",
+			Features: []UrbanRoadFeature{
+				{Properties: UrbanRoadProperties{PlanningRoadJa: "補助第26号線", KubunID: 3011}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchUrbanRoad(context.Background(), 14, 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].PlanningRoadJa != "補助第26号線" {
+		t.Errorf("PlanningRoadJa = %q, want 補助第26号線", result[0].PlanningRoadJa)
+	}
+	if result[0].KubunID != 3011 {
+		t.Errorf("KubunID = %d, want 3011", result[0].KubunID)
+	}
+}
+
+func TestFetchUrbanRoad_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchUrbanRoad(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
+func TestFetchUrbanRoad_5xxError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchUrbanRoad(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 5xx, got nil")
+	}
+}
+
+func TestFetchUrbanRoad_ConnectionError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchUrbanRoad(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for connection refused, got nil")
+	}
+}
+
+func TestFetchUrbanRoad_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := UrbanRoadGeoJSON{Features: []UrbanRoadFeature{
+			{Properties: UrbanRoadProperties{PlanningRoadJa: "環状第7号線", KubunID: 3011}},
+		}}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchUrbanRoad(context.Background(), 14, 7, 8); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchUrbanRoad(context.Background(), 14, 7, 8); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
+
+// ---- FetchDisasterHistory ----
+
+func TestFetchDisasterHistory_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointDisasterHistory {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := DisasterHistoryGeoJSON{
+			Type: "FeatureCollection",
+			Features: []DisasterHistoryFeature{
+				{Properties: DisasterHistoryProperties{
+					DisasterNameJa: "浸水域",
+					DisasterDate:   "19580928",
+				}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchDisasterHistory(context.Background(), 14, 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].Name != "浸水域" {
+		t.Errorf("Name = %q, want 浸水域", result[0].Name)
+	}
+	if result[0].Year != 1958 {
+		t.Errorf("Year = %d, want 1958 (parsed from DisasterDate 19580928)", result[0].Year)
+	}
+}
+
+func TestFetchDisasterHistory_ShortDateYearZero(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := DisasterHistoryGeoJSON{
+			Type: "FeatureCollection",
+			Features: []DisasterHistoryFeature{
+				// DisasterDate が4文字未満 → year=0
+				{Properties: DisasterHistoryProperties{DisasterNameJa: "がけ崩れ", DisasterDate: "???"}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchDisasterHistory(context.Background(), 14, 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].Year != 0 {
+		t.Errorf("Year = %d, want 0 for short date", result[0].Year)
+	}
+}
+
+func TestFetchDisasterHistory_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchDisasterHistory(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
+func TestFetchDisasterHistory_5xxError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchDisasterHistory(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 5xx, got nil")
+	}
+}
+
+func TestFetchDisasterHistory_ConnectionError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchDisasterHistory(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for connection refused, got nil")
+	}
+}
+
+func TestFetchDisasterHistory_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := DisasterHistoryGeoJSON{Features: []DisasterHistoryFeature{
+			{Properties: DisasterHistoryProperties{DisasterNameJa: "土石流", DisasterDate: "20110311"}},
+		}}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchDisasterHistory(context.Background(), 14, 9, 10); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchDisasterHistory(context.Background(), 14, 9, 10); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
+
+// ---- FetchUrbanZoning ----
+
+func TestFetchUrbanZoning_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointUrbanZoning {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := UrbanZoningGeoJSON{
+			Type: "FeatureCollection",
+			Features: []UrbanZoningFeature{
+				{Properties: UrbanZoningProperties{AreaClassificationJa: "市街化区域", KubunID: 1}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchUrbanZoning(context.Background(), 14, 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].AreaClassificationJa != "市街化区域" {
+		t.Errorf("AreaClassificationJa = %q, want 市街化区域", result[0].AreaClassificationJa)
+	}
+	if result[0].KubunID != 1 {
+		t.Errorf("KubunID = %d, want 1", result[0].KubunID)
+	}
+}
+
+func TestFetchUrbanZoning_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchUrbanZoning(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
+func TestFetchUrbanZoning_5xxError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchUrbanZoning(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 5xx, got nil")
+	}
+}
+
+func TestFetchUrbanZoning_ConnectionError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchUrbanZoning(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for connection refused, got nil")
+	}
+}
+
+func TestFetchUrbanZoning_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := UrbanZoningGeoJSON{Features: []UrbanZoningFeature{
+			{Properties: UrbanZoningProperties{AreaClassificationJa: "市街化調整区域", KubunID: 2}},
+		}}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchUrbanZoning(context.Background(), 14, 11, 12); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchUrbanZoning(context.Background(), 14, 11, 12); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
+
+// ---- FetchLiquefaction ----
+
+func TestFetchLiquefaction_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointLiquefaction {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := LiquefactionGeoJSON{
+			Type: "FeatureCollection",
+			Features: []LiquefactionFeature{
+				{Properties: LiquefactionProperties{LiquefactionTendencyLevel: 2, Note: "液状化しやすい"}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchLiquefaction(context.Background(), 14, 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].TendencyLevel != 2 {
+		t.Errorf("TendencyLevel = %d, want 2", result[0].TendencyLevel)
+	}
+	if result[0].Note != "液状化しやすい" {
+		t.Errorf("Note = %q, want 液状化しやすい", result[0].Note)
+	}
+}
+
+func TestFetchLiquefaction_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchLiquefaction(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
+func TestFetchLiquefaction_5xxError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchLiquefaction(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 5xx, got nil")
+	}
+}
+
+func TestFetchLiquefaction_ConnectionError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchLiquefaction(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for connection refused, got nil")
+	}
+}
+
+func TestFetchLiquefaction_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := LiquefactionGeoJSON{Features: []LiquefactionFeature{
+			{Properties: LiquefactionProperties{LiquefactionTendencyLevel: 5, Note: "液状化しにくい"}},
+		}}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchLiquefaction(context.Background(), 14, 13, 14); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchLiquefaction(context.Background(), 14, 13, 14); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
+
+// ---- FetchFloodHazard ----
+
+func TestFetchFloodHazard_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointFloodHazard {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := FloodHazardGeoJSON{
+			Type: "FeatureCollection",
+			Features: []FloodHazardFeature{
+				{Properties: FloodHazardProperties{DepthRank: 3, RiverName: "荒川", RiverManager: "国土交通省"}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchFloodHazard(context.Background(), 14, 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].DepthRank != 3 {
+		t.Errorf("DepthRank = %d, want 3", result[0].DepthRank)
+	}
+	if result[0].RiverName != "荒川" {
+		t.Errorf("RiverName = %q, want 荒川", result[0].RiverName)
+	}
+}
+
+func TestFetchFloodHazard_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchFloodHazard(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
+func TestFetchFloodHazard_5xxError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchFloodHazard(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 5xx, got nil")
+	}
+}
+
+func TestFetchFloodHazard_ConnectionError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchFloodHazard(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for connection refused, got nil")
+	}
+}
+
+func TestFetchFloodHazard_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := FloodHazardGeoJSON{Features: []FloodHazardFeature{
+			{Properties: FloodHazardProperties{DepthRank: 1, RiverName: "多摩川"}},
+		}}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchFloodHazard(context.Background(), 14, 15, 16); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchFloodHazard(context.Background(), 14, 15, 16); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
+
+// ---- FetchStormHazard ----
+
+func TestFetchStormHazard_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointStormHazard {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := StormHazardGeoJSON{
+			Type: "FeatureCollection",
+			Features: []StormHazardFeature{
+				{Properties: StormHazardProperties{DepthJa: "5m以上10m未満", Prefecture: "東京都", TargetYear: 2023}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchStormHazard(context.Background(), 14, 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].DepthJa != "5m以上10m未満" {
+		t.Errorf("DepthJa = %q, want 5m以上10m未満", result[0].DepthJa)
+	}
+}
+
+func TestFetchStormHazard_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchStormHazard(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
+func TestFetchStormHazard_5xxError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchStormHazard(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 5xx, got nil")
+	}
+}
+
+func TestFetchStormHazard_ConnectionError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchStormHazard(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for connection refused, got nil")
+	}
+}
+
+func TestFetchStormHazard_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := StormHazardGeoJSON{Features: []StormHazardFeature{
+			{Properties: StormHazardProperties{DepthJa: "1m未満"}},
+		}}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchStormHazard(context.Background(), 14, 17, 18); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchStormHazard(context.Background(), 14, 17, 18); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
+
+// ---- FetchTsunamiHazard ----
+
+func TestFetchTsunamiHazard_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointTsunamiHazard {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := TsunamiHazardGeoJSON{
+			Type: "FeatureCollection",
+			Features: []TsunamiHazardFeature{
+				{Properties: TsunamiHazardProperties{DepthJa: "3m以上～5m未満", Prefecture: "神奈川県", TargetYear: 2022}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchTsunamiHazard(context.Background(), 14, 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].DepthJa != "3m以上～5m未満" {
+		t.Errorf("DepthJa = %q, want 3m以上～5m未満", result[0].DepthJa)
+	}
+}
+
+func TestFetchTsunamiHazard_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchTsunamiHazard(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
+func TestFetchTsunamiHazard_5xxError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchTsunamiHazard(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 5xx, got nil")
+	}
+}
+
+func TestFetchTsunamiHazard_ConnectionError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchTsunamiHazard(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for connection refused, got nil")
+	}
+}
+
+func TestFetchTsunamiHazard_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := TsunamiHazardGeoJSON{Features: []TsunamiHazardFeature{
+			{Properties: TsunamiHazardProperties{DepthJa: "10m以上"}},
+		}}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchTsunamiHazard(context.Background(), 14, 19, 20); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchTsunamiHazard(context.Background(), 14, 19, 20); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
+
+// ---- FetchLandslideHazard ----
+
+func TestFetchLandslideHazard_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != endpointLandslideHazard {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		resp := LandslideHazardGeoJSON{
+			Type: "FeatureCollection",
+			Features: []LandslideHazardFeature{
+				{Properties: LandslideHazardProperties{
+					PhenomenonType: 1,
+					ZoneCode:       1,
+					PrefectureCode: "13",
+					ZoneNumber:     "0001",
+				}},
+			},
+		}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	result, err := c.FetchLandslideHazard(context.Background(), 14, 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].PhenomenonType != 1 {
+		t.Errorf("PhenomenonType = %d, want 1 (急傾斜地崩壊)", result[0].PhenomenonType)
+	}
+	if result[0].ZoneCode != 1 {
+		t.Errorf("ZoneCode = %d, want 1 (特別警戒区域)", result[0].ZoneCode)
+	}
+}
+
+func TestFetchLandslideHazard_4xxNoRetry(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchLandslideHazard(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 4xx, got nil")
+	}
+}
+
+func TestFetchLandslideHazard_5xxError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchLandslideHazard(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for 5xx, got nil")
+	}
+}
+
+func TestFetchLandslideHazard_ConnectionError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchLandslideHazard(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected error for connection refused, got nil")
+	}
+}
+
+func TestFetchLandslideHazard_CacheHit(t *testing.T) {
+	apiCallCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		resp := LandslideHazardGeoJSON{Features: []LandslideHazardFeature{
+			{Properties: LandslideHazardProperties{PhenomenonType: 2, ZoneCode: 2}},
+		}}
+		tileGeoJSONResponse(w, resp)
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	if _, err := c.FetchLandslideHazard(context.Background(), 14, 21, 22); err != nil {
+		t.Fatalf("1st call failed: %v", err)
+	}
+	if _, err := c.FetchLandslideHazard(context.Background(), 14, 21, 22); err != nil {
+		t.Fatalf("2nd call failed: %v", err)
+	}
+	if apiCallCount != 1 {
+		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
