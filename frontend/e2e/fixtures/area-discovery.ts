@@ -1,4 +1,5 @@
-import type { AreaDiscoveryResponse } from "@/lib/api";
+import type { components } from "@/types/api.generated";
+type AreaDiscoveryResponse = components["schemas"]["domain.AreaDiscoveryResponse"];
 
 export const areaDiscoveryFixture = {
   prefecture: "群馬県",

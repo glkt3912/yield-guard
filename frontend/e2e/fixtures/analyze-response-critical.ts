@@ -1,4 +1,15 @@
-import type { InvestmentResult } from "@/types/investment";
+import type { components } from "@/types/api.generated";
+// IRR は Go の *float64 (nullable) だが生成型では irr?: number のため Omit で再定義して null を許容する
+type NullableMultiExitRow = Omit<components["schemas"]["domain.MultiExitRow"], "irr"> & {
+  irr?: number | null;
+};
+type InvestmentResult = Omit<
+  components["schemas"]["domain.InvestmentResult"],
+  "irr" | "multiExitComparison"
+> & {
+  irr?: number | null;
+  multiExitComparison?: NullableMultiExitRow[];
+};
 
 export const analyzeCriticalFixture = {
   totalInvestment: 18190000,

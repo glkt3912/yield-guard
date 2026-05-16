@@ -1,4 +1,5 @@
-import type { StationRidershipResult } from "@/types/investment";
+import type { components } from "@/types/api.generated";
+type StationRidershipResult = components["schemas"]["domain.StationRidershipResult"];
 
 export const stationRidershipFixture = [
   {

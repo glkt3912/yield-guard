@@ -1,4 +1,5 @@
-import type { Municipality } from "@/lib/api";
+import type { components } from "@/types/api.generated";
+type Municipality = components["schemas"]["mlit.Municipality"];
 
 export const municipalitiesFixture = [
   { id: "13101", name: "千代田区" },
