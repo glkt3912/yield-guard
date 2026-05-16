@@ -57,8 +57,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	googleMapsAPIKey := readSecret("/secrets/google-maps-api-key/value", "GOOGLE_MAPS_API_KEY")
-
 	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
 	var fsClient *firestore.Client
 	if projectID != "" {
@@ -73,7 +71,7 @@ func main() {
 	}
 
 	mlitClient := mlit.NewClientWithFirestore(mlitAPIKey, fsClient)
-	geocodeClient := api.NewGoogleGeocodeClient(googleMapsAPIKey)
+	geocodeClient := api.NewNominatimGeocodeClient(api.NewFirestoreGeocodeCache(fsClient))
 	handler := api.NewHandler(mlitClient, geocodeClient)
 	router := api.NewRouter(handler, appInternalAPIKey)
 
