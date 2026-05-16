@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	aiCacheTTL            = 24 * time.Hour
-	aiCallTimeout         = 5 * time.Second
-	defaultGeminiModel    = "gemini-2.5-flash"
+	aiCacheTTL               = 24 * time.Hour
+	aiCallTimeout            = 5 * time.Second
+	defaultGeminiModel       = "gemini-2.5-flash"
 	aiSummaryCacheCollection = "ai_summary_cache"
 )
 

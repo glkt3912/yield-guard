@@ -21,6 +21,11 @@ frontend/.claude/
 # TypeScript ビルドキャッシュ
 frontend/tsconfig.tsbuildinfo
 
+# OpenAPI 生成ファイル（Node.js バージョン差で内容が変わるため git 管理外）
+# 再生成: make swagger && cd frontend && npm run generate:types
+docs/openapi/openapi.json
+frontend/src/types/api.generated.ts
+
 # Playwright
 frontend/playwright-report/
 frontend/test-results/

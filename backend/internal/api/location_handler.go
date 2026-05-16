@@ -12,8 +12,17 @@ import (
 	"github.com/yield-guard/backend/internal/mlit"
 )
 
-// GetStationRidership は物件の緯度経度からタイル座標を計算し、駅別乗降客数と需要スコアを返す（XKT015）
-// GET /api/station-ridership?lat=35.6762&lng=139.6503[&z=14]
+// GetStationRidership は物件の緯度経度から駅別乗降客数と需要スコアを返す（XKT015）
+// @Summary     駅別乗降客数
+// @Tags        location
+// @Produce     json
+// @Param       lat  query  number   true  "緯度"
+// @Param       lng  query  number   true  "経度"
+// @Param       z    query  integer  false "ズームレベル (11-15, デフォルト: 14)"
+// @Success     200  {array}   domain.StationRidershipResult
+// @Failure     400  {object}  map[string]string
+// @Failure     502  {object}  map[string]string
+// @Router      /api/station-ridership [get]
 func (h *Handler) GetStationRidership(c *gin.Context) {
 	lat, lng, ok := parseLatLng(c, coordsGlobal)
 	if !ok {
@@ -48,8 +57,17 @@ func (h *Handler) GetStationRidership(c *gin.Context) {
 	c.JSON(http.StatusOK, results)
 }
 
-// GetPopulationForecast は物件の緯度経度からタイル座標を計算し、将来推計人口と人口減少シナリオを返す（XKT013）
-// GET /api/population-forecast?lat=35.6762&lng=139.6503[&z=14]
+// GetPopulationForecast は物件の緯度経度から将来推計人口と人口減少シナリオを返す（XKT013）
+// @Summary     将来推計人口
+// @Tags        location
+// @Produce     json
+// @Param       lat  query  number   true  "緯度"
+// @Param       lng  query  number   true  "経度"
+// @Param       z    query  integer  false "ズームレベル (11-15, デフォルト: 14)"
+// @Success     200  {object}  domain.PopulationForecastResult
+// @Failure     400  {object}  map[string]string
+// @Failure     502  {object}  map[string]string
+// @Router      /api/population-forecast [get]
 func (h *Handler) GetPopulationForecast(c *gin.Context) {
 	lat, lng, ok := parseLatLng(c, coordsGlobal)
 	if !ok {
@@ -79,7 +97,14 @@ func (h *Handler) GetPopulationForecast(c *gin.Context) {
 }
 
 // GetUrbanRisks は緯度経度から都市計画リスクを一括取得する
-// GET /api/urban-risks?lat=35.68&lng=139.69
+// @Summary     都市計画リスク
+// @Tags        location
+// @Produce     json
+// @Param       lat  query  number  true  "緯度 (日本国内 20-46)"
+// @Param       lng  query  number  true  "経度 (日本国内 122-154)"
+// @Success     200  {array}   domain.UrbanRisk
+// @Failure     400  {object}  map[string]string
+// @Router      /api/urban-risks [get]
 func (h *Handler) GetUrbanRisks(c *gin.Context) {
 	lat, lng, ok := parseLatLng(c, coordsJapanOnly)
 	if !ok {
@@ -132,8 +157,15 @@ func (h *Handler) GetUrbanRisks(c *gin.Context) {
 	c.JSON(http.StatusOK, risks)
 }
 
-// GetHazardInfo は物件の緯度経度から洪水・高潮・津波・土砂災害のハザード情報を返す。
-// GET /api/hazard?lat=35.6895&lng=139.6917
+// GetHazardInfo は物件の緯度経度から洪水・高潮・津波・土砂災害のハザード情報を返す
+// @Summary     ハザード情報
+// @Tags        location
+// @Produce     json
+// @Param       lat  query  number  true  "緯度 (日本国内 20-46)"
+// @Param       lng  query  number  true  "経度 (日本国内 122-154)"
+// @Success     200  {array}   domain.UrbanRisk
+// @Failure     400  {object}  map[string]string
+// @Router      /api/hazard [get]
 func (h *Handler) GetHazardInfo(c *gin.Context) {
 	lat, lng, ok := parseLatLng(c, coordsJapanOnly)
 	if !ok {
@@ -308,8 +340,16 @@ func (h *Handler) calcScoreForTile(ctx context.Context, z, x, y int) (domain.Inv
 	return domain.CalcInvestmentScore(input), nil
 }
 
-// GetInvestmentScore は物件の緯度経度から複数 API を並列呼び出しし、投資適地スコアを算出して返す。
-// GET /api/investment-score?lat=35.6762&lng=139.6503
+// GetInvestmentScore は物件の緯度経度から投資適地スコアを算出して返す
+// @Summary     投資適地スコア
+// @Tags        location
+// @Produce     json
+// @Param       lat  query  number  true  "緯度 (日本国内 20-46)"
+// @Param       lng  query  number  true  "経度 (日本国内 122-154)"
+// @Success     200  {object}  domain.InvestmentScoreResult
+// @Failure     400  {object}  map[string]string
+// @Failure     500  {object}  map[string]string
+// @Router      /api/investment-score [get]
 func (h *Handler) GetInvestmentScore(c *gin.Context) {
 	lat, lng, ok := parseLatLng(c, coordsJapanOnly)
 	if !ok {
@@ -331,8 +371,19 @@ func (h *Handler) GetInvestmentScore(c *gin.Context) {
 
 const maxHeatmapTiles = 50
 
-// GetInvestmentScoreHeatmap はバウンディングボックス内の全タイルに対して投資スコアを並列計算して返す。
-// GET /api/investment-score-heatmap?minLat=35.6&maxLat=35.7&minLng=139.6&maxLng=139.7&z=13
+// GetInvestmentScoreHeatmap はバウンディングボックス内の全タイルに対して投資スコアを並列計算して返す
+// @Summary     投資スコアヒートマップ
+// @Tags        location
+// @Produce     json
+// @Param       minLat  query  number   true  "南端緯度"
+// @Param       maxLat  query  number   true  "北端緯度"
+// @Param       minLng  query  number   true  "西端経度"
+// @Param       maxLng  query  number   true  "東端経度"
+// @Param       z       query  integer  false "ズームレベル (11-15, デフォルト: 13)"
+// @Success     200  {object}  domain.HeatmapResponse
+// @Failure     400  {object}  map[string]string
+// @Failure     500  {object}  map[string]string
+// @Router      /api/investment-score-heatmap [get]
 func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 	minLatStr := c.Query("minLat")
 	maxLatStr := c.Query("maxLat")

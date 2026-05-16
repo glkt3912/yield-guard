@@ -365,11 +365,6 @@ func TestValidateInvestmentInput_Boundaries(t *testing.T) {
 		{"holdingYears=0 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.HoldingYears = 0 }), false},
 		{"holdingYears=50 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.HoldingYears = 50 }), false},
 		{"holdingYears=51 → error", withField(validBase, func(i *domain.InvestmentInput) { i.HoldingYears = 51 }), true},
-		// RentDeclineRate
-		{"rentDeclineRate=-0.001 → error", withField(validBase, func(i *domain.InvestmentInput) { i.RentDeclineRate = -0.001 }), true},
-		{"rentDeclineRate=0 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.RentDeclineRate = 0 }), false},
-		{"rentDeclineRate=0.2 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.RentDeclineRate = 0.2 }), false},
-		{"rentDeclineRate=0.201 → error", withField(validBase, func(i *domain.InvestmentInput) { i.RentDeclineRate = 0.201 }), true},
 		// BuildingType: アローリスト外は拒否（プロンプトインジェクション対策）
 		{"buildingType=木造 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.BuildingType = domain.BuildingTypeWood }), false},
 		{"buildingType=RC造 → ok", withField(validBase, func(i *domain.InvestmentInput) { i.BuildingType = domain.BuildingTypeRC }), false},

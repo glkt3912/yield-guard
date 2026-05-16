@@ -1,4 +1,5 @@
-import type { TheoreticalPriceResult } from "@/types/investment";
+import type { components } from "@/types/api.generated";
+type TheoreticalPriceResult = components["schemas"]["domain.TheoreticalPriceResult"];
 
 export const landPriceEstimateFixture = {
   theoreticalPriceJPY: 11200000,

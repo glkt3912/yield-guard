@@ -11,7 +11,15 @@ import (
 )
 
 // GetRentStats は XIT001（賃貸）からエリア賃料相場を返す
-// GET /api/rent-stats?area=13[&municipality=13101][&area_sqm=60]
+// @Summary     賃料統計
+// @Tags        land-prices
+// @Produce     json
+// @Param       area          query  string  true  "都道府県コード (例: 13)"
+// @Param       municipality  query  string  false "市区町村コード"
+// @Param       area_sqm      query  number  false "専有面積 (m²)"
+// @Success     200  {object}  domain.RentStatsResult
+// @Failure     400  {object}  map[string]string
+// @Router      /api/rent-stats [get]
 func (h *Handler) GetRentStats(c *gin.Context) {
 	area := c.Query("area")
 	if area == "" {

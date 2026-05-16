@@ -1,4 +1,5 @@
-import type { UrbanRisk } from "@/types/investment";
+import type { components } from "@/types/api.generated";
+type UrbanRisk = components["schemas"]["domain.UrbanRisk"];
 
 export const hazardAlertFixture = [
   {

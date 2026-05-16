@@ -1,7 +1,10 @@
-// Note: This fixture shape does not match the RentDeclineHint type from @/types/investment.
-// The backend returns annualDeclineRate/dataPoints/lowDataWarning; typed as const for now.
+import type { components } from "@/types/api.generated";
+type RentDeclineHint = components["schemas"]["domain.RentDeclineHint"];
+
 export const rentDeclineHintFixture = {
-  annualDeclineRate: 0.005,
-  dataPoints: 18,
-  lowDataWarning: false,
-} as const satisfies Record<string, unknown>;
+  hintRate: 0.005,
+  basis: "land_appraisal",
+  dataPointCount: 18,
+  fallbackUsed: false,
+  note: "直近3年の地価公示CAGRから推計",
+} satisfies RentDeclineHint;
