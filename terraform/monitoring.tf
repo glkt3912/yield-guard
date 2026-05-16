@@ -345,19 +345,22 @@ resource "google_monitoring_alert_policy" "firestore_daily_reads" {
   conditions {
     display_name = "Firestore reads > 40,000/day"
     condition_threshold {
-      filter          = "metric.type=\"firestore.googleapis.com/document/read_count\" AND resource.type=\"firestore_instance\""
+      filter          = "metric.type=\"firestore.googleapis.com/document/read_count\" AND resource.type=\"firestore.googleapis.com/Database\""
       duration        = "0s"
       comparison      = "COMPARISON_GT"
       threshold_value = 40000
       aggregations {
-        alignment_period   = "86400s"
-        per_series_aligner = "ALIGN_SUM"
+        alignment_period     = "86400s"
+        per_series_aligner   = "ALIGN_SUM"
+        cross_series_reducer = "REDUCE_SUM"
+        group_by_fields      = ["resource.labels.project_id"]
       }
     }
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
+    # コスト超過アラートは短時間でクローズすると見落としリスクがあるため 7 日間保持
     auto_close = "604800s"
   }
 

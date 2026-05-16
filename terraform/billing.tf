@@ -26,9 +26,11 @@ resource "google_billing_budget" "firestore_early_alert" {
     }
   }
 
+  # 80%: 実際の支出が上限の 80% に達したら通知（CURRENT_SPEND）
   threshold_rules {
     threshold_percent = 0.8
   }
+  # 100%: 月末予測が上限を超えた時点で早期通知（FORECASTED_SPEND）
   threshold_rules {
     threshold_percent = 1.0
     spend_basis       = "FORECASTED_SPEND"
@@ -43,6 +45,10 @@ resource "google_billing_budget" "firestore_early_alert" {
 
   depends_on = [google_project_service.billingbudgets]
 
+  # The Billing Budgets API rejects write operations from WIF-issued service account
+  # tokens (403), even with billing.admin on the billing account. Human user credentials
+  # (gcloud / GCP Console) succeed. This is a known limitation of WIF + personal billing
+  # accounts. Budget values must be changed manually outside of CI.
   lifecycle {
     ignore_changes = [
       amount,
