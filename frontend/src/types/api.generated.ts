@@ -293,6 +293,17 @@ export interface paths {
             };
           };
         };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": {
+              [key: string]: string;
+            };
+          };
+        };
       };
     };
     put?: never;

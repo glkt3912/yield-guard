@@ -382,6 +382,7 @@ const maxHeatmapTiles = 50
 // @Param       z       query  integer  false "ズームレベル (11-15, デフォルト: 13)"
 // @Success     200  {object}  domain.HeatmapResponse
 // @Failure     400  {object}  map[string]string
+// @Failure     500  {object}  map[string]string
 // @Router      /api/investment-score-heatmap [get]
 func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 	minLatStr := c.Query("minLat")
