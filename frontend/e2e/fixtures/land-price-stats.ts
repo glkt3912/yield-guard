@@ -1,4 +1,5 @@
-import type { LandPriceStats } from "@/types/investment";
+import type { components } from "@/types/api.generated";
+type LandPriceStats = components["schemas"]["domain.LandPriceStats"];
 
 export const landPriceStatsFixture = {
   count: 23,

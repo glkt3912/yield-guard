@@ -1,4 +1,5 @@
-import type { InvestmentResult } from "@/types/investment";
+import type { components } from "@/types/api.generated";
+type InvestmentResult = components["schemas"]["domain.InvestmentResult"];
 
 export const analyzeFixture = {
   totalInvestment: 18190000,

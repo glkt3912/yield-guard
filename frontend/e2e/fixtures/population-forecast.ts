@@ -1,10 +1,15 @@
-// Note: This fixture shape does not match the PopulationForecastResult type from @/types/investment.
-// The backend returns a flat current/forecast/changeRate/trend structure; typed as const for now.
+import type { components } from "@/types/api.generated";
+type PopulationForecastResult = components["schemas"]["domain.PopulationForecastResult"];
+
 export const populationForecastFixture = {
-  current: 42000,
-  forecast2030: 39500,
-  forecast2040: 36000,
-  changeRate2030: -0.06,
-  changeRate2040: -0.143,
-  trend: "減少",
-} as const satisfies Record<string, unknown>;
+  snapshots: [
+    { year: 2020, pop: 42000 },
+    { year: 2025, pop: 41000 },
+    { year: 2030, pop: 39500 },
+    { year: 2040, pop: 36000 },
+    { year: 2050, pop: 32000 },
+  ],
+  changeRate30yr: -0.238,
+  vacancyRateDelta: 0.04,
+  trend: "緩やかな減少" as const,
+} satisfies PopulationForecastResult;

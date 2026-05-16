@@ -52,8 +52,12 @@ func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient) *Handler {
 	}
 }
 
-// HealthCheck はサーバーの生存確認
-// GET /health
+// HealthCheck はサーバーの生存確認を行う
+// @Summary     ヘルスチェック
+// @Tags        system
+// @Produce     json
+// @Success     200  {object}  map[string]string
+// @Router      /health [get]
 func (h *Handler) HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
@@ -83,7 +87,16 @@ func validateRenovationInput(in domain.RenovationInput) error {
 }
 
 // HandleAreaDiscovery は都道府県内の市区町村を土地価格データで評価しランキング返却
-// GET /api/area-discovery?prefecture=13&budget=50000000&yield=0.07
+// @Summary     投資エリア探索
+// @Tags        area
+// @Produce     json
+// @Param       prefecture  query  string  true   "都道府県コード (例: 13)"
+// @Param       budget      query  number  false  "予算 (円)"
+// @Param       yield       query  number  false  "目標利回り (例: 0.07)"
+// @Success     200  {object}  domain.AreaDiscoveryResponse
+// @Failure     400  {object}  map[string]string
+// @Failure     500  {object}  map[string]string
+// @Router      /api/area-discovery [get]
 func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 	prefecture := c.Query("prefecture")
 	if prefecture == "" {
@@ -226,6 +239,14 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 }
 
 // HandleRenovationAnalyze はリフォームROIシミュレーションを実行する
+// @Summary     リフォームROI分析
+// @Tags        renovation
+// @Accept      json
+// @Produce     json
+// @Param       body  body  domain.RenovationInput  true  "リフォーム分析リクエスト"
+// @Success     200  {object}  domain.RenovationResult
+// @Failure     400  {object}  map[string]string
+// @Router      /api/renovation/analyze [post]
 func (h *Handler) HandleRenovationAnalyze(c *gin.Context) {
 	var input domain.RenovationInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -241,8 +262,14 @@ func (h *Handler) HandleRenovationAnalyze(c *gin.Context) {
 }
 
 // GetGeocode は住所文字列から緯度・経度を返す
-// GET /api/geocode?address=<住所>
-// APIキーはサーバーサイドのみで保持し、フロントには露出しない
+// @Summary     ジオコーディング
+// @Tags        location
+// @Produce     json
+// @Param       address  query  string  true  "住所文字列"
+// @Success     200  {object}  api.GeocodeResult
+// @Failure     400  {object}  map[string]string
+// @Failure     503  {object}  map[string]string
+// @Router      /api/geocode [get]
 func (h *Handler) GetGeocode(c *gin.Context) {
 	address := c.Query("address")
 	if address == "" {

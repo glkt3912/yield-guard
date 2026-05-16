@@ -12,7 +12,19 @@ import (
 )
 
 // GetLandPrices は国交省APIから土地取引価格を取得して統計を返す
-// GET /api/land-prices?area=10&city=10201&year=2024&quarter=1&to_year=2024&to_quarter=4
+// @Summary     土地取引価格統計
+// @Tags        land-prices
+// @Produce     json
+// @Param       area        query  string   true  "都道府県コード (例: 13)"
+// @Param       year        query  integer  true  "開始年 (2005以降)"
+// @Param       quarter     query  integer  true  "開始四半期 (1-4)"
+// @Param       to_year     query  integer  true  "終了年"
+// @Param       to_quarter  query  integer  true  "終了四半期 (1-4)"
+// @Param       city        query  string   false "市区町村コード"
+// @Success     200  {object}  domain.LandPriceStats
+// @Failure     400  {object}  map[string]string
+// @Failure     502  {object}  map[string]string
+// @Router      /api/land-prices/stats [get]
 func (h *Handler) GetLandPrices(c *gin.Context) {
 	q, err := parseLandPriceQuery(c)
 	if err != nil {
@@ -32,7 +44,21 @@ func (h *Handler) GetLandPrices(c *gin.Context) {
 }
 
 // CompareLandPrice は検討中の土地価格と相場を比較する
-// GET /api/land-prices/compare?area=10&city=10201&year=2024&quarter=1&to_year=2024&to_quarter=4&price=5000000&area_sqm=100
+// @Summary     土地価格比較
+// @Tags        land-prices
+// @Produce     json
+// @Param       area        query  string   true  "都道府県コード (例: 13)"
+// @Param       year        query  integer  true  "開始年 (2005以降)"
+// @Param       quarter     query  integer  true  "開始四半期 (1-4)"
+// @Param       to_year     query  integer  true  "終了年"
+// @Param       to_quarter  query  integer  true  "終了四半期 (1-4)"
+// @Param       price       query  number   true  "検討物件価格 (円)"
+// @Param       city        query  string   false "市区町村コード"
+// @Param       area_sqm    query  number   false "土地面積 (m²)"
+// @Success     200  {object}  domain.LandPriceComparison
+// @Failure     400  {object}  map[string]string
+// @Failure     502  {object}  map[string]string
+// @Router      /api/land-prices/compare [get]
 func (h *Handler) CompareLandPrice(c *gin.Context) {
 	q, err := parseLandPriceQuery(c)
 	if err != nil {
@@ -76,7 +102,25 @@ func (h *Handler) CompareLandPrice(c *gin.Context) {
 }
 
 // EstimateLandPrice は築年数・駅距離補正による理論価格と乖離率を返す
-// GET /api/land-prices/estimate?area=10&city=...&price=5000000&area_sqm=100&building_age=10&station_minutes=5
+// @Summary     理論価格推定
+// @Tags        land-prices
+// @Produce     json
+// @Param       area             query  string   true  "都道府県コード (例: 13)"
+// @Param       year             query  integer  true  "開始年 (2005以降)"
+// @Param       quarter          query  integer  true  "開始四半期 (1-4)"
+// @Param       to_year          query  integer  true  "終了年"
+// @Param       to_quarter       query  integer  true  "終了四半期 (1-4)"
+// @Param       price            query  number   true  "物件価格 (円)"
+// @Param       area_sqm         query  number   true  "土地面積 (m²)"
+// @Param       city             query  string   false "市区町村コード"
+// @Param       building_age     query  integer  false "築年数"
+// @Param       station_minutes  query  integer  false "最寄り駅徒歩分"
+// @Param       ridership_score  query  string   false "需要スコア (A-E)"
+// @Success     200  {object}  domain.TheoreticalPriceResult
+// @Failure     400  {object}  map[string]string
+// @Failure     422  {object}  map[string]string
+// @Failure     502  {object}  map[string]string
+// @Router      /api/land-prices/estimate [get]
 func (h *Handler) EstimateLandPrice(c *gin.Context) {
 	q, err := parseLandPriceQuery(c)
 	if err != nil {
@@ -163,7 +207,14 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 }
 
 // GetMunicipalities は指定都道府県の市区町村一覧を返す（XIT002）
-// GET /api/municipalities?area=10
+// @Summary     市区町村一覧
+// @Tags        land-prices
+// @Produce     json
+// @Param       area  query  string  true  "都道府県コード (例: 13)"
+// @Success     200  {array}   mlit.Municipality
+// @Failure     400  {object}  map[string]string
+// @Failure     502  {object}  map[string]string
+// @Router      /api/municipalities [get]
 func (h *Handler) GetMunicipalities(c *gin.Context) {
 	area := c.Query("area")
 	if area == "" {
@@ -181,9 +232,19 @@ func (h *Handler) GetMunicipalities(c *gin.Context) {
 	c.JSON(http.StatusOK, municipalities)
 }
 
-// GetLandAppraisals は XCT001 から地価公示情報を取得して比較統計を返す
-// GET /api/land-appraisals?area=13&year=2024[&city=13101][&division=00]
-// division: 00=住宅地(デフォルト), 05=商業地, 07=準工業地, 09=工業地
+// GetLandAppraisals は地価公示情報を取得して比較統計を返す
+// @Summary     地価公示統計
+// @Tags        land-prices
+// @Produce     json
+// @Param       area      query  string   true  "都道府県コード (例: 13)"
+// @Param       year      query  integer  true  "公示年 (2022-2030)"
+// @Param       city      query  string   false "市区町村コード"
+// @Param       division  query  string   false "用途区分 (00=住宅地, 05=商業地, 07=準工業地, 09=工業地)"
+// @Success     200  {object}  domain.AppraisalComparisonResult
+// @Failure     400  {object}  map[string]string
+// @Failure     422  {object}  map[string]string
+// @Failure     502  {object}  map[string]string
+// @Router      /api/land-appraisals [get]
 func (h *Handler) GetLandAppraisals(c *gin.Context) {
 	area := c.Query("area")
 	if area == "" {
