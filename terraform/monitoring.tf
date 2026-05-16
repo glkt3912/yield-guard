@@ -332,38 +332,10 @@ resource "google_monitoring_alert_policy" "cloudrun_max_instances" {
 }
 
 # ─────────────────────────────────────────────────────
-# Firestore アラート (Firestore 3機能導入)
-# AIサマリーキャッシュ・ジオコードキャッシュ・ウォッチリストの導入に伴い
-# 無料枠(50,000読み取り/日)の 80% = 40,000 件超過を検知する。
+# Firestore 読み取りアラートについて
+# firestore.googleapis.com/document/read_count メトリクスは
+# resource.type 指定あり・なし両方で GCP API が拒否するため
+# Cloud Monitoring アラートポリシーでの実装を断念。
+# Firestore のコスト超過は billing.tf の google_billing_budget.firestore_early_alert
+# (1,000円/月) で検知する。
 # ─────────────────────────────────────────────────────
-
-# 6. Firestore 日次読み取り数が無料枠の 80% (40,000件/日) を超過
-resource "google_monitoring_alert_policy" "firestore_daily_reads" {
-  display_name = "[Yield Guard] Firestore 日次読み取りが無料枠 80% に到達 (40,000件/日)"
-  combiner     = "OR"
-
-  conditions {
-    display_name = "Firestore reads > 40,000/day"
-    condition_threshold {
-      # resource.type フィルタは GCP がメトリクスと組み合わせを検証して拒否するため除外
-      filter          = "metric.type=\"firestore.googleapis.com/document/read_count\""
-      duration        = "0s"
-      comparison      = "COMPARISON_GT"
-      threshold_value = 40000
-      aggregations {
-        alignment_period     = "86400s"
-        per_series_aligner   = "ALIGN_SUM"
-        cross_series_reducer = "REDUCE_SUM"
-        group_by_fields      = ["resource.labels.project_id"]
-      }
-    }
-  }
-
-  notification_channels = [google_monitoring_notification_channel.email.id]
-  alert_strategy {
-    # コスト超過アラートは短時間でクローズすると見落としリスクがあるため 7 日間保持
-    auto_close = "604800s"
-  }
-
-  depends_on = [google_firestore_database.default]
-}
