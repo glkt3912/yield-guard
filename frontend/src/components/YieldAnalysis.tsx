@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
 import { MobileSummaryCard } from "@/components/MobileSummaryCard";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { analyze } from "@/lib/api";
 
 const CUSTOM_SCENARIO_LABEL = "カスタム" as const;
@@ -108,9 +110,16 @@ interface Props {
   input: InvestmentInput;
   populationForecast?: PopulationForecastResult | null;
   landPriceStats?: LandPriceStats | null;
+  isAnalyzing?: boolean;
 }
 
-export function YieldAnalysis({ result, input, populationForecast, landPriceStats }: Props) {
+export function YieldAnalysis({
+  result,
+  input,
+  populationForecast,
+  landPriceStats,
+  isAnalyzing = false,
+}: Props) {
   const yieldPct = result.grossYield * 100;
   const netYieldPct = result.netYield * 100;
   const isGood = result.isAboveYieldTarget;
@@ -194,7 +203,9 @@ export function YieldAnalysis({ result, input, populationForecast, landPriceStat
 
   return (
     <div className="space-y-4">
-      {result.aiSummary && (
+      {isAnalyzing ? (
+        <Skeleton className="h-20 w-full rounded-lg" />
+      ) : result.aiSummary ? (
         <Card className="border border-blue-200 bg-blue-50/50">
           <CardHeader className="cursor-pointer pb-2 pt-4" onClick={() => setAiOpen(!aiOpen)}>
             <div className="flex items-center justify-between">
@@ -210,6 +221,14 @@ export function YieldAnalysis({ result, input, populationForecast, landPriceStat
             <CardContent className="pt-0 text-sm text-blue-900">{result.aiSummary}</CardContent>
           )}
         </Card>
+      ) : null}
+      {result.aiSummary && !isAnalyzing && (
+        <Alert className="mt-2">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-xs text-muted-foreground">
+            AIレポートは参考情報です。投資判断の根拠とせず、必ず専門家にご相談ください。
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Mobile: professional summary card for agents (hidden on desktop) */}
