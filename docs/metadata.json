@@ -1,12 +1,12 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-05-12T00:00:00",
+  "lastUpdated": "2026-05-16T00:00:00",
   "documents": [
     {
       "id": "overview",
       "path": "docs/overview.md",
       "title": "プロジェクト概要とアーキテクチャ",
-      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック（OpenTelemetry SDK / opentelemetry-operations-go 含む）・ディレクトリ構成・起動手順・計算の制約と免責事項。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY/GOOGLE_CLOUD_PROJECT）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。GOOGLE_CLOUD_PROJECT 設定時は Cloud Trace / Cloud Monitoring へ OTel データを送信、未設定時は stdout。PWA対応（@ducanh2912/next-pwa・manifest.ts）を含む。フロントエンド（Vercel）・バックエンド（Cloud Run）のデプロイフローも記載。Makefile 便利ターゲット: make backend（バックエンドのみ起動）・make frontend（フロントエンドのみ起動）・make install（npm install）・make logs（Docker ログ表示、未起動時は案内メッセージ）を追加済み。",
+      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック（OpenTelemetry SDK / opentelemetry-operations-go 含む）・ディレクトリ構成・起動手順・計算の制約と免責事項。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY/GOOGLE_CLOUD_PROJECT）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。GOOGLE_CLOUD_PROJECT 設定時は Cloud Trace / Cloud Monitoring へ OTel データを送信、未設定時は stdout。PWA対応（@ducanh2912/next-pwa・manifest.ts）を含む。フロントエンド（Vercel）・バックエンド（Cloud Run）のデプロイフローも記載。Makefile 便利ターゲット: make backend（バックエンドのみ起動）・make frontend（フロントエンドのみ起動）・make install（npm install）・make logs（Docker ログ表示、未起動時は案内メッセージ）・make swagger（OpenAPI スキーマ生成）を追加済み。OpenAPI 型自動生成パイプライン: swaggo/swag アノテーション → make swagger で docs/openapi/swagger.json（Swagger 2.0）生成 → swagger2openapi で docs/openapi/openapi.json（OpenAPI 3.0）変換 → npm run generate:types で frontend/src/types/api.generated.ts 自動生成。api.generated.ts・swagger.json・openapi.json は編集禁止・CI がドリフトを検出する。e2e fixtures は api.generated.ts の components[\"schemas\"] を satisfies で参照。@title 等のメタアノテーションは cmd/server/main.go の func main() 直前に記述すること（doc.go 単独では swag に読み取られない）。",
       "tags": [
         "概要",
         "アーキテクチャ",
@@ -52,9 +52,22 @@
         "vercel deploy",
         "VERCEL_TOKEN",
         "frontend-ci.yml",
-        "deploy-backend.yml"
+        "deploy-backend.yml",
+        "make swagger",
+        "npm run generate:types",
+        "swagger2openapi",
+        "openapi-typescript",
+        "swaggo",
+        "swag",
+        "api.generated.ts",
+        "swagger.json",
+        "openapi.json",
+        "OpenAPI",
+        "e2e fixtures",
+        "satisfies",
+        "components schemas"
       ],
-      "updatedAt": "2026-04-24"
+      "updatedAt": "2026-05-16"
     },
     {
       "id": "architecture",
@@ -416,7 +429,7 @@
       "id": "api-reference",
       "path": "docs/api-reference.md",
       "title": "APIリファレンス",
-      "description": "全エンドポイント（/api/land-prices/stats、/api/land-prices/compare、/api/land-prices/estimate、/api/investment/analyze、/api/investment/simulate、/api/municipalities、/api/station-ridership、/api/population-forecast、/api/land-appraisals、/api/urban-risks、/api/investment-score、/api/investment-score-heatmap、/health）の入出力・バリデーション範囲・エラー仕様。CORS設定とALLOW_ORIGINS環境変数。APP_INTERNAL_API_KEY設定時は/api/*にX-Internal-Keyヘッダーが必要（/healthはスキップ）。/api/investment/analyze のリクエストに loanMethod（equal-payment/equal-principal）を追加。レスポンスに dscr（1年目DSCR）と ltvSensitivity（LTV=50〜90%の5行）を追加。/api/investment/simulate はモンテカルロ法による確率的ストレステスト（MonteCarloInput → MonteCarloResult）。空室率・金利を正規分布でサンプリングした N 試行（デフォルト1000・最大10000）を実施し IRR分布・最終純資産分布・デッドクロス発生率・SuccessRateを返す。IRRは二分法で算出し解なし時はNaN（SuccessRate分母から除外）。固定シード42で再現性保証。/api/land-appraisals は XCT001 地価公示データを取得し公示価格中央値・変動率・トレンドラベルを返す（AppraisalComparisonResult型）。/api/population-forecast は lat/lng/z パラメータで XKT013 将来推計人口を取得し、30年後変化率・空室率増加推定（×0.5係数）・4段階トレンドを返す。/api/urban-risks は lat/lng から XKT003/XKT020/XKT030/XST001 を並列取得し UrbanRisk[] を返す。/api/investment-score は lat/lng から z=14 タイルの複数 API（XKT013/015/003/020/XST001/XKT001/025/026/027/028/029 + 地価トレンド2本）を並列取得し投資適地スコア（0〜100）・グレード（優良/良好/普通/注意/要注意）・ScoreBreakdown（population/ridership/urbanArea/locationOptimization/hazardRisk/liquefactionRisk/embankment/disasterHistory/landPriceTrend）・RadarData を返す（CalcInvestmentScore）。乗降客数スコアは20万人/日で満点。災害履歴は年数重み（10年以内-10、30年以内-5、30年超-2）。地価トレンドは都道府県別坪単価変化率で±10点。/api/investment-score-heatmap は minLat/maxLat/minLng/maxLng/z（11〜15・デフォルト13、z=15時タイル上限25）のバウンディングボックス内全タイルを一括スコア算出して HeatmapTile[] を返す。タイル数上限z≤14:50/z=15:25・セマフォ5並列・パニック回復・ctx.Done()早期終了。TileToLatLng で x+0.5/y+0.5 のタイル中心を返す。analyzeRL（10req/min）適用。バリデーション違反は 400 Bad Request + {error: string} を返す。rentDeclineRate は 0.0〜0.2 の範囲制約あり。vacancyRate+vacancyRateDelta の合計が 0.99 超でクロスフィールドエラー。POST /api/renovation/analyze: RenovationInput（propertyPrice/annualBaseRent/annualExpenses/effectiveTaxRate/selfLaborRatePerHour/items[]）→ RenovationResult（recoveryYears/isRecoverable/taxSavings/virtualLaborCost/capitalExpenditures/repairExpenses/actualYield/classifiedItems[]）。item.cost > 0・items 1件以上のバリデーション。generalRL（60req/分）のみ。POST /api/investment/analyze の InvestmentInput に discountRate（0–0.30）/priceDeclineRate（0–0.10）/depreciationMethod（straight-line|declining-balance）を追加。InvestmentResult に irr（*float64、null可）/npv（float64）を追加。",
+      "description": "全エンドポイント（/health・/api/land-prices/stats・/api/land-prices/compare・/api/land-prices/estimate・/api/investment/analyze・/api/investment/simulate・/api/investment/rent-decline-hint・/api/municipalities・/api/station-ridership・/api/population-forecast・/api/land-appraisals・/api/urban-risks・/api/hazard・/api/investment-score・/api/investment-score-heatmap・/api/area-discovery・/api/geocode・/api/rent-stats・/api/renovation/analyze）の入出力・バリデーション範囲・エラー仕様。OpenAPI 仕様（swaggo/swag アノテーション）を全 19 エンドポイントに追加済み。機械可読なスキーマは docs/openapi/swagger.json（Swagger 2.0）・docs/openapi/openapi.json（OpenAPI 3.0）として生成・コミット済み。TypeScript 型は frontend/src/types/api.generated.ts として自動生成（編集禁止）。e2e/fixtures/*.ts が api.generated.ts の components[\"schemas\"][\"domain.XxxType\"] を satisfies で参照するよう移行済み。CORS設定とALLOW_ORIGINS環境変数。APP_INTERNAL_API_KEY設定時は/api/*にX-Internal-Keyヘッダーが必要（/healthはスキップ）。/api/investment/analyze のリクエストに loanMethod（equal-payment/equal-principal）を追加。レスポンスに dscr（1年目DSCR）と ltvSensitivity（LTV=50〜90%の5行）を追加。/api/investment/simulate はモンテカルロ法による確率的ストレステスト（MonteCarloInput → MonteCarloResult）。空室率・金利を正規分布でサンプリングした N 試行（デフォルト1000・最大10000）を実施し IRR分布・最終純資産分布・デッドクロス発生率・SuccessRateを返す。IRRは二分法で算出し解なし時はNaN（SuccessRate分母から除外）。固定シード42で再現性保証。/api/land-appraisals は XCT001 地価公示データを取得し公示価格中央値・変動率・トレンドラベルを返す（AppraisalComparisonResult型）。/api/population-forecast は lat/lng/z パラメータで XKT013 将来推計人口を取得し、30年後変化率・空室率増加推定（×0.5係数）・4段階トレンドを返す。/api/urban-risks は lat/lng から XKT003/XKT020/XKT030/XST001 を並列取得し UrbanRisk[] を返す。/api/investment-score は lat/lng から z=14 タイルの複数 API（XKT013/015/003/020/XST001/XKT001/025/026/027/028/029 + 地価トレンド2本）を並列取得し投資適地スコア（0〜100）・グレード（優良/良好/普通/注意/要注意）・ScoreBreakdown（population/ridership/urbanArea/locationOptimization/hazardRisk/liquefactionRisk/embankment/disasterHistory/landPriceTrend）・RadarData を返す（CalcInvestmentScore）。乗降客数スコアは20万人/日で満点。災害履歴は年数重み（10年以内-10、30年以内-5、30年超-2）。地価トレンドは都道府県別坪単価変化率で±10点。/api/investment-score-heatmap は minLat/maxLat/minLng/maxLng/z（11〜15・デフォルト13、z=15時タイル上限25）のバウンディングボックス内全タイルを一括スコア算出して HeatmapTile[] を返す。タイル数上限z≤14:50/z=15:25・セマフォ5並列・パニック回復・ctx.Done()早期終了。TileToLatLng で x+0.5/y+0.5 のタイル中心を返す。analyzeRL（10req/min）適用。バリデーション違反は 400 Bad Request + {error: string} を返す。rentDeclineRate は 0.0〜0.2 の範囲制約あり。vacancyRate+vacancyRateDelta の合計が 0.99 超でクロスフィールドエラー。POST /api/renovation/analyze: RenovationInput（propertyPrice/annualBaseRent/annualExpenses/effectiveTaxRate/selfLaborRatePerHour/items[]）→ RenovationResult（recoveryYears/isRecoverable/taxSavings/virtualLaborCost/capitalExpenditures/repairExpenses/actualYield/classifiedItems[]）。item.cost > 0・items 1件以上のバリデーション。generalRL（60req/分）のみ。POST /api/investment/analyze の InvestmentInput に discountRate（0–0.30）/priceDeclineRate（0–0.10）/depreciationMethod（straight-line|declining-balance）を追加。InvestmentResult に irr（*float64、null可）/npv（float64）を追加。",
       "tags": [
         "API",
         "エンドポイント",
@@ -618,9 +631,26 @@
         "LandPriceChangeRate",
         "disasterScoreByYear",
         "z=15",
-        "maxTiles"
+        "maxTiles",
+        "OpenAPI",
+        "swagger",
+        "swaggo",
+        "swag",
+        "openapi-typescript",
+        "swagger2openapi",
+        "api.generated.ts",
+        "swagger.json",
+        "openapi.json",
+        "satisfies",
+        "e2e fixtures",
+        "RentDeclineHint",
+        "GET /api/investment/rent-decline-hint",
+        "GET /api/hazard",
+        "GET /api/area-discovery",
+        "GET /api/geocode",
+        "GET /api/rent-stats"
       ],
-      "updatedAt": "2026-04-23"
+      "updatedAt": "2026-05-16"
     },
     {
       "id": "security",
