@@ -898,6 +898,20 @@ func TestFetchStationRidership_CacheHit(t *testing.T) {
 	}
 }
 
+func TestFetchStationRidership_InvalidJSON(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("not-json"))
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchStationRidership(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected JSON decode error, got nil")
+	}
+}
+
 // ---- parseStationRiderships ----
 
 func TestParseStationRiderships_DeduplicationKeepsHighestPassengers(t *testing.T) {
@@ -1047,6 +1061,20 @@ func TestFetchPopulationForecast_CacheHit(t *testing.T) {
 	}
 	if apiCallCount != 1 {
 		t.Errorf("apiCallCount = %d, want 1 (cache hit)", apiCallCount)
+	}
+}
+
+func TestFetchPopulationForecast_InvalidJSON(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("not-json"))
+	}))
+	defer ts.Close()
+
+	c := newTestClient(ts.URL)
+	_, err := c.FetchPopulationForecast(context.Background(), 14, 0, 0)
+	if err == nil {
+		t.Fatal("expected JSON decode error, got nil")
 	}
 }
 
