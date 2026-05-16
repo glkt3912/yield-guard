@@ -254,7 +254,39 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
   }
 }
 
-# 4. Cloud Run インスタンス数が上限 (max_instance_count=2) に到達し 5 分継続
+# 4. Cloud Scheduler ウォームアップジョブが連続失敗
+resource "google_monitoring_alert_policy" "warmup_job_failure" {
+  display_name = "[Yield Guard] ウォームアップジョブが連続失敗"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "warmup-cache または warmup-ping が 30 分以内に 2 回以上失敗"
+    condition_threshold {
+      filter = join(" AND ", [
+        "metric.type=\"cloudscheduler.googleapis.com/job/attempt_count\"",
+        "resource.type=\"cloud_scheduler_job\"",
+        "metric.labels.status=\"FAILED\"",
+        "resource.labels.job_id=monitoring.regex.full_match(\"warmup-.*-${var.env}\")",
+      ])
+      comparison      = "COMPARISON_GT"
+      threshold_value = 1
+      duration        = "0s"
+      aggregations {
+        alignment_period     = "1800s"
+        per_series_aligner   = "ALIGN_COUNT_TRUE"
+        cross_series_reducer = "REDUCE_SUM"
+        group_by_fields      = ["resource.labels.job_id"]
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+  alert_strategy {
+    auto_close = "86400s"
+  }
+}
+
+# 5. Cloud Run インスタンス数が上限 (max_instance_count=2) に到達し 5 分継続
 resource "google_monitoring_alert_policy" "cloudrun_max_instances" {
   display_name = "[Yield Guard] Cloud Run インスタンス数が上限に到達"
   combiner     = "OR"
