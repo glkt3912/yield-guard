@@ -662,7 +662,9 @@ export async function downloadReportPDF(
       // ── Page 6: Multi-Exit Comparison ─────────────────────────────
       ...(result.multiExitComparison && result.multiExitComparison.length > 0
         ? (() => {
-            const exitRows = result.multiExitComparison!;
+            const exitRows = result.multiExitComparison as NonNullable<
+              typeof result.multiExitComparison
+            >;
             const maxEquity = Math.max(...exitRows.map((r) => r.exitEquity));
             const maxEquityIdx = exitRows.findIndex((r) => r.exitEquity === maxEquity);
 
