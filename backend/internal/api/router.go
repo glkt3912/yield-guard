@@ -112,6 +112,7 @@ func NewRouter(h *Handler, appInternalAPIKey string) *gin.Engine {
 	analyzeRL := newRateLimiter(rate.Every(6*time.Second), 5)
 
 	r.GET("/health", h.HealthCheck)
+	r.POST("/warm", internalKeyMiddleware(appInternalAPIKey), h.WarmCache)
 
 	api := r.Group("/api")
 	api.Use(internalKeyMiddleware(appInternalAPIKey))
