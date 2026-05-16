@@ -40,7 +40,7 @@ import type {
 
 const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
 
-type ResultsTab = "finance" | "loan" | "actions";
+type ResultsTab = "finance" | "loan";
 const DEFAULT_RESULTS_TAB: ResultsTab = "finance";
 
 interface ResultsSectionProps {
@@ -245,7 +245,6 @@ export function ResultsSection({
               {[
                 { id: "finance" as ResultsTab, label: "財務分析" },
                 { id: "loan" as ResultsTab, label: "ローン・交渉" },
-                { id: "actions" as ResultsTab, label: "詳細・アクション" },
               ].map(({ id, label }) => (
                 <button
                   key={id}
@@ -323,17 +322,13 @@ export function ResultsSection({
             />
           )}
 
-          {/* Tab 4: 詳細・アクション */}
-          {resultsTab === "actions" && (
-            <div className="space-y-6">
-              <RenovationPanel />
-              <WatchlistPanel currentResult={result ?? undefined} />
-              {lastInput && (
-                <DueDiligenceChecklist
-                  propertyKey={`${lastInput.landPrice}-${lastInput.buildingCost}-${lastInput.monthlyRent}-${lastInput.loanAmount}`}
-                />
-              )}
-            </div>
+          {/* アクションパネル: タブ外に常時表示（reload後も見える） */}
+          <RenovationPanel />
+          <WatchlistPanel currentResult={result ?? undefined} />
+          {lastInput && (
+            <DueDiligenceChecklist
+              propertyKey={`${lastInput.landPrice}-${lastInput.buildingCost}-${lastInput.monthlyRent}-${lastInput.loanAmount}`}
+            />
           )}
         </>
       )}

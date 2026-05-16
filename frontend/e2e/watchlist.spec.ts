@@ -9,7 +9,6 @@ test.beforeEach(async ({ page }) => {
 test("@p2 ウォッチリスト：追加するとトーストが表示される", async ({ page }) => {
   const sim = new SimulationPage(page);
   await sim.runQuickSimulation("1700", "15");
-  await page.getByRole("tab", { name: "詳細・アクション" }).click();
 
   await page.getByRole("textbox", { name: "物件名" }).fill("渋谷区テスト物件");
   await page.getByTestId("watchlist-add-button").click();
@@ -23,7 +22,6 @@ test("@p2 ウォッチリスト：追加するとトーストが表示される"
 test("@p2 ウォッチリスト：ページリロード後もエントリが残る", async ({ page }) => {
   const sim = new SimulationPage(page);
   await sim.runQuickSimulation("1700", "15");
-  await page.getByRole("tab", { name: "詳細・アクション" }).click();
 
   await page.getByRole("textbox", { name: "物件名" }).fill("永続化テスト物件");
   await page.getByTestId("watchlist-add-button").click();
