@@ -30,6 +30,12 @@ func readSecret(filePath, envKey string) string {
 	return os.Getenv(envKey)
 }
 
+// @title          Yield-Guard API
+// @version        1.0
+// @description    不動産投資意思決定支援 API
+// @host           localhost:8080
+// @BasePath       /
+// @schemes        http https
 func main() {
 	logger.Init(os.Stderr)
 

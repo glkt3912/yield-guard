@@ -19,9 +19,11 @@ import NegotiationPanel from "@/components/NegotiationPanel";
 import WatchlistPanel from "@/components/WatchlistPanel";
 import DueDiligenceChecklist from "@/components/DueDiligenceChecklist";
 import { AreaDiscovery } from "@/components/AreaDiscovery";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import dynamic from "next/dynamic";
-import { BarChart3, ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
+import { AlertTriangle, BarChart3, ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
 import { PREFECTURE_CENTERS } from "@/lib/prefectureCenters";
 import type {
   InvestmentInput,
@@ -180,7 +182,15 @@ export function ResultsSection({
         </>
       )}
 
-      {activeTab === "simulation" && !result && !comparison && (
+      {activeTab === "simulation" && loading && !result && (
+        <div className="space-y-4">
+          <Skeleton className="h-16 w-full rounded-xl" />
+          <Skeleton className="h-32 w-full rounded-xl" />
+          <Skeleton className="h-48 w-full rounded-xl" />
+        </div>
+      )}
+
+      {activeTab === "simulation" && !loading && !result && !comparison && (
         <div className="flex h-64 items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/20 lg:h-80">
           <div className="text-center text-muted-foreground">
             <ShieldAlert className="mx-auto mb-3 h-10 w-10 opacity-30 lg:h-12 lg:w-12" />
@@ -307,6 +317,12 @@ export function ResultsSection({
                   <p className="font-medium mt-1">詳細モードで利用できます</p>
                 </div>
               )}
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs text-muted-foreground">
+                  計算結果は参考値です。実際の投資判断は専門家にご相談ください。本シミュレーションは消費税・損益通算の詳細を考慮しない場合があります。
+                </AlertDescription>
+              </Alert>
             </div>
           )}
 
