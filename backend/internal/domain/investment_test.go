@@ -3138,3 +3138,100 @@ func TestCalcAnnualTurnoverCost(t *testing.T) {
 		})
 	}
 }
+
+// TestOverloanWarning はローン金額が物件取得費を超える場合に OVERLOAN WARNING が返されることを検証する。
+func TestOverloanWarning(t *testing.T) {
+	t.Run("overloan emits WARNING", func(t *testing.T) {
+		input := InvestmentInput{
+			LandPrice:       5_000_000,
+			BuildingCost:    10_000_000,
+			LoanAmount:      16_000_000, // 土地+建物(15,000,000)を超過
+			MonthlyRent:     100_000,
+			VacancyRate:     0.05,
+			AnnualLoanRate:  0.015,
+			LoanYears:       35,
+			BuildingType:    BuildingTypeWood,
+			ExpenseRate:     0.20,
+			IncomeTaxRate:   0.33,
+			HoldingYears:    10,
+			ExitYieldTarget: 0.06,
+		}
+		result := Analyze(context.Background(), input)
+		var found bool
+		for _, ce := range result.CriticalErrors {
+			if ce.Code == "OVERLOAN" && ce.Status == CriticalStatusWarning {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected OVERLOAN WARNING in CriticalErrors, got: %v", result.CriticalErrors)
+		}
+	})
+
+	t.Run("no overloan within limit", func(t *testing.T) {
+		input := InvestmentInput{
+			LandPrice:       5_000_000,
+			BuildingCost:    10_000_000,
+			LoanAmount:      15_000_000, // 土地+建物と同額: 超過なし
+			MonthlyRent:     100_000,
+			VacancyRate:     0.05,
+			AnnualLoanRate:  0.015,
+			LoanYears:       35,
+			BuildingType:    BuildingTypeWood,
+			ExpenseRate:     0.20,
+			IncomeTaxRate:   0.33,
+			HoldingYears:    10,
+			ExitYieldTarget: 0.06,
+		}
+		result := Analyze(context.Background(), input)
+		for _, ce := range result.CriticalErrors {
+			if ce.Code == "OVERLOAN" {
+				t.Errorf("unexpected OVERLOAN in CriticalErrors: %v", ce)
+			}
+		}
+	})
+}
+
+// TestValidateCapexScheduleYear は CapexSchedule の年数が HoldingYears を超える場合にエラーが返ることを検証する。
+func TestValidateCapexScheduleYear(t *testing.T) {
+	base := InvestmentInput{
+		VacancyRate:  0.05,
+		LoanYears:    35,
+		HoldingYears: 10,
+	}
+
+	t.Run("capex year within HoldingYears", func(t *testing.T) {
+		in := base
+		in.CapexSchedule = []CapexEvent{{Year: 10, Amount: 1_000_000}}
+		if err := in.Validate(); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("capex year exceeds HoldingYears", func(t *testing.T) {
+		in := base
+		in.CapexSchedule = []CapexEvent{{Year: 11, Amount: 1_000_000}}
+		if err := in.Validate(); err == nil {
+			t.Error("expected error for CapexSchedule year exceeding HoldingYears")
+		}
+	})
+
+	t.Run("multiple capex events with one exceeding", func(t *testing.T) {
+		in := base
+		in.CapexSchedule = []CapexEvent{
+			{Year: 5, Amount: 500_000},
+			{Year: 15, Amount: 1_000_000}, // 15 > HoldingYears(10)
+		}
+		if err := in.Validate(); err == nil {
+			t.Error("expected error for CapexSchedule year 15 exceeding HoldingYears 10")
+		}
+	})
+
+	t.Run("empty capex schedule passes", func(t *testing.T) {
+		in := base
+		if err := in.Validate(); err != nil {
+			t.Errorf("unexpected error for empty CapexSchedule: %v", err)
+		}
+	})
+}

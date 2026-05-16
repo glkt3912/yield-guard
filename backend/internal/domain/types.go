@@ -216,6 +216,18 @@ func (i *InvestmentInput) Validate() error {
 			"建物の償却方法は定額法のみです（1998年4月以降取得の建物は定率法を選択できません）",
 		)
 	}
+	holdingYears := i.HoldingYears
+	if holdingYears == 0 {
+		holdingYears = 10 // Defaults() 適用前に呼ばれる場合の保護
+	}
+	for _, ev := range i.CapexSchedule {
+		if ev.Year > holdingYears {
+			return fmt.Errorf(
+				"CapexSchedule: year %d exceeds HoldingYears %d",
+				ev.Year, holdingYears,
+			)
+		}
+	}
 	return nil
 }
 
