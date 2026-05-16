@@ -76,7 +76,9 @@ test("@p3 ハザードアラートバナー：洪水リスクが表示される"
   await page.getByRole("button", { name: "相場データを取得" }).click();
   await hazardResponse;
 
-  await page.getByText("シミュレーション実行").click();
+  const simulateBtn = page.getByText("シミュレーション実行");
+  await expect(simulateBtn).toBeVisible({ timeout: 10_000 });
+  await simulateBtn.click();
 
   const hazardBanner = page.getByRole("alert", { name: "ハザード警告" });
   await expect(hazardBanner).toBeVisible({ timeout: 10_000 });
