@@ -202,6 +202,12 @@ resource "google_project_iam_member" "backend_metric_writer" {
   member  = "serviceAccount:${google_service_account.backend.email}"
 }
 
+resource "google_project_iam_member" "backend_firestore_user" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_service_account.backend.email}"
+}
+
 # ─── Billing Stop Cloud Function SA ───────────────────────────────────────────
 resource "google_service_account" "billing_stop" {
   account_id   = "sa-billing-stop-${var.env}"
