@@ -30,33 +30,6 @@ type GeocodeClient interface {
 	Geocode(ctx context.Context, address string) (*GeocodeResult, error)
 }
 
-type googleGeocodeClient struct {
-	apiKey     string
-	httpClient *http.Client
-}
-
-// NewGoogleGeocodeClient は Google Maps Geocoding API クライアントを返す
-func NewGoogleGeocodeClient(apiKey string) GeocodeClient {
-	return &googleGeocodeClient{
-		apiKey:     apiKey,
-		httpClient: &http.Client{Timeout: 10 * time.Second},
-	}
-}
-
-// googleGeocodeResponse は Google Maps Geocoding API のレスポンス構造体
-type googleGeocodeResponse struct {
-	Status  string `json:"status"`
-	Results []struct {
-		Geometry struct {
-			Location struct {
-				Lat float64 `json:"lat"`
-				Lng float64 `json:"lng"`
-			} `json:"location"`
-			LocationType string `json:"location_type"`
-		} `json:"geometry"`
-	} `json:"results"`
-}
-
 // nominatimGeocodeClient は Nominatim (OpenStreetMap) を使用するジオコーダー
 type nominatimGeocodeClient struct {
 	httpClient *http.Client
@@ -81,8 +54,10 @@ func NewNominatimGeocodeClient(cache GeocodeCache) GeocodeClient {
 	}
 	return &nominatimGeocodeClient{
 		httpClient: &http.Client{Timeout: 10 * time.Second},
-		limiter:    rate.NewLimiter(rate.Every(time.Second), 1),
-		cache:      cache,
+		// rate.Limiter はプロセス内のみ有効。Cloud Run が複数インスタンスに
+		// スケールした場合はインスタンスをまたいだレート制限にはならない。
+		limiter: rate.NewLimiter(rate.Every(time.Second), 1),
+		cache:   cache,
 	}
 }
 
@@ -106,7 +81,7 @@ func (c *nominatimGeocodeClient) Geocode(ctx context.Context, address string) (*
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", errGeocodeUpstream, err)
 	}
-	req.Header.Set("User-Agent", "YieldGuard/1.0")
+	req.Header.Set("User-Agent", "YieldGuard/1.0 (mole.gunma@gmail.com)")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -155,52 +130,3 @@ type noopGeocodeCache struct{}
 
 func (n *noopGeocodeCache) Get(_ context.Context, _ string) (*GeocodeResult, bool) { return nil, false }
 func (n *noopGeocodeCache) Set(_ context.Context, _ string, _ *GeocodeResult)      {}
-
-func (c *googleGeocodeClient) Geocode(ctx context.Context, address string) (*GeocodeResult, error) {
-	if c.apiKey == "" {
-		return nil, errGeocodeNotConfigured
-	}
-
-	q := url.Values{}
-	q.Set("address", address)
-	q.Set("language", "ja")
-	q.Set("key", c.apiKey)
-	endpoint := "https://maps.googleapis.com/maps/api/geocode/json?" + q.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errGeocodeUpstream, err)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errGeocodeUpstream, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: HTTP %d", errGeocodeUpstream, resp.StatusCode)
-	}
-
-	var gr googleGeocodeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&gr); err != nil {
-		return nil, fmt.Errorf("%w: %w", errGeocodeUpstream, err)
-	}
-
-	switch gr.Status {
-	case "OK":
-		if len(gr.Results) == 0 {
-			return nil, fmt.Errorf("%w: empty results", errGeocodeUpstream)
-		}
-		loc := gr.Results[0].Geometry
-		return &GeocodeResult{
-			Lat:          loc.Location.Lat,
-			Lng:          loc.Location.Lng,
-			LocationType: loc.LocationType,
-		}, nil
-	case "ZERO_RESULTS":
-		return nil, errGeocodeNotFound
-	default:
-		return nil, fmt.Errorf("%w: status=%s", errGeocodeUpstream, gr.Status)
-	}
-}
