@@ -70,7 +70,7 @@ test("@p3 ハザードアラートバナー：洪水リスクが表示される"
   // （hazard API は座標設定済みの「相場データを取得」経由でのみ呼ばれる）
   await page.getByLabel("物件住所").fill("東京都渋谷区");
   await page.getByRole("button", { name: "座標を取得" }).click();
-  await expect(page.locator("p.text-green-600")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("近似位置で取得（精度低）")).toBeVisible({ timeout: 10_000 });
 
   const hazardResponse = page.waitForResponse("**/api/hazard**");
   await page.getByRole("button", { name: "相場データを取得" }).click();
