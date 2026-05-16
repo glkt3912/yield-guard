@@ -283,7 +283,7 @@ Quickモードの既存履歴（`yield-guard:quick-history`）とはキーが分
 - `populationForecast?: PopulationForecastResult | null`
 - `landAppraisal?: AppraisalComparisonResult | null`
 - `externalUrbanRisks?: UrbanRisk[] | null` — `GET /api/urban-risks` 由来（XKT003/020/030/XST001）
-- `hazardRisks?: UrbanRisk[] | null` — ハザードリスクデータ（`GET /api/urban-risks` 由来）。専用パネルでフラッド・津波・土砂等のリスク情報を表示
+- `hazardRisks?: UrbanRisk[] | null` — ハザードリスクデータ（`GET /api/hazard` 由来）。専用パネルでフラッド・津波・土砂等のリスク情報を表示
 
 **表示の3状態**:
 
