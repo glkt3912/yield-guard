@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-05-16T00:00:00",
+  "lastUpdated": "2026-05-16T22:00:00",
   "documents": [
     {
       "id": "overview",
@@ -65,7 +65,11 @@
         "OpenAPI",
         "e2e fixtures",
         "satisfies",
-        "components schemas"
+        "components schemas",
+        "git管理外",
+        "pretest",
+        "prebuild",
+        "prettierignore"
       ],
       "updatedAt": "2026-05-16"
     },

@@ -99,11 +99,11 @@ yield-guard/
 │   ├── lib/                        # API client, calc utilities
 │   └── types/
 │       ├── investment.ts           # 手動定義の TypeScript 型（フロントエンド用）
-│       └── api.generated.ts        # 自動生成型 (make swagger + npm run generate:types) ※編集禁止
+│       └── api.generated.ts        # 自動生成型 ※git管理外・編集禁止 (npm run generate:types で生成)
 ├── docs/
 │   ├── openapi/
-│   │   ├── swagger.json            # 自動生成: make swagger (Swagger 2.0) ※編集禁止
-│   │   └── openapi.json            # 自動生成: npm run generate:types (OpenAPI 3.0) ※編集禁止
+│   │   ├── swagger.json            # 自動生成: make swagger (Swagger 2.0) ※コミット対象・編集禁止
+│   │   └── openapi.json            # 自動生成: npm run generate:types (OpenAPI 3.0) ※git管理外
 │   └── *.md                        # 設計ドキュメント (read via docs MCP)
 ├── terraform/                      # Cloud Run / infra
 ├── docker-compose.yml
@@ -128,18 +128,18 @@ Go の型定義を Single Source of Truth として、TypeScript 型を自動生
 ```
 backend/internal/domain/*.go  (Go struct + swag アノテーション)
     ↓ make swagger
-docs/openapi/swagger.json     (Swagger 2.0 — 編集禁止)
-    ↓ npm run generate:types  (swagger2openapi で変換)
-docs/openapi/openapi.json     (OpenAPI 3.0 — 編集禁止)
-    ↓ npm run generate:types  (openapi-typescript v7)
-frontend/src/types/api.generated.ts  (TypeScript 型 — 編集禁止)
+docs/openapi/swagger.json     (コミット対象 — 編集禁止)
+    ↓ npm run generate:types  (swagger2openapi で変換 → openapi-typescript v7)
+docs/openapi/openapi.json     (git 管理外 — Node.js バージョン差で内容が変わるため)
+frontend/src/types/api.generated.ts  (git 管理外 — CI で毎回生成)
 ```
 
 ### ルール
 
-- `api.generated.ts` / `swagger.json` / `openapi.json` は **直接編集禁止**。常に上記コマンドで再生成する
-- Go の型（レスポンス構造体）を変更したら必ず `make swagger && cd frontend && npm run generate:types` を実行してコミットする
-- CI がスキーマドリフトを検出する（生成ファイルに差分があると fail）
+- `swagger.json` は **コミット対象**。Go 型を変更したら必ず `make swagger` を実行してコミットする
+- `openapi.json` と `api.generated.ts` は **git 管理外**（`.gitignore` 済み）。Node.js バージョンによって出力が変わるため
+- ローカルで型を使う場合は `npm run generate:types` を実行する（`npm test` / `npm run build` 時にファイルが無ければ自動生成される）
+- CI は `npm run generate:types` で型を生成してから `tsc --noEmit` で型チェックを行う
 - e2e fixtures は `satisfies components["schemas"]["domain.XxxType"]` で自動生成型を参照する
 
 ### swag アノテーション記法
