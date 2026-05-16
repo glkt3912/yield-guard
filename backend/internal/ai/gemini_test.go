@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -101,5 +102,86 @@ func TestGeminiSummarizer_GenerateSummary_CacheHit(t *testing.T) {
 	}
 	if mock.setCalls != 0 {
 		t.Fatalf("expected 0 cache set calls on hit, got %d", mock.setCalls)
+	}
+}
+
+// stubSummaryCache is a test double that allows injecting a fixed summary for get,
+// and counts set calls. It is safe to use with the goroutine-based set path.
+type stubSummaryCache struct {
+	getResult string
+	getHit    bool
+	setCalls  int
+	mu        sync.Mutex
+}
+
+func (s *stubSummaryCache) get(_ context.Context, _ string) (string, bool) {
+	return s.getResult, s.getHit
+}
+
+func (s *stubSummaryCache) set(_ context.Context, _, _ string) {
+	s.mu.Lock()
+	s.setCalls++
+	s.mu.Unlock()
+}
+
+// fakeGeminiSummarizer embeds GeminiSummarizer but overrides call() via a hook.
+// We use a callFn to avoid needing a real Gemini client in unit tests.
+type callableGeminiSummarizer struct {
+	GeminiSummarizer
+	callFn func() (string, error)
+}
+
+func (s *callableGeminiSummarizer) GenerateSummary(ctx context.Context, input domain.InvestmentInput, result domain.InvestmentResult) string {
+	key := summaryKey(input, result)
+	if cached, ok := s.cache.get(ctx, key); ok {
+		return cached
+	}
+	summary, err := s.callFn()
+	if err != nil {
+		return ""
+	}
+	go func() {
+		setCtx, setCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer setCancel()
+		s.cache.set(setCtx, key, summary)
+	}()
+	return summary
+}
+
+func TestGeminiSummarizer_GenerateSummary_CacheMiss_CallsSetOnce(t *testing.T) {
+	stub := &stubSummaryCache{getHit: false}
+
+	in := domain.InvestmentInput{}
+	res := domain.InvestmentResult{}
+
+	s := &callableGeminiSummarizer{
+		GeminiSummarizer: GeminiSummarizer{cache: stub},
+		callFn: func() (string, error) {
+			return "generated-summary", nil
+		},
+	}
+
+	got := s.GenerateSummary(context.Background(), in, res)
+	if got != "generated-summary" {
+		t.Fatalf("expected %q, got %q", "generated-summary", got)
+	}
+
+	// Wait for the background goroutine to complete.
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		stub.mu.Lock()
+		calls := stub.setCalls
+		stub.mu.Unlock()
+		if calls >= 1 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	stub.mu.Lock()
+	setCalls := stub.setCalls
+	stub.mu.Unlock()
+	if setCalls != 1 {
+		t.Fatalf("expected set to be called once on cache miss, got %d", setCalls)
 	}
 }

@@ -79,7 +79,13 @@ func (c *inMemorySummaryCache) get(_ context.Context, key string) (string, bool)
 	c.mu.RLock()
 	entry, ok := c.entries[key]
 	c.mu.RUnlock()
-	if !ok || time.Now().After(entry.expiresAt) {
+	if !ok {
+		return "", false
+	}
+	if time.Now().After(entry.expiresAt) {
+		c.mu.Lock()
+		delete(c.entries, key)
+		c.mu.Unlock()
 		return "", false
 	}
 	return entry.summary, true
@@ -105,7 +111,11 @@ func (c *firestoreSummaryCache) get(ctx context.Context, key string) (string, bo
 		return "", false
 	}
 	expiresAt, ok := doc.Data()["expiresAt"].(time.Time)
-	if !ok || time.Now().After(expiresAt) {
+	if !ok {
+		slog.WarnContext(ctx, "ai_summary_cache: unexpected expiresAt type", "key", key)
+		return "", false
+	}
+	if time.Now().After(expiresAt) {
 		return "", false
 	}
 	summary, ok := doc.Data()["summary"].(string)
@@ -171,7 +181,11 @@ func (s *GeminiSummarizer) GenerateSummary(ctx context.Context, input domain.Inv
 		return ""
 	}
 
-	s.cache.set(ctx, key, summary)
+	go func() {
+		setCtx, setCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer setCancel()
+		s.cache.set(setCtx, key, summary)
+	}()
 
 	return summary
 }
