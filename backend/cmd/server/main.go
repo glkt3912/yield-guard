@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"github.com/yield-guard/backend/internal/api"
 	"github.com/yield-guard/backend/internal/logger"
 	"github.com/yield-guard/backend/internal/mlit"
@@ -58,7 +59,20 @@ func main() {
 
 	googleMapsAPIKey := readSecret("/secrets/google-maps-api-key/value", "GOOGLE_MAPS_API_KEY")
 
-	mlitClient := mlit.NewClient(mlitAPIKey)
+	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
+	var fsClient *firestore.Client
+	if projectID != "" {
+		var fsErr error
+		fsClient, fsErr = firestore.NewClient(ctx, projectID)
+		if fsErr != nil {
+			slog.Warn("Firestore unavailable, using noop L2 cache", "err", fsErr)
+			fsClient = nil
+		}
+	} else {
+		slog.Info("GOOGLE_CLOUD_PROJECT not set, Firestore L2 cache disabled")
+	}
+
+	mlitClient := mlit.NewClientWithFirestore(mlitAPIKey, fsClient)
 	geocodeClient := api.NewGoogleGeocodeClient(googleMapsAPIKey)
 	handler := api.NewHandler(mlitClient, geocodeClient)
 	router := api.NewRouter(handler, appInternalAPIKey)
