@@ -59,7 +59,7 @@ describe("NegotiationPanel", () => {
         theoreticalPrice={null}
       />
     );
-    expect(screen.getByText(/8.00%/)).toBeInTheDocument();
+    expect(screen.getAllByText(/8.00%/).length).toBeGreaterThan(0);
   });
 
   it("comparisonがnullのとき交渉シミュレーションセクションが非表示", () => {

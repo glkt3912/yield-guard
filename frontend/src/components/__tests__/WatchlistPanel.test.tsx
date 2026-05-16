@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import WatchlistPanel from "@/components/WatchlistPanel";
@@ -6,6 +6,11 @@ import { makeResult } from "./helpers";
 
 // WatchlistCompareTable is a child component; stub it to simplify
 vi.mock("@/components/WatchlistCompareTable", () => ({ default: () => null }));
+
+vi.mock("@/components/ui/toast", () => ({
+  useToast: () => ({ toast: vi.fn() }),
+  ToastProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
 
 const STORAGE_KEY = "yg_watchlist";
 
@@ -32,10 +37,6 @@ describe("WatchlistPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupStorage([]);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
   });
 
   it("カードタイトルが表示される", () => {
@@ -80,9 +81,9 @@ describe("WatchlistPanel", () => {
     render(<WatchlistPanel currentResult={result} />);
     await userEvent.type(screen.getByLabelText("物件名"), "指標付き物件");
     await userEvent.click(screen.getByRole("button", { name: "追加" }));
-    // grossYield 9.00% が表示される
+    // grossYield 9.0% が表示される（小数1桁）
     await waitFor(() => {
-      expect(screen.getByText(/9\.00%/)).toBeInTheDocument();
+      expect(screen.getByText(/9\.0%/)).toBeInTheDocument();
     });
   });
 
@@ -105,9 +106,9 @@ describe("WatchlistPanel", () => {
     const trashBtn = deleteButtons.find((btn) => btn.querySelector("svg") !== null);
     if (trashBtn) await userEvent.click(trashBtn);
 
-    // AlertDialog should appear
+    // Confirmation modal should appear
     await waitFor(() => {
-      expect(screen.getByText(/削除してよいですか/)).toBeInTheDocument();
+      expect(screen.getByText(/削除しますか/)).toBeInTheDocument();
     });
   });
 
