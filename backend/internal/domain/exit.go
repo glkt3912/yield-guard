@@ -27,7 +27,7 @@ type irrNPVResult struct {
 // 取得費: 土地 + 建物簿価 + 取得時諸経費（税法上の取得費）
 // 売却費用: 仲介手数料の上限額を概算控除（消費税込み）
 // 税率: 保有5年超で長期、10年超で軽減税率を適用
-func calcExit(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciation float64, miscExpenses float64) (
+func calcExit(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciation float64) (
 	salePrice, capitalGain, transferTax, netProceeds, totalEquity float64,
 ) {
 	if len(yearly) == 0 || input.HoldingYears <= 0 || input.ExitYieldTarget <= 0 {
@@ -92,7 +92,6 @@ func calcTerminalValueWithDecline(
 	yearly []YearlyResult,
 	adjustedSalePrice float64,
 	accumulatedDepreciation float64,
-	miscExpenses float64,
 ) float64 {
 	holdIdx := input.HoldingYears - 1
 	if holdIdx >= len(yearly) {
@@ -127,7 +126,6 @@ func calcIRRNPV(
 	exitNet float64,
 	exitSalePrice float64,
 	accumulatedDepreciation float64,
-	miscExpenses float64,
 ) irrNPVResult {
 	if equity <= 0 || input.HoldingYears <= 0 {
 		return irrNPVResult{}
@@ -140,7 +138,7 @@ func calcIRRNPV(
 	if input.PriceDeclineRate > 0 {
 		decayFactor := math.Pow(1-input.PriceDeclineRate, float64(input.HoldingYears))
 		adjustedSalePrice := exitSalePrice * decayFactor
-		irrTerminalValue = calcTerminalValueWithDecline(input, yearlyResults, adjustedSalePrice, accumulatedDepreciation, miscExpenses)
+		irrTerminalValue = calcTerminalValueWithDecline(input, yearlyResults, adjustedSalePrice, accumulatedDepreciation)
 	}
 	npv := CalcNPV(irrCFs, irrTerminalValue, input.DiscountRate, equity)
 	irr, _ := CalcIRR(irrCFs, irrTerminalValue, equity)
