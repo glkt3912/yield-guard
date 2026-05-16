@@ -290,7 +290,7 @@ resource "google_monitoring_alert_policy" "warmup_job_failure" {
       duration        = "0s"
       aggregations {
         alignment_period     = "1800s"
-        per_series_aligner   = "ALIGN_COUNT_TRUE"
+        per_series_aligner   = "ALIGN_SUM"
         cross_series_reducer = "REDUCE_SUM"
         group_by_fields      = ["metric.labels.job_id"]
       }
