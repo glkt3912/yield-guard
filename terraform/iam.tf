@@ -153,6 +153,20 @@ resource "google_project_iam_member" "deployer_cloudfunctions_admin" {
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+resource "google_project_iam_member" "deployer_firestore_owner" {
+  # Required to create Firestore databases and TTL policies via terraform apply.
+  project = var.project_id
+  role    = "roles/datastore.owner"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+resource "google_project_iam_member" "deployer_cloudscheduler_admin" {
+  # Required to create and manage Cloud Scheduler jobs via terraform apply.
+  project = var.project_id
+  role    = "roles/cloudscheduler.admin"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 resource "google_billing_account_iam_member" "deployer_billing_admin" {
   provider = google.billing
   # Required to create and update Billing Budgets via terraform apply.
