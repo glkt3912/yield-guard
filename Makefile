@@ -1,4 +1,5 @@
 .PHONY: dev backend frontend install install-hooks logs test lint build clean help \
+        swagger \
         mlit-land-prices mlit-municipalities mlit-station-ridership mlit-population-forecast mlit-land-appraisals \
         mlit-urban-zoning mlit-liquefaction mlit-flood-hazard mlit-storm-hazard mlit-tsunami-hazard mlit-landslide-hazard \
         api-station-ridership api-estimate-ridership api-population-forecast api-land-appraisals api-investment-score \
@@ -44,6 +45,11 @@ backend:
 ## frontend: フロントエンド開発サーバーのみ起動
 frontend:
 	cd frontend && npm run dev
+
+## swagger: OpenAPI スキーマを生成 (docs/openapi/swagger.json)
+swagger:
+	cd backend && swag init -g cmd/server/main.go -o ../docs/openapi --outputTypes json
+	@echo "==> Generated docs/openapi/swagger.json"
 
 ## install: フロントエンド依存関係をインストール
 install:
