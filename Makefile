@@ -55,7 +55,7 @@ swagger:
 ## swagger-check: スキーマドリフトをローカルで確認 (PR 前チェック用)
 swagger-check: swagger
 	cd frontend && npm run generate:types
-	git diff --exit-code docs/openapi/ frontend/src/types/api.generated.ts
+	git diff --exit-code docs/openapi/swagger.json docs/openapi/openapi.json frontend/src/types/api.generated.ts
 
 ## install: フロントエンド依存関係をインストール
 install:
