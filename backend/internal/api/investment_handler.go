@@ -13,7 +13,14 @@ import (
 )
 
 // Analyze は投資シミュレーションを実行する
-// POST /api/analyze
+// @Summary     投資分析
+// @Tags        investment
+// @Accept      json
+// @Produce     json
+// @Param       body  body  domain.InvestmentInput  true  "投資分析リクエスト"
+// @Success     200  {object}  domain.InvestmentResult
+// @Failure     400  {object}  map[string]string
+// @Router      /api/investment/analyze [post]
 func (h *Handler) Analyze(c *gin.Context) {
 	var input domain.InvestmentInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -50,7 +57,14 @@ func (h *Handler) Analyze(c *gin.Context) {
 }
 
 // MonteCarlo はモンテカルロシミュレーションを実行する
-// POST /api/investment/simulate
+// @Summary     モンテカルロシミュレーション
+// @Tags        investment
+// @Accept      json
+// @Produce     json
+// @Param       body  body  domain.MonteCarloInput  true  "シミュレーションリクエスト"
+// @Success     200  {object}  domain.MonteCarloResult
+// @Failure     400  {object}  map[string]string
+// @Router      /api/investment/simulate [post]
 func (h *Handler) MonteCarlo(c *gin.Context) {
 	var input domain.MonteCarloInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -71,7 +85,15 @@ func (h *Handler) MonteCarlo(c *gin.Context) {
 }
 
 // GetRentDeclineHint は XCT001 直近5年分から賃料下落率参考値を返す
-// GET /api/investment/rent-decline-hint?area=13[&municipality=13101]
+// @Summary     賃料下落率参考値
+// @Tags        investment
+// @Produce     json
+// @Param       area          query  string  true   "都道府県コード (例: 13)"
+// @Param       municipality  query  string  false  "市区町村コード"
+// @Success     200  {object}  domain.RentDeclineHint
+// @Failure     400  {object}  map[string]string
+// @Failure     502  {object}  map[string]string
+// @Router      /api/investment/rent-decline-hint [get]
 func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 	area := c.Query("area")
 	if area == "" {
