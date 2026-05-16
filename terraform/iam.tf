@@ -153,6 +153,13 @@ resource "google_project_iam_member" "deployer_cloudfunctions_admin" {
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+resource "google_project_iam_member" "deployer_logging_config_writer" {
+  # Required to create and manage log-based metrics via terraform apply.
+  project = var.project_id
+  role    = "roles/logging.configWriter"
+  member  = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 resource "google_project_iam_member" "deployer_firestore_owner" {
   # Required to create Firestore databases and TTL policies via terraform apply.
   project = var.project_id
