@@ -254,28 +254,24 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
   }
 }
 
-# 4. Cloud Scheduler ウォームアップジョブが連続失敗
+# 4. Cloud Scheduler warmup-ping が 45 分間実行されない（3 回連続スキップ相当）
+# condition_absent: メトリクスデータの欠如を検知するため、ラベルフィルタ不要で初回から動作する
 resource "google_monitoring_alert_policy" "warmup_job_failure" {
-  display_name = "[Yield Guard] ウォームアップジョブが連続失敗"
+  display_name = "[Yield Guard] ウォームアップ ping ジョブが停止"
   combiner     = "OR"
 
   conditions {
-    display_name = "warmup-cache または warmup-ping が 30 分以内に 2 回以上失敗"
-    condition_threshold {
+    display_name = "warmup-ping-prod の実行データが 45 分間なし（3 回分スキップ相当）"
+    condition_absent {
       filter = join(" AND ", [
         "metric.type=\"cloudscheduler.googleapis.com/job/attempt_count\"",
         "resource.type=\"cloud_scheduler_job\"",
-        "metric.labels.status=\"FAILED\"",
-        "resource.labels.job_id=monitoring.regex.full_match(\"warmup-.*-${var.env}\")",
+        "resource.labels.job_id=\"warmup-ping-${var.env}\"",
       ])
-      comparison      = "COMPARISON_GT"
-      threshold_value = 1
-      duration        = "0s"
+      duration = "2700s"
       aggregations {
-        alignment_period     = "1800s"
-        per_series_aligner   = "ALIGN_COUNT_TRUE"
-        cross_series_reducer = "REDUCE_SUM"
-        group_by_fields      = ["resource.labels.job_id"]
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_COUNT_TRUE"
       }
     }
   }
