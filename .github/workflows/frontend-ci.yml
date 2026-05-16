@@ -157,9 +157,9 @@ jobs:
         run: |
           OUTPUT=$(vercel deploy --yes 2>&1)
           echo "$OUTPUT"
-          URL=$(echo "$OUTPUT" | grep -E '^https://' | tail -1)
+          URL=$(echo "$OUTPUT" | grep -oE 'https://[^ ]+\.vercel\.app' | tail -1)
           if [ -z "$URL" ]; then
-            echo "::error::Vercel deploy failed or URL not found"
+            echo "::error::Vercel deploy failed or preview URL not found in output"
             exit 1
           fi
           echo "url=$URL" >> $GITHUB_OUTPUT
@@ -168,6 +168,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          NO_COLOR: "1"
 
       - name: Comment preview URL on PR
         if: github.event_name == 'pull_request'
