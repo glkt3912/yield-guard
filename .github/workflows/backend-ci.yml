@@ -37,6 +37,21 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      - name: Cache swag binary
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
+        with:
+          path: ~/go/bin/swag
+          key: swag-v1.16.6
+
+      - name: Install swag
+        run: which swag || go install github.com/swaggo/swag/cmd/swag@v1.16.6
+
+      - name: Check schema drift (swagger.json)
+        working-directory: .
+        run: |
+          make swagger
+          git diff --exit-code docs/openapi/swagger.json
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20  # v9.2.0
         with:

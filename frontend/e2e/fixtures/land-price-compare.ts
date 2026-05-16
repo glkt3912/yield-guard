@@ -1,4 +1,5 @@
-import type { LandPriceComparison } from "@/types/investment";
+import type { components } from "@/types/api.generated";
+type LandPriceComparison = components["schemas"]["domain.LandPriceComparison"];
 
 export const landPriceCompareFixture = {
   stats: {

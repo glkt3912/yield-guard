@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Modal } from "@/components/ui/modal";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/toast";
 import {
   Trash2,
@@ -505,29 +505,14 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
       {/* Comparison table */}
       {compareMode && selectedItems.length >= 2 && <WatchlistCompareTable items={selectedItems} />}
 
-      {/* Delete confirmation modal */}
-      <Modal
+      <AlertDialog
         open={pendingDeleteId !== null}
         onClose={() => setPendingDeleteId(null)}
         title="削除の確認"
-      >
-        <p className="text-sm text-foreground">
-          「{pendingDeleteName}」をウォッチリストから削除しますか？
-        </p>
-        <div className="mt-4 flex gap-2 justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setPendingDeleteId(null)}
-          >
-            キャンセル
-          </Button>
-          <Button type="button" variant="destructive" size="sm" onClick={handleDeleteConfirm}>
-            削除
-          </Button>
-        </div>
-      </Modal>
+        description={`「${pendingDeleteName}」をウォッチリストから削除しますか？`}
+        confirmLabel="削除"
+        onConfirm={handleDeleteConfirm}
+      />
     </>
   );
 }

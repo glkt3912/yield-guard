@@ -9,14 +9,19 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
-	"sync"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/ai"
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
+	"golang.org/x/sync/errgroup"
 )
+
+// areaDiscoveryLimit はエリア探索で並列取得する市区町村の上限数。
+// 全市区町村を対象にするとタイムアウトリスクがあるため制限する（東京都は62市区町村）。
+const areaDiscoveryLimit = 30
 
 // MLITClient は国交省APIクライアントのインターフェース（テスト時にモック注入可能）
 type MLITClient interface {
@@ -44,16 +49,24 @@ type Handler struct {
 	summarizer    ai.Summarizer
 }
 
-func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient) *Handler {
+func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient, fsClient ...*firestore.Client) *Handler {
+	var fs *firestore.Client
+	if len(fsClient) > 0 {
+		fs = fsClient[0]
+	}
 	return &Handler{
 		mlitClient:    mlitClient,
 		geocodeClient: geocodeClient,
-		summarizer:    ai.NewSummarizer(),
+		summarizer:    ai.NewSummarizer(fs),
 	}
 }
 
-// HealthCheck はサーバーの生存確認
-// GET /health
+// HealthCheck はサーバーの生存確認を行う
+// @Summary     ヘルスチェック
+// @Tags        system
+// @Produce     json
+// @Success     200  {object}  map[string]string
+// @Router      /health [get]
 func (h *Handler) HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
@@ -83,7 +96,16 @@ func validateRenovationInput(in domain.RenovationInput) error {
 }
 
 // HandleAreaDiscovery は都道府県内の市区町村を土地価格データで評価しランキング返却
-// GET /api/area-discovery?prefecture=13&budget=50000000&yield=0.07
+// @Summary     投資エリア探索
+// @Tags        area
+// @Produce     json
+// @Param       prefecture  query  string  true   "都道府県コード (例: 13)"
+// @Param       budget      query  number  false  "予算 (円)"
+// @Param       yield       query  number  false  "目標利回り (例: 0.07)"
+// @Success     200  {object}  domain.AreaDiscoveryResponse
+// @Failure     400  {object}  map[string]string
+// @Failure     500  {object}  map[string]string
+// @Router      /api/area-discovery [get]
 func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 	prefecture := c.Query("prefecture")
 	if prefecture == "" {
@@ -125,24 +147,29 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 		err  error
 	}
 
-	// 上位30市区町村に絞る（全件だとタイムアウトリスク）
-	limit := 30
+	limit := areaDiscoveryLimit
 	if len(municipalities) < limit {
 		limit = len(municipalities)
 	}
 
 	results := make([]result, limit)
-	var wg sync.WaitGroup
 	sem := make(chan struct{}, 5) // 並列5件上限
+	g, gctx := errgroup.WithContext(ctx)
 
 	for i := 0; i < limit; i++ {
-		wg.Add(1)
-		go func(idx int, m mlit.Municipality) {
-			defer wg.Done()
+		idx, m := i, municipalities[i]
+		g.Go(func() error {
+			if gctx.Err() != nil {
+				return gctx.Err()
+			}
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			transactions, fetchErr := h.mlitClient.FetchLandPrices(ctx, mlit.LandPriceQuery{
+			if gctx.Err() != nil {
+				return gctx.Err()
+			}
+
+			transactions, fetchErr := h.mlitClient.FetchLandPrices(gctx, mlit.LandPriceQuery{
 				Area:      prefecture,
 				City:      m.ID,
 				Year:      fromYear,
@@ -162,10 +189,10 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 				item.YieldDifficulty = "difficult"
 				item.YieldDifficultyLabel = "データ不足"
 				results[idx] = result{item: item}
-				return
+				return nil
 			}
 
-			stats := domain.CalcLandPriceStats(ctx, transactions)
+			stats := domain.CalcLandPriceStats(gctx, transactions)
 
 			item.MedianTsubo = stats.MedianTsubo
 			item.TransactionCount = stats.Count
@@ -198,9 +225,10 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 
 			item.LandPriceTrend = "データなし"
 			results[idx] = result{item: item}
-		}(i, municipalities[i])
+			return nil
+		})
 	}
-	wg.Wait()
+	_ = g.Wait()
 
 	items := make([]domain.AreaDiscoveryItem, 0, limit)
 	for _, r := range results {
@@ -226,6 +254,14 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 }
 
 // HandleRenovationAnalyze はリフォームROIシミュレーションを実行する
+// @Summary     リフォームROI分析
+// @Tags        renovation
+// @Accept      json
+// @Produce     json
+// @Param       body  body  domain.RenovationInput  true  "リフォーム分析リクエスト"
+// @Success     200  {object}  domain.RenovationResult
+// @Failure     400  {object}  map[string]string
+// @Router      /api/renovation/analyze [post]
 func (h *Handler) HandleRenovationAnalyze(c *gin.Context) {
 	var input domain.RenovationInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -241,8 +277,14 @@ func (h *Handler) HandleRenovationAnalyze(c *gin.Context) {
 }
 
 // GetGeocode は住所文字列から緯度・経度を返す
-// GET /api/geocode?address=<住所>
-// APIキーはサーバーサイドのみで保持し、フロントには露出しない
+// @Summary     ジオコーディング
+// @Tags        location
+// @Produce     json
+// @Param       address  query  string  true  "住所文字列"
+// @Success     200  {object}  api.GeocodeResult
+// @Failure     400  {object}  map[string]string
+// @Failure     503  {object}  map[string]string
+// @Router      /api/geocode [get]
 func (h *Handler) GetGeocode(c *gin.Context) {
 	address := c.Query("address")
 	if address == "" {
