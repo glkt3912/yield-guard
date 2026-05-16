@@ -80,7 +80,7 @@ func main() {
 
 	mlitClient := mlit.NewClientWithFirestore(mlitAPIKey, fsClient)
 	geocodeClient := api.NewGoogleGeocodeClient(googleMapsAPIKey)
-	handler := api.NewHandler(mlitClient, geocodeClient)
+	handler := api.NewHandler(mlitClient, geocodeClient, fsClient)
 	router := api.NewRouter(handler, appInternalAPIKey)
 
 	srv := &http.Server{
