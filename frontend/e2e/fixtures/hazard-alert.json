@@ -1,9 +1,8 @@
 [
   {
-    "type": "flood",
+    "code": "flood",
     "level": "ERROR",
-    "label": "洪水（計画規模）",
-    "depthM": 3.0,
-    "message": "この地域は計画規模の洪水で3m以上の浸水が想定されます。"
+    "title": "洪水（計画規模）",
+    "description": "この地域は計画規模の洪水で3m以上の浸水が想定されます。"
   }
 ]
