@@ -55,11 +55,6 @@ resource "google_cloud_run_v2_service" "backend" {
         mount_path = "/secrets/app-internal-api-key"
       }
 
-      volume_mounts {
-        name       = "google-maps-api-key"
-        mount_path = "/secrets/google-maps-api-key"
-      }
-
       dynamic "env" {
         for_each = var.gemini_api_key != "" ? [1] : []
         content {
@@ -114,16 +109,6 @@ resource "google_cloud_run_v2_service" "backend" {
       }
     }
 
-    volumes {
-      name = "google-maps-api-key"
-      secret {
-        secret = google_secret_manager_secret.google_maps_api_key.secret_id
-        items {
-          path    = "value"
-          version = "latest"
-        }
-      }
-    }
   }
 
   lifecycle {
@@ -136,7 +121,6 @@ resource "google_cloud_run_v2_service" "backend" {
     google_project_service.apis,
     google_secret_manager_secret_iam_member.mlit_accessor,
     google_secret_manager_secret_iam_member.internal_key_accessor,
-    google_secret_manager_secret_iam_member.google_maps_accessor,
     google_secret_manager_secret_iam_member.gemini_accessor,
     google_project_iam_member.backend_trace_agent,
     google_project_iam_member.backend_metric_writer,
