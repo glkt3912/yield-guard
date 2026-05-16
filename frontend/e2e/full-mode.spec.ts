@@ -19,11 +19,11 @@ test.describe("Full mode ハッピーパス", () => {
     await page.getByLabel("ローン金額").fill("1600");
     await page.getByText("シミュレーション実行").click();
 
-    await expect(page.getByText("9.89", { exact: true })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("8%超え ✓", { exact: true })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("gross-yield-value")).toHaveText("9.89", { timeout: 10_000 });
+    await expect(page.getByTestId("yield-threshold-badge")).toBeVisible({ timeout: 5_000 });
 
-    await expect(page.getByRole("heading", { name: /キャッシュフロー推移/ })).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByRole("heading", { name: /デッドクロス/ })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("cashflow-chart-heading")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("dead-cross-chart-heading")).toBeVisible({ timeout: 5_000 });
   });
 });
 
@@ -50,7 +50,7 @@ test.describe("Full mode リクエストボディ検証", () => {
     await page.getByLabel("想定月額賃料").fill("150000");
     await page.getByText("シミュレーション実行").click();
 
-    await expect(page.getByText("9.89", { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("gross-yield-value")).toHaveText("9.89", { timeout: 10_000 });
 
     expect(capturedBody).not.toBeNull();
     expect(capturedBody!["landPrice"]).toBe(12000000);
