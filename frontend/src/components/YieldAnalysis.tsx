@@ -252,6 +252,7 @@ export function YieldAnalysis({
               </p>
               <div className="flex items-end gap-2">
                 <span
+                  data-testid="gross-yield-value"
                   className={`text-4xl font-bold sm:text-5xl ${isGood ? "text-green-600" : "text-red-600"}`}
                 >
                   {yieldPct.toFixed(2)}
@@ -269,12 +270,16 @@ export function YieldAnalysis({
               {isGood ? (
                 <>
                   <CheckCircle className="h-10 w-10 text-green-500 sm:h-12 sm:w-12" />
-                  <Badge variant="success">{targetPct}%超え ✓</Badge>
+                  <Badge data-testid="yield-threshold-badge" variant="success">
+                    {targetPct}%超え ✓
+                  </Badge>
                 </>
               ) : (
                 <>
                   <AlertTriangle className="h-10 w-10 text-red-500 sm:h-12 sm:w-12" />
-                  <Badge variant="danger">{targetPct}%未満 ✗</Badge>
+                  <Badge data-testid="yield-threshold-badge" variant="danger">
+                    {targetPct}%未満 ✗
+                  </Badge>
                 </>
               )}
             </div>
@@ -524,7 +529,10 @@ export function YieldAnalysis({
                           ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%`
                           : "±0"}
                       </td>
-                      <td className={`py-2 text-right font-medium ${getDscrColorClass(s.dscr)}`}>
+                      <td
+                        data-testid="dscr-value"
+                        className={`py-2 text-right font-medium ${getDscrColorClass(s.dscr)}`}
+                      >
                         <span className="inline-flex items-center justify-end gap-1">
                           {dscrIcon}
                           {s.dscr.toFixed(2)}

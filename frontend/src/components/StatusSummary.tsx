@@ -47,6 +47,7 @@ export function StatusSummary({ result }: StatusSummaryProps) {
     <div
       role="status"
       aria-label={`投資判定: ${label}`}
+      data-testid="status-summary-badge"
       className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium ${className}`}
     >
       {icon}

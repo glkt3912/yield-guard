@@ -96,7 +96,7 @@ function DeadCrossChart({ result }: Props) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle data-testid="dead-cross-chart-heading" className="flex items-center gap-2">
             {hasDeadCross ? (
               <Skull className="h-5 w-5 text-red-500" />
             ) : (
