@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { YieldAnalysis } from "@/components/YieldAnalysis";
 import { StatusSummary } from "@/components/StatusSummary";
 import { KpiStrip } from "@/components/KpiStrip";
@@ -21,7 +21,7 @@ import DueDiligenceChecklist from "@/components/DueDiligenceChecklist";
 import { AreaDiscovery } from "@/components/AreaDiscovery";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
-import { ShieldAlert } from "lucide-react";
+import { BarChart3, ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
 import { PREFECTURE_CENTERS } from "@/lib/prefectureCenters";
 import type {
   InvestmentInput,
@@ -39,6 +39,9 @@ import type {
 } from "@/types/investment";
 
 const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
+
+type ResultsTab = "overview" | "finance" | "loan" | "actions";
+const DEFAULT_RESULTS_TAB: ResultsTab = "overview";
 
 interface ResultsSectionProps {
   activeTab: "simulation" | "area-discovery";
@@ -100,6 +103,16 @@ export function ResultsSection({
     lng: number;
   } | null>(null);
 
+  const [resultsTab, setResultsTab] = useState<ResultsTab>(DEFAULT_RESULTS_TAB);
+  const prevResultRef = useRef<InvestmentResult | null>(null);
+
+  useEffect(() => {
+    if (result !== null && result !== prevResultRef.current) {
+      setResultsTab("overview");
+      prevResultRef.current = result;
+    }
+  }, [result]);
+
   const handleAreaTileSelect = useCallback(
     (lat: number, lng: number) => {
       onTileSelect(lat, lng);
@@ -110,7 +123,7 @@ export function ResultsSection({
 
   return (
     <section className="space-y-6">
-      {/* Tab toggle */}
+      {/* 最上位タブ: シミュレーション | エリアを探す */}
       <div className="flex gap-1 rounded-lg border bg-muted/30 p-1 w-fit">
         <button
           onClick={() => setActiveTab("simulation")}
@@ -178,39 +191,9 @@ export function ResultsSection({
 
       {activeTab === "simulation" && (
         <>
-          <HazardAlertBanner hazardRisks={hazardRisks} externalUrbanRisks={externalUrbanRisks} />
-
-          {investmentScore && (
-            <InvestmentScoreCard
-              score={investmentScore}
-              populationChangeRate={populationForecast?.changeRate30yr}
-              onApplyRecommend={onApplyRecommend}
-            />
-          )}
-
-          {propertyLat !== undefined && (
-            <InvestmentScoreHeatmap
-              centerLat={propertyLat}
-              centerLng={propertyLng}
-              onTileSelect={onTileSelect}
-            />
-          )}
-
-          {comparison && (
-            <LandPriceAnalysis
-              comparison={comparison}
-              input={lastInput}
-              theoreticalPrice={theoreticalPrice}
-              stationRidership={stationRidership}
-              populationForecast={populationForecast}
-              landAppraisal={landAppraisal}
-              externalUrbanRisks={externalUrbanRisks}
-              hazardRisks={hazardRisks}
-            />
-          )}
-
+          {/* Hero: 判定・KPI を最上位に固定表示 */}
           {result && lastInput && (
-            <>
+            <div className="space-y-3">
               <CriticalErrorBanner errors={result.criticalErrors} />
               <StatusSummary result={result} />
               <KpiStrip
@@ -218,6 +201,75 @@ export function ResultsSection({
                 yieldTarget={lastInput.yieldTarget}
                 holdingYears={lastInput.holdingYears}
               />
+            </div>
+          )}
+          <HazardAlertBanner hazardRisks={hazardRisks} externalUrbanRisks={externalUrbanRisks} />
+
+          {/* 結果タブナビゲーション */}
+          {result && (
+            <div
+              role="tablist"
+              aria-label="結果タブ"
+              className="flex gap-1 rounded-lg border bg-muted/30 p-1 w-full sm:w-fit overflow-x-auto"
+            >
+              {[
+                { id: "overview" as ResultsTab, label: "概要" },
+                { id: "finance" as ResultsTab, label: "財務分析" },
+                { id: "loan" as ResultsTab, label: "ローン・交渉" },
+                { id: "actions" as ResultsTab, label: "詳細・アクション" },
+              ].map(({ id, label }) => (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={resultsTab === id}
+                  onClick={() => setResultsTab(id)}
+                  className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors whitespace-nowrap ${
+                    resultsTab === id
+                      ? "bg-white shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Tab 1: 概要 */}
+          {result && resultsTab === "overview" && (
+            <div className="space-y-6">
+              {investmentScore && (
+                <InvestmentScoreCard
+                  score={investmentScore}
+                  populationChangeRate={populationForecast?.changeRate30yr}
+                  onApplyRecommend={onApplyRecommend}
+                />
+              )}
+              {propertyLat !== undefined && (
+                <InvestmentScoreHeatmap
+                  centerLat={propertyLat}
+                  centerLng={propertyLng}
+                  onTileSelect={onTileSelect}
+                />
+              )}
+              {comparison && (
+                <LandPriceAnalysis
+                  comparison={comparison}
+                  input={lastInput}
+                  theoreticalPrice={theoreticalPrice}
+                  stationRidership={stationRidership}
+                  populationForecast={populationForecast}
+                  landAppraisal={landAppraisal}
+                  externalUrbanRisks={externalUrbanRisks}
+                  hazardRisks={hazardRisks}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Tab 2: 財務分析 */}
+          {result && lastInput && resultsTab === "finance" && (
+            <div className="space-y-6">
               <YieldAnalysis
                 result={result}
                 input={lastInput}
@@ -225,19 +277,9 @@ export function ResultsSection({
                 landPriceStats={comparison?.stats ?? null}
                 isAnalyzing={loading}
               />
-              <NegotiationPanel
-                result={result}
-                input={lastInput}
-                comparison={comparison}
-                theoreticalPrice={theoreticalPrice}
-              />
-              <LoanOptimizationPanel
-                result={result}
-                loanMethod={loanMethod}
-                onLoanMethodChange={onLoanMethodChange}
-                loanAmount={lastInput.loanAmount}
-              />
-              <LoanComparePanel baseInput={lastInput} />
+              {result.multiExitComparison && result.multiExitComparison.length > 0 && (
+                <MultiExitCompareTable rows={result.multiExitComparison} />
+              )}
               {simulationMode === "full" && (
                 <>
                   {result.acquisitionCosts && (
@@ -263,20 +305,101 @@ export function ResultsSection({
                   {monteCarloResult && <MonteCarloChart result={monteCarloResult} />}
                 </>
               )}
-              {result.multiExitComparison && result.multiExitComparison.length > 0 && (
-                <MultiExitCompareTable rows={result.multiExitComparison} />
+              {simulationMode === "quick" && (
+                <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-center text-sm text-muted-foreground">
+                  <p>キャッシュフローグラフ・デッドクロス分析・モンテカルロは</p>
+                  <p className="font-medium mt-1">詳細モードで利用できます</p>
+                </div>
               )}
-            </>
+            </div>
           )}
-          <RenovationPanel />
-          <WatchlistPanel currentResult={result ?? undefined} />
-          {lastInput && (
-            <DueDiligenceChecklist
-              propertyKey={`${lastInput.landPrice}-${lastInput.buildingCost}-${lastInput.monthlyRent}-${lastInput.loanAmount}`}
+
+          {/* Tab 3: ローン・交渉 */}
+          {result && lastInput && resultsTab === "loan" && (
+            <LoanTabContent
+              result={result}
+              lastInput={lastInput}
+              comparison={comparison}
+              theoreticalPrice={theoreticalPrice}
+              loanMethod={loanMethod}
+              onLoanMethodChange={onLoanMethodChange}
             />
+          )}
+
+          {/* Tab 4: 詳細・アクション */}
+          {resultsTab === "actions" && (
+            <div className="space-y-6">
+              <RenovationPanel />
+              <WatchlistPanel currentResult={result ?? undefined} />
+              {lastInput && (
+                <DueDiligenceChecklist
+                  propertyKey={`${lastInput.landPrice}-${lastInput.buildingCost}-${lastInput.monthlyRent}-${lastInput.loanAmount}`}
+                />
+              )}
+            </div>
           )}
         </>
       )}
     </section>
+  );
+}
+
+interface LoanTabContentProps {
+  result: InvestmentResult;
+  lastInput: InvestmentInput;
+  comparison: LandPriceComparison | null;
+  theoreticalPrice: TheoreticalPriceResult | null;
+  loanMethod: LoanMethod;
+  onLoanMethodChange: (method: LoanMethod) => Promise<void>;
+}
+
+function LoanTabContent({
+  result,
+  lastInput,
+  comparison,
+  theoreticalPrice,
+  loanMethod,
+  onLoanMethodChange,
+}: LoanTabContentProps) {
+  const [isLoanCompareOpen, setIsLoanCompareOpen] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      <NegotiationPanel
+        result={result}
+        input={lastInput}
+        comparison={comparison}
+        theoreticalPrice={theoreticalPrice}
+      />
+      <LoanOptimizationPanel
+        result={result}
+        loanMethod={loanMethod}
+        onLoanMethodChange={onLoanMethodChange}
+        loanAmount={lastInput.loanAmount}
+      />
+      <div className="rounded-lg border bg-card shadow-sm">
+        <button
+          type="button"
+          onClick={() => setIsLoanCompareOpen((v) => !v)}
+          aria-expanded={isLoanCompareOpen}
+          className="flex w-full items-center justify-between px-5 py-4 text-left"
+        >
+          <span className="flex items-center gap-2 text-base font-semibold">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            複数融資条件の横並び比較
+          </span>
+          {isLoanCompareOpen ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
+        {isLoanCompareOpen && (
+          <div className="border-t">
+            <LoanComparePanel baseInput={lastInput} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

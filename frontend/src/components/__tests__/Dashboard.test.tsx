@@ -60,6 +60,14 @@ describe("Dashboard", () => {
     await userEvent.type(screen.getByLabelText(/物件価格（土地＋建物の総額）/), "1500");
     await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
 
+    // 結果タブが出るまで待つ
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: "財務分析" })).toBeInTheDocument();
+    });
+
+    // 財務分析タブに切り替えてYieldAnalysisを確認
+    await userEvent.click(screen.getByRole("tab", { name: "財務分析" }));
+
     await waitFor(() => {
       // YieldAnalysis が表示される（表面利回り数値）
       expect(screen.getByText("9.00")).toBeInTheDocument();
@@ -79,6 +87,14 @@ describe("Dashboard", () => {
     await userEvent.click(screen.getAllByRole("radio", { name: /詳細/ })[0]);
 
     await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
+
+    // 結果タブが出るまで待つ
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: "財務分析" })).toBeInTheDocument();
+    });
+
+    // 財務分析タブに切り替えてYieldAnalysis・CashFlowChartを確認
+    await userEvent.click(screen.getByRole("tab", { name: "財務分析" }));
 
     await waitFor(() => {
       expect(screen.getByText("9.00")).toBeInTheDocument();
