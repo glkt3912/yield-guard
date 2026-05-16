@@ -34,6 +34,7 @@ func newOtelTestClient(srv *httptest.Server) *Client {
 		baseURL:    srv.URL,
 		apiKey:     "test-key",
 		cache:      newCache(),
+		l2:         newNoopL2CacheGroup(),
 	}
 }
 

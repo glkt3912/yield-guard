@@ -114,7 +114,7 @@ func TestIsLandType(t *testing.T) {
 // ---- buildLandPricesURL ----
 
 func newTestClient(serverURL string) *Client {
-	return &Client{httpClient: &http.Client{}, baseURL: serverURL, cache: newCache()}
+	return &Client{httpClient: &http.Client{}, baseURL: serverURL, cache: newCache(), l2: newNoopL2CacheGroup()}
 }
 
 func TestBuildLandPricesURL(t *testing.T) {

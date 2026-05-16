@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -58,15 +59,29 @@ type Client struct {
 	baseURL    string
 	apiKey     string
 	cache      *cache
+	l2         l2CacheGroup
 }
 
-// NewClient は新しい Client を返す。
+// NewClient は新しい Client を返す（L2キャッシュなし）。
 func NewClient(apiKey string) *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: requestTimeout},
 		baseURL:    mlitBaseURL,
 		apiKey:     apiKey,
 		cache:      newCache(),
+		l2:         newNoopL2CacheGroup(),
+	}
+}
+
+// NewClientWithFirestore は Firestore L2キャッシュ付きの Client を返す。
+// fs が nil の場合は L2キャッシュなしの Client を返す（NewClient と同等）。
+func NewClientWithFirestore(apiKey string, fs *firestore.Client) *Client {
+	return &Client{
+		httpClient: &http.Client{Timeout: requestTimeout},
+		baseURL:    mlitBaseURL,
+		apiKey:     apiKey,
+		cache:      newCache(),
+		l2:         newFirestoreL2CacheGroup(fs),
 	}
 }
 
@@ -92,6 +107,12 @@ func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domai
 	if cached, ok := c.cache.landPrices.get(key); ok {
 		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001")))
+		return cached, nil
+	}
+	if cached, ok := c.l2.landPrices.get(ctx, key); ok {
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001")))
+		c.cache.landPrices.set(key, cached)
 		return cached, nil
 	}
 	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001")))
@@ -124,6 +145,7 @@ func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domai
 
 		if err == nil {
 			span.SetAttributes(attribute.Int("mlit.retry.count", attempt))
+			c.l2.landPrices.set(ctx, key, result)
 			c.cache.landPrices.set(key, result)
 			return result, nil
 		}
@@ -165,6 +187,12 @@ func (c *Client) FetchMunicipalities(ctx context.Context, area string) ([]Munici
 	if cached, ok := c.cache.municipalities.get(area); ok {
 		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT002")))
+		return cached, nil
+	}
+	if cached, ok := c.l2.municipalities.get(ctx, area); ok {
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT002")))
+		c.cache.municipalities.set(area, cached)
 		return cached, nil
 	}
 	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT002")))
@@ -223,6 +251,7 @@ func (c *Client) FetchMunicipalities(ctx context.Context, area string) ([]Munici
 	}
 
 	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
+	c.l2.municipalities.set(ctx, area, apiResp.Data)
 	c.cache.municipalities.set(area, apiResp.Data)
 	return apiResp.Data, nil
 }
@@ -266,6 +295,12 @@ func (c *Client) FetchStationRidership(ctx context.Context, z, x, y int) ([]Stat
 	if cached, ok := c.cache.ridership.get(key); ok {
 		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT015")))
+		return cached, nil
+	}
+	if cached, ok := c.l2.ridership.get(ctx, key); ok {
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT015")))
+		c.cache.ridership.set(key, cached)
 		return cached, nil
 	}
 	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT015")))
@@ -322,6 +357,7 @@ func (c *Client) FetchStationRidership(ctx context.Context, z, x, y int) ([]Stat
 
 	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
 	result := parseStationRiderships(geoResp.Features)
+	c.l2.ridership.set(ctx, key, result)
 	c.cache.ridership.set(key, result)
 	return result, nil
 }
@@ -388,6 +424,12 @@ func (c *Client) FetchPopulationForecast(ctx context.Context, z, x, y int) ([]do
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT013")))
 		return cached, nil
 	}
+	if cached, ok := c.l2.population.get(ctx, key); ok {
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT013")))
+		c.cache.population.set(key, cached)
+		return cached, nil
+	}
 	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT013")))
 	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
@@ -442,6 +484,7 @@ func (c *Client) FetchPopulationForecast(ctx context.Context, z, x, y int) ([]do
 
 	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
 	result := parsePopulationForecasts(geoResp.Features)
+	c.l2.population.set(ctx, key, result)
 	c.cache.population.set(key, result)
 	return result, nil
 }
@@ -500,6 +543,12 @@ func (c *Client) FetchLandAppraisals(ctx context.Context, area, city string, yea
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XCT001")))
 		return cached, nil
 	}
+	if cached, ok := c.l2.appraisals.get(ctx, key); ok {
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XCT001")))
+		c.cache.appraisals.set(key, cached)
+		return cached, nil
+	}
 	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XCT001")))
 	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
@@ -528,6 +577,7 @@ func (c *Client) FetchLandAppraisals(ctx context.Context, area, city string, yea
 
 		if err == nil {
 			span.SetAttributes(attribute.Int("mlit.retry.count", attempt))
+			c.l2.appraisals.set(ctx, key, result)
 			c.cache.appraisals.set(key, result)
 			return result, nil
 		}
@@ -819,6 +869,10 @@ func (c *Client) FetchLocationOptimization(ctx context.Context, z, x, y int) ([]
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT003")))
 		return cached, nil
 	}
+	if cached, ok := c.l2.locationOpt.get(ctx, key); ok {
+		c.cache.locationOptimization.set(key, cached)
+		return cached, nil
+	}
 	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT003")))
 	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
@@ -839,6 +893,7 @@ func (c *Client) FetchLocationOptimization(ctx context.Context, z, x, y int) ([]
 		result = append(result, domain.LocationOptimizationItem{KubunNameJa: f.Properties.KubunNameJa})
 	}
 	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
+	c.l2.locationOpt.set(ctx, key, result)
 	c.cache.locationOptimization.set(key, result)
 	return result, nil
 }
@@ -865,6 +920,10 @@ func (c *Client) FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.Emb
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT020")))
 		return cached, nil
 	}
+	if cached, ok := c.l2.embankment.get(ctx, key); ok {
+		c.cache.embankment.set(key, cached)
+		return cached, nil
+	}
 	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT020")))
 	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
@@ -885,6 +944,7 @@ func (c *Client) FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.Emb
 		result = append(result, domain.EmbankmentItem{Classification: f.Properties.EmbankmentClassification})
 	}
 	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
+	c.l2.embankment.set(ctx, key, result)
 	c.cache.embankment.set(key, result)
 	return result, nil
 }
@@ -911,6 +971,10 @@ func (c *Client) FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.Urba
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT030")))
 		return cached, nil
 	}
+	if cached, ok := c.l2.urbanRoad.get(ctx, key); ok {
+		c.cache.urbanRoad.set(key, cached)
+		return cached, nil
+	}
 	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT030")))
 	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
@@ -934,6 +998,7 @@ func (c *Client) FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.Urba
 		})
 	}
 	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
+	c.l2.urbanRoad.set(ctx, key, result)
 	c.cache.urbanRoad.set(key, result)
 	return result, nil
 }
@@ -958,6 +1023,10 @@ func (c *Client) FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domai
 	if cached, ok := c.cache.disaster.get(key); ok {
 		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XST001")))
+		return cached, nil
+	}
+	if cached, ok := c.l2.disaster.get(ctx, key); ok {
+		c.cache.disaster.set(key, cached)
 		return cached, nil
 	}
 	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XST001")))
@@ -987,6 +1056,7 @@ func (c *Client) FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domai
 		})
 	}
 	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
+	c.l2.disaster.set(ctx, key, result)
 	c.cache.disaster.set(key, result)
 	return result, nil
 }
@@ -996,6 +1066,10 @@ func (c *Client) FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domai
 func (c *Client) FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.UrbanZoningItem, error) {
 	key := fmt.Sprintf("urban_zoning:%d:%d:%d", z, x, y)
 	if cached, ok := c.cache.urbanZoning.get(key); ok {
+		return cached, nil
+	}
+	if cached, ok := c.l2.urbanZoning.get(ctx, key); ok {
+		c.cache.urbanZoning.set(key, cached)
 		return cached, nil
 	}
 	var geoResp UrbanZoningGeoJSON
@@ -1009,6 +1083,7 @@ func (c *Client) FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.Ur
 			KubunID:              f.Properties.KubunID,
 		})
 	}
+	c.l2.urbanZoning.set(ctx, key, result)
 	c.cache.urbanZoning.set(key, result)
 	return result, nil
 }
@@ -1018,6 +1093,10 @@ func (c *Client) FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.Ur
 func (c *Client) FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.LiquefactionRiskItem, error) {
 	key := fmt.Sprintf("liquefaction:%d:%d:%d", z, x, y)
 	if cached, ok := c.cache.liquefaction.get(key); ok {
+		return cached, nil
+	}
+	if cached, ok := c.l2.liquefaction.get(ctx, key); ok {
+		c.cache.liquefaction.set(key, cached)
 		return cached, nil
 	}
 	var geoResp LiquefactionGeoJSON
@@ -1031,6 +1110,7 @@ func (c *Client) FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.L
 			Note:          f.Properties.Note,
 		})
 	}
+	c.l2.liquefaction.set(ctx, key, result)
 	c.cache.liquefaction.set(key, result)
 	return result, nil
 }
@@ -1040,6 +1120,10 @@ func (c *Client) FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.L
 func (c *Client) FetchFloodHazard(ctx context.Context, z, x, y int) ([]domain.FloodHazardItem, error) {
 	key := fmt.Sprintf("flood_hazard:%d:%d:%d", z, x, y)
 	if cached, ok := c.cache.floodHazard.get(key); ok {
+		return cached, nil
+	}
+	if cached, ok := c.l2.floodHazard.get(ctx, key); ok {
+		c.cache.floodHazard.set(key, cached)
 		return cached, nil
 	}
 	var geoResp FloodHazardGeoJSON
@@ -1053,6 +1137,7 @@ func (c *Client) FetchFloodHazard(ctx context.Context, z, x, y int) ([]domain.Fl
 			RiverName: f.Properties.RiverName,
 		})
 	}
+	c.l2.floodHazard.set(ctx, key, result)
 	c.cache.floodHazard.set(key, result)
 	return result, nil
 }
@@ -1064,6 +1149,10 @@ func (c *Client) FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.St
 	if cached, ok := c.cache.stormHazard.get(key); ok {
 		return cached, nil
 	}
+	if cached, ok := c.l2.stormHazard.get(ctx, key); ok {
+		c.cache.stormHazard.set(key, cached)
+		return cached, nil
+	}
 	var geoResp StormHazardGeoJSON
 	if err := c.fetchTileGeoJSON(ctx, endpointStormHazard, z, x, y, &geoResp); err != nil {
 		return nil, err
@@ -1072,6 +1161,7 @@ func (c *Client) FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.St
 	for _, f := range geoResp.Features {
 		result = append(result, domain.StormHazardItem{DepthJa: f.Properties.DepthJa})
 	}
+	c.l2.stormHazard.set(ctx, key, result)
 	c.cache.stormHazard.set(key, result)
 	return result, nil
 }
@@ -1083,6 +1173,10 @@ func (c *Client) FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.
 	if cached, ok := c.cache.tsunamiHazard.get(key); ok {
 		return cached, nil
 	}
+	if cached, ok := c.l2.tsunamiHazard.get(ctx, key); ok {
+		c.cache.tsunamiHazard.set(key, cached)
+		return cached, nil
+	}
 	var geoResp TsunamiHazardGeoJSON
 	if err := c.fetchTileGeoJSON(ctx, endpointTsunamiHazard, z, x, y, &geoResp); err != nil {
 		return nil, err
@@ -1091,6 +1185,7 @@ func (c *Client) FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.
 	for _, f := range geoResp.Features {
 		result = append(result, domain.TsunamiHazardItem{DepthJa: f.Properties.DepthJa})
 	}
+	c.l2.tsunamiHazard.set(ctx, key, result)
 	c.cache.tsunamiHazard.set(key, result)
 	return result, nil
 }
@@ -1100,6 +1195,10 @@ func (c *Client) FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.
 func (c *Client) FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domain.LandslideHazardItem, error) {
 	key := fmt.Sprintf("landslide_hazard:%d:%d:%d", z, x, y)
 	if cached, ok := c.cache.landslideHazard.get(key); ok {
+		return cached, nil
+	}
+	if cached, ok := c.l2.landslideHazard.get(ctx, key); ok {
+		c.cache.landslideHazard.set(key, cached)
 		return cached, nil
 	}
 	var geoResp LandslideHazardGeoJSON
@@ -1113,6 +1212,7 @@ func (c *Client) FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domai
 			ZoneCode:       f.Properties.ZoneCode,
 		})
 	}
+	c.l2.landslideHazard.set(ctx, key, result)
 	c.cache.landslideHazard.set(key, result)
 	return result, nil
 }
@@ -1139,6 +1239,15 @@ func (c *Client) FetchRentStats(ctx context.Context, q LandPriceQuery, areaSqm f
 	if cached, ok := c.cache.rentStats.get(cacheKeySuffix); ok {
 		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001_rent")))
+		if len(cached) == 0 {
+			return domain.RentStatsResult{}, nil
+		}
+		return cached[0], nil
+	}
+	if cached, ok := c.l2.rentStats.get(ctx, cacheKeySuffix); ok {
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001_rent")))
+		c.cache.rentStats.set(cacheKeySuffix, cached)
 		if len(cached) == 0 {
 			return domain.RentStatsResult{}, nil
 		}
@@ -1186,8 +1295,10 @@ func (c *Client) FetchRentStats(ctx context.Context, q LandPriceQuery, areaSqm f
 		if err == nil {
 			span.SetAttributes(attribute.Int("mlit.retry.count", attempt))
 			if result.Count == 0 {
+				c.l2.rentStats.set(ctx, cacheKeySuffix, []domain.RentStatsResult{})
 				c.cache.rentStats.set(cacheKeySuffix, []domain.RentStatsResult{})
 			} else {
+				c.l2.rentStats.set(ctx, cacheKeySuffix, []domain.RentStatsResult{result})
 				c.cache.rentStats.set(cacheKeySuffix, []domain.RentStatsResult{result})
 			}
 			return result, nil
