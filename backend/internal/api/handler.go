@@ -9,13 +9,13 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/ai"
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
+	"golang.org/x/sync/errgroup"
 )
 
 // areaDiscoveryLimit はエリア探索で並列取得する市区町村の上限数。
@@ -148,17 +148,23 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 	}
 
 	results := make([]result, limit)
-	var wg sync.WaitGroup
 	sem := make(chan struct{}, 5) // 並列5件上限
+	g, gctx := errgroup.WithContext(ctx)
 
 	for i := 0; i < limit; i++ {
-		wg.Add(1)
-		go func(idx int, m mlit.Municipality) {
-			defer wg.Done()
+		idx, m := i, municipalities[i]
+		g.Go(func() error {
+			if gctx.Err() != nil {
+				return gctx.Err()
+			}
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			transactions, fetchErr := h.mlitClient.FetchLandPrices(ctx, mlit.LandPriceQuery{
+			if gctx.Err() != nil {
+				return gctx.Err()
+			}
+
+			transactions, fetchErr := h.mlitClient.FetchLandPrices(gctx, mlit.LandPriceQuery{
 				Area:      prefecture,
 				City:      m.ID,
 				Year:      fromYear,
@@ -178,10 +184,10 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 				item.YieldDifficulty = "difficult"
 				item.YieldDifficultyLabel = "データ不足"
 				results[idx] = result{item: item}
-				return
+				return nil
 			}
 
-			stats := domain.CalcLandPriceStats(ctx, transactions)
+			stats := domain.CalcLandPriceStats(gctx, transactions)
 
 			item.MedianTsubo = stats.MedianTsubo
 			item.TransactionCount = stats.Count
@@ -214,9 +220,10 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 
 			item.LandPriceTrend = "データなし"
 			results[idx] = result{item: item}
-		}(i, municipalities[i])
+			return nil
+		})
 	}
-	wg.Wait()
+	_ = g.Wait()
 
 	items := make([]domain.AreaDiscoveryItem, 0, limit)
 	for _, r := range results {
