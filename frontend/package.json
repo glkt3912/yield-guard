@@ -11,6 +11,8 @@
     "lint": "eslint src/",
     "type-check": "tsc --noEmit",
     "generate:types": "swagger2openapi ../docs/openapi/swagger.json --outfile ../docs/openapi/openapi.json && openapi-typescript ../docs/openapi/openapi.json -o src/types/api.generated.ts",
+    "pretest": "test -f src/types/api.generated.ts || npm run generate:types",
+    "prebuild": "test -f src/types/api.generated.ts || npm run generate:types",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test --reporter=list",

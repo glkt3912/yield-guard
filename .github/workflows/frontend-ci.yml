@@ -45,12 +45,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check schema drift (api.generated.ts)
-        run: |
-          # openapi.json の再生成は platform 差を生むため行わない。
-          # コミット済みの openapi.json から直接 TypeScript 型を再生成して差分を検出する。
-          npx openapi-typescript ../docs/openapi/openapi.json -o src/types/api.generated.ts
-          git diff --exit-code src/types/api.generated.ts
+      - name: Generate TypeScript types
+        run: npm run generate:types
 
       - name: Format check
         run: npm run format:check
