@@ -1025,6 +1025,26 @@ GET /ex-api/external/XKT001?response_format=geojson&z={z}&x={x}&y={y}
 - `area_classification_ja` が "市街化区域" を含み "調整" を含まない → 投資適地スコア +10点
 - それ以外 → 0点
 
+### FetchUrbanZoning シグネチャ
+
+```go
+func (c *Client) FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.UrbanZoningItem, error)
+```
+
+ドメイン型 `domain.UrbanZoningItem`：
+
+```go
+type UrbanZoningItem struct {
+    AreaClassificationJa string
+    KubunID              int
+}
+```
+
+- キャッシュキー: `"urban_zoning:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（エラーではない）
+
 ### 型定義
 
 ```go
@@ -1069,6 +1089,26 @@ GET /ex-api/external/XKT025?response_format=geojson&z={z}&x={x}&y={y}
 - `liquefaction_tendency_level` ≤ 4 → −5点（中程度リスク）
 - `liquefaction_tendency_level` ≥ 5 → 0点（低リスク）
 
+### FetchLiquefaction シグネチャ
+
+```go
+func (c *Client) FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.LiquefactionRiskItem, error)
+```
+
+ドメイン型 `domain.LiquefactionRiskItem`：
+
+```go
+type LiquefactionRiskItem struct {
+    TendencyLevel int    // liquefaction_tendency_level（6段階: 低値ほど高リスク）
+    Note          string
+}
+```
+
+- キャッシュキー: `"liquefaction:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（エラーではない）
+
 ### 型定義
 
 ```go
@@ -1110,6 +1150,26 @@ GET /ex-api/external/XKT026?response_format=geojson&z={z}&x={x}&y={y}
 - `A31a_205` ≥ 3 → −5点（深刻な洪水リスク）
 - `A31a_205` ≥ 1 → −3点（洪水リスクあり）
 
+### FetchFloodHazard シグネチャ
+
+```go
+func (c *Client) FetchFloodHazard(ctx context.Context, z, x, y int) ([]domain.FloodHazardItem, error)
+```
+
+ドメイン型 `domain.FloodHazardItem`：
+
+```go
+type FloodHazardItem struct {
+    DepthRank int    // A31a_205（浸水深ランク）
+    RiverName string
+}
+```
+
+- キャッシュキー: `"flood_hazard:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（洪水区域外を示す）
+
 ### 型定義
 
 ```go
@@ -1149,6 +1209,25 @@ GET /ex-api/external/XKT027?response_format=geojson&z={z}&x={x}&y={y}
 
 - フィーチャが1件以上存在 → −5点（高潮リスクあり）
 
+### FetchStormHazard シグネチャ
+
+```go
+func (c *Client) FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.StormHazardItem, error)
+```
+
+ドメイン型 `domain.StormHazardItem`：
+
+```go
+type StormHazardItem struct {
+    DepthJa string // A49_003
+}
+```
+
+- キャッシュキー: `"storm_hazard:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（高潮区域外を示す）
+
 ### 型定義
 
 ```go
@@ -1187,6 +1266,25 @@ GET /ex-api/external/XKT028?response_format=geojson&z={z}&x={x}&y={y}
 ### リスク判定方針
 
 - フィーチャが1件以上存在 → −5点（津波リスクあり）
+
+### FetchTsunamiHazard シグネチャ
+
+```go
+func (c *Client) FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.TsunamiHazardItem, error)
+```
+
+ドメイン型 `domain.TsunamiHazardItem`：
+
+```go
+type TsunamiHazardItem struct {
+    DepthJa string // A40_003
+}
+```
+
+- キャッシュキー: `"tsunami_hazard:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（津波浸水区域外を示す）
 
 ### 型定義
 
@@ -1231,6 +1329,26 @@ GET /ex-api/external/XKT029?response_format=geojson&z={z}&x={x}&y={y}
 
 - `A33_002` == 1（特別警戒区域） → −5点
 - `A33_002` == 2（警戒区域） → −3点
+
+### FetchLandslideHazard シグネチャ
+
+```go
+func (c *Client) FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domain.LandslideHazardItem, error)
+```
+
+ドメイン型 `domain.LandslideHazardItem`：
+
+```go
+type LandslideHazardItem struct {
+    PhenomenonType int // A33_001（1=急傾斜地崩壊, 2=土石流, 3=地すべり）
+    ZoneCode       int // A33_002（1=特別警戒区域, 2=警戒区域）
+}
+```
+
+- キャッシュキー: `"landslide_hazard:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（警戒区域外を示す）
 
 ### 型定義
 
