@@ -293,7 +293,9 @@ export function YieldAnalysis({
               <span>{maxYieldPct}%+</span>
             </div>
             <div className="relative h-3 rounded-full bg-muted overflow-hidden">
-              <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 w-full" />
+              <div className="absolute inset-y-0 left-0 w-1/3 bg-red-400" />
+              <div className="absolute inset-y-0 left-1/3 w-1/3 bg-yellow-400" />
+              <div className="absolute inset-y-0 left-2/3 w-1/3 bg-green-500" />
               {/* 現在値マーカー */}
               <div
                 className="absolute top-0 h-full w-1 bg-foreground/80 rounded"
