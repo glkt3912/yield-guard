@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -71,9 +72,11 @@ func (f *firestoreGeocodeCache) Set(ctx context.Context, address string, result 
 	if err != nil {
 		return
 	}
-	_, _ = f.client.Collection(geocodeCacheCollection).Doc(key).Set(ctx, map[string]any{
+	if _, err := f.client.Collection(geocodeCacheCollection).Doc(key).Set(ctx, map[string]any{
 		"data":      string(raw),
 		"expiresAt": time.Now().Add(geocodeCacheTTL),
 		"address":   address,
-	})
+	}); err != nil {
+		slog.WarnContext(ctx, "geocode_cache: failed to write to Firestore", "error", err)
+	}
 }
