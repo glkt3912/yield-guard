@@ -3,6 +3,7 @@ import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ToastProvider } from "@/components/ui/toast";
+import RootLayoutClient from "@/components/RootLayoutClient";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -20,9 +21,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ja">
       <body>
         <ServiceWorkerRegistrar />
-        <ToastProvider>
-          <TooltipProvider>{children}</TooltipProvider>
-        </ToastProvider>
+        <RootLayoutClient>
+          <ToastProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </ToastProvider>
+        </RootLayoutClient>
       </body>
     </html>
   );
