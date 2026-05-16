@@ -251,12 +251,15 @@ func CalcNPV(cfs []float64, terminalValue, discountRate, initialInvestment float
 }
 
 // CalcIRR は二分法で IRR を求める。収束しない場合は nil と error を返す。
+// 収束判定は相対誤差ベース（|NPV| / |initialInvestment| < 1e-6）で行う。
+// initialInvestment がゼロの場合は絶対誤差（|NPV| < 1.0）にフォールバックする。
 func CalcIRR(cfs []float64, terminalValue, initialInvestment float64) (*float64, error) {
 	const (
 		lo      = -0.50
 		hi      = 2.00
 		maxIter = 200
-		tol     = 1.0
+		relTol  = 1e-6
+		absTol  = 1.0
 	)
 	npvLo := CalcNPV(cfs, terminalValue, lo, initialInvestment)
 	npvHi := CalcNPV(cfs, terminalValue, hi, initialInvestment)
@@ -267,7 +270,13 @@ func CalcIRR(cfs []float64, terminalValue, initialInvestment float64) (*float64,
 	for i := 0; i < maxIter; i++ {
 		mid := (low + high) / 2
 		npvMid := CalcNPV(cfs, terminalValue, mid, initialInvestment)
-		if math.Abs(npvMid) < tol {
+		var converged bool
+		if math.Abs(initialInvestment) > 0 {
+			converged = math.Abs(npvMid)/math.Abs(initialInvestment) < relTol
+		} else {
+			converged = math.Abs(npvMid) < absTol
+		}
+		if converged {
 			v := mid
 			return &v, nil
 		}
