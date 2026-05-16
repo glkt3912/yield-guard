@@ -132,6 +132,69 @@ GrossYield = (MonthlyRent × 12) / 総投資額  ← 全シナリオ共通（満
 
 ---
 
+## 年間経費の計算: `ExpenseRate` と `AnnualPropertyTax` の関係
+
+### フィールドの意味
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `ExpenseRate` | float64 | 管理委託費・修繕積立・保険料などの**率ベース経費**（実効賃料に乗じる比率）。固定資産税は含まない |
+| `AnnualPropertyTax` | float64 | **固定資産税の年額（絶対額、円）**。ExpenseRate とは独立した別建て計上 |
+
+### なぜ固定資産税を分離するか
+
+固定資産税は賃料に連動しない固定費（物件評価額に基づく）であるため、賃料 × 経費率で計算すると賃料が下落した年に固定資産税が過小計上される問題が生じる。これを防ぐため、固定資産税は絶対額（`AnnualPropertyTax`）として賃料に依存せず毎年定額で計上する。
+
+> **二重計上の禁止**: `ExpenseRate` の中に固定資産税を含めつつ `AnnualPropertyTax` も設定すると、固定資産税が二重に計上される。どちらか一方のみを使用すること（`types.go` のコメント参照）。
+
+### 年次経費の計算式（`simulateYears` 内）
+
+```
+有効経費率 = calcEffectiveExpenseRate(input)
+           = ManagementFeeRate + RepairReserveRate + InsuranceFeeRate + OtherExpenseRate  ← 詳細内訳が 1 つでも > 0 の場合
+           = ExpenseRate  ← 詳細内訳が全て 0 の場合（後方互換フォールバック）
+
+経費インフレ補正後経費率 = 有効経費率 × (1 + ExpenseInflationRate)^(y-1)   ← y は 1-indexed 年次
+年間経費 = 年間実効賃料 × 経費インフレ補正後経費率 + AnnualPropertyTax
+```
+
+**ポイント**:
+- 詳細内訳フィールド（`ManagementFeeRate`, `RepairReserveRate`, `InsuranceFeeRate`, `OtherExpenseRate`）のいずれかが 0 より大きければ、その合計が `ExpenseRate` より**優先**される
+- `AnnualPropertyTax` は経費インフレ補正の対象外（毎年同額を固定費として計上）
+- 初年度の実質利回り計算（`initYieldParams`）では `AnnualPropertyTax` を加算しない（利回り計算は経費率ベースの近似値）
+
+### 具体的な計算例
+
+**入力条件:**
+
+| 項目 | 値 |
+|------|-----|
+| MonthlyRent | 100,000円 |
+| VacancyRate | 0.05（5%） |
+| ExpenseRate | 0.15（15%） |
+| AnnualPropertyTax | 120,000円 |
+| ExpenseInflationRate | 0（インフレなし） |
+
+**1年目の計算:**
+
+```
+年間実効賃料 = 100,000 × 12 × (1 − 0.05) = 1,140,000円
+年間経費     = 1,140,000 × 0.15 + 120,000 = 291,000円
+NOI          = 1,140,000 − 291,000 = 849,000円
+```
+
+**10年目（RentDeclineRate = 0.01 の場合）:**
+
+```
+年間実効賃料 = 1,140,000 × (1 − 0.01)^9 ≈ 1,041,600円
+年間経費     = 1,041,600 × 0.15 + 120,000 = 276,240円
+NOI          = 1,041,600 − 276,240 = 765,360円
+```
+
+賃料が下落しても `AnnualPropertyTax`（120,000円）は変わらないため、経費全体に占める固定資産税の比率が年々上昇する（経費の固定費化）。
+
+---
+
 ## 8%逆算ロジック（`calcRequired8pct`）
 
 **8%の根拠**: 不動産投資の実務において、表面利回り8%は「最低限の投資妥当性」を示す経験則的ベンチマーク。
