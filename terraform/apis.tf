@@ -20,6 +20,7 @@ locals {
     # Required for Cloud Functions Gen2 Pub/Sub event triggers (Eventarc backend).
     "eventarc.googleapis.com",
     "firestore.googleapis.com",
+    "cloudscheduler.googleapis.com",
   ])
 }
 
