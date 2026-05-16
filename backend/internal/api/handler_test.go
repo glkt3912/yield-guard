@@ -1692,3 +1692,143 @@ func TestGetRentStats_FetchError(t *testing.T) {
 		t.Errorf("expected null response on error, got %s", body)
 	}
 }
+
+// ---- GetRentDeclineHint ----
+
+func TestGetRentDeclineHint_MissingArea(t *testing.T) {
+	r := newTestRouter(&mockMLITClient{}, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment/rent-decline-hint", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetRentDeclineHint_AllYearsAPIError_Returns502(t *testing.T) {
+	client := &mockMLITClient{
+		appraisalFunc: func(_ context.Context, _, _ string, _ int, _ string) ([]domain.LandAppraisalItem, error) {
+			return nil, errors.New("upstream API error")
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment/rent-decline-hint?area=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502 when all years fail, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetRentDeclineHint_DecliningTrend_ReturnsBasisLandAppraisal(t *testing.T) {
+	// Provide enough data points (>= 5) across multiple years with declining prices.
+	// appraisalFunc is called concurrently for multiple years, so no shared mutable state here.
+	client := &mockMLITClient{
+		appraisalFunc: func(_ context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error) {
+			// Return declining prices: earlier years have higher prices.
+			basePrice := float64(1_000_000 - (year-2022)*20_000)
+			return []domain.LandAppraisalItem{
+				{Year: year, PricePerSqm: basePrice, ChangeRate: -0.02, District: "千代田"},
+				{Year: year, PricePerSqm: basePrice * 0.98, ChangeRate: -0.02, District: "中央"},
+			}, nil
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment/rent-decline-hint?area=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var hint domain.RentDeclineHint
+	if err := json.NewDecoder(w.Body).Decode(&hint); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if hint.Basis != "land_appraisal" {
+		t.Errorf("expected basis='land_appraisal', got %q", hint.Basis)
+	}
+	if hint.HintRate <= 0 {
+		t.Errorf("expected hintRate > 0 for declining trend, got %f", hint.HintRate)
+	}
+	if hint.FallbackUsed {
+		t.Error("expected FallbackUsed=false for land_appraisal basis")
+	}
+}
+
+func TestGetRentDeclineHint_RisingTrend_ReturnsFallback(t *testing.T) {
+	// Provide enough data across multiple years with rising prices → cagr >= 0 → fallback.
+	client := &mockMLITClient{
+		appraisalFunc: func(_ context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error) {
+			// Rising prices: later years have higher prices.
+			basePrice := float64(800_000 + (year-2022)*30_000)
+			return []domain.LandAppraisalItem{
+				{Year: year, PricePerSqm: basePrice, ChangeRate: 0.03, District: "千代田"},
+				{Year: year, PricePerSqm: basePrice * 1.02, ChangeRate: 0.03, District: "中央"},
+			}, nil
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment/rent-decline-hint?area=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var hint domain.RentDeclineHint
+	if err := json.NewDecoder(w.Body).Decode(&hint); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if hint.Basis != "fallback" {
+		t.Errorf("expected basis='fallback' for rising trend, got %q", hint.Basis)
+	}
+	if !hint.FallbackUsed {
+		t.Error("expected FallbackUsed=true for rising trend")
+	}
+}
+
+func TestGetRentDeclineHint_InsufficientData_ReturnsFallback(t *testing.T) {
+	// Return fewer than 5 data points total across all years.
+	// appraisalFunc is called concurrently for multiple years, so no shared mutable state here.
+	client := &mockMLITClient{
+		appraisalFunc: func(_ context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error) {
+			// Only return data for one specific year to keep total count < 5.
+			if year == 2024 {
+				return []domain.LandAppraisalItem{
+					{Year: year, PricePerSqm: 900_000, ChangeRate: -0.01, District: "千代田"},
+				}, nil
+			}
+			return nil, errors.New("no data")
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment/rent-decline-hint?area=13", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var hint domain.RentDeclineHint
+	if err := json.NewDecoder(w.Body).Decode(&hint); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if hint.Basis != "fallback" {
+		t.Errorf("expected basis='fallback' for insufficient data, got %q", hint.Basis)
+	}
+	if !hint.FallbackUsed {
+		t.Error("expected FallbackUsed=true for insufficient data")
+	}
+	if hint.DataPointCount >= 5 {
+		t.Errorf("expected DataPointCount < 5, got %d", hint.DataPointCount)
+	}
+}
