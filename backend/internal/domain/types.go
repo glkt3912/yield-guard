@@ -170,7 +170,7 @@ func (i *InvestmentInput) Validate() error {
 	}
 	if i.RentDeclineRate < 0 || i.RentDeclineRate > 0.2 {
 		return fmt.Errorf(
-			"RentDeclineRate(%.3f) must be between 0.0 and 0.2",
+			"rentDeclineRate は 0.0〜0.2 の範囲で指定してください（指定値: %.3f）",
 			i.RentDeclineRate,
 		)
 	}

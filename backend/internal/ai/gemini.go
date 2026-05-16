@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	aiCacheTTL         = 24 * time.Hour
-	aiCallTimeout      = 5 * time.Second
-	defaultGeminiModel = "gemini-2.5-flash"
+	aiCacheTTL          = 24 * time.Hour
+	aiCacheEvictInterval = time.Hour
+	aiCallTimeout        = 5 * time.Second
+	defaultGeminiModel   = "gemini-2.5-flash"
 )
 
 const systemPrompt = `あなたは日本の不動産投資専門アドバイザーです。
@@ -73,9 +74,30 @@ func NewSummarizer() Summarizer {
 		slog.Warn("Gemini init failed, AI summary disabled", "error", err)
 		return noopSummarizer{}
 	}
-	return &GeminiSummarizer{
+	s := &GeminiSummarizer{
 		client:  client,
 		entries: make(map[string]cacheEntry),
+	}
+	go s.evictLoop()
+	return s
+}
+
+// evictLoop は期限切れエントリを定期削除する。
+// GeminiSummarizer は Cloud Run プロセスと同じライフサイクルを持つシングルトンであり、
+// goroutine はプロセス終了まで稼働し続けることを意図している。
+// テスト時は GEMINI_API_KEY が未設定のため noopSummarizer が返され、この goroutine は起動しない。
+func (s *GeminiSummarizer) evictLoop() {
+	ticker := time.NewTicker(aiCacheEvictInterval)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now()
+		s.mu.Lock()
+		for k, e := range s.entries {
+			if now.After(e.expiresAt) {
+				delete(s.entries, k)
+			}
+		}
+		s.mu.Unlock()
 	}
 }
 

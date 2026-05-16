@@ -18,6 +18,10 @@ import (
 	"github.com/yield-guard/backend/internal/mlit"
 )
 
+// areaDiscoveryLimit はエリア探索で並列取得する市区町村の上限数。
+// 全市区町村を対象にするとタイムアウトリスクがあるため制限する（東京都は62市区町村）。
+const areaDiscoveryLimit = 30
+
 // MLITClient は国交省APIクライアントのインターフェース（テスト時にモック注入可能）
 type MLITClient interface {
 	FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
@@ -138,8 +142,7 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 		err  error
 	}
 
-	// 上位30市区町村に絞る（全件だとタイムアウトリスク）
-	limit := 30
+	limit := areaDiscoveryLimit
 	if len(municipalities) < limit {
 		limit = len(municipalities)
 	}

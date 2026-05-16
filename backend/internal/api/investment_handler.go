@@ -145,7 +145,9 @@ func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 	c.JSON(http.StatusOK, hint)
 }
 
-// validateInvestmentInput は投資入力値の範囲チェックを行う
+// validateInvestmentInput は HTTP 境界での入力値の範囲チェックを行う。
+// ここでは Defaults() 適用前に必須フィールドと上限値を検証する。
+// クロスフィールド検証・ドメイン不変条件は Defaults() 後に呼ぶ input.Validate() が担う。
 func validateInvestmentInput(in domain.InvestmentInput) error {
 	if in.BuildingType != "" && !in.BuildingType.IsValid() {
 		return errors.New("buildingType が不正な値です")
@@ -186,9 +188,6 @@ func validateInvestmentInput(in domain.InvestmentInput) error {
 	if in.HoldingYears < 0 || in.HoldingYears > 50 {
 		return errors.New("holdingYears は 0〜50 年の範囲で指定してください")
 	}
-	if in.RentDeclineRate < 0 || in.RentDeclineRate > 0.2 {
-		return errors.New("rentDeclineRate は 0.0〜0.2 の範囲で指定してください")
-	}
 	// DiscountRate == 0 は「未指定」扱い: Defaults() で 0.05 に補完される
 	if in.DiscountRate < 0 || in.DiscountRate > 0.30 {
 		return errors.New("discountRate は 0〜30% の範囲で指定してください")
@@ -196,6 +195,7 @@ func validateInvestmentInput(in domain.InvestmentInput) error {
 	if in.PriceDeclineRate < 0 || in.PriceDeclineRate > 0.10 {
 		return errors.New("priceDeclineRate は 0〜10% の範囲で指定してください")
 	}
+	// depreciationMethod の名前妥当性のみ確認（建物への定率法禁止は domain.Validate() が検証）
 	if in.DepreciationMethod != "" &&
 		in.DepreciationMethod != domain.DepreciationMethodStraightLine &&
 		in.DepreciationMethod != domain.DepreciationMethodDecliningBalance {
