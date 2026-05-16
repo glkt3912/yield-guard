@@ -50,14 +50,16 @@ NOI（純収益）= 実効賃料収入 - 運営経費
 ## 取得費の算出
 
 ```
-取得費 = 土地取得費 + 建物簿価 + 取得時諸経費
-       = input.LandPrice + bookValueBuilding + miscExpenses
+取得費（税法上）= 土地取得費 + 建物簿価 + 取得時諸経費（MiscExpenseRate 分のみ）
+              = input.LandPrice + bookValueBuilding
+                + (input.LandPrice + input.BuildingCost) × input.MiscExpenseRate
 ```
 
 根拠: **所得税法 第38条** — 取得費に含まれる付随費用
 
 - 土地は減価償却されないため、**土地取得費はそのまま取得費**
-- 諸経費（`miscExpenses`）も取得費に算入可能
+- 印紙税・登記費用等の取得時諸経費（`MiscExpenseRate` 分）も取得費に算入可能
+- **融資諸費用（`loanFee = LoanAmount × LoanFeeRate`）は資金調達コストであり取得費に該当しない**（所得税法基本通達 38-8 参照）。`miscExpenses` 全体ではなく `MiscExpenseRate` 分のみを算入する。
 
 ---
 
