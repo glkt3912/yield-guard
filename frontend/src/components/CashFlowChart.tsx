@@ -71,7 +71,7 @@ function CashFlowChart({ result, equityInvested }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle data-testid="cashflow-chart-heading" className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-primary" />
           キャッシュフロー推移（35年）
         </CardTitle>

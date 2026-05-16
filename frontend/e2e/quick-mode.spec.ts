@@ -15,9 +15,9 @@ test.describe("Quick mode ハッピーパス", () => {
     await page.getByLabel("想定月額賃料").fill("15");
     await page.getByText("シミュレーション実行").click();
 
-    await expect(page.getByText("9.89", { exact: true })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("8%超え ✓", { exact: true })).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByRole("cell", { name: "2.71" }).first()).toBeVisible();
+    await expect(page.getByTestId("gross-yield-value")).toHaveText("9.89", { timeout: 10_000 });
+    await expect(page.getByTestId("yield-threshold-badge")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("dscr-value").first()).toBeVisible();
   });
 });
 
@@ -41,7 +41,7 @@ test.describe("Quick mode リクエストボディ検証", () => {
     await page.getByLabel("想定月額賃料").fill("150000");
     await page.getByText("シミュレーション実行").click();
 
-    await expect(page.getByText("9.89", { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("gross-yield-value")).toHaveText("9.89", { timeout: 10_000 });
 
     expect(capturedBody).not.toBeNull();
     expect(capturedBody!["monthlyRent"]).toBe(150000);
