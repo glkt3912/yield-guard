@@ -187,6 +187,67 @@ func TestAnalyze_ExitStrategy(t *testing.T) {
 		result.ExitNetProceeds, result.ExitTotalEquity)
 }
 
+// TestCalcExit_LoanFeeExcludedFromAcquisitionCost は融資諸費用(loanFee)が
+// 譲渡所得の取得費に算入されないことを検証する（#510）。
+//
+// 設計:
+//   - LoanFeeRate=0.02 → loanFee = 13,000,000 × 0.02 = 260,000円
+//   - loanFeeあり vs loanFeeなし でキャピタルゲインが一致すること
+//     （取得費に loanFee を含めていた場合はキャピタルゲインが小さくなる誤りが生じる）
+func TestCalcExit_LoanFeeExcludedFromAcquisitionCost(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		MonthlyRent:     120_000,
+		VacancyRate:     0.05,
+		LoanAmount:      13_000_000,
+		AnnualLoanRate:  0.015,
+		LoanYears:       35,
+		BuildingType:    BuildingTypeRC, // 47年 → 保有期間中も減価償却継続
+		ExpenseRate:     0.20,
+		IncomeTaxRate:   0.33,
+		HoldingYears:    6,
+		ExitYieldTarget: 0.06,
+	}
+
+	// loanFeeなし
+	withoutFee := base
+	withoutFee.LoanFeeRate = 0
+
+	// loanFeeあり: LoanAmount × 0.02 = 260,000円 が miscExpenses に加算される
+	withFee := base
+	withFee.LoanFeeRate = 0.02
+
+	r0 := Analyze(context.Background(), withoutFee)
+	r1 := Analyze(context.Background(), withFee)
+
+	// loanFeeは総投資額(TotalInvestment)に影響する
+	loanFee := base.LoanAmount * 0.02 // 260,000
+	if !approxEqual(r1.TotalInvestment, r0.TotalInvestment+loanFee, 1) {
+		t.Errorf("TotalInvestment差 = %.0f, want %.0f (loanFee)", r1.TotalInvestment-r0.TotalInvestment, loanFee)
+	}
+
+	// loanFeeは取得費（税法上）に含まれないため、キャピタルゲインは同一であるべき
+	if !approxEqual(r0.ExitCapitalGain, r1.ExitCapitalGain, 1) {
+		t.Errorf(
+			"ExitCapitalGain: loanFeeなし=%.0f, loanFeeあり=%.0f — 差=%.0f (loanFeeが取得費に算入されている)",
+			r0.ExitCapitalGain, r1.ExitCapitalGain, r0.ExitCapitalGain-r1.ExitCapitalGain,
+		)
+	}
+
+	// 同様に譲渡税も同一であるべき
+	if !approxEqual(r0.ExitTransferTax, r1.ExitTransferTax, 1) {
+		t.Errorf(
+			"ExitTransferTax: loanFeeなし=%.0f, loanFeeあり=%.0f — 差=%.0f",
+			r0.ExitTransferTax, r1.ExitTransferTax, r0.ExitTransferTax-r1.ExitTransferTax,
+		)
+	}
+
+	t.Logf("withoutFee: CapGain=%.0f, Tax=%.0f / withFee: CapGain=%.0f, Tax=%.0f",
+		r0.ExitCapitalGain, r0.ExitTransferTax, r1.ExitCapitalGain, r1.ExitTransferTax)
+}
+
 // TestAnalyze_StressTest はストレステスト（空室率・金利上昇）を検証する
 func TestAnalyze_StressTest(t *testing.T) {
 	base := InvestmentInput{

@@ -60,7 +60,7 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 	}
 
 	exitSalePrice, exitCapGain, exitTax, exitNet, exitEquity := calcExit(
-		input, sim.yearlyResults, sim.accumulatedDepreciation, yp.miscExpenses,
+		input, sim.yearlyResults, sim.accumulatedDepreciation,
 	)
 
 	criticalErrors := calcCriticalErrors(input, sim.deadCrossYear, dp.usefulLife)
@@ -78,7 +78,7 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 
 	equity := yp.totalInvestment - input.LoanAmount
 	irrNPV := calcIRRNPV(input, sim.yearlyResults, equity, exitNet,
-		exitSalePrice, sim.accumulatedDepreciation, yp.miscExpenses)
+		exitSalePrice, sim.accumulatedDepreciation)
 
 	multiExit := calcMultiExitComparison(input, sim.yearlyResults, yp.miscExpenses)
 
