@@ -65,6 +65,7 @@ interface ResultsSectionProps {
   onLoanMethodChange: (method: LoanMethod) => Promise<void>;
   onTileSelect: (lat: number, lng: number) => void;
   onApplyRecommend?: (vacancyRate: number, rentDeclineRate: number) => void;
+  loading?: boolean;
 }
 
 export function ResultsSection({
@@ -92,6 +93,7 @@ export function ResultsSection({
   onLoanMethodChange,
   onTileSelect,
   onApplyRecommend,
+  loading = false,
 }: ResultsSectionProps) {
   const [municipalityCenter, setMunicipalityCenter] = useState<{
     lat: number;
@@ -221,6 +223,7 @@ export function ResultsSection({
                 input={lastInput}
                 populationForecast={populationForecast}
                 landPriceStats={comparison?.stats ?? null}
+                isAnalyzing={loading}
               />
               <NegotiationPanel
                 result={result}

@@ -282,6 +282,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             onLoanMethodChange={handleLoanMethodChange}
             onTileSelect={setPropertyCoords}
             onApplyRecommend={handleApplyRecommend}
+            loading={loading}
           />
         </div>
       </main>
