@@ -40,8 +40,8 @@ import type {
 
 const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
 
-type ResultsTab = "overview" | "finance" | "loan" | "actions";
-const DEFAULT_RESULTS_TAB: ResultsTab = "overview";
+type ResultsTab = "finance" | "loan" | "actions";
+const DEFAULT_RESULTS_TAB: ResultsTab = "finance";
 
 interface ResultsSectionProps {
   activeTab: "simulation" | "area-discovery";
@@ -207,6 +207,34 @@ export function ResultsSection({
           )}
           <HazardAlertBanner hazardRisks={hazardRisks} externalUrbanRisks={externalUrbanRisks} />
 
+          {/* コンテキストパネル: データが揃い次第タブ外に常時表示 */}
+          {investmentScore && (
+            <InvestmentScoreCard
+              score={investmentScore}
+              populationChangeRate={populationForecast?.changeRate30yr}
+              onApplyRecommend={onApplyRecommend}
+            />
+          )}
+          {propertyLat !== undefined && (
+            <InvestmentScoreHeatmap
+              centerLat={propertyLat}
+              centerLng={propertyLng}
+              onTileSelect={onTileSelect}
+            />
+          )}
+          {comparison && (
+            <LandPriceAnalysis
+              comparison={comparison}
+              input={lastInput}
+              theoreticalPrice={theoreticalPrice}
+              stationRidership={stationRidership}
+              populationForecast={populationForecast}
+              landAppraisal={landAppraisal}
+              externalUrbanRisks={externalUrbanRisks}
+              hazardRisks={hazardRisks}
+            />
+          )}
+
           {/* 結果タブナビゲーション */}
           {result && (
             <div
@@ -215,7 +243,6 @@ export function ResultsSection({
               className="flex gap-1 rounded-lg border bg-muted/30 p-1 w-full sm:w-fit overflow-x-auto"
             >
               {[
-                { id: "overview" as ResultsTab, label: "概要" },
                 { id: "finance" as ResultsTab, label: "財務分析" },
                 { id: "loan" as ResultsTab, label: "ローン・交渉" },
                 { id: "actions" as ResultsTab, label: "詳細・アクション" },
@@ -237,39 +264,7 @@ export function ResultsSection({
             </div>
           )}
 
-          {/* Tab 1: 概要 */}
-          {result && resultsTab === "overview" && (
-            <div className="space-y-6">
-              {investmentScore && (
-                <InvestmentScoreCard
-                  score={investmentScore}
-                  populationChangeRate={populationForecast?.changeRate30yr}
-                  onApplyRecommend={onApplyRecommend}
-                />
-              )}
-              {propertyLat !== undefined && (
-                <InvestmentScoreHeatmap
-                  centerLat={propertyLat}
-                  centerLng={propertyLng}
-                  onTileSelect={onTileSelect}
-                />
-              )}
-              {comparison && (
-                <LandPriceAnalysis
-                  comparison={comparison}
-                  input={lastInput}
-                  theoreticalPrice={theoreticalPrice}
-                  stationRidership={stationRidership}
-                  populationForecast={populationForecast}
-                  landAppraisal={landAppraisal}
-                  externalUrbanRisks={externalUrbanRisks}
-                  hazardRisks={hazardRisks}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Tab 2: 財務分析 */}
+          {/* Tab: 財務分析 */}
           {result && lastInput && resultsTab === "finance" && (
             <div className="space-y-6">
               <YieldAnalysis
