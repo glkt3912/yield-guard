@@ -130,6 +130,44 @@ export async function downloadReportPDF(
   // Limit rows to prevent unbounded table generation
   const cfRows: YearlyResult[] = result.yearlyResults.slice(0, Math.min(input.holdingYears, 10));
 
+  // ── StatusSummary level (mirrors StatusSummary.tsx getStatus logic) ──
+  const statusLevel: "OK" | "CAUTION" | "RISK" = result.criticalErrors.some(
+    (e) => e.status === "REJECT"
+  )
+    ? "RISK"
+    : result.criticalErrors.some((e) => e.status === "WARNING")
+      ? "CAUTION"
+      : "OK";
+  const statusMeta = {
+    OK: { label: "OK", color: "#16a34a" },
+    CAUTION: { label: "注意", color: "#d97706" },
+    RISK: { label: "リスク", color: "#dc2626" },
+  } as const;
+
+  // ── KpiStrip values (mirrors KpiStrip.tsx logic) ──
+  const grossYieldPct = result.grossYield * 100;
+  const yieldTarget = input.yieldTarget ?? 0.08;
+  const yieldDiff = grossYieldPct - yieldTarget * 100;
+  const yieldDiffStr = (yieldDiff >= 0 ? "+" : "") + yieldDiff.toFixed(2) + "pp vs 目標";
+
+  const dscrDiff = result.dscr - 1.0;
+  const dscrDiffStr = (dscrDiff >= 0 ? "+" : "") + dscrDiff.toFixed(2) + " vs 1.0";
+
+  const dcYear = result.deadCrossYear > 0 ? `${result.deadCrossYear}年目` : "なし";
+  const dcSub =
+    result.deadCrossYear > 0
+      ? result.deadCrossYear > input.holdingYears
+        ? "保有期間外（安全）"
+        : "保有期間内に発生"
+      : "デッドクロスなし";
+
+  const equityMan = Math.round(result.exitTotalEquity / 10_000);
+  const equityStr =
+    Math.abs(equityMan) >= 10_000
+      ? `${(equityMan / 10_000).toFixed(1)}億円`
+      : `${equityMan.toLocaleString()}万円`;
+  const equitySub = result.exitTotalEquity >= 0 ? "出口時プラス" : "出口時マイナス";
+
   const thCell = (text: string, align: "left" | "right" | "center" = "right") => ({
     text,
     fontSize: 8,
@@ -223,6 +261,127 @@ export async function downloadReportPDF(
       infoRow("分析実施日", date),
       infoRow("総投資額", fmtYen(result.totalInvestment)),
       infoRow("表面利回り", fmtPct(result.grossYield)),
+
+      // ── 投資判定サマリー (StatusSummary + KpiStrip) ─────────────────
+      {
+        text: "投資判定サマリー",
+        fontSize: 9,
+        bold: true,
+        color: C.muted,
+        marginBottom: 8,
+        marginTop: 16,
+      },
+      // Verdict badge row
+      {
+        columns: [
+          {
+            text: `[${statusMeta[statusLevel].label}]`,
+            fontSize: 14,
+            bold: true,
+            color: statusMeta[statusLevel].color,
+            width: "auto",
+            noWrap: true,
+          },
+          {
+            text:
+              result.criticalErrors.length > 0
+                ? result.criticalErrors.map((e) => sanitize(e.message)).join("　")
+                : `利回り ${fmtPct(result.grossYield)} / DSCR ${result.dscr.toFixed(2)} / デッドクロス ${dcYear}`,
+            fontSize: 8,
+            color: C.text,
+            margin: [8, 2, 0, 0],
+          },
+        ],
+        marginBottom: 10,
+      },
+      // KPI strip: 4 cells in a single row
+      {
+        columns: [
+          {
+            stack: [
+              { text: "表面利回り", fontSize: 7, color: C.muted, noWrap: true },
+              {
+                text: `${grossYieldPct.toFixed(2)}%`,
+                fontSize: 13,
+                bold: true,
+                color: yieldDiff >= 0 ? C.safe : C.danger,
+                noWrap: true,
+              },
+              {
+                text: yieldDiffStr,
+                fontSize: 6.5,
+                color: yieldDiff >= 0 ? C.safe : C.danger,
+                noWrap: true,
+              },
+            ],
+            margin: [0, 0, 6, 0],
+          },
+          {
+            stack: [
+              { text: "DSCR（1年目）", fontSize: 7, color: C.muted, noWrap: true },
+              {
+                text: result.dscr.toFixed(2),
+                fontSize: 13,
+                bold: true,
+                color: result.dscr >= 1.0 ? C.safe : C.danger,
+                noWrap: true,
+              },
+              {
+                text: dscrDiffStr,
+                fontSize: 6.5,
+                color: dscrDiff >= 0 ? C.safe : C.danger,
+                noWrap: true,
+              },
+            ],
+            margin: [0, 0, 6, 0],
+          },
+          {
+            stack: [
+              { text: "デッドクロス", fontSize: 7, color: C.muted, noWrap: true },
+              {
+                text: dcYear,
+                fontSize: 13,
+                bold: true,
+                color:
+                  result.deadCrossYear <= 0 || result.deadCrossYear > input.holdingYears
+                    ? C.safe
+                    : C.danger,
+                noWrap: true,
+              },
+              {
+                text: dcSub,
+                fontSize: 6.5,
+                color:
+                  result.deadCrossYear <= 0 || result.deadCrossYear > input.holdingYears
+                    ? C.safe
+                    : C.danger,
+                noWrap: true,
+              },
+            ],
+            margin: [0, 0, 6, 0],
+          },
+          {
+            stack: [
+              { text: "出口 Equity", fontSize: 7, color: C.muted, noWrap: true },
+              {
+                text: equityStr,
+                fontSize: 13,
+                bold: true,
+                color: result.exitTotalEquity >= 0 ? C.safe : C.danger,
+                noWrap: true,
+              },
+              {
+                text: equitySub,
+                fontSize: 6.5,
+                color: result.exitTotalEquity >= 0 ? C.safe : C.danger,
+                noWrap: true,
+              },
+            ],
+            margin: [0, 0, 0, 0],
+          },
+        ],
+        marginBottom: 12,
+      },
 
       // ── Page 2: Summary (Executive) ────────────────────────────────
       sectionTitle("P1 - 投資サマリー", true),
@@ -498,6 +657,136 @@ export async function downloadReportPDF(
                 ]
               : []),
           ]
+        : []),
+
+      // ── Page 6: Multi-Exit Comparison ─────────────────────────────
+      ...(result.multiExitComparison && result.multiExitComparison.length > 0
+        ? (() => {
+            const exitRows = result.multiExitComparison as NonNullable<
+              typeof result.multiExitComparison
+            >;
+            const maxEquity = Math.max(...exitRows.map((r) => r.exitEquity));
+            const maxEquityIdx = exitRows.findIndex((r) => r.exitEquity === maxEquity);
+
+            const exitThCell = (text: string, align: "left" | "right" | "center" = "right") => ({
+              text,
+              fontSize: 7.5,
+              bold: true,
+              color: C.white,
+              fillColor: C.headerBg,
+              alignment: align,
+            });
+
+            const exitTdCell = (
+              text: string,
+              rowIdx: number,
+              colIdx: number,
+              options: { bold?: boolean; color?: string } = {}
+            ) => ({
+              text,
+              fontSize: 7.5,
+              alignment: "right" as const,
+              bold: options.bold ?? false,
+              color: options.color ?? C.text,
+              fillColor:
+                colIdx === maxEquityIdx ? "#f0fdf4" : rowIdx % 2 === 0 ? C.rowEven : C.white,
+            });
+
+            // Header row: 保有年数 column + one column per exit year
+            const headerRow = [
+              exitThCell("項目", "left"),
+              ...exitRows.map((r, ci) => ({
+                stack: [
+                  {
+                    text: `${r.year}年`,
+                    fontSize: 7.5,
+                    bold: true,
+                    color: C.white,
+                    alignment: "right" as const,
+                  },
+                  ...(r.isShortTermWarn
+                    ? [
+                        {
+                          text: "短期譲渡税",
+                          fontSize: 6,
+                          color: "#fef3c7",
+                          alignment: "right" as const,
+                          bold: false,
+                        },
+                      ]
+                    : []),
+                ],
+                fillColor: ci === maxEquityIdx ? "#1a6b3a" : C.headerBg,
+                alignment: "right" as const,
+              })),
+            ];
+
+            type DataRowDef = {
+              label: string;
+              getValue: (r: (typeof exitRows)[number]) => string;
+              isEquityRow?: boolean;
+            };
+
+            const dataRows: DataRowDef[] = [
+              { label: "想定売却価格", getValue: (r) => fmtYen(r.salePrice) },
+              { label: "譲渡税率", getValue: (r) => fmtPct(r.transferTaxRate) },
+              { label: "譲渡税額", getValue: (r) => fmtYen(r.transferTax) },
+              { label: "残債残高", getValue: (r) => fmtYen(r.remainingLoan) },
+              { label: "累積税引後CF", getValue: (r) => fmtYen(r.cumulativeCf) },
+              {
+                label: "出口エクイティ合計",
+                getValue: (r) => fmtYen(r.exitEquity),
+                isEquityRow: true,
+              },
+              {
+                label: "IRR",
+                getValue: (r) => (r.irr != null ? fmtPct(r.irr) : "－"),
+              },
+            ];
+
+            const tableBody = [
+              headerRow,
+              ...dataRows.map((def, rowIdx) => [
+                {
+                  text: def.label,
+                  fontSize: 7.5,
+                  alignment: "left" as const,
+                  color: C.text,
+                  fillColor: rowIdx % 2 === 0 ? C.rowEven : C.white,
+                },
+                ...exitRows.map((r, colIdx) => {
+                  const isMaxCol = colIdx === maxEquityIdx;
+                  const isEquityRow = def.isEquityRow ?? false;
+                  return exitTdCell(def.getValue(r), rowIdx, colIdx, {
+                    bold: isMaxCol && isEquityRow,
+                    color: isMaxCol && isEquityRow ? "#15803d" : C.text,
+                  });
+                }),
+              ]),
+            ];
+
+            const colWidths = ["*", ...exitRows.map(() => "auto" as const)];
+
+            return [
+              sectionTitle("P5 - 複数保有年数 出口比較", true),
+              {
+                table: {
+                  headerRows: 1,
+                  widths: colWidths,
+                  body: tableBody,
+                },
+                layout: tableLayout,
+                marginBottom: 10,
+              },
+              {
+                text: "※ 緑ハイライト列が出口エクイティ最大。短期譲渡税（保有5年以下）は税率39.63%、長期（5年超）は20.315%が適用されます。",
+                fontSize: 7,
+                color: C.muted,
+                italics: true,
+                marginBottom: 6,
+              },
+            ];
+          })()
         : []),
     ],
   };
