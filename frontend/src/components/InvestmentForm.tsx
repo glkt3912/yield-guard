@@ -80,6 +80,8 @@ function validateQuick(quickTotalPriceMan: string, input: InvestmentInput): Form
     e.quickTotalPrice = "1〜100億円の範囲で入力してください";
   if (input.monthlyRent <= 0) e.monthlyRent = "正の値を入力してください";
   if (input.loanAmount < 0) e.loanAmount = "0以上の値を入力してください";
+  if (input.yieldTarget <= 0 || input.yieldTarget > 0.5)
+    e.yieldTarget = "目標利回りは0〜50%の範囲で入力してください";
   return e;
 }
 
