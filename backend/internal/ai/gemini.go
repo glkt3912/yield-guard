@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	aiCacheTTL         = 24 * time.Hour
-	aiCallTimeout      = 5 * time.Second
-	defaultGeminiModel = "gemini-2.5-flash"
+	aiCacheTTL          = 24 * time.Hour
+	aiCacheEvictInterval = time.Hour
+	aiCallTimeout        = 5 * time.Second
+	defaultGeminiModel   = "gemini-2.5-flash"
 )
 
 const systemPrompt = `あなたは日本の不動産投資専門アドバイザーです。
@@ -73,9 +74,26 @@ func NewSummarizer() Summarizer {
 		slog.Warn("Gemini init failed, AI summary disabled", "error", err)
 		return noopSummarizer{}
 	}
-	return &GeminiSummarizer{
+	s := &GeminiSummarizer{
 		client:  client,
 		entries: make(map[string]cacheEntry),
+	}
+	go s.evictLoop()
+	return s
+}
+
+func (s *GeminiSummarizer) evictLoop() {
+	ticker := time.NewTicker(aiCacheEvictInterval)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now()
+		s.mu.Lock()
+		for k, e := range s.entries {
+			if now.After(e.expiresAt) {
+				delete(s.entries, k)
+			}
+		}
+		s.mu.Unlock()
 	}
 }
 
