@@ -13,3 +13,11 @@ resource "google_firestore_field" "mlit_cache_ttl" {
   field      = "expiresAt"
   ttl_config {}
 }
+
+resource "google_firestore_field" "geocode_cache_ttl" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "geocode_cache"
+  field      = "expiresAt"
+  ttl_config {}
+}
