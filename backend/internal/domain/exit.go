@@ -56,12 +56,15 @@ func calcExit(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciat
 		bookValueBuilding = 0
 	}
 
-	// 取得費 = 土地取得費 + 建物簿価 + 取得時諸経費
+	// 取得費（税法上）= 土地取得費 + 建物簿価 + 取得時諸経費（MiscExpenseRate分のみ）
 	// 根拠: 所得税法38条（取得費に含まれる付随費用）
-	acquisitionCost := input.LandPrice + bookValueBuilding + miscExpenses
+	// 注意: 融資諸費用（loanFee = LoanAmount × LoanFeeRate）は資金調達コストであり
+	//       税法上の取得費に該当しないため除外する（所得税法基本通達38-8参照）。
+	acquisitionCostForTax := input.LandPrice + bookValueBuilding +
+		(input.LandPrice+input.BuildingCost)*input.MiscExpenseRate
 
-	// 譲渡所得 = 売却価格 - 売却費用 - 取得費
-	capitalGain = salePrice - sellExpenses - acquisitionCost
+	// 譲渡所得 = 売却価格 - 売却費用 - 取得費（税法上）
+	capitalGain = salePrice - sellExpenses - acquisitionCostForTax
 
 	if capitalGain > 0 {
 		// 投資用物件の譲渡所得税: 保有5年超=長期(20.315%)、5年以下=短期(39.63%)の2段階
@@ -98,8 +101,10 @@ func calcTerminalValueWithDecline(
 	exitYear := yearly[holdIdx]
 	sellExpenses := (adjustedSalePrice*0.03+60_000) * 1.10
 	bookValueBuilding := math.Max(input.BuildingCost-accumulatedDepreciation, 0)
-	acquisitionCost := input.LandPrice + bookValueBuilding + miscExpenses
-	capGain := adjustedSalePrice - sellExpenses - acquisitionCost
+	// 取得費（税法上）: 融資諸費用(loanFee)は資金調達コストのため除外し MiscExpenseRate 分のみ算入
+	acquisitionCostForTax := input.LandPrice + bookValueBuilding +
+		(input.LandPrice+input.BuildingCost)*input.MiscExpenseRate
+	capGain := adjustedSalePrice - sellExpenses - acquisitionCostForTax
 	var transferTax float64
 	if capGain > 0 {
 		var taxRate float64
@@ -185,11 +190,12 @@ func calcMultiExitComparison(input InvestmentInput, yearly []YearlyResult, miscE
 			bookValueBuilding = 0
 		}
 
-		// 取得費 = 土地 + 建物簿価 + 諸経費
-		acquisitionCost := input.LandPrice + bookValueBuilding + miscExpenses
+		// 取得費（税法上）= 土地 + 建物簿価 + MiscExpenseRate分のみ（融資諸費用は除外）
+		acquisitionCostForTax := input.LandPrice + bookValueBuilding +
+			(input.LandPrice+input.BuildingCost)*input.MiscExpenseRate
 
-		// 譲渡所得 = 売却価格 - 売却費用 - 取得費
-		capitalGain := salePrice - sellExpenses - acquisitionCost
+		// 譲渡所得 = 売却価格 - 売却費用 - 取得費（税法上）
+		capitalGain := salePrice - sellExpenses - acquisitionCostForTax
 
 		// 譲渡税率: 5年以下=短期(39.63%)、5年超=長期(20.315%)
 		var taxRate float64
