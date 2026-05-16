@@ -87,10 +87,11 @@ const equityInvested = result.totalInvestment - input.loanAmount
 
 `result.dscr` の値に応じてバッジの色を変化させる。
 
-| 条件 | バッジ | 色 |
-|------|--------|-----|
-| `dscr >= 1.0` | 「安全（≥ 1.0）」 + `CheckCircle` | 緑 |
-| `dscr < 1.0` | 「危険（< 1.0）」 + `AlertTriangle` | 赤 |
+| 条件 | バッジ | アイコン | 色 |
+|------|--------|----------|-----|
+| `dscr >= 1.2` | 「安全（≥ 1.2）」 | `CheckCircle2` | 緑 |
+| `1.0 <= dscr < 1.2` | 「注意（1.0〜1.2）」 | `AlertTriangle` | 黄 |
+| `dscr < 1.0` | 「危険（< 1.0）」 | `XCircle` | 赤 |
 
 表示値は小数点2桁（`.toFixed(2)`）。副題に「NOI ÷ 年間返済額（1年目）」を表示。
 
@@ -105,7 +106,7 @@ const equityInvested = result.totalInvestment - input.loanAmount
 | LTV | `formatPct(row.ltv)` |
 | 自己資金 | `formatMan(row.equity)` |
 | 借入額 | `formatMan(row.loanAmount)` |
-| DSCR | `row.dscr.toFixed(2)` — `>= 1.0`: 緑文字 / `< 1.0`: 赤文字 |
+| DSCR | `row.dscr.toFixed(2)` — `>= 1.2`: 緑文字 / `1.0〜1.2`: 黄文字 / `< 1.0`: 赤文字 |
 | 年間CF | `formatMan(row.annualCF)` — 負値は赤文字 |
 | CF利回り | `formatPct(row.cfYield)` — 負値は赤文字 |
 
@@ -282,6 +283,7 @@ Quickモードの既存履歴（`yield-guard:quick-history`）とはキーが分
 - `populationForecast?: PopulationForecastResult | null`
 - `landAppraisal?: AppraisalComparisonResult | null`
 - `externalUrbanRisks?: UrbanRisk[] | null` — `GET /api/urban-risks` 由来（XKT003/020/030/XST001）
+- `hazardRisks?: UrbanRisk[] | null` — ハザードリスクデータ（`GET /api/urban-risks` 由来）。専用パネルでフラッド・津波・土砂等のリスク情報を表示
 
 **表示の3状態**:
 
