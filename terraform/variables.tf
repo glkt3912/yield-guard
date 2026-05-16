@@ -31,12 +31,6 @@ variable "vercel_frontend_url" {
   type        = string
 }
 
-variable "google_maps_api_key" {
-  description = "Google Maps Geocoding API key for server-side address geocoding"
-  type        = string
-  sensitive   = true
-}
-
 variable "gemini_api_key" {
   description = "Google AI Studio API key for Gemini AI investment summary"
   type        = string
