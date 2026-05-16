@@ -207,27 +207,25 @@ NOI          = 1,041,600 − 276,240 = 765,360円
 
 ---
 
-## 8%逆算ロジック（`calcRequired8pct`）
+## 目標利回り逆算ロジック（`calcRequiredForTarget`）
 
-**8%の根拠**: 不動産投資の実務において、表面利回り8%は「最低限の投資妥当性」を示す経験則的ベンチマーク。
-
-> **根拠・出典**: 日本不動産研究所「不動産投資家調査」（各年次）によると、住宅系投資物件の期待利回り（NOI利回り）は首都圏で5〜6%台、地方圏で6〜8%台。表面利回りはこれより1〜2%高くなるため、8%を「許容できる最低ライン」として業界で広く参照される。本ツールはこの8%をハードコードした警告閾値として採用している。
-
-8%境界線（`targetYield8pct = 0.08`）を基準に2つの逆算値を返す。
+`input.YieldTarget`（デフォルト 0.08 = 8%）を基準に2つの逆算値を返す（`backend/internal/domain/sensitivity.go`）。
 
 ```go
-// 目標年収 = 総投資額 × 8%
-requiredMonthlyRent = (totalInvestment × 0.08) / 12
+target := input.YieldTarget          // 目標表面利回り（例: 0.08）
 
-// 現賃料で8%達成に必要な総投資額
-requiredTotalInvestment = (MonthlyRent × 12) / 0.08
+// 目標年収 = 総投資額 × 目標利回り
+requiredMonthlyRent = (totalInvestment × target) / 12
+
+// 現賃料で目標利回り達成に必要な総投資額
+requiredTotalInvestment = (MonthlyRent × 12) / target
 
 // 過剰投資額（削減が必要な額）
 costReduction = max(totalInvestment - requiredTotalInvestment, 0)
 ```
 
-- `RequiredMonthlyRent`: 現在の投資額で8%を達成するために必要な月額賃料
-- `RequiredCostReduction`: 現在の賃料で8%を達成するために土地 **または** 建築費いずれか一方を削減すべき額
+- `RequiredMonthlyRent`: 現在の投資額で目標利回りを達成するために必要な月額賃料
+- `RequiredCostReduction`: 現在の賃料で目標利回りを達成するために土地 **または** 建築費いずれか一方を削減すべき額
 
 ---
 
@@ -445,8 +443,8 @@ yearAnnualRent = baseAnnualRent × (1 - RentDeclineRate)^y
 | `NetYield` | 実質利回り |
 | `IsAboveYieldTarget` | 表面利回り ≥ 目標利回り（`yieldTarget`）かどうか |
 | `YieldTarget` | 判定に使用した目標利回り（例: 0.08 = 8%） |
-| `RequiredCostReduction` | 8%達成に必要なコスト削減額（いずれか一方） |
-| `RequiredMonthlyRent` | 8%達成に必要な月額賃料 |
+| `RequiredCostReduction` | 目標利回り達成に必要なコスト削減額（いずれか一方） |
+| `RequiredMonthlyRent` | 目標利回り達成に必要な月額賃料 |
 | `DeadCrossYear` | デッドクロス初年度（-1 = 35年以内なし） |
 | `YearlyResults` | 年次結果配列（`max(LoanYears, HoldingYears, 35)` 件） |
 | `ExitSalePrice` | 売却価格（NOI / ExitYieldTarget） |
