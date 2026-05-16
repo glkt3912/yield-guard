@@ -753,11 +753,44 @@ if diffFromMedian > stats.MedianTsubo * 0.10 {
 
 ## テスト (`client_test.go`)
 
-`net/http/httptest` のモックサーバを使い、実ネットワークなしで全ロジックを検証する。
+PR #566 で `net/http/httptest` ベースのモックサーバを使ったユニットテストを大幅拡充した。全 14+ Fetch 関数に対してテストが存在し、実ネットワーク・APIキー不要で全ロジックを検証できる。
+
+### テストパターン（各 Fetch 関数共通）
+
+タイル座標系の各 Fetch 関数（`FetchStationRidership`、`FetchFloodHazard`、`FetchUrbanZoning` 等）は以下の5ケースを網羅する：
+
+| ケース | 内容 |
+|--------|------|
+| `Success` | `httptest.NewServer` でモックサーバを立て、正常GeoJSONを返す。パス・クエリパラメータを検証しドメイン型への変換を確認する |
+| `4xxNoRetry` | 4xx レスポンスで即エラーが返ること（リトライなし）を確認する |
+| `5xxError` | 5xx レスポンスでエラーが返ること（タイル系関数はリトライなし、`fetchTileGeoJSON` 共通ヘルパー経由）を確認する |
+| `ConnectionError` | サーバをあらかじめ閉じて接続拒否 → エラーが返ることを確認する |
+| `CacheHit` | 同一タイル座標で2回呼び出し → APIコールが1回のみであることを `apiCallCount` で確認する |
+
+### モックサーバパターン
+
+```go
+func newTestClient(serverURL string) *Client {
+    return &Client{httpClient: &http.Client{}, baseURL: serverURL, cache: newCache()}
+}
+
+ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    // パス・クエリパラメータのアサーション
+    // モックレスポンスの返却
+}))
+defer ts.Close()
+
+c := newTestClient(ts.URL)
+```
+
+`Client.baseURL` フィールドにモックサーバの URL を注入することで、実 MLIT API に接触せずに全 HTTP ロジックをテストできる。
+
+### ユニットテスト一覧
 
 | テスト | 内容 |
 |--------|------|
 | `TestParseFloat` | 全角数字・カンマ・接尾辞・空文字・浮動小数点・負数 |
+| `TestParseJapaneseYear` | 令和/平成/昭和/大正/明治の和暦変換・西暦・不正入力 |
 | `TestIsLandType` | 宅地(土地) / 非土地 / 空文字 |
 | `TestBuildLandPricesURL` | 必須パラメータ欠落エラー・quarter範囲外エラー・正常URL生成・cityオプション |
 | `TestParseTransactions` | フィルタリング・単価算出・PricePerTsubo換算・空スライス |
@@ -767,11 +800,36 @@ if diffFromMedian > stats.MedianTsubo * 0.10 {
 | `TestFetchLandPrices_NoRetryOn4xx` | 4xx → リトライなし即エラー |
 | `TestFetchLandPrices_ContextTimeout` | コンテキストタイムアウトでリトライ待機を中断 |
 | `TestFetchLandPrices_APIStatusNotOK` | status!=OK → 3回リトライ後エラー |
+| `TestFetchLandPrices_CacheHit` | 2回目がキャッシュから返り API は1回のみ |
+| `TestFetchLandPrices_CacheMissOnDifferentQuery` | クエリ違いは別キャッシュ（2回 API コール） |
+| `TestCache_TTLExpiry` | TTL 切れエントリが `get` 時に削除されること |
+| `TestCache_ReturnsCopy` | 返却スライス変更がキャッシュを汚染しないこと |
+| `TestCache_ConcurrentAccess` | 50 ゴルーチンの並行 get/set でデータレースなし（`-race` 検証） |
 | `TestFetchMunicipalities_Success` | XIT002 正常取得・パス/パラメータ検証 |
 | `TestFetchMunicipalities_EmptyArea` | area 空文字でエラー（HTTPリクエストなし） |
-| `TestFetchMunicipalities_CacheHit` | 2回目呼び出しがAPIコールなしでキャッシュから返る |
+| `TestFetchMunicipalities_CacheHit` | 2回目がキャッシュから返る |
 | `TestFetchMunicipalities_4xxNoRetry` | 4xx でエラー返却（リトライなし） |
+| `TestParseLandAppraisals_*` | city フィルタ・AnnouncedPrice フォールバック・ゼロ価格スキップ |
+| `TestFetchLandAppraisals_Success` | パス/パラメータ検証・正常取得 |
+| `TestFetchLandAppraisals_CacheHit` | キャッシュヒット |
+| `TestFetchLandAppraisals_4xxNoRetry` | 4xx でリトライなし |
 | `TestLatLngToTile` | WebMercator 変換の期待タイル座標（渋谷付近・赤道・東経180度） |
+| `TestTileToLatLng_RoundTrip` | LatLngToTile → TileToLatLng 往復でタイル内に収まること |
+| `TestFetchStationRidership_{Success,4xx,5xx,ConnectionError,CacheHit,InvalidJSON}` | XKT015 全5ケース＋InvalidJSON |
+| `TestParseStationRiderships_*` | 重複排除（最大乗降客数保持）・空駅名スキップ・最新年フォールバック |
+| `TestFetchPopulationForecast_{Success,4xx,5xx,ConnectionError,CacheHit,InvalidJSON}` | XKT013 全5ケース＋InvalidJSON |
+| `TestParsePopulationForecasts_*` | 空フィーチャ→nil・複数メッシュ合算 |
+| `TestFetchTileGeoJSON_InvalidJSON` | 共通ヘルパーの JSON デコードエラー |
+| `TestFetchLocationOptimization_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT003 全5ケース |
+| `TestFetchEmbankment_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT020 全5ケース |
+| `TestFetchUrbanRoad_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT030 全5ケース |
+| `TestFetchDisasterHistory_{Success,ShortDate,4xx,5xx,ConnectionError,CacheHit}` | XST001 全5ケース＋ShortDate（4文字未満→year=0） |
+| `TestFetchUrbanZoning_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT001 全5ケース |
+| `TestFetchLiquefaction_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT025 全5ケース |
+| `TestFetchFloodHazard_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT026 全5ケース |
+| `TestFetchStormHazard_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT027 全5ケース |
+| `TestFetchTsunamiHazard_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT028 全5ケース |
+| `TestFetchLandslideHazard_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT029 全5ケース |
 
 ```bash
 # ユニットテスト（モックサーバ使用・APIキー不要）
