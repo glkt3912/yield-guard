@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
@@ -24,6 +25,9 @@ import {
   AlertTriangle,
   XCircle,
   BarChart2,
+  Search,
+  Ban,
+  Home,
 } from "lucide-react";
 import type { WatchlistItem, WatchlistStatus, InvestmentResult } from "@/types/investment";
 import WatchlistCompareTable from "@/components/WatchlistCompareTable";
@@ -41,11 +45,18 @@ const STATUS_OPTIONS: { value: WatchlistStatus; label: string }[] = [
   { value: "購入済み", label: "購入済み" },
 ];
 
-const STATUS_BADGE: Record<WatchlistStatus, string> = {
-  検討中: "bg-blue-100 text-blue-800",
-  見送り: "bg-gray-100 text-gray-600",
-  購入済み: "bg-emerald-100 text-emerald-800",
-};
+const STATUS_BADGE_VARIANT: Record<WatchlistStatus, "default" | "warning" | "outline" | "success"> =
+  {
+    検討中: "default",
+    見送り: "outline",
+    購入済み: "success",
+  };
+
+function StatusIcon({ status }: { status: WatchlistStatus }) {
+  if (status === "検討中") return <Search className="h-3 w-3 shrink-0" />;
+  if (status === "見送り") return <Ban className="h-3 w-3 shrink-0" />;
+  return <Home className="h-3 w-3 shrink-0" />;
+}
 
 function loadLocalItems(): WatchlistItem[] {
   if (typeof window === "undefined") return [];
@@ -157,12 +168,20 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
                     migratedAt: serverTimestamp(),
                   })
                 )
-              ).catch((err) => {
-                console.error("[WatchlistPanel] migration failed:", err);
-              });
+              )
+                .then(() => {
+                  localStorage.setItem(migrationKey, uid);
+                  localStorage.removeItem(STORAGE_KEY);
+                })
+                .catch((err) => {
+                  console.error("[WatchlistPanel] migration failed:", err);
+                });
+            } else {
+              localStorage.setItem(migrationKey, uid);
             }
+          } else {
+            localStorage.setItem(migrationKey, uid);
           }
-          localStorage.setItem(migrationKey, uid);
         }
       },
       (err) => {
@@ -241,19 +260,28 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
   async function handleDeleteConfirm() {
     if (!pendingDeleteId || !user) return;
     const target = items.find((item) => item.id === pendingDeleteId);
+    const deletedId = pendingDeleteId;
     // Optimistic update
-    setItems((prev) => prev.filter((item) => item.id !== pendingDeleteId));
-    setSelectedIds((prev) => prev.filter((id) => id !== pendingDeleteId));
+    setItems((prev) => prev.filter((item) => item.id !== deletedId));
+    setSelectedIds((prev) => prev.filter((id) => id !== deletedId));
     setPendingDeleteId(null);
     toast({
       message: target ? `「${target.name}」を削除しました` : "削除しました",
       variant: "warning",
     });
     try {
-      const d = itemDoc(user.uid, pendingDeleteId);
+      const d = itemDoc(user.uid, deletedId);
       if (d) await deleteDoc(d);
     } catch (err) {
       console.error("[WatchlistPanel] deleteDoc failed:", err);
+      // Roll back optimistic delete on error
+      if (target) {
+        setItems((prev) => {
+          const already = prev.some((item) => item.id === target.id);
+          return already ? prev : [target, ...prev];
+        });
+      }
+      toast({ message: "削除に失敗しました。再度お試しください。", variant: "danger" });
     }
   }
 
@@ -405,11 +433,13 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
                           >
                             {item.name}
                           </span>
-                          <span
-                            className={`inline-flex shrink-0 rounded px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[item.status]}`}
+                          <Badge
+                            variant={STATUS_BADGE_VARIANT[item.status]}
+                            className="flex shrink-0 items-center gap-1"
                           >
+                            <StatusIcon status={item.status} />
                             {item.status}
-                          </span>
+                          </Badge>
                         </div>
                         {item.metrics && (
                           <div className="flex flex-wrap gap-2 pt-0.5">
