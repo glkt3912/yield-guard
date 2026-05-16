@@ -753,11 +753,46 @@ if diffFromMedian > stats.MedianTsubo * 0.10 {
 
 ## テスト (`client_test.go`)
 
-`net/http/httptest` のモックサーバを使い、実ネットワークなしで全ロジックを検証する。
+PR #566 で `net/http/httptest` ベースのモックサーバを使ったユニットテストを大幅拡充した。全 14+ Fetch 関数に対してテストが存在し、実ネットワーク・APIキー不要で全ロジックを検証できる。
+
+### テストパターン（各 Fetch 関数共通）
+
+タイル座標系の各 Fetch 関数（`FetchStationRidership`、`FetchFloodHazard`、`FetchUrbanZoning` 等）は以下の5ケースを網羅する：
+
+| ケース | 内容 |
+|--------|------|
+| `Success` | `httptest.NewServer` でモックサーバを立て、正常GeoJSONを返す。パス・クエリパラメータを検証しドメイン型への変換を確認する |
+| `4xxNoRetry` | 4xx レスポンスで即エラーが返ること（リトライなし）を確認する |
+| `5xxError` | 5xx レスポンスでエラーが返ること（タイル系関数はリトライなし、`fetchTileGeoJSON` 共通ヘルパー経由）を確認する |
+
+> ※ タイル系関数（`fetchTileGeoJSON` 経由）はリトライなし。`FetchLandPrices`・`FetchLandAppraisals`・`FetchRentStats` などXCT/XIT系は5xxで最大3回指数バックオフリトライを行う。
+| `ConnectionError` | サーバをあらかじめ閉じて接続拒否 → エラーが返ることを確認する |
+| `CacheHit` | 同一タイル座標で2回呼び出し → APIコールが1回のみであることを `apiCallCount` で確認する |
+
+### モックサーバパターン
+
+```go
+func newTestClient(serverURL string) *Client {
+    return &Client{httpClient: &http.Client{}, baseURL: serverURL, cache: newCache()}
+}
+
+ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    // パス・クエリパラメータのアサーション
+    // モックレスポンスの返却
+}))
+defer ts.Close()
+
+c := newTestClient(ts.URL)
+```
+
+`Client.baseURL` フィールドにモックサーバの URL を注入することで、実 MLIT API に接触せずに全 HTTP ロジックをテストできる。
+
+### ユニットテスト一覧
 
 | テスト | 内容 |
 |--------|------|
 | `TestParseFloat` | 全角数字・カンマ・接尾辞・空文字・浮動小数点・負数 |
+| `TestParseJapaneseYear` | 令和/平成/昭和/大正/明治の和暦変換・西暦・不正入力 |
 | `TestIsLandType` | 宅地(土地) / 非土地 / 空文字 |
 | `TestBuildLandPricesURL` | 必須パラメータ欠落エラー・quarter範囲外エラー・正常URL生成・cityオプション |
 | `TestParseTransactions` | フィルタリング・単価算出・PricePerTsubo換算・空スライス |
@@ -767,11 +802,36 @@ if diffFromMedian > stats.MedianTsubo * 0.10 {
 | `TestFetchLandPrices_NoRetryOn4xx` | 4xx → リトライなし即エラー |
 | `TestFetchLandPrices_ContextTimeout` | コンテキストタイムアウトでリトライ待機を中断 |
 | `TestFetchLandPrices_APIStatusNotOK` | status!=OK → 3回リトライ後エラー |
+| `TestFetchLandPrices_CacheHit` | 2回目がキャッシュから返り API は1回のみ |
+| `TestFetchLandPrices_CacheMissOnDifferentQuery` | クエリ違いは別キャッシュ（2回 API コール） |
+| `TestCache_TTLExpiry` | TTL 切れエントリが `get` 時に削除されること |
+| `TestCache_ReturnsCopy` | 返却スライス変更がキャッシュを汚染しないこと |
+| `TestCache_ConcurrentAccess` | 50 ゴルーチンの並行 get/set でデータレースなし（`-race` 検証） |
 | `TestFetchMunicipalities_Success` | XIT002 正常取得・パス/パラメータ検証 |
 | `TestFetchMunicipalities_EmptyArea` | area 空文字でエラー（HTTPリクエストなし） |
-| `TestFetchMunicipalities_CacheHit` | 2回目呼び出しがAPIコールなしでキャッシュから返る |
+| `TestFetchMunicipalities_CacheHit` | 2回目がキャッシュから返る |
 | `TestFetchMunicipalities_4xxNoRetry` | 4xx でエラー返却（リトライなし） |
+| `TestParseLandAppraisals_*` | city フィルタ・AnnouncedPrice フォールバック・ゼロ価格スキップ |
+| `TestFetchLandAppraisals_Success` | パス/パラメータ検証・正常取得 |
+| `TestFetchLandAppraisals_CacheHit` | キャッシュヒット |
+| `TestFetchLandAppraisals_4xxNoRetry` | 4xx でリトライなし |
 | `TestLatLngToTile` | WebMercator 変換の期待タイル座標（渋谷付近・赤道・東経180度） |
+| `TestTileToLatLng_RoundTrip` | LatLngToTile → TileToLatLng 往復でタイル内に収まること |
+| `TestFetchStationRidership_{Success,4xx,5xx,ConnectionError,CacheHit,InvalidJSON}` | XKT015 全5ケース＋InvalidJSON |
+| `TestParseStationRiderships_*` | 重複排除（最大乗降客数保持）・空駅名スキップ・最新年フォールバック |
+| `TestFetchPopulationForecast_{Success,4xx,5xx,ConnectionError,CacheHit,InvalidJSON}` | XKT013 全5ケース＋InvalidJSON |
+| `TestParsePopulationForecasts_*` | 空フィーチャ→nil・複数メッシュ合算 |
+| `TestFetchTileGeoJSON_InvalidJSON` | 共通ヘルパーの JSON デコードエラー |
+| `TestFetchLocationOptimization_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT003 全5ケース |
+| `TestFetchEmbankment_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT020 全5ケース |
+| `TestFetchUrbanRoad_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT030 全5ケース |
+| `TestFetchDisasterHistory_{Success,ShortDate,4xx,5xx,ConnectionError,CacheHit}` | XST001 全5ケース＋ShortDate（4文字未満→year=0） |
+| `TestFetchUrbanZoning_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT001 全5ケース |
+| `TestFetchLiquefaction_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT025 全5ケース |
+| `TestFetchFloodHazard_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT026 全5ケース |
+| `TestFetchStormHazard_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT027 全5ケース |
+| `TestFetchTsunamiHazard_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT028 全5ケース |
+| `TestFetchLandslideHazard_{Success,4xx,5xx,ConnectionError,CacheHit}` | XKT029 全5ケース |
 
 ```bash
 # ユニットテスト（モックサーバ使用・APIキー不要）
@@ -830,6 +890,25 @@ type LocationOptimizationFeatureProps struct {
 }
 ```
 
+### FetchLocationOptimization シグネチャ
+
+```go
+func (c *Client) FetchLocationOptimization(ctx context.Context, z, x, y int) ([]domain.LocationOptimizationItem, error)
+```
+
+ドメイン型 `domain.LocationOptimizationItem`：
+
+```go
+type LocationOptimizationItem struct {
+    KubunNameJa string // 区域名（例: 居住誘導区域、都市機能誘導区域）
+}
+```
+
+- キャッシュキー: `"location_optimization:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（立地適正化計画未策定自治体を示す）
+
 ---
 
 ## XKT020 大規模盛土造成地マップAPI
@@ -873,6 +952,25 @@ type EmbankmentFeatureProps struct {
     EmbankmentNumber         string `json:"embankment_number"`
 }
 ```
+
+### FetchEmbankment シグネチャ
+
+```go
+func (c *Client) FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.EmbankmentItem, error)
+```
+
+ドメイン型 `domain.EmbankmentItem`：
+
+```go
+type EmbankmentItem struct {
+    Classification string // 盛土区分（例: 谷埋め型）
+}
+```
+
+- キャッシュキー: `"embankment:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（大規模盛土造成地エリア外を示す）
 
 ---
 
@@ -927,6 +1025,26 @@ type UrbanRoadFeatureProps struct {
     NoticeNumber      string `json:"notice_number"`
 }
 ```
+
+### FetchUrbanRoad シグネチャ
+
+```go
+func (c *Client) FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.UrbanRoadItem, error)
+```
+
+ドメイン型 `domain.UrbanRoadItem`：
+
+```go
+type UrbanRoadItem struct {
+    PlanningRoadJa string
+    KubunID        int // 3011=都市計画道路、3023=広場
+}
+```
+
+- キャッシュキー: `"urban_road:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（都市計画道路区域外を示す）
 
 ---
 
@@ -988,6 +1106,27 @@ type DisasterHistoryFeatureProps struct {
 }
 ```
 
+### FetchDisasterHistory シグネチャ
+
+```go
+func (c *Client) FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domain.DisasterHistoryItem, error)
+```
+
+ドメイン型 `domain.DisasterHistoryItem`：
+
+```go
+type DisasterHistoryItem struct {
+    Name string // 災害種別名（例: 浸水域）
+    Year int    // 発生年（不明時は0）
+}
+```
+
+- キャッシュキー: `"disaster:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- `disaster_date` の先頭4文字を年として取得（4文字未満の場合は `year=0`）
+- フィーチャが0件の場合は空スライスを返す（災害履歴なしを示す）
+
 ---
 
 ## XKT001 都市計画区域/区域区分API
@@ -1024,6 +1163,26 @@ GET /ex-api/external/XKT001?response_format=geojson&z={z}&x={x}&y={y}
 
 - `area_classification_ja` が "市街化区域" を含み "調整" を含まない → 投資適地スコア +10点
 - それ以外 → 0点
+
+### FetchUrbanZoning シグネチャ
+
+```go
+func (c *Client) FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.UrbanZoningItem, error)
+```
+
+ドメイン型 `domain.UrbanZoningItem`：
+
+```go
+type UrbanZoningItem struct {
+    AreaClassificationJa string
+    KubunID              int
+}
+```
+
+- キャッシュキー: `"urban_zoning:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（エラーではない）
 
 ### 型定義
 
@@ -1069,6 +1228,26 @@ GET /ex-api/external/XKT025?response_format=geojson&z={z}&x={x}&y={y}
 - `liquefaction_tendency_level` ≤ 4 → −5点（中程度リスク）
 - `liquefaction_tendency_level` ≥ 5 → 0点（低リスク）
 
+### FetchLiquefaction シグネチャ
+
+```go
+func (c *Client) FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.LiquefactionRiskItem, error)
+```
+
+ドメイン型 `domain.LiquefactionRiskItem`：
+
+```go
+type LiquefactionRiskItem struct {
+    TendencyLevel int    // liquefaction_tendency_level（6段階: 低値ほど高リスク）
+    Note          string
+}
+```
+
+- キャッシュキー: `"liquefaction:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（エラーではない）
+
 ### 型定義
 
 ```go
@@ -1110,6 +1289,26 @@ GET /ex-api/external/XKT026?response_format=geojson&z={z}&x={x}&y={y}
 - `A31a_205` ≥ 3 → −5点（深刻な洪水リスク）
 - `A31a_205` ≥ 1 → −3点（洪水リスクあり）
 
+### FetchFloodHazard シグネチャ
+
+```go
+func (c *Client) FetchFloodHazard(ctx context.Context, z, x, y int) ([]domain.FloodHazardItem, error)
+```
+
+ドメイン型 `domain.FloodHazardItem`：
+
+```go
+type FloodHazardItem struct {
+    DepthRank int    // A31a_205（浸水深ランク）
+    RiverName string
+}
+```
+
+- キャッシュキー: `"flood_hazard:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（洪水区域外を示す）
+
 ### 型定義
 
 ```go
@@ -1149,6 +1348,25 @@ GET /ex-api/external/XKT027?response_format=geojson&z={z}&x={x}&y={y}
 
 - フィーチャが1件以上存在 → −5点（高潮リスクあり）
 
+### FetchStormHazard シグネチャ
+
+```go
+func (c *Client) FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.StormHazardItem, error)
+```
+
+ドメイン型 `domain.StormHazardItem`：
+
+```go
+type StormHazardItem struct {
+    DepthJa string // A49_003
+}
+```
+
+- キャッシュキー: `"storm_hazard:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（高潮区域外を示す）
+
 ### 型定義
 
 ```go
@@ -1187,6 +1405,25 @@ GET /ex-api/external/XKT028?response_format=geojson&z={z}&x={x}&y={y}
 ### リスク判定方針
 
 - フィーチャが1件以上存在 → −5点（津波リスクあり）
+
+### FetchTsunamiHazard シグネチャ
+
+```go
+func (c *Client) FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.TsunamiHazardItem, error)
+```
+
+ドメイン型 `domain.TsunamiHazardItem`：
+
+```go
+type TsunamiHazardItem struct {
+    DepthJa string // A40_003
+}
+```
+
+- キャッシュキー: `"tsunami_hazard:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（津波浸水区域外を示す）
 
 ### 型定義
 
@@ -1231,6 +1468,26 @@ GET /ex-api/external/XKT029?response_format=geojson&z={z}&x={x}&y={y}
 
 - `A33_002` == 1（特別警戒区域） → −5点
 - `A33_002` == 2（警戒区域） → −3点
+
+### FetchLandslideHazard シグネチャ
+
+```go
+func (c *Client) FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domain.LandslideHazardItem, error)
+```
+
+ドメイン型 `domain.LandslideHazardItem`：
+
+```go
+type LandslideHazardItem struct {
+    PhenomenonType int // A33_001（1=急傾斜地崩壊, 2=土石流, 3=地すべり）
+    ZoneCode       int // A33_002（1=特別警戒区域, 2=警戒区域）
+}
+```
+
+- キャッシュキー: `"landslide_hazard:{z}:{x}:{y}"`（TTL 24時間）
+- 4xx レスポンスはリトライなしで即エラー返却（`clientError`）
+- 5xx / 接続エラーはエラー返却（`fetchTileGeoJSON` ヘルパー経由）
+- フィーチャが0件の場合は空スライスを返す（警戒区域外を示す）
 
 ### 型定義
 
