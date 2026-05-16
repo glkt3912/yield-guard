@@ -474,21 +474,21 @@ yearAnnualRent = baseAnnualRent × (1 - RentDeclineRate)^y
 | 3 | 金利+2% | +0.02 | 0 |
 | 4 | 空室+10% | 0 | +0.10 |
 | 5 | 空室+20% | 0 | +0.20 |
-| 6 | 複合ストレス | +0.01 | +0.10 |
+| 6 | 複合ストレス | +0.02 | +0.10 |
 
 ### IsSafe 判定ロジック
 
 **ローンあり（`LoanAmount > 0`）の場合:**
 
 ```
-IsSafe = DSCR >= 1.0 && BreakEvenYear != -1 && BreakEvenYear <= HoldingYears
+IsSafe = DSCR >= 1.2 && BreakEvenYear != -1 && BreakEvenYear <= HoldingYears
 ```
 
-- `DSCR >= 1.0`: 保有期間内の最悪年においても NOI がローン返済額を上回っている（債務返済能力あり）
+- `DSCR >= 1.2`: 保有期間内の最悪年においても NOI がローン返済額を上回っている（実務基準の安全域）
 - `BreakEvenYear != -1`: 保有期間内に累積**税引後**CFが黒字転換する
 - `BreakEvenYear <= HoldingYears`: 黒字転換が出口売却年以内に収まる
 
-> **注意**: UI バッジの「安全」表示は `IsSafe` ではなく DSCR 値を直接使用し、実務基準の 1.2 を閾値とする（`IsSafe` の閾値定義 1.0 は変更しない）。
+> **注意**: UI バッジの「安全」表示は `IsSafe` と同一の閾値 1.2 を使用する。`IsSafe` フラグと UI バッジの判定基準は一致している。
 
 **ローンなし（`LoanAmount == 0`）の場合:**
 
