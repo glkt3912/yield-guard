@@ -330,3 +330,36 @@ resource "google_monitoring_alert_policy" "cloudrun_max_instances" {
     auto_close = "3600s"
   }
 }
+
+# ─────────────────────────────────────────────────────
+# Firestore アラート (Firestore 3機能導入)
+# AIサマリーキャッシュ・ジオコードキャッシュ・ウォッチリストの導入に伴い
+# 無料枠(50,000読み取り/日)の 80% = 40,000 件超過を検知する。
+# ─────────────────────────────────────────────────────
+
+# 6. Firestore 日次読み取り数が無料枠の 80% (40,000件/日) を超過
+resource "google_monitoring_alert_policy" "firestore_daily_reads" {
+  display_name = "[Yield Guard] Firestore 日次読み取りが無料枠 80% に到達 (40,000件/日)"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Firestore reads > 40,000/day"
+    condition_threshold {
+      filter          = "metric.type=\"firestore.googleapis.com/document/read_count\" AND resource.type=\"firestore_instance\""
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 40000
+      aggregations {
+        alignment_period   = "86400s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+  alert_strategy {
+    auto_close = "604800s"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
