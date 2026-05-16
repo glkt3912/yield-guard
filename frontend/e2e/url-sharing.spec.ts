@@ -1,19 +1,14 @@
 import { test, expect } from "@playwright/test";
-import { setupApiMocks } from "./helpers/routes";
-import { ONBOARDING_KEY } from "./helpers/constants";
+import { SimulationPage } from "./pages/simulation.page";
 
 test("@p2 URL共有：分析後のURLを開くとフォームが復元され結果が表示される", async ({
   page,
   context,
 }) => {
-  await setupApiMocks(page);
-  await page.addInitScript((key) => localStorage.setItem(key, "1"), ONBOARDING_KEY);
-  await page.goto("/");
-
-  await page.getByLabel("物件価格（土地＋建物の総額）").fill("1700");
-  await page.getByLabel("想定月額賃料").fill("15");
-  await page.getByText("シミュレーション実行").click();
-  await expect(page.getByTestId("gross-yield-value")).toHaveText("9.89", { timeout: 10_000 });
+  const sim = new SimulationPage(page);
+  await sim.setup();
+  await sim.runQuickSimulation("1700", "15");
+  await expect(sim.grossYield()).toHaveText("9.89");
 
   // Clipboard 権限を付与してシェアボタンをクリック
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -26,8 +21,8 @@ test("@p2 URL共有：分析後のURLを開くとフォームが復元され結�
 
   // 新しいページで URL を開く
   const newPage = await context.newPage();
-  await setupApiMocks(newPage);
-  await newPage.addInitScript((key) => localStorage.setItem(key, "1"), ONBOARDING_KEY);
+  const newSim = new SimulationPage(newPage);
+  await newSim.setupMocksOnly();
   await newPage.goto(sharedUrl);
 
   // フォームが復元されている（quickTotalPriceMan パラメータ経由）
@@ -36,5 +31,5 @@ test("@p2 URL共有：分析後のURLを開くとフォームが復元され結�
   });
   // 再度シミュレーション実行して結果を表示
   await newPage.getByText("シミュレーション実行").click();
-  await expect(newPage.getByTestId("gross-yield-value")).toHaveText("9.89", { timeout: 10_000 });
+  await expect(newSim.grossYield()).toHaveText("9.89", { timeout: 10_000 });
 });
