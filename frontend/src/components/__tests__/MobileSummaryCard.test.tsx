@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MobileSummaryCard } from "@/components/MobileSummaryCard";
 import { makeInput, makeResult } from "./helpers";
@@ -146,10 +146,14 @@ describe("MobileSummaryCard", () => {
         netYieldPct={6.5}
       />
     );
-    await userEvent.click(screen.getByRole("button", { name: /詳細PDFを出力/ }));
+    const pdfButton = screen.getByRole("button", { name: /詳細PDFを出力/ });
+    await userEvent.click(pdfButton);
     expect(screen.getByRole("button", { name: /生成中/ })).toBeDisabled();
-    await waitFor(async () => {
+    act(() => {
       resolve!(undefined);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /詳細PDFを出力/ })).not.toBeDisabled();
     });
   });
 

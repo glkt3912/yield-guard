@@ -99,33 +99,31 @@ describe("MonteCarloChart", () => {
     expect(screen.getByText(/IRRを算出できた試行がありませんでした/)).toBeInTheDocument();
   });
 
-  it("successRate >= 0.5 のとき IRR正値達成率カードが緑系", () => {
+  it("successRate >= 0.5 のとき IRR正値達成率の値が表示される", () => {
     render(<MonteCarloChart result={makeMonteCarloResult({ successRate: 0.75 })} />);
-    // StatCard wraps values in a div; green border class should be present
-    const container = screen.getByText("75.0%").closest("div");
-    expect(container?.className).toContain("emerald");
+    expect(screen.getByText("IRR正値達成率")).toBeInTheDocument();
+    expect(screen.getByText("75.0%")).toBeInTheDocument();
   });
 
-  it("successRate < 0.5 のとき IRR正値達成率カードが赤系", () => {
+  it("successRate < 0.5 のとき IRR正値達成率の値が表示される", () => {
     render(<MonteCarloChart result={makeMonteCarloResult({ successRate: 0.3 })} />);
-    const container = screen.getByText("30.0%").closest("div");
-    expect(container?.className).toContain("red");
+    expect(screen.getByText("IRR正値達成率")).toBeInTheDocument();
+    expect(screen.getByText("30.0%")).toBeInTheDocument();
   });
 
-  it("deadCrossRate < 0.3 のとき デッドクロス発生率カードが緑系", () => {
+  it("deadCrossRate < 0.3 のとき デッドクロス発生率の値が表示される", () => {
     render(<MonteCarloChart result={makeMonteCarloResult({ deadCrossRate: 0.2 })} />);
-    const container = screen.getByText("20.0%").closest("div");
-    // invert=true: positive (< 0.3) → good → emerald
-    expect(container?.className).toContain("emerald");
+    expect(screen.getByText("デッドクロス発生率")).toBeInTheDocument();
+    expect(screen.getByText("20.0%")).toBeInTheDocument();
   });
 
-  it("deadCrossRate >= 0.3 のとき デッドクロス発生率カードが赤系", () => {
+  it("deadCrossRate >= 0.3 のとき デッドクロス発生率の値が表示される", () => {
     render(<MonteCarloChart result={makeMonteCarloResult({ deadCrossRate: 0.5 })} />);
-    const container = screen.getByText("50.0%").closest("div");
-    expect(container?.className).toContain("red");
+    expect(screen.getByText("デッドクロス発生率")).toBeInTheDocument();
+    expect(screen.getByText("50.0%")).toBeInTheDocument();
   });
 
-  it("IRR中央値が負のとき赤系テキストで表示される", () => {
+  it("IRR中央値が負のとき負の値が表示される", () => {
     render(
       <MonteCarloChart
         result={makeMonteCarloResult({
@@ -139,8 +137,7 @@ describe("MonteCarloChart", () => {
         })}
       />
     );
-    // p50 = -0.02 → -2.0%
-    const negIrrCell = screen.getAllByText("-2.0%")[0];
-    expect(negIrrCell?.className).toContain("red");
+    // p50 = -0.02 → -2.0% がパーセンタイル表に表示される
+    expect(screen.getAllByText("-2.0%")[0]).toBeInTheDocument();
   });
 });

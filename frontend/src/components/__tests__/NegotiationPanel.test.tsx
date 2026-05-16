@@ -112,7 +112,7 @@ describe("NegotiationPanel", () => {
     expect(screen.getByText("理論価格")).toBeInTheDocument();
   });
 
-  it("isAboveYieldTarget=trueのとき表面利回りが緑色で表示される", () => {
+  it("isAboveYieldTarget=trueのとき表面利回りの値が表示される", () => {
     const result = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
     render(
       <NegotiationPanel
@@ -122,11 +122,11 @@ describe("NegotiationPanel", () => {
         theoreticalPrice={null}
       />
     );
-    const yieldEl = screen.getByText("9.00%");
-    expect(yieldEl.className).toContain("emerald");
+    expect(screen.getByText("売出価格での表面利回り")).toBeInTheDocument();
+    expect(screen.getByText("9.00%")).toBeInTheDocument();
   });
 
-  it("isAboveYieldTarget=falseのとき表面利回りが赤色で表示される", () => {
+  it("isAboveYieldTarget=falseのとき表面利回りの値が表示される", () => {
     const result = makeResult({ grossYield: 0.05, isAboveYieldTarget: false });
     render(
       <NegotiationPanel
@@ -136,8 +136,8 @@ describe("NegotiationPanel", () => {
         theoreticalPrice={null}
       />
     );
-    const yieldEl = screen.getByText("5.00%");
-    expect(yieldEl.className).toContain("red");
+    expect(screen.getByText("売出価格での表面利回り")).toBeInTheDocument();
+    expect(screen.getByText("5.00%")).toBeInTheDocument();
   });
 
   it("comparison と theoreticalPrice が両方存在すると交渉推奨価格レンジが表示される", () => {

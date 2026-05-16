@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import WatchlistPanel from "@/components/WatchlistPanel";
@@ -32,6 +32,10 @@ describe("WatchlistPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupStorage([]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("カードタイトルが表示される", () => {

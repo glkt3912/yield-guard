@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import RenovationPanel from "@/components/RenovationPanel";
 import type { RenovationResult } from "@/types/investment";
@@ -130,25 +130,22 @@ describe("RenovationPanel", () => {
     render(<RenovationPanel />);
 
     // 工事費を入力（100万円）
-    const costInputs = screen.getAllByRole("spinbutton");
-    // 工事費フィールドは2番目のspinbutton（名前欄はtextarea）
-    // items[0].cost フィールド — 0 から 100 万に変更
-    await userEvent.clear(
-      costInputs.find((el) => (el as HTMLInputElement).min === "0" && el.closest("td"))!
-    );
-    // 最初の工事費セルに入力
-    const costCell = screen
-      .getAllByRole("spinbutton")
-      .find((el) => el.closest("td") !== null && (el as HTMLInputElement).min === "0");
-    if (costCell) {
-      await userEvent.clear(costCell);
-      await userEvent.type(costCell, "100");
-    }
+    // 工事項目テーブル内の最初のspinbutton = items[0].cost フィールド
+    // テーブル行に aria-label がないため index ベースで選択（構造は安定）
+    const table = screen.getByRole("table");
+    const costInput = within(table).getAllByRole("spinbutton")[0];
+    await userEvent.clear(costInput);
+    await userEvent.type(costInput, "100");
 
     await userEvent.click(screen.getByRole("button", { name: "リフォーム分析を実行" }));
 
     await waitFor(() => {
       expect(api.analyzeRenovation).toHaveBeenCalledTimes(1);
+      expect(api.analyzeRenovation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          items: expect.arrayContaining([expect.objectContaining({ cost: 1_000_000 })]),
+        })
+      );
     });
   });
 
@@ -159,11 +156,11 @@ describe("RenovationPanel", () => {
     render(<RenovationPanel />);
 
     // 工事費を入力
-    const costInputs = screen
-      .getAllByRole("spinbutton")
-      .filter((el) => el.closest("td") !== null && (el as HTMLInputElement).min === "0");
-    await userEvent.clear(costInputs[0]);
-    await userEvent.type(costInputs[0], "100");
+    // 工事項目テーブル内の最初のspinbutton = items[0].cost フィールド（aria-label なし、構造安定）
+    const table = screen.getByRole("table");
+    const costInput = within(table).getAllByRole("spinbutton")[0];
+    await userEvent.clear(costInput);
+    await userEvent.type(costInput, "100");
 
     await userEvent.click(screen.getByRole("button", { name: "リフォーム分析を実行" }));
 
@@ -177,11 +174,11 @@ describe("RenovationPanel", () => {
     vi.mocked(api.analyzeRenovation).mockResolvedValue(makeRenovationResult());
     render(<RenovationPanel />);
 
-    const costInputs = screen
-      .getAllByRole("spinbutton")
-      .filter((el) => el.closest("td") !== null && (el as HTMLInputElement).min === "0");
-    await userEvent.clear(costInputs[0]);
-    await userEvent.type(costInputs[0], "100");
+    // 工事項目テーブル内の最初のspinbutton = items[0].cost フィールド（aria-label なし、構造安定）
+    const table = screen.getByRole("table");
+    const costInput = within(table).getAllByRole("spinbutton")[0];
+    await userEvent.clear(costInput);
+    await userEvent.type(costInput, "100");
     await userEvent.click(screen.getByRole("button", { name: "リフォーム分析を実行" }));
 
     await waitFor(() => {
@@ -197,11 +194,11 @@ describe("RenovationPanel", () => {
     );
     render(<RenovationPanel />);
 
-    const costInputs = screen
-      .getAllByRole("spinbutton")
-      .filter((el) => el.closest("td") !== null && (el as HTMLInputElement).min === "0");
-    await userEvent.clear(costInputs[0]);
-    await userEvent.type(costInputs[0], "100");
+    // 工事項目テーブル内の最初のspinbutton = items[0].cost フィールド（aria-label なし、構造安定）
+    const table = screen.getByRole("table");
+    const costInput = within(table).getAllByRole("spinbutton")[0];
+    await userEvent.clear(costInput);
+    await userEvent.type(costInput, "100");
     await userEvent.click(screen.getByRole("button", { name: "リフォーム分析を実行" }));
 
     await waitFor(() => {
@@ -213,11 +210,11 @@ describe("RenovationPanel", () => {
     vi.mocked(api.analyzeRenovation).mockRejectedValue(new Error("計算エラー"));
     render(<RenovationPanel />);
 
-    const costInputs = screen
-      .getAllByRole("spinbutton")
-      .filter((el) => el.closest("td") !== null && (el as HTMLInputElement).min === "0");
-    await userEvent.clear(costInputs[0]);
-    await userEvent.type(costInputs[0], "100");
+    // 工事項目テーブル内の最初のspinbutton = items[0].cost フィールド（aria-label なし、構造安定）
+    const table = screen.getByRole("table");
+    const costInput = within(table).getAllByRole("spinbutton")[0];
+    await userEvent.clear(costInput);
+    await userEvent.type(costInput, "100");
     await userEvent.click(screen.getByRole("button", { name: "リフォーム分析を実行" }));
 
     await waitFor(() => {
@@ -229,11 +226,11 @@ describe("RenovationPanel", () => {
     vi.mocked(api.analyzeRenovation).mockRejectedValue("unknown");
     render(<RenovationPanel />);
 
-    const costInputs = screen
-      .getAllByRole("spinbutton")
-      .filter((el) => el.closest("td") !== null && (el as HTMLInputElement).min === "0");
-    await userEvent.clear(costInputs[0]);
-    await userEvent.type(costInputs[0], "100");
+    // 工事項目テーブル内の最初のspinbutton = items[0].cost フィールド（aria-label なし、構造安定）
+    const table = screen.getByRole("table");
+    const costInput = within(table).getAllByRole("spinbutton")[0];
+    await userEvent.clear(costInput);
+    await userEvent.type(costInput, "100");
     await userEvent.click(screen.getByRole("button", { name: "リフォーム分析を実行" }));
 
     await waitFor(() => {
@@ -249,17 +246,20 @@ describe("RenovationPanel", () => {
     vi.mocked(api.analyzeRenovation).mockReturnValue(pending);
     render(<RenovationPanel />);
 
-    const costInputs = screen
-      .getAllByRole("spinbutton")
-      .filter((el) => el.closest("td") !== null && (el as HTMLInputElement).min === "0");
-    await userEvent.clear(costInputs[0]);
-    await userEvent.type(costInputs[0], "100");
+    // 工事項目テーブル内の最初のspinbutton = items[0].cost フィールド（aria-label なし、構造安定）
+    const table = screen.getByRole("table");
+    const costInput = within(table).getAllByRole("spinbutton")[0];
+    await userEvent.clear(costInput);
+    await userEvent.type(costInput, "100");
     await userEvent.click(screen.getByRole("button", { name: "リフォーム分析を実行" }));
 
     expect(screen.getByRole("button", { name: "計算中..." })).toBeDisabled();
 
-    await waitFor(async () => {
+    act(() => {
       resolve!(makeRenovationResult());
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "リフォーム分析を実行" })).not.toBeDisabled();
     });
   });
 });
