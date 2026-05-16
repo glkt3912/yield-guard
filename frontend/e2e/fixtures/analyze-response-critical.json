@@ -70,5 +70,29 @@
       "effectiveRate": 0.015
     }
   ],
-  "aiSummary": ""
+  "aiSummary": "",
+  "multiExitComparison": [
+    {
+      "year": 5,
+      "salePrice": 9000000,
+      "transferTaxRate": 0.3963,
+      "transferTax": 0,
+      "remainingLoan": 11421312,
+      "cumulativeCf": -466160,
+      "exitEquity": -3320000,
+      "irr": null,
+      "isShortTermWarn": true
+    },
+    {
+      "year": 10,
+      "salePrice": 8000000,
+      "transferTaxRate": 0.20315,
+      "transferTax": 0,
+      "remainingLoan": 9850000,
+      "cumulativeCf": -932320,
+      "exitEquity": -3600000,
+      "irr": null,
+      "isShortTermWarn": false
+    }
+  ]
 }
