@@ -1,19 +1,19 @@
 import type { Page } from "@playwright/test";
 
-import analyzeFixture from "../fixtures/analyze-response.json";
-import municipalitiesFixture from "../fixtures/municipalities-tokyo.json";
-import landPriceStatsFixture from "../fixtures/land-price-stats.json";
-import landPriceCompareFixture from "../fixtures/land-price-compare.json";
-import landPriceEstimateFixture from "../fixtures/land-price-estimate.json";
-import landAppraisalsFixture from "../fixtures/land-appraisals.json";
-import urbanRisksFixture from "../fixtures/urban-risks-empty.json";
-import hazardFixture from "../fixtures/hazard-empty.json";
-import investmentScoreFixture from "../fixtures/investment-score.json";
-import populationForecastFixture from "../fixtures/population-forecast.json";
-import stationRidershipFixture from "../fixtures/station-ridership.json";
-import rentDeclineHintFixture from "../fixtures/rent-decline-hint.json";
-import rentStatsFixture from "../fixtures/rent-stats.json";
-import areaDiscoveryFixture from "../fixtures/area-discovery.json";
+import { analyzeFixture } from "../fixtures/analyze-response";
+import { municipalitiesFixture } from "../fixtures/municipalities-tokyo";
+import { landPriceStatsFixture } from "../fixtures/land-price-stats";
+import { landPriceCompareFixture } from "../fixtures/land-price-compare";
+import { landPriceEstimateFixture } from "../fixtures/land-price-estimate";
+import { landAppraisalsFixture } from "../fixtures/land-appraisals";
+import { urbanRisksFixture } from "../fixtures/urban-risks-empty";
+import { hazardFixture } from "../fixtures/hazard-empty";
+import { investmentScoreFixture } from "../fixtures/investment-score";
+import { populationForecastFixture } from "../fixtures/population-forecast";
+import { stationRidershipFixture } from "../fixtures/station-ridership";
+import { rentDeclineHintFixture } from "../fixtures/rent-decline-hint";
+import { rentStatsFixture } from "../fixtures/rent-stats";
+import { areaDiscoveryFixture } from "../fixtures/area-discovery";
 
 type Override = {
   status: number;

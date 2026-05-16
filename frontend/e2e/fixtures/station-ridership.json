@@ -1,9 +1,0 @@
-[
-  {
-    "stationName": "渋谷",
-    "lineName": "JR山手線",
-    "passengers": 420000,
-    "demandScore": "A",
-    "correction": 0.1
-  }
-]
