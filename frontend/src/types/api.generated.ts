@@ -323,9 +323,7 @@ export interface paths {
       /** @description 投資分析リクエスト */
       requestBody: {
         content: {
-          "application/json":
-            | Record<string, never>
-            | components["schemas"]["domain.InvestmentInput"];
+          "application/json": components["schemas"]["domain.InvestmentInput"];
         };
       };
       responses: {
@@ -440,9 +438,7 @@ export interface paths {
       /** @description シミュレーションリクエスト */
       requestBody: {
         content: {
-          "application/json":
-            | Record<string, never>
-            | components["schemas"]["domain.MonteCarloInput"];
+          "application/json": components["schemas"]["domain.MonteCarloInput"];
         };
       };
       responses: {
@@ -936,9 +932,7 @@ export interface paths {
       /** @description リフォーム分析リクエスト */
       requestBody: {
         content: {
-          "application/json":
-            | Record<string, never>
-            | components["schemas"]["domain.RenovationInput"];
+          "application/json": components["schemas"]["domain.RenovationInput"];
         };
       };
       responses: {
@@ -1231,10 +1225,7 @@ export interface components {
       items?: components["schemas"]["domain.AreaDiscoveryItem"][];
       prefecture?: string;
     };
-    /**
-     * @description 建物構造
-     * @enum {string}
-     */
+    /** @enum {string} */
     "domain.BuildingType":
       | "木造"
       | "軽量鉄骨(4mm以下)"
@@ -1297,6 +1288,7 @@ export interface components {
       buildingAge?: number;
       /** @description 建築費 (円) */
       buildingCost?: number;
+      /** @description 建物構造 */
       buildingType?: components["schemas"]["domain.BuildingType"];
       /** @description 大規模修繕費スケジュール（最大5件） */
       capexSchedule?: components["schemas"]["domain.CapexEvent"][];
@@ -1465,6 +1457,7 @@ export interface components {
       /** @description 都市計画リスク一覧 */
       urbanRisks?: components["schemas"]["domain.UrbanRisk"][];
       warningMessage?: string;
+      /** @description 取引データから抽出した用途地域情報 */
       zoning?: components["schemas"]["domain.ZoningSummary"];
     };
     "domain.LandTransaction": {
@@ -1590,10 +1583,7 @@ export interface components {
       /** @description 月額賃料 中央値（円） */
       median?: number;
     };
-    /**
-     * @description 需要スコア (有効時のみ)
-     * @enum {string}
-     */
+    /** @enum {string} */
     "domain.RidershipDemandScore": "A" | "B" | "C" | "D" | "E";
     "domain.ScoreBreakdown": {
       disasterHistory?: components["schemas"]["domain.ScoreItem"];
@@ -1615,6 +1605,7 @@ export interface components {
     "domain.StationRidershipResult": {
       /** @description 理論価格補正係数 */
       correction?: number;
+      /** @description 需要スコア A〜E */
       demandScore?: components["schemas"]["domain.RidershipDemandScore"];
       lineName?: string;
       /** @description 乗降客数/日 */
@@ -1649,6 +1640,7 @@ export interface components {
       medianStationMinutes?: number;
       /** @description 乗降客数補正 (-0.15〜0.15) */
       ridershipCorrection?: number;
+      /** @description 需要スコア (有効時のみ) */
       ridershipScore?: components["schemas"]["domain.RidershipDemandScore"];
       /** @description 駅距離補正 (-0.2〜0.2) */
       stationCorrection?: number;
@@ -1660,14 +1652,12 @@ export interface components {
       code?: string;
       /** @description 詳細説明 */
       description?: string;
+      /** @description ERROR / WARNING / INFO */
       level?: components["schemas"]["domain.UrbanRiskLevel"];
       /** @description 短いタイトル */
       title?: string;
     };
-    /**
-     * @description ERROR / WARNING / INFO
-     * @enum {string}
-     */
+    /** @enum {string} */
     "domain.UrbanRiskLevel": "ERROR" | "WARNING" | "INFO";
     "domain.YearlyResult": {
       afterTaxCashFlow?: number;
@@ -1693,7 +1683,6 @@ export interface components {
       taxableIncome?: number;
       year?: number;
     };
-    /** @description 楽観: 空室率 × 0.5 */
     "domain.YieldScenario": {
       /** @description 年間実効賃料収入（空室控除後） */
       annualRent?: number;
@@ -1701,11 +1690,13 @@ export interface components {
       grossYield?: number;
     };
     "domain.YieldScenarios": {
+      /** @description 楽観: 空室率 × 0.5 */
       optimistic?: components["schemas"]["domain.YieldScenario"];
+      /** @description 悲観: 空室率 × 1.5 */
       pessimistic?: components["schemas"]["domain.YieldScenario"];
+      /** @description 標準: 空室率 × 1.0 */
       standard?: components["schemas"]["domain.YieldScenario"];
     };
-    /** @description 取引データから抽出した用途地域情報 */
     "domain.ZoningSummary": {
       /** @description 最頻の建ぺい率（例: 60%） */
       buildingCoverage?: string;

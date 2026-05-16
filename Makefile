@@ -46,10 +46,10 @@ backend:
 frontend:
 	cd frontend && npm run dev
 
-## swagger: OpenAPI 3.1 スキーマを生成 (docs/openapi/swagger.json)
+## swagger: OpenAPI スキーマを生成 (docs/openapi/swagger.json)
 swagger:
-	cd backend && swag init -g cmd/server/main.go -o ../docs/openapi --outputTypes json --v3.1
-	@echo "==> Generated docs/openapi/swagger.json (OpenAPI 3.1)"
+	cd backend && swag init -g cmd/server/main.go -o ../docs/openapi --outputTypes json
+	@echo "==> Generated docs/openapi/swagger.json"
 
 ## install: フロントエンド依存関係をインストール
 install:

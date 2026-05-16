@@ -48,7 +48,7 @@ jobs:
       - name: Check schema drift (api.generated.ts)
         run: |
           npm run generate:types
-          git diff --exit-code src/types/api.generated.ts
+          git diff --exit-code src/types/api.generated.ts ../docs/openapi/openapi.json
 
       - name: Format check
         run: npm run format:check

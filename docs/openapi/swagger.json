@@ -1,2744 +1,2505 @@
 {
-    "components": {
-        "schemas": {
-            "api.GeocodeResult": {
-                "properties": {
-                    "lat": {
-                        "type": "number"
-                    },
-                    "lng": {
-                        "type": "number"
-                    },
-                    "locationType": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.AcquisitionCostBreakdown": {
-                "properties": {
-                    "brokerageFee": {
-                        "description": "仲介手数料（税込）",
-                        "type": "number"
-                    },
-                    "propertyTaxProration": {
-                        "description": "固定資産税日割り精算（買主負担分）",
-                        "type": "number"
-                    },
-                    "realEstateAcquisitionTax": {
-                        "description": "不動産取得税（概算）",
-                        "type": "number"
-                    },
-                    "registrationTax": {
-                        "description": "登録免許税（所有権移転+抵当権設定）",
-                        "type": "number"
-                    },
-                    "stampDuty": {
-                        "description": "印紙税（売買契約書）",
-                        "type": "number"
-                    },
-                    "total": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.AppraisalComparisonResult": {
-                "properties": {
-                    "appraisalCount": {
-                        "description": "標準地点数",
-                        "type": "integer"
-                    },
-                    "appraisalMedianPerSqm": {
-                        "description": "公示価格中央値（円/m²）",
-                        "type": "number"
-                    },
-                    "appraisalTrend": {
-                        "description": "平均変動率（小数）",
-                        "type": "number"
-                    },
-                    "trendLabel": {
-                        "description": "\"上昇\" / \"安定\" / \"下落\"",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.AreaDiscoveryItem": {
-                "properties": {
-                    "dataSufficient": {
-                        "description": "取引件数3件以上",
-                        "type": "boolean"
-                    },
-                    "landPriceTrend": {
-                        "description": "\"上昇\" | \"安定\" | \"下落\" | \"不明\"",
-                        "type": "string"
-                    },
-                    "medianTsubo": {
-                        "description": "坪単価中央値（円）",
-                        "type": "number"
-                    },
-                    "municipalityCode": {
-                        "type": "string"
-                    },
-                    "municipalityName": {
-                        "type": "string"
-                    },
-                    "transactionCount": {
-                        "description": "取引件数",
-                        "type": "integer"
-                    },
-                    "yieldDifficulty": {
-                        "description": "\"achievable\" | \"slightly-difficult\" | \"difficult\"",
-                        "type": "string"
-                    },
-                    "yieldDifficultyLabel": {
-                        "description": "日本語ラベル",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.AreaDiscoveryResponse": {
-                "properties": {
-                    "items": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.AreaDiscoveryItem"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "prefecture": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.BuildingType": {
-                "description": "建物構造",
-                "enum": [
-                    "木造",
-                    "軽量鉄骨(4mm以下)",
-                    "軽量鉄骨(3mm以下)",
-                    "重量鉄骨",
-                    "RC造",
-                    "SRC造"
-                ],
-                "type": "string",
-                "x-enum-comments": {
-                    "BuildingTypeHeavySteel": "耐用年数 34年",
-                    "BuildingTypeLightSteel": "耐用年数 27年",
-                    "BuildingTypeLightSteelThin": "耐用年数 19年 (薄板・プレハブ系)",
-                    "BuildingTypeRC": "耐用年数 47年",
-                    "BuildingTypeSRC": "耐用年数 47年 (鉄骨鉄筋コンクリート)",
-                    "BuildingTypeWood": "耐用年数 22年"
-                },
-                "x-enum-varnames": [
-                    "BuildingTypeWood",
-                    "BuildingTypeLightSteel",
-                    "BuildingTypeLightSteelThin",
-                    "BuildingTypeHeavySteel",
-                    "BuildingTypeRC",
-                    "BuildingTypeSRC"
-                ]
-            },
-            "domain.CapexEvent": {
-                "properties": {
-                    "amount": {
-                        "description": "金額（円）",
-                        "type": "number"
-                    },
-                    "year": {
-                        "description": "何年目に発生（1〜保有年数）",
-                        "type": "integer"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.ClassifiedRenovationItem": {
-                "properties": {
-                    "cost": {
-                        "type": "number"
-                    },
-                    "expectedMonthlyRentIncrease": {
-                        "type": "number"
-                    },
-                    "isCapitalExpenditure": {
-                        "type": "boolean"
-                    },
-                    "isSelfWork": {
-                        "type": "boolean"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "selfLaborHours": {
-                        "type": "number"
-                    },
-                    "virtualLaborCost": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.CriticalError": {
-                "properties": {
-                    "code": {
-                        "type": "string"
-                    },
-                    "message": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "$ref": "#/components/schemas/domain.CriticalErrorStatus"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.CriticalErrorStatus": {
-                "enum": [
-                    "REJECT",
-                    "WARNING"
-                ],
-                "type": "string",
-                "x-enum-varnames": [
-                    "CriticalStatusReject",
-                    "CriticalStatusWarning"
-                ]
-            },
-            "domain.HeatmapResponse": {
-                "properties": {
-                    "tileCount": {
-                        "type": "integer"
-                    },
-                    "tiles": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.HeatmapTile"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    }
-                },
-                "type": "object"
-            },
-            "domain.HeatmapTile": {
-                "properties": {
-                    "centerLat": {
-                        "type": "number"
-                    },
-                    "centerLng": {
-                        "type": "number"
-                    },
-                    "grade": {
-                        "type": "string"
-                    },
-                    "totalScore": {
-                        "type": "integer"
-                    },
-                    "x": {
-                        "type": "integer"
-                    },
-                    "y": {
-                        "type": "integer"
-                    },
-                    "z": {
-                        "type": "integer"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.HistogramBin": {
-                "properties": {
-                    "count": {
-                        "type": "integer"
-                    },
-                    "max": {
-                        "type": "number"
-                    },
-                    "min": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.InvestmentInput": {
-                "properties": {
-                    "actualVacancyRate": {
-                        "description": "現況空室率: 現時点の実際の空室状況（0の場合はVacancyRateと同一とみなす）",
-                        "type": "number"
-                    },
-                    "adFee": {
-                        "description": "入居者募集 AD（円/回）例: 家賃1ヶ月分",
-                        "type": "number"
-                    },
-                    "annualLoanRate": {
-                        "description": "年利 (例: 0.015)",
-                        "type": "number"
-                    },
-                    "annualPropertyTax": {
-                        "description": "年間固定資産税 (円)。ExpenseRate には含めないこと（二重計上になる）",
-                        "type": "number"
-                    },
-                    "avgTenancyYears": {
-                        "description": "入退去コスト（全て optional。0 または未入力の場合はターンオーバーコスト = 0）",
-                        "type": "number"
-                    },
-                    "buildingAge": {
-                        "description": "築年数 (0=新築)",
-                        "type": "integer"
-                    },
-                    "buildingCost": {
-                        "description": "建築費 (円)",
-                        "type": "number"
-                    },
-                    "buildingType": {
-                        "$ref": "#/components/schemas/domain.BuildingType"
-                    },
-                    "capexSchedule": {
-                        "description": "大規模修繕費スケジュール（最大5件）",
-                        "items": {
-                            "$ref": "#/components/schemas/domain.CapexEvent"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "depreciationMethod": {
-                        "description": "減価償却方式: \"straight-line\"（定額法）| \"declining-balance\"（定率法）",
-                        "type": "string"
-                    },
-                    "discountRate": {
-                        "description": "割引率: NPV/IRR計算用 (例: 0.05 = 5%)",
-                        "type": "number"
-                    },
-                    "exitYears": {
-                        "description": "複数保有年数の出口比較: 空の場合は [5, 10, 15, 20] をデフォルトとして使用",
-                        "items": {
-                            "type": "integer"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "exitYieldTarget": {
-                        "description": "出口戦略: 売却時目標利回り（実質ベース。NOI / 売却価格）",
-                        "type": "number"
-                    },
-                    "expenseInflationRate": {
-                        "description": "経費インフレ率/年 (例: 0.01 = 1%)",
-                        "type": "number"
-                    },
-                    "expenseRate": {
-                        "description": "運営経費率 (管理費・修繕・保険等。固定資産税・ローン利息は含まない)\n固定資産税は AnnualPropertyTax で別途指定する",
-                        "type": "number"
-                    },
-                    "holdingYears": {
-                        "description": "出口戦略: 売却年数 (例: 10)",
-                        "type": "integer"
-                    },
-                    "incomeTaxRate": {
-                        "description": "所得税率 (例: 0.33。給与との合算後実効税率)",
-                        "type": "number"
-                    },
-                    "insuranceFeeRate": {
-                        "description": "保険料率 (例: 0.003 = 0.3%)",
-                        "type": "number"
-                    },
-                    "landArea": {
-                        "description": "土地面積 (m²)",
-                        "type": "number"
-                    },
-                    "landPrice": {
-                        "description": "土地取得費 (円)",
-                        "type": "number"
-                    },
-                    "loanAmount": {
-                        "description": "ローン金額 (円)",
-                        "type": "number"
-                    },
-                    "loanFeeRate": {
-                        "description": "融資諸費用率（保証料・登記費用等の合算）。LoanAmount × LoanFeeRate を取得費に加算。",
-                        "type": "number"
-                    },
-                    "loanMethod": {
-                        "description": "返済方式: \"equal-payment\"（元利均等）| \"equal-principal\"（元金均等）\n省略時は Defaults() で \"equal-payment\" にセットされる。",
-                        "type": "string"
-                    },
-                    "loanRateDelta": {
-                        "description": "金利上昇分 (例: +0.015)",
-                        "type": "number"
-                    },
-                    "loanYears": {
-                        "description": "ローン期間 (年)",
-                        "type": "integer"
-                    },
-                    "managementFeeRate": {
-                        "description": "詳細経費内訳（全てoptional・後方互換）。合計 \u003e 0 の場合は ExpenseRate より優先される。",
-                        "type": "number"
-                    },
-                    "miscExpenseRate": {
-                        "description": "諸経費率 (例: 0.07)",
-                        "type": "number"
-                    },
-                    "monthlyRent": {
-                        "description": "想定月額賃料 (円)",
-                        "type": "number"
-                    },
-                    "otherExpenseRate": {
-                        "description": "その他経費率 (例: 0.005 = 0.5%)",
-                        "type": "number"
-                    },
-                    "priceDeclineRate": {
-                        "description": "物件価格下落率: 売却価格に毎年この割合の累乗で下落を反映 (例: 0.02 = 年2%下落)",
-                        "type": "number"
-                    },
-                    "rateAdjustmentSchedule": {
-                        "description": "変動金利スケジュール: 指定年以降に適用する金利ステップ（空=固定金利）\nLoanRateDelta はスケジュール後の金利にも加算される。",
-                        "items": {
-                            "$ref": "#/components/schemas/domain.RateAdjustment"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "rentDeclineRate": {
-                        "description": "賃料下落率: 毎年この割合だけ実効賃料が低下する（例: 0.01 = 年1%下落）",
-                        "type": "number"
-                    },
-                    "rentFreePeriod": {
-                        "description": "フリーレント（ヶ月）例: 0.5",
-                        "type": "number"
-                    },
-                    "rentGrowthRate": {
-                        "description": "賃料上昇シナリオ（新築・リノベ向け）\nRentGrowthYears 年間は RentGrowthRate で上昇し、その後 RentDeclineRate で下落する。\nどちらかが 0 の場合は従来の RentDeclineRate のみが適用される。",
-                        "type": "number"
-                    },
-                    "rentGrowthYears": {
-                        "description": "上昇が続く年数",
-                        "type": "integer"
-                    },
-                    "repairReserveRate": {
-                        "description": "修繕積立費率 (例: 0.01 = 1%)",
-                        "type": "number"
-                    },
-                    "restorationCost": {
-                        "description": "原状回復費（円/回）例: 150000",
-                        "type": "number"
-                    },
-                    "vacancyRate": {
-                        "description": "空室率 (例: 0.05)",
-                        "type": "number"
-                    },
-                    "vacancyRateDelta": {
-                        "description": "ストレステスト用オフセット",
-                        "type": "number"
-                    },
-                    "yieldTarget": {
-                        "description": "目標表面利回り（例: 0.08 = 8%）。0 の場合は Defaults() で 0.08 にセットされる。",
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.InvestmentResult": {
-                "properties": {
-                    "acquisitionCosts": {
-                        "$ref": "#/components/schemas/domain.AcquisitionCostBreakdown"
-                    },
-                    "aiSummary": {
-                        "description": "Gemini 生成の投資サマリー（空文字 = 未生成）",
-                        "type": "string"
-                    },
-                    "criticalErrors": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.CriticalError"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "deadCrossYear": {
-                        "description": "-1 = デッドクロスなし",
-                        "type": "integer"
-                    },
-                    "dscr": {
-                        "description": "1年目の借入金償還余裕率（NOI/年間返済額）",
-                        "type": "number"
-                    },
-                    "exitCapitalGain": {
-                        "description": "譲渡所得",
-                        "type": "number"
-                    },
-                    "exitNetProceeds": {
-                        "description": "売却手取り（税・残債控除後）",
-                        "type": "number"
-                    },
-                    "exitSalePrice": {
-                        "description": "売却価格（NOI/目標利回り）",
-                        "type": "number"
-                    },
-                    "exitTotalEquity": {
-                        "description": "最終手残り（売却手取り+累積CF）",
-                        "type": "number"
-                    },
-                    "exitTransferTax": {
-                        "description": "譲渡所得税",
-                        "type": "number"
-                    },
-                    "grossYield": {
-                        "description": "表面利回り（満室想定年収/総投資額）",
-                        "type": "number"
-                    },
-                    "irr": {
-                        "description": "内部収益率（収束しない場合は null）",
-                        "type": "number"
-                    },
-                    "isAboveYieldTarget": {
-                        "type": "boolean"
-                    },
-                    "ltvSensitivity": {
-                        "description": "LTV感度分析（50%〜90%）",
-                        "items": {
-                            "$ref": "#/components/schemas/domain.LTVSensitivityRow"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "miscExpenses": {
-                        "type": "number"
-                    },
-                    "multiExitComparison": {
-                        "description": "複数保有年数の出口比較",
-                        "items": {
-                            "$ref": "#/components/schemas/domain.MultiExitRow"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "netYield": {
-                        "description": "実質利回り（実効収入-経費)/総投資額）",
-                        "type": "number"
-                    },
-                    "npv": {
-                        "description": "正味現在価値",
-                        "type": "number"
-                    },
-                    "requiredCostReduction": {
-                        "description": "目標利回り達成に必要な改善額（土地・建築費いずれか一方を削減する額）",
-                        "type": "number"
-                    },
-                    "requiredMonthlyRent": {
-                        "description": "または必要月額賃料",
-                        "type": "number"
-                    },
-                    "stressScenarios": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.StressScenarioResult"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "totalInterest": {
-                        "description": "保有期間の総支払利息",
-                        "type": "number"
-                    },
-                    "totalInvestment": {
-                        "description": "総投資額（土地+建物+諸経費）",
-                        "type": "number"
-                    },
-                    "yearlyResults": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.YearlyResult"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "yieldScenarios": {
-                        "$ref": "#/components/schemas/domain.YieldScenarios"
-                    },
-                    "yieldTarget": {
-                        "description": "目標表面利回り（例: 0.08）",
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.InvestmentScoreResult": {
-                "properties": {
-                    "breakdown": {
-                        "$ref": "#/components/schemas/domain.ScoreBreakdown"
-                    },
-                    "grade": {
-                        "description": "優良/良好/普通/注意/要注意",
-                        "type": "string"
-                    },
-                    "totalScore": {
-                        "type": "integer"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.LTVSensitivityRow": {
-                "properties": {
-                    "annualCF": {
-                        "description": "年間キャッシュフロー（円）",
-                        "type": "number"
-                    },
-                    "cfYield": {
-                        "description": "CF利回り（AnnualCF / 総投資額）",
-                        "type": "number"
-                    },
-                    "dscr": {
-                        "description": "借入金償還余裕率",
-                        "type": "number"
-                    },
-                    "equity": {
-                        "description": "自己資金（円）",
-                        "type": "number"
-                    },
-                    "loanAmount": {
-                        "description": "借入額（円）",
-                        "type": "number"
-                    },
-                    "ltv": {
-                        "description": "借入比率（例: 0.70）",
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.LandPriceComparison": {
-                "properties": {
-                    "assessment": {
-                        "description": "\"割安\" / \"相場\" / \"割高\"",
-                        "type": "string"
-                    },
-                    "diffFromAverage": {
-                        "type": "number"
-                    },
-                    "diffFromMedian": {
-                        "type": "number"
-                    },
-                    "inputArea": {
-                        "type": "number"
-                    },
-                    "inputLandPrice": {
-                        "type": "number"
-                    },
-                    "inputPricePerTsubo": {
-                        "type": "number"
-                    },
-                    "stats": {
-                        "$ref": "#/components/schemas/domain.LandPriceStats"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.LandPriceStats": {
-                "properties": {
-                    "averageTsubo": {
-                        "type": "number"
-                    },
-                    "count": {
-                        "type": "integer"
-                    },
-                    "lowDataWarning": {
-                        "description": "件数 \u003c 10 件時 true",
-                        "type": "boolean"
-                    },
-                    "maxTsubo": {
-                        "type": "number"
-                    },
-                    "medianTsubo": {
-                        "type": "number"
-                    },
-                    "minTsubo": {
-                        "type": "number"
-                    },
-                    "transactions": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.LandTransaction"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "urbanRisks": {
-                        "description": "都市計画リスク一覧",
-                        "items": {
-                            "$ref": "#/components/schemas/domain.UrbanRisk"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "warningMessage": {
-                        "type": "string"
-                    },
-                    "zoning": {
-                        "$ref": "#/components/schemas/domain.ZoningSummary"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.LandTransaction": {
-                "properties": {
-                    "area": {
-                        "type": "number"
-                    },
-                    "buildingCoverage": {
-                        "type": "string"
-                    },
-                    "buildingYear": {
-                        "description": "建築年（西暦）",
-                        "type": "integer"
-                    },
-                    "cityPlanning": {
-                        "type": "string"
-                    },
-                    "district": {
-                        "type": "string"
-                    },
-                    "floorAreaRatio": {
-                        "type": "string"
-                    },
-                    "period": {
-                        "type": "string"
-                    },
-                    "pricePerSqm": {
-                        "type": "number"
-                    },
-                    "pricePerTsubo": {
-                        "type": "number"
-                    },
-                    "stationMinutes": {
-                        "description": "最寄り駅徒歩分",
-                        "type": "integer"
-                    },
-                    "tradePrice": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.MonteCarloInput": {
-                "properties": {
-                    "base": {
-                        "$ref": "#/components/schemas/domain.InvestmentInput"
-                    },
-                    "loanRateSigma": {
-                        "description": "金利の標準偏差 (デフォルト 0.005)",
-                        "type": "number"
-                    },
-                    "simulations": {
-                        "description": "試行回数 (デフォルト 1000、最大 10000)",
-                        "type": "integer"
-                    },
-                    "vacancyRateSigma": {
-                        "description": "空室率の標準偏差 (デフォルト 0.05)",
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.MonteCarloResult": {
-                "properties": {
-                    "deadCrossRate": {
-                        "description": "デッドクロス発生率 (0〜1)",
-                        "type": "number"
-                    },
-                    "equityHistogram": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.HistogramBin"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "equityPercentiles": {
-                        "$ref": "#/components/schemas/domain.Percentiles"
-                    },
-                    "irrHistogram": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.HistogramBin"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "irrPercentiles": {
-                        "$ref": "#/components/schemas/domain.Percentiles"
-                    },
-                    "simulationCount": {
-                        "type": "integer"
-                    },
-                    "successRate": {
-                        "description": "IRR \u003e 0 の割合",
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.MultiExitRow": {
-                "properties": {
-                    "cumulativeCf": {
-                        "type": "number"
-                    },
-                    "exitEquity": {
-                        "type": "number"
-                    },
-                    "irr": {
-                        "type": "number"
-                    },
-                    "isShortTermWarn": {
-                        "type": "boolean"
-                    },
-                    "remainingLoan": {
-                        "type": "number"
-                    },
-                    "salePrice": {
-                        "type": "number"
-                    },
-                    "transferTax": {
-                        "type": "number"
-                    },
-                    "transferTaxRate": {
-                        "type": "number"
-                    },
-                    "year": {
-                        "type": "integer"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.Percentiles": {
-                "properties": {
-                    "p10": {
-                        "type": "number"
-                    },
-                    "p25": {
-                        "type": "number"
-                    },
-                    "p50": {
-                        "type": "number"
-                    },
-                    "p75": {
-                        "type": "number"
-                    },
-                    "p90": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.PopulationForecastResult": {
-                "properties": {
-                    "changeRate30yr": {
-                        "description": "30年後変化率 (例: -0.32)",
-                        "type": "number"
-                    },
-                    "snapshots": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.PopulationSnapshot"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "trend": {
-                        "$ref": "#/components/schemas/domain.PopulationTrend"
-                    },
-                    "vacancyRateDelta": {
-                        "description": "推定空室率増加幅",
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.PopulationSnapshot": {
-                "properties": {
-                    "pop": {
-                        "type": "number"
-                    },
-                    "year": {
-                        "type": "integer"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.PopulationTrend": {
-                "enum": [
-                    "増加",
-                    "現状維持",
-                    "緩やかな減少",
-                    "急激な減少"
-                ],
-                "type": "string",
-                "x-enum-varnames": [
-                    "PopulationTrendGrowth",
-                    "PopulationTrendStable",
-                    "PopulationTrendSlowDecline",
-                    "PopulationTrendSteepDecline"
-                ]
-            },
-            "domain.RadarPoint": {
-                "properties": {
-                    "category": {
-                        "type": "string"
-                    },
-                    "score": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.RateAdjustment": {
-                "properties": {
-                    "afterYear": {
-                        "description": "AfterYear: この年（1始まり）以降に Rate を適用（例: 6 = 6年目から）",
-                        "type": "integer"
-                    },
-                    "rate": {
-                        "description": "Rate: 絶対値の年利（例: 0.02 = 2%）",
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.RenovationInput": {
-                "properties": {
-                    "annualBaseRent": {
-                        "type": "number"
-                    },
-                    "annualExpenses": {
-                        "type": "number"
-                    },
-                    "effectiveTaxRate": {
-                        "type": "number"
-                    },
-                    "items": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.RenovationItem"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "propertyPrice": {
-                        "type": "number"
-                    },
-                    "selfLaborRatePerHour": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.RenovationItem": {
-                "properties": {
-                    "cost": {
-                        "type": "number"
-                    },
-                    "expectedMonthlyRentIncrease": {
-                        "type": "number"
-                    },
-                    "isSelfWork": {
-                        "type": "boolean"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "selfLaborHours": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.RenovationResult": {
-                "properties": {
-                    "actualYield": {
-                        "type": "number"
-                    },
-                    "annualRentIncrease": {
-                        "type": "number"
-                    },
-                    "capitalExpenditures": {
-                        "type": "number"
-                    },
-                    "classifiedItems": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.ClassifiedRenovationItem"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "isRecoverable": {
-                        "description": "家賃アップがある場合のみ true",
-                        "type": "boolean"
-                    },
-                    "recoveryYears": {
-                        "type": "number"
-                    },
-                    "repairExpenses": {
-                        "type": "number"
-                    },
-                    "taxSavings": {
-                        "type": "number"
-                    },
-                    "totalRenovationCost": {
-                        "type": "number"
-                    },
-                    "virtualLaborCost": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.RentDeclineHint": {
-                "properties": {
-                    "basis": {
-                        "description": "\"land_appraisal\" | \"fallback\"",
-                        "type": "string"
-                    },
-                    "dataPointCount": {
-                        "description": "使用した地価公示データ件数",
-                        "type": "integer"
-                    },
-                    "fallbackUsed": {
-                        "type": "boolean"
-                    },
-                    "hintRate": {
-                        "description": "参考下落率（小数: 0.008 = 0.8%/年）",
-                        "type": "number"
-                    },
-                    "note": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.RentStatsResult": {
-                "properties": {
-                    "average": {
-                        "description": "月額賃料 平均値（円）",
-                        "type": "number"
-                    },
-                    "count": {
-                        "description": "サンプル数",
-                        "type": "integer"
-                    },
-                    "median": {
-                        "description": "月額賃料 中央値（円）",
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.RidershipDemandScore": {
-                "description": "需要スコア (有効時のみ)",
-                "enum": [
-                    "A",
-                    "B",
-                    "C",
-                    "D",
-                    "E"
-                ],
-                "type": "string",
-                "x-enum-comments": {
-                    "RidershipScoreA": "\u003e=100,000人/日",
-                    "RidershipScoreB": "\u003e=30,000人/日",
-                    "RidershipScoreC": "\u003e=10,000人/日",
-                    "RidershipScoreD": "\u003e=2,000人/日",
-                    "RidershipScoreE": "\u003c2,000人/日"
-                },
-                "x-enum-varnames": [
-                    "RidershipScoreA",
-                    "RidershipScoreB",
-                    "RidershipScoreC",
-                    "RidershipScoreD",
-                    "RidershipScoreE"
-                ]
-            },
-            "domain.ScoreBreakdown": {
-                "properties": {
-                    "disasterHistory": {
-                        "$ref": "#/components/schemas/domain.ScoreItem"
-                    },
-                    "embankment": {
-                        "$ref": "#/components/schemas/domain.ScoreItem"
-                    },
-                    "hazardRisk": {
-                        "$ref": "#/components/schemas/domain.ScoreItem"
-                    },
-                    "landPriceTrend": {
-                        "$ref": "#/components/schemas/domain.ScoreItem"
-                    },
-                    "liquefactionRisk": {
-                        "$ref": "#/components/schemas/domain.ScoreItem"
-                    },
-                    "locationOptimization": {
-                        "$ref": "#/components/schemas/domain.ScoreItem"
-                    },
-                    "population": {
-                        "$ref": "#/components/schemas/domain.ScoreItem"
-                    },
-                    "radarData": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.RadarPoint"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "ridership": {
-                        "$ref": "#/components/schemas/domain.ScoreItem"
-                    },
-                    "urbanArea": {
-                        "$ref": "#/components/schemas/domain.ScoreItem"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.ScoreItem": {
-                "properties": {
-                    "description": {
-                        "type": "string"
-                    },
-                    "label": {
-                        "type": "string"
-                    },
-                    "score": {
-                        "type": "integer"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.StationRidershipResult": {
-                "properties": {
-                    "correction": {
-                        "description": "理論価格補正係数",
-                        "type": "number"
-                    },
-                    "demandScore": {
-                        "$ref": "#/components/schemas/domain.RidershipDemandScore"
-                    },
-                    "lineName": {
-                        "type": "string"
-                    },
-                    "passengers": {
-                        "description": "乗降客数/日",
-                        "type": "integer"
-                    },
-                    "stationName": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.StressScenarioResult": {
-                "properties": {
-                    "breakEvenYear": {
-                        "description": "累積税引後CFが初めて正転する年（-1=なし）",
-                        "type": "integer"
-                    },
-                    "dscr": {
-                        "type": "number"
-                    },
-                    "interestRateDelta": {
-                        "type": "number"
-                    },
-                    "isSafe": {
-                        "description": "DSCR \u003e= 1.0 \u0026\u0026 BreakEvenYear \u003c= HoldingYears（UIバッジは1.2閾値、フラグ定義は変更しない）",
-                        "type": "boolean"
-                    },
-                    "label": {
-                        "type": "string"
-                    },
-                    "totalCashFlow": {
-                        "type": "number"
-                    },
-                    "vacancyRateDelta": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.TheoreticalPriceResult": {
-                "properties": {
-                    "ageCorrection": {
-                        "description": "築年数補正 (-0.3〜0.3)",
-                        "type": "number"
-                    },
-                    "deviationPct": {
-                        "description": "乖離率 % (正=割高, 負=割安)",
-                        "type": "number"
-                    },
-                    "hasRidershipData": {
-                        "description": "乗降客数補正が有効か",
-                        "type": "boolean"
-                    },
-                    "hasStationData": {
-                        "description": "駅距離補正が有効か",
-                        "type": "boolean"
-                    },
-                    "isLowDataWarning": {
-                        "description": "築年数サンプル不足",
-                        "type": "boolean"
-                    },
-                    "medianBuildingAge": {
-                        "description": "取引事例中央値築年数",
-                        "type": "integer"
-                    },
-                    "medianStationMinutes": {
-                        "description": "取引事例中央値駅距離(分)",
-                        "type": "integer"
-                    },
-                    "ridershipCorrection": {
-                        "description": "乗降客数補正 (-0.15〜0.15)",
-                        "type": "number"
-                    },
-                    "ridershipScore": {
-                        "$ref": "#/components/schemas/domain.RidershipDemandScore"
-                    },
-                    "stationCorrection": {
-                        "description": "駅距離補正 (-0.2〜0.2)",
-                        "type": "number"
-                    },
-                    "theoreticalPriceJPY": {
-                        "description": "理論価格 (円)",
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.UrbanRisk": {
-                "properties": {
-                    "code": {
-                        "description": "リスクコード（例: URBANIZATION_CONTROL）",
-                        "type": "string"
-                    },
-                    "description": {
-                        "description": "詳細説明",
-                        "type": "string"
-                    },
-                    "level": {
-                        "$ref": "#/components/schemas/domain.UrbanRiskLevel"
-                    },
-                    "title": {
-                        "description": "短いタイトル",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.UrbanRiskLevel": {
-                "description": "ERROR / WARNING / INFO",
-                "enum": [
-                    "ERROR",
-                    "WARNING",
-                    "INFO"
-                ],
-                "type": "string",
-                "x-enum-varnames": [
-                    "UrbanRiskLevelError",
-                    "UrbanRiskLevelWarning",
-                    "UrbanRiskLevelInfo"
-                ]
-            },
-            "domain.YearlyResult": {
-                "properties": {
-                    "afterTaxCashFlow": {
-                        "type": "number"
-                    },
-                    "annualDepreciation": {
-                        "type": "number"
-                    },
-                    "annualExpenses": {
-                        "type": "number"
-                    },
-                    "annualInterest": {
-                        "type": "number"
-                    },
-                    "annualLoanPayment": {
-                        "type": "number"
-                    },
-                    "annualPrincipal": {
-                        "type": "number"
-                    },
-                    "annualRent": {
-                        "description": "実効賃料収入（空室控除後）",
-                        "type": "number"
-                    },
-                    "capexAmount": {
-                        "description": "大規模修繕費（当年発生額）",
-                        "type": "number"
-                    },
-                    "cashFlow": {
-                        "type": "number"
-                    },
-                    "cumulativeCashFlow": {
-                        "type": "number"
-                    },
-                    "effectiveRate": {
-                        "description": "その年の適用金利（年利）",
-                        "type": "number"
-                    },
-                    "incomeTax": {
-                        "type": "number"
-                    },
-                    "isDeadCrossYear": {
-                        "description": "デッドクロス初年度",
-                        "type": "boolean"
-                    },
-                    "isInDeadCrossZone": {
-                        "description": "デッドクロス継続中",
-                        "type": "boolean"
-                    },
-                    "remainingLoanBalance": {
-                        "type": "number"
-                    },
-                    "taxableIncome": {
-                        "type": "number"
-                    },
-                    "year": {
-                        "type": "integer"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.YieldScenario": {
-                "description": "楽観: 空室率 × 0.5",
-                "properties": {
-                    "annualRent": {
-                        "description": "年間実効賃料収入（空室控除後）",
-                        "type": "number"
-                    },
-                    "grossYield": {
-                        "description": "表面利回り（満室想定年収/総投資額）",
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.YieldScenarios": {
-                "properties": {
-                    "optimistic": {
-                        "$ref": "#/components/schemas/domain.YieldScenario"
-                    },
-                    "pessimistic": {
-                        "$ref": "#/components/schemas/domain.YieldScenario"
-                    },
-                    "standard": {
-                        "$ref": "#/components/schemas/domain.YieldScenario"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.ZoningSummary": {
-                "description": "取引データから抽出した用途地域情報",
-                "properties": {
-                    "buildingCoverage": {
-                        "description": "最頻の建ぺい率（例: 60%）",
-                        "type": "string"
-                    },
-                    "cityPlanning": {
-                        "description": "最頻の都市計画区域（例: 第一種住居地域）",
-                        "type": "string"
-                    },
-                    "floorAreaRatio": {
-                        "description": "最頻の容積率（例: 200%）",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "mlit.Municipality": {
-                "properties": {
-                    "id": {
-                        "description": "市区町村コード (例: \"13101\")",
-                        "type": "string"
-                    },
-                    "name": {
-                        "description": "市区町村名 (例: \"千代田区\")",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
-        }
-    },
+    "schemes": [
+        "http",
+        "https"
+    ],
+    "swagger": "2.0",
     "info": {
-        "title": "",
-        "version": ""
+        "description": "不動産投資意思決定支援 API",
+        "title": "Yield-Guard API",
+        "contact": {},
+        "version": "1.0"
     },
-    "externalDocs": {
-        "description": "",
-        "url": ""
-    },
+    "host": "localhost:8080",
+    "basePath": "/",
     "paths": {
         "/api/area-discovery": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "area"
+                ],
+                "summary": "投資エリア探索",
                 "parameters": [
                     {
+                        "type": "string",
                         "description": "都道府県コード (例: 13)",
-                        "in": "query",
                         "name": "prefecture",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "number",
                         "description": "予算 (円)",
-                        "in": "query",
                         "name": "budget",
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query"
                     },
                     {
+                        "type": "number",
                         "description": "目標利回り (例: 0.07)",
-                        "in": "query",
                         "name": "yield",
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.AreaDiscoveryResponse"
-                                }
-                            }
-                        },
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.AreaDiscoveryResponse"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     },
                     "500": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Internal Server Error"
+                        }
                     }
-                },
-                "summary": "投資エリア探索",
-                "tags": [
-                    "area"
-                ]
+                }
             }
         },
         "/api/geocode": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "location"
+                ],
+                "summary": "ジオコーディング",
                 "parameters": [
                     {
+                        "type": "string",
                         "description": "住所文字列",
-                        "in": "query",
                         "name": "address",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/api.GeocodeResult"
-                                }
-                            }
-                        },
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.GeocodeResult"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     },
                     "503": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Service Unavailable"
+                        }
                     }
-                },
-                "summary": "ジオコーディング",
-                "tags": [
-                    "location"
-                ]
+                }
             }
         },
         "/api/hazard": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "location"
+                ],
+                "summary": "ハザード情報",
                 "parameters": [
                     {
+                        "type": "number",
                         "description": "緯度 (日本国内 20-46)",
-                        "in": "query",
                         "name": "lat",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "number",
                         "description": "経度 (日本国内 122-154)",
-                        "in": "query",
                         "name": "lng",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "items": {
-                                        "$ref": "#/components/schemas/domain.UrbanRisk"
-                                    },
-                                    "type": "array"
-                                }
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.UrbanRisk"
                             }
-                        },
-                        "description": "OK"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     }
-                },
-                "summary": "ハザード情報",
-                "tags": [
-                    "location"
-                ]
+                }
             }
         },
         "/api/investment-score": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "location"
+                ],
+                "summary": "投資適地スコア",
                 "parameters": [
                     {
+                        "type": "number",
                         "description": "緯度 (日本国内 20-46)",
-                        "in": "query",
                         "name": "lat",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "number",
                         "description": "経度 (日本国内 122-154)",
-                        "in": "query",
                         "name": "lng",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.InvestmentScoreResult"
-                                }
-                            }
-                        },
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.InvestmentScoreResult"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     },
                     "500": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Internal Server Error"
+                        }
                     }
-                },
-                "summary": "投資適地スコア",
-                "tags": [
-                    "location"
-                ]
+                }
             }
         },
         "/api/investment-score-heatmap": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "location"
+                ],
+                "summary": "投資スコアヒートマップ",
                 "parameters": [
                     {
+                        "type": "number",
                         "description": "南端緯度",
-                        "in": "query",
                         "name": "minLat",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "number",
                         "description": "北端緯度",
-                        "in": "query",
                         "name": "maxLat",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "number",
                         "description": "西端経度",
-                        "in": "query",
                         "name": "minLng",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "number",
                         "description": "東端経度",
-                        "in": "query",
                         "name": "maxLng",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "ズームレベル (11-15, デフォルト: 13)",
-                        "in": "query",
                         "name": "z",
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.HeatmapResponse"
-                                }
-                            }
-                        },
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.HeatmapResponse"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     }
-                },
-                "summary": "投資スコアヒートマップ",
-                "tags": [
-                    "location"
-                ]
+                }
             }
         },
         "/api/investment/analyze": {
             "post": {
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "oneOf": [
-                                    {
-                                        "type": "object"
-                                    },
-                                    {
-                                        "$ref": "#/components/schemas/domain.InvestmentInput",
-                                        "summary": "body",
-                                        "description": "投資分析リクエスト"
-                                    }
-                                ]
-                            }
-                        }
-                    },
-                    "description": "投資分析リクエスト",
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.InvestmentResult"
-                                }
-                            }
-                        },
-                        "description": "OK"
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        },
-                        "description": "Bad Request"
-                    }
-                },
-                "summary": "投資分析",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "investment"
-                ]
+                ],
+                "summary": "投資分析",
+                "parameters": [
+                    {
+                        "description": "投資分析リクエスト",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.InvestmentInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.InvestmentResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/investment/rent-decline-hint": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "investment"
+                ],
+                "summary": "賃料下落率参考値",
                 "parameters": [
                     {
+                        "type": "string",
                         "description": "都道府県コード (例: 13)",
-                        "in": "query",
                         "name": "area",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "string",
                         "description": "市区町村コード",
-                        "in": "query",
                         "name": "municipality",
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.RentDeclineHint"
-                                }
-                            }
-                        },
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.RentDeclineHint"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     },
                     "502": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Gateway"
+                        }
                     }
-                },
-                "summary": "賃料下落率参考値",
-                "tags": [
-                    "investment"
-                ]
+                }
             }
         },
         "/api/investment/simulate": {
             "post": {
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "oneOf": [
-                                    {
-                                        "type": "object"
-                                    },
-                                    {
-                                        "$ref": "#/components/schemas/domain.MonteCarloInput",
-                                        "summary": "body",
-                                        "description": "シミュレーションリクエスト"
-                                    }
-                                ]
-                            }
-                        }
-                    },
-                    "description": "シミュレーションリクエスト",
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.MonteCarloResult"
-                                }
-                            }
-                        },
-                        "description": "OK"
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        },
-                        "description": "Bad Request"
-                    }
-                },
-                "summary": "モンテカルロシミュレーション",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "investment"
-                ]
+                ],
+                "summary": "モンテカルロシミュレーション",
+                "parameters": [
+                    {
+                        "description": "シミュレーションリクエスト",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.MonteCarloInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.MonteCarloResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/land-appraisals": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "land-prices"
+                ],
+                "summary": "地価公示統計",
                 "parameters": [
                     {
+                        "type": "string",
                         "description": "都道府県コード (例: 13)",
-                        "in": "query",
                         "name": "area",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "公示年 (2022-2030)",
-                        "in": "query",
                         "name": "year",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "string",
                         "description": "市区町村コード",
-                        "in": "query",
                         "name": "city",
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query"
                     },
                     {
+                        "type": "string",
                         "description": "用途区分 (00=住宅地, 05=商業地, 07=準工業地, 09=工業地)",
-                        "in": "query",
                         "name": "division",
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.AppraisalComparisonResult"
-                                }
-                            }
-                        },
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.AppraisalComparisonResult"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     },
                     "422": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Unprocessable Entity"
+                        }
                     },
                     "502": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Gateway"
+                        }
                     }
-                },
-                "summary": "地価公示統計",
-                "tags": [
-                    "land-prices"
-                ]
+                }
             }
         },
         "/api/land-prices/compare": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "land-prices"
+                ],
+                "summary": "土地価格比較",
                 "parameters": [
                     {
+                        "type": "string",
                         "description": "都道府県コード (例: 13)",
-                        "in": "query",
                         "name": "area",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "開始年 (2005以降)",
-                        "in": "query",
                         "name": "year",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "開始四半期 (1-4)",
-                        "in": "query",
                         "name": "quarter",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "終了年",
-                        "in": "query",
                         "name": "to_year",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "終了四半期 (1-4)",
-                        "in": "query",
                         "name": "to_quarter",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "number",
                         "description": "検討物件価格 (円)",
-                        "in": "query",
                         "name": "price",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "string",
                         "description": "市区町村コード",
-                        "in": "query",
                         "name": "city",
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query"
                     },
                     {
+                        "type": "number",
                         "description": "土地面積 (m²)",
-                        "in": "query",
                         "name": "area_sqm",
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.LandPriceComparison"
-                                }
-                            }
-                        },
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.LandPriceComparison"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     },
                     "502": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Gateway"
+                        }
                     }
-                },
-                "summary": "土地価格比較",
-                "tags": [
-                    "land-prices"
-                ]
+                }
             }
         },
         "/api/land-prices/estimate": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "land-prices"
+                ],
+                "summary": "理論価格推定",
                 "parameters": [
                     {
+                        "type": "string",
                         "description": "都道府県コード (例: 13)",
-                        "in": "query",
                         "name": "area",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "開始年 (2005以降)",
-                        "in": "query",
                         "name": "year",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "開始四半期 (1-4)",
-                        "in": "query",
                         "name": "quarter",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "終了年",
-                        "in": "query",
                         "name": "to_year",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "終了四半期 (1-4)",
-                        "in": "query",
                         "name": "to_quarter",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "number",
                         "description": "物件価格 (円)",
-                        "in": "query",
                         "name": "price",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "number",
                         "description": "土地面積 (m²)",
-                        "in": "query",
                         "name": "area_sqm",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "string",
                         "description": "市区町村コード",
-                        "in": "query",
                         "name": "city",
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query"
                     },
                     {
+                        "type": "integer",
                         "description": "築年数",
-                        "in": "query",
                         "name": "building_age",
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query"
                     },
                     {
+                        "type": "integer",
                         "description": "最寄り駅徒歩分",
-                        "in": "query",
                         "name": "station_minutes",
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query"
                     },
                     {
+                        "type": "string",
                         "description": "需要スコア (A-E)",
-                        "in": "query",
                         "name": "ridership_score",
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.TheoreticalPriceResult"
-                                }
-                            }
-                        },
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.TheoreticalPriceResult"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     },
                     "422": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Unprocessable Entity"
+                        }
                     },
                     "502": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Gateway"
+                        }
                     }
-                },
-                "summary": "理論価格推定",
-                "tags": [
-                    "land-prices"
-                ]
+                }
             }
         },
         "/api/land-prices/stats": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "land-prices"
+                ],
+                "summary": "土地取引価格統計",
                 "parameters": [
                     {
+                        "type": "string",
                         "description": "都道府県コード (例: 13)",
-                        "in": "query",
                         "name": "area",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "開始年 (2005以降)",
-                        "in": "query",
                         "name": "year",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "開始四半期 (1-4)",
-                        "in": "query",
                         "name": "quarter",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "終了年",
-                        "in": "query",
                         "name": "to_year",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "終了四半期 (1-4)",
-                        "in": "query",
                         "name": "to_quarter",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "string",
                         "description": "市区町村コード",
-                        "in": "query",
                         "name": "city",
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.LandPriceStats"
-                                }
-                            }
-                        },
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.LandPriceStats"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     },
                     "502": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Gateway"
+                        }
                     }
-                },
-                "summary": "土地取引価格統計",
-                "tags": [
-                    "land-prices"
-                ]
+                }
             }
         },
         "/api/municipalities": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "land-prices"
+                ],
+                "summary": "市区町村一覧",
                 "parameters": [
                     {
+                        "type": "string",
                         "description": "都道府県コード (例: 13)",
-                        "in": "query",
                         "name": "area",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "items": {
-                                        "$ref": "#/components/schemas/mlit.Municipality"
-                                    },
-                                    "type": "array"
-                                }
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/mlit.Municipality"
                             }
-                        },
-                        "description": "OK"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     },
                     "502": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Gateway"
+                        }
                     }
-                },
-                "summary": "市区町村一覧",
-                "tags": [
-                    "land-prices"
-                ]
+                }
             }
         },
         "/api/population-forecast": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "location"
+                ],
+                "summary": "将来推計人口",
                 "parameters": [
                     {
+                        "type": "number",
                         "description": "緯度",
-                        "in": "query",
                         "name": "lat",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "number",
                         "description": "経度",
-                        "in": "query",
                         "name": "lng",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "ズームレベル (11-15, デフォルト: 14)",
-                        "in": "query",
                         "name": "z",
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.PopulationForecastResult"
-                                }
-                            }
-                        },
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.PopulationForecastResult"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     },
                     "502": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Gateway"
+                        }
                     }
-                },
-                "summary": "将来推計人口",
-                "tags": [
-                    "location"
-                ]
+                }
             }
         },
         "/api/renovation/analyze": {
             "post": {
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "oneOf": [
-                                    {
-                                        "type": "object"
-                                    },
-                                    {
-                                        "$ref": "#/components/schemas/domain.RenovationInput",
-                                        "summary": "body",
-                                        "description": "リフォーム分析リクエスト"
-                                    }
-                                ]
-                            }
-                        }
-                    },
-                    "description": "リフォーム分析リクエスト",
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.RenovationResult"
-                                }
-                            }
-                        },
-                        "description": "OK"
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        },
-                        "description": "Bad Request"
-                    }
-                },
-                "summary": "リフォームROI分析",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "renovation"
-                ]
+                ],
+                "summary": "リフォームROI分析",
+                "parameters": [
+                    {
+                        "description": "リフォーム分析リクエスト",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.RenovationInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.RenovationResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/rent-stats": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "land-prices"
+                ],
+                "summary": "賃料統計",
                 "parameters": [
                     {
+                        "type": "string",
                         "description": "都道府県コード (例: 13)",
-                        "in": "query",
                         "name": "area",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "string",
                         "description": "市区町村コード",
-                        "in": "query",
                         "name": "municipality",
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query"
                     },
                     {
+                        "type": "number",
                         "description": "専有面積 (m²)",
-                        "in": "query",
                         "name": "area_sqm",
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.RentStatsResult"
-                                }
-                            }
-                        },
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.RentStatsResult"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     }
-                },
-                "summary": "賃料統計",
-                "tags": [
-                    "land-prices"
-                ]
+                }
             }
         },
         "/api/station-ridership": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "location"
+                ],
+                "summary": "駅別乗降客数",
                 "parameters": [
                     {
+                        "type": "number",
                         "description": "緯度",
-                        "in": "query",
                         "name": "lat",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "number",
                         "description": "経度",
-                        "in": "query",
                         "name": "lng",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "ズームレベル (11-15, デフォルト: 14)",
-                        "in": "query",
                         "name": "z",
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "items": {
-                                        "$ref": "#/components/schemas/domain.StationRidershipResult"
-                                    },
-                                    "type": "array"
-                                }
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.StationRidershipResult"
                             }
-                        },
-                        "description": "OK"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     },
                     "502": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Gateway"
+                        }
                     }
-                },
-                "summary": "駅別乗降客数",
-                "tags": [
-                    "location"
-                ]
+                }
             }
         },
         "/api/urban-risks": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "location"
+                ],
+                "summary": "都市計画リスク",
                 "parameters": [
                     {
+                        "type": "number",
                         "description": "緯度 (日本国内 20-46)",
-                        "in": "query",
                         "name": "lat",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "number",
                         "description": "経度 (日本国内 122-154)",
-                        "in": "query",
                         "name": "lng",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        }
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "items": {
-                                        "$ref": "#/components/schemas/domain.UrbanRisk"
-                                    },
-                                    "type": "array"
-                                }
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.UrbanRisk"
                             }
-                        },
-                        "description": "OK"
+                        }
                     },
                     "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
-                        },
-                        "description": "Bad Request"
+                        }
                     }
-                },
-                "summary": "都市計画リスク",
-                "tags": [
-                    "location"
-                ]
+                }
             }
         },
         "/health": {
             "get": {
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        },
-                        "description": "OK"
-                    }
-                },
-                "summary": "ヘルスチェック",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "system"
-                ]
+                ],
+                "summary": "ヘルスチェック",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         }
     },
-    "openapi": "3.1.0"
+    "definitions": {
+        "api.GeocodeResult": {
+            "type": "object",
+            "properties": {
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                },
+                "locationType": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.AcquisitionCostBreakdown": {
+            "type": "object",
+            "properties": {
+                "brokerageFee": {
+                    "description": "仲介手数料（税込）",
+                    "type": "number"
+                },
+                "propertyTaxProration": {
+                    "description": "固定資産税日割り精算（買主負担分）",
+                    "type": "number"
+                },
+                "realEstateAcquisitionTax": {
+                    "description": "不動産取得税（概算）",
+                    "type": "number"
+                },
+                "registrationTax": {
+                    "description": "登録免許税（所有権移転+抵当権設定）",
+                    "type": "number"
+                },
+                "stampDuty": {
+                    "description": "印紙税（売買契約書）",
+                    "type": "number"
+                },
+                "total": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.AppraisalComparisonResult": {
+            "type": "object",
+            "properties": {
+                "appraisalCount": {
+                    "description": "標準地点数",
+                    "type": "integer"
+                },
+                "appraisalMedianPerSqm": {
+                    "description": "公示価格中央値（円/m²）",
+                    "type": "number"
+                },
+                "appraisalTrend": {
+                    "description": "平均変動率（小数）",
+                    "type": "number"
+                },
+                "trendLabel": {
+                    "description": "\"上昇\" / \"安定\" / \"下落\"",
+                    "type": "string"
+                }
+            }
+        },
+        "domain.AreaDiscoveryItem": {
+            "type": "object",
+            "properties": {
+                "dataSufficient": {
+                    "description": "取引件数3件以上",
+                    "type": "boolean"
+                },
+                "landPriceTrend": {
+                    "description": "\"上昇\" | \"安定\" | \"下落\" | \"不明\"",
+                    "type": "string"
+                },
+                "medianTsubo": {
+                    "description": "坪単価中央値（円）",
+                    "type": "number"
+                },
+                "municipalityCode": {
+                    "type": "string"
+                },
+                "municipalityName": {
+                    "type": "string"
+                },
+                "transactionCount": {
+                    "description": "取引件数",
+                    "type": "integer"
+                },
+                "yieldDifficulty": {
+                    "description": "\"achievable\" | \"slightly-difficult\" | \"difficult\"",
+                    "type": "string"
+                },
+                "yieldDifficultyLabel": {
+                    "description": "日本語ラベル",
+                    "type": "string"
+                }
+            }
+        },
+        "domain.AreaDiscoveryResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.AreaDiscoveryItem"
+                    }
+                },
+                "prefecture": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.BuildingType": {
+            "type": "string",
+            "enum": [
+                "木造",
+                "軽量鉄骨(4mm以下)",
+                "軽量鉄骨(3mm以下)",
+                "重量鉄骨",
+                "RC造",
+                "SRC造"
+            ],
+            "x-enum-comments": {
+                "BuildingTypeHeavySteel": "耐用年数 34年",
+                "BuildingTypeLightSteel": "耐用年数 27年",
+                "BuildingTypeLightSteelThin": "耐用年数 19年 (薄板・プレハブ系)",
+                "BuildingTypeRC": "耐用年数 47年",
+                "BuildingTypeSRC": "耐用年数 47年 (鉄骨鉄筋コンクリート)",
+                "BuildingTypeWood": "耐用年数 22年"
+            },
+            "x-enum-descriptions": [
+                "耐用年数 22年",
+                "耐用年数 27年",
+                "耐用年数 19年 (薄板・プレハブ系)",
+                "耐用年数 34年",
+                "耐用年数 47年",
+                "耐用年数 47年 (鉄骨鉄筋コンクリート)"
+            ],
+            "x-enum-varnames": [
+                "BuildingTypeWood",
+                "BuildingTypeLightSteel",
+                "BuildingTypeLightSteelThin",
+                "BuildingTypeHeavySteel",
+                "BuildingTypeRC",
+                "BuildingTypeSRC"
+            ]
+        },
+        "domain.CapexEvent": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "description": "金額（円）",
+                    "type": "number"
+                },
+                "year": {
+                    "description": "何年目に発生（1〜保有年数）",
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ClassifiedRenovationItem": {
+            "type": "object",
+            "properties": {
+                "cost": {
+                    "type": "number"
+                },
+                "expectedMonthlyRentIncrease": {
+                    "type": "number"
+                },
+                "isCapitalExpenditure": {
+                    "type": "boolean"
+                },
+                "isSelfWork": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "selfLaborHours": {
+                    "type": "number"
+                },
+                "virtualLaborCost": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.CriticalError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/domain.CriticalErrorStatus"
+                }
+            }
+        },
+        "domain.CriticalErrorStatus": {
+            "type": "string",
+            "enum": [
+                "REJECT",
+                "WARNING"
+            ],
+            "x-enum-varnames": [
+                "CriticalStatusReject",
+                "CriticalStatusWarning"
+            ]
+        },
+        "domain.HeatmapResponse": {
+            "type": "object",
+            "properties": {
+                "tileCount": {
+                    "type": "integer"
+                },
+                "tiles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.HeatmapTile"
+                    }
+                }
+            }
+        },
+        "domain.HeatmapTile": {
+            "type": "object",
+            "properties": {
+                "centerLat": {
+                    "type": "number"
+                },
+                "centerLng": {
+                    "type": "number"
+                },
+                "grade": {
+                    "type": "string"
+                },
+                "totalScore": {
+                    "type": "integer"
+                },
+                "x": {
+                    "type": "integer"
+                },
+                "y": {
+                    "type": "integer"
+                },
+                "z": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.HistogramBin": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "max": {
+                    "type": "number"
+                },
+                "min": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.InvestmentInput": {
+            "type": "object",
+            "properties": {
+                "actualVacancyRate": {
+                    "description": "現況空室率: 現時点の実際の空室状況（0の場合はVacancyRateと同一とみなす）",
+                    "type": "number"
+                },
+                "adFee": {
+                    "description": "入居者募集 AD（円/回）例: 家賃1ヶ月分",
+                    "type": "number"
+                },
+                "annualLoanRate": {
+                    "description": "年利 (例: 0.015)",
+                    "type": "number"
+                },
+                "annualPropertyTax": {
+                    "description": "年間固定資産税 (円)。ExpenseRate には含めないこと（二重計上になる）",
+                    "type": "number"
+                },
+                "avgTenancyYears": {
+                    "description": "入退去コスト（全て optional。0 または未入力の場合はターンオーバーコスト = 0）",
+                    "type": "number"
+                },
+                "buildingAge": {
+                    "description": "築年数 (0=新築)",
+                    "type": "integer"
+                },
+                "buildingCost": {
+                    "description": "建築費 (円)",
+                    "type": "number"
+                },
+                "buildingType": {
+                    "description": "建物構造",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.BuildingType"
+                        }
+                    ]
+                },
+                "capexSchedule": {
+                    "description": "大規模修繕費スケジュール（最大5件）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.CapexEvent"
+                    }
+                },
+                "depreciationMethod": {
+                    "description": "減価償却方式: \"straight-line\"（定額法）| \"declining-balance\"（定率法）",
+                    "type": "string"
+                },
+                "discountRate": {
+                    "description": "割引率: NPV/IRR計算用 (例: 0.05 = 5%)",
+                    "type": "number"
+                },
+                "exitYears": {
+                    "description": "複数保有年数の出口比較: 空の場合は [5, 10, 15, 20] をデフォルトとして使用",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "exitYieldTarget": {
+                    "description": "出口戦略: 売却時目標利回り（実質ベース。NOI / 売却価格）",
+                    "type": "number"
+                },
+                "expenseInflationRate": {
+                    "description": "経費インフレ率/年 (例: 0.01 = 1%)",
+                    "type": "number"
+                },
+                "expenseRate": {
+                    "description": "運営経費率 (管理費・修繕・保険等。固定資産税・ローン利息は含まない)\n固定資産税は AnnualPropertyTax で別途指定する",
+                    "type": "number"
+                },
+                "holdingYears": {
+                    "description": "出口戦略: 売却年数 (例: 10)",
+                    "type": "integer"
+                },
+                "incomeTaxRate": {
+                    "description": "所得税率 (例: 0.33。給与との合算後実効税率)",
+                    "type": "number"
+                },
+                "insuranceFeeRate": {
+                    "description": "保険料率 (例: 0.003 = 0.3%)",
+                    "type": "number"
+                },
+                "landArea": {
+                    "description": "土地面積 (m²)",
+                    "type": "number"
+                },
+                "landPrice": {
+                    "description": "土地取得費 (円)",
+                    "type": "number"
+                },
+                "loanAmount": {
+                    "description": "ローン金額 (円)",
+                    "type": "number"
+                },
+                "loanFeeRate": {
+                    "description": "融資諸費用率（保証料・登記費用等の合算）。LoanAmount × LoanFeeRate を取得費に加算。",
+                    "type": "number"
+                },
+                "loanMethod": {
+                    "description": "返済方式: \"equal-payment\"（元利均等）| \"equal-principal\"（元金均等）\n省略時は Defaults() で \"equal-payment\" にセットされる。",
+                    "type": "string"
+                },
+                "loanRateDelta": {
+                    "description": "金利上昇分 (例: +0.015)",
+                    "type": "number"
+                },
+                "loanYears": {
+                    "description": "ローン期間 (年)",
+                    "type": "integer"
+                },
+                "managementFeeRate": {
+                    "description": "詳細経費内訳（全てoptional・後方互換）。合計 \u003e 0 の場合は ExpenseRate より優先される。",
+                    "type": "number"
+                },
+                "miscExpenseRate": {
+                    "description": "諸経費率 (例: 0.07)",
+                    "type": "number"
+                },
+                "monthlyRent": {
+                    "description": "想定月額賃料 (円)",
+                    "type": "number"
+                },
+                "otherExpenseRate": {
+                    "description": "その他経費率 (例: 0.005 = 0.5%)",
+                    "type": "number"
+                },
+                "priceDeclineRate": {
+                    "description": "物件価格下落率: 売却価格に毎年この割合の累乗で下落を反映 (例: 0.02 = 年2%下落)",
+                    "type": "number"
+                },
+                "rateAdjustmentSchedule": {
+                    "description": "変動金利スケジュール: 指定年以降に適用する金利ステップ（空=固定金利）\nLoanRateDelta はスケジュール後の金利にも加算される。",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.RateAdjustment"
+                    }
+                },
+                "rentDeclineRate": {
+                    "description": "賃料下落率: 毎年この割合だけ実効賃料が低下する（例: 0.01 = 年1%下落）",
+                    "type": "number"
+                },
+                "rentFreePeriod": {
+                    "description": "フリーレント（ヶ月）例: 0.5",
+                    "type": "number"
+                },
+                "rentGrowthRate": {
+                    "description": "賃料上昇シナリオ（新築・リノベ向け）\nRentGrowthYears 年間は RentGrowthRate で上昇し、その後 RentDeclineRate で下落する。\nどちらかが 0 の場合は従来の RentDeclineRate のみが適用される。",
+                    "type": "number"
+                },
+                "rentGrowthYears": {
+                    "description": "上昇が続く年数",
+                    "type": "integer"
+                },
+                "repairReserveRate": {
+                    "description": "修繕積立費率 (例: 0.01 = 1%)",
+                    "type": "number"
+                },
+                "restorationCost": {
+                    "description": "原状回復費（円/回）例: 150000",
+                    "type": "number"
+                },
+                "vacancyRate": {
+                    "description": "空室率 (例: 0.05)",
+                    "type": "number"
+                },
+                "vacancyRateDelta": {
+                    "description": "ストレステスト用オフセット",
+                    "type": "number"
+                },
+                "yieldTarget": {
+                    "description": "目標表面利回り（例: 0.08 = 8%）。0 の場合は Defaults() で 0.08 にセットされる。",
+                    "type": "number"
+                }
+            }
+        },
+        "domain.InvestmentResult": {
+            "type": "object",
+            "properties": {
+                "acquisitionCosts": {
+                    "$ref": "#/definitions/domain.AcquisitionCostBreakdown"
+                },
+                "aiSummary": {
+                    "description": "Gemini 生成の投資サマリー（空文字 = 未生成）",
+                    "type": "string"
+                },
+                "criticalErrors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.CriticalError"
+                    }
+                },
+                "deadCrossYear": {
+                    "description": "-1 = デッドクロスなし",
+                    "type": "integer"
+                },
+                "dscr": {
+                    "description": "1年目の借入金償還余裕率（NOI/年間返済額）",
+                    "type": "number"
+                },
+                "exitCapitalGain": {
+                    "description": "譲渡所得",
+                    "type": "number"
+                },
+                "exitNetProceeds": {
+                    "description": "売却手取り（税・残債控除後）",
+                    "type": "number"
+                },
+                "exitSalePrice": {
+                    "description": "売却価格（NOI/目標利回り）",
+                    "type": "number"
+                },
+                "exitTotalEquity": {
+                    "description": "最終手残り（売却手取り+累積CF）",
+                    "type": "number"
+                },
+                "exitTransferTax": {
+                    "description": "譲渡所得税",
+                    "type": "number"
+                },
+                "grossYield": {
+                    "description": "表面利回り（満室想定年収/総投資額）",
+                    "type": "number"
+                },
+                "irr": {
+                    "description": "内部収益率（収束しない場合は null）",
+                    "type": "number"
+                },
+                "isAboveYieldTarget": {
+                    "type": "boolean"
+                },
+                "ltvSensitivity": {
+                    "description": "LTV感度分析（50%〜90%）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.LTVSensitivityRow"
+                    }
+                },
+                "miscExpenses": {
+                    "type": "number"
+                },
+                "multiExitComparison": {
+                    "description": "複数保有年数の出口比較",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.MultiExitRow"
+                    }
+                },
+                "netYield": {
+                    "description": "実質利回り（実効収入-経費)/総投資額）",
+                    "type": "number"
+                },
+                "npv": {
+                    "description": "正味現在価値",
+                    "type": "number"
+                },
+                "requiredCostReduction": {
+                    "description": "目標利回り達成に必要な改善額（土地・建築費いずれか一方を削減する額）",
+                    "type": "number"
+                },
+                "requiredMonthlyRent": {
+                    "description": "または必要月額賃料",
+                    "type": "number"
+                },
+                "stressScenarios": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.StressScenarioResult"
+                    }
+                },
+                "totalInterest": {
+                    "description": "保有期間の総支払利息",
+                    "type": "number"
+                },
+                "totalInvestment": {
+                    "description": "総投資額（土地+建物+諸経費）",
+                    "type": "number"
+                },
+                "yearlyResults": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.YearlyResult"
+                    }
+                },
+                "yieldScenarios": {
+                    "$ref": "#/definitions/domain.YieldScenarios"
+                },
+                "yieldTarget": {
+                    "description": "目標表面利回り（例: 0.08）",
+                    "type": "number"
+                }
+            }
+        },
+        "domain.InvestmentScoreResult": {
+            "type": "object",
+            "properties": {
+                "breakdown": {
+                    "$ref": "#/definitions/domain.ScoreBreakdown"
+                },
+                "grade": {
+                    "description": "優良/良好/普通/注意/要注意",
+                    "type": "string"
+                },
+                "totalScore": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.LTVSensitivityRow": {
+            "type": "object",
+            "properties": {
+                "annualCF": {
+                    "description": "年間キャッシュフロー（円）",
+                    "type": "number"
+                },
+                "cfYield": {
+                    "description": "CF利回り（AnnualCF / 総投資額）",
+                    "type": "number"
+                },
+                "dscr": {
+                    "description": "借入金償還余裕率",
+                    "type": "number"
+                },
+                "equity": {
+                    "description": "自己資金（円）",
+                    "type": "number"
+                },
+                "loanAmount": {
+                    "description": "借入額（円）",
+                    "type": "number"
+                },
+                "ltv": {
+                    "description": "借入比率（例: 0.70）",
+                    "type": "number"
+                }
+            }
+        },
+        "domain.LandPriceComparison": {
+            "type": "object",
+            "properties": {
+                "assessment": {
+                    "description": "\"割安\" / \"相場\" / \"割高\"",
+                    "type": "string"
+                },
+                "diffFromAverage": {
+                    "type": "number"
+                },
+                "diffFromMedian": {
+                    "type": "number"
+                },
+                "inputArea": {
+                    "type": "number"
+                },
+                "inputLandPrice": {
+                    "type": "number"
+                },
+                "inputPricePerTsubo": {
+                    "type": "number"
+                },
+                "stats": {
+                    "$ref": "#/definitions/domain.LandPriceStats"
+                }
+            }
+        },
+        "domain.LandPriceStats": {
+            "type": "object",
+            "properties": {
+                "averageTsubo": {
+                    "type": "number"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "lowDataWarning": {
+                    "description": "件数 \u003c 10 件時 true",
+                    "type": "boolean"
+                },
+                "maxTsubo": {
+                    "type": "number"
+                },
+                "medianTsubo": {
+                    "type": "number"
+                },
+                "minTsubo": {
+                    "type": "number"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.LandTransaction"
+                    }
+                },
+                "urbanRisks": {
+                    "description": "都市計画リスク一覧",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.UrbanRisk"
+                    }
+                },
+                "warningMessage": {
+                    "type": "string"
+                },
+                "zoning": {
+                    "description": "取引データから抽出した用途地域情報",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.ZoningSummary"
+                        }
+                    ]
+                }
+            }
+        },
+        "domain.LandTransaction": {
+            "type": "object",
+            "properties": {
+                "area": {
+                    "type": "number"
+                },
+                "buildingCoverage": {
+                    "type": "string"
+                },
+                "buildingYear": {
+                    "description": "建築年（西暦）",
+                    "type": "integer"
+                },
+                "cityPlanning": {
+                    "type": "string"
+                },
+                "district": {
+                    "type": "string"
+                },
+                "floorAreaRatio": {
+                    "type": "string"
+                },
+                "period": {
+                    "type": "string"
+                },
+                "pricePerSqm": {
+                    "type": "number"
+                },
+                "pricePerTsubo": {
+                    "type": "number"
+                },
+                "stationMinutes": {
+                    "description": "最寄り駅徒歩分",
+                    "type": "integer"
+                },
+                "tradePrice": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.MonteCarloInput": {
+            "type": "object",
+            "properties": {
+                "base": {
+                    "$ref": "#/definitions/domain.InvestmentInput"
+                },
+                "loanRateSigma": {
+                    "description": "金利の標準偏差 (デフォルト 0.005)",
+                    "type": "number"
+                },
+                "simulations": {
+                    "description": "試行回数 (デフォルト 1000、最大 10000)",
+                    "type": "integer"
+                },
+                "vacancyRateSigma": {
+                    "description": "空室率の標準偏差 (デフォルト 0.05)",
+                    "type": "number"
+                }
+            }
+        },
+        "domain.MonteCarloResult": {
+            "type": "object",
+            "properties": {
+                "deadCrossRate": {
+                    "description": "デッドクロス発生率 (0〜1)",
+                    "type": "number"
+                },
+                "equityHistogram": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.HistogramBin"
+                    }
+                },
+                "equityPercentiles": {
+                    "$ref": "#/definitions/domain.Percentiles"
+                },
+                "irrHistogram": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.HistogramBin"
+                    }
+                },
+                "irrPercentiles": {
+                    "$ref": "#/definitions/domain.Percentiles"
+                },
+                "simulationCount": {
+                    "type": "integer"
+                },
+                "successRate": {
+                    "description": "IRR \u003e 0 の割合",
+                    "type": "number"
+                }
+            }
+        },
+        "domain.MultiExitRow": {
+            "type": "object",
+            "properties": {
+                "cumulativeCf": {
+                    "type": "number"
+                },
+                "exitEquity": {
+                    "type": "number"
+                },
+                "irr": {
+                    "type": "number"
+                },
+                "isShortTermWarn": {
+                    "type": "boolean"
+                },
+                "remainingLoan": {
+                    "type": "number"
+                },
+                "salePrice": {
+                    "type": "number"
+                },
+                "transferTax": {
+                    "type": "number"
+                },
+                "transferTaxRate": {
+                    "type": "number"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.Percentiles": {
+            "type": "object",
+            "properties": {
+                "p10": {
+                    "type": "number"
+                },
+                "p25": {
+                    "type": "number"
+                },
+                "p50": {
+                    "type": "number"
+                },
+                "p75": {
+                    "type": "number"
+                },
+                "p90": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.PopulationForecastResult": {
+            "type": "object",
+            "properties": {
+                "changeRate30yr": {
+                    "description": "30年後変化率 (例: -0.32)",
+                    "type": "number"
+                },
+                "snapshots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.PopulationSnapshot"
+                    }
+                },
+                "trend": {
+                    "$ref": "#/definitions/domain.PopulationTrend"
+                },
+                "vacancyRateDelta": {
+                    "description": "推定空室率増加幅",
+                    "type": "number"
+                }
+            }
+        },
+        "domain.PopulationSnapshot": {
+            "type": "object",
+            "properties": {
+                "pop": {
+                    "type": "number"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.PopulationTrend": {
+            "type": "string",
+            "enum": [
+                "増加",
+                "現状維持",
+                "緩やかな減少",
+                "急激な減少"
+            ],
+            "x-enum-varnames": [
+                "PopulationTrendGrowth",
+                "PopulationTrendStable",
+                "PopulationTrendSlowDecline",
+                "PopulationTrendSteepDecline"
+            ]
+        },
+        "domain.RadarPoint": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.RateAdjustment": {
+            "type": "object",
+            "properties": {
+                "afterYear": {
+                    "description": "AfterYear: この年（1始まり）以降に Rate を適用（例: 6 = 6年目から）",
+                    "type": "integer"
+                },
+                "rate": {
+                    "description": "Rate: 絶対値の年利（例: 0.02 = 2%）",
+                    "type": "number"
+                }
+            }
+        },
+        "domain.RenovationInput": {
+            "type": "object",
+            "properties": {
+                "annualBaseRent": {
+                    "type": "number"
+                },
+                "annualExpenses": {
+                    "type": "number"
+                },
+                "effectiveTaxRate": {
+                    "type": "number"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.RenovationItem"
+                    }
+                },
+                "propertyPrice": {
+                    "type": "number"
+                },
+                "selfLaborRatePerHour": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.RenovationItem": {
+            "type": "object",
+            "properties": {
+                "cost": {
+                    "type": "number"
+                },
+                "expectedMonthlyRentIncrease": {
+                    "type": "number"
+                },
+                "isSelfWork": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "selfLaborHours": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.RenovationResult": {
+            "type": "object",
+            "properties": {
+                "actualYield": {
+                    "type": "number"
+                },
+                "annualRentIncrease": {
+                    "type": "number"
+                },
+                "capitalExpenditures": {
+                    "type": "number"
+                },
+                "classifiedItems": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.ClassifiedRenovationItem"
+                    }
+                },
+                "isRecoverable": {
+                    "description": "家賃アップがある場合のみ true",
+                    "type": "boolean"
+                },
+                "recoveryYears": {
+                    "type": "number"
+                },
+                "repairExpenses": {
+                    "type": "number"
+                },
+                "taxSavings": {
+                    "type": "number"
+                },
+                "totalRenovationCost": {
+                    "type": "number"
+                },
+                "virtualLaborCost": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.RentDeclineHint": {
+            "type": "object",
+            "properties": {
+                "basis": {
+                    "description": "\"land_appraisal\" | \"fallback\"",
+                    "type": "string"
+                },
+                "dataPointCount": {
+                    "description": "使用した地価公示データ件数",
+                    "type": "integer"
+                },
+                "fallbackUsed": {
+                    "type": "boolean"
+                },
+                "hintRate": {
+                    "description": "参考下落率（小数: 0.008 = 0.8%/年）",
+                    "type": "number"
+                },
+                "note": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.RentStatsResult": {
+            "type": "object",
+            "properties": {
+                "average": {
+                    "description": "月額賃料 平均値（円）",
+                    "type": "number"
+                },
+                "count": {
+                    "description": "サンプル数",
+                    "type": "integer"
+                },
+                "median": {
+                    "description": "月額賃料 中央値（円）",
+                    "type": "number"
+                }
+            }
+        },
+        "domain.RidershipDemandScore": {
+            "type": "string",
+            "enum": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E"
+            ],
+            "x-enum-comments": {
+                "RidershipScoreA": "\u003e=100,000人/日",
+                "RidershipScoreB": "\u003e=30,000人/日",
+                "RidershipScoreC": "\u003e=10,000人/日",
+                "RidershipScoreD": "\u003e=2,000人/日",
+                "RidershipScoreE": "\u003c2,000人/日"
+            },
+            "x-enum-descriptions": [
+                "\u003e=100,000人/日",
+                "\u003e=30,000人/日",
+                "\u003e=10,000人/日",
+                "\u003e=2,000人/日",
+                "\u003c2,000人/日"
+            ],
+            "x-enum-varnames": [
+                "RidershipScoreA",
+                "RidershipScoreB",
+                "RidershipScoreC",
+                "RidershipScoreD",
+                "RidershipScoreE"
+            ]
+        },
+        "domain.ScoreBreakdown": {
+            "type": "object",
+            "properties": {
+                "disasterHistory": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "embankment": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "hazardRisk": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "landPriceTrend": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "liquefactionRisk": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "locationOptimization": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "population": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "radarData": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.RadarPoint"
+                    }
+                },
+                "ridership": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "urbanArea": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                }
+            }
+        },
+        "domain.ScoreItem": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.StationRidershipResult": {
+            "type": "object",
+            "properties": {
+                "correction": {
+                    "description": "理論価格補正係数",
+                    "type": "number"
+                },
+                "demandScore": {
+                    "description": "需要スコア A〜E",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.RidershipDemandScore"
+                        }
+                    ]
+                },
+                "lineName": {
+                    "type": "string"
+                },
+                "passengers": {
+                    "description": "乗降客数/日",
+                    "type": "integer"
+                },
+                "stationName": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.StressScenarioResult": {
+            "type": "object",
+            "properties": {
+                "breakEvenYear": {
+                    "description": "累積税引後CFが初めて正転する年（-1=なし）",
+                    "type": "integer"
+                },
+                "dscr": {
+                    "type": "number"
+                },
+                "interestRateDelta": {
+                    "type": "number"
+                },
+                "isSafe": {
+                    "description": "DSCR \u003e= 1.0 \u0026\u0026 BreakEvenYear \u003c= HoldingYears（UIバッジは1.2閾値、フラグ定義は変更しない）",
+                    "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "totalCashFlow": {
+                    "type": "number"
+                },
+                "vacancyRateDelta": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.TheoreticalPriceResult": {
+            "type": "object",
+            "properties": {
+                "ageCorrection": {
+                    "description": "築年数補正 (-0.3〜0.3)",
+                    "type": "number"
+                },
+                "deviationPct": {
+                    "description": "乖離率 % (正=割高, 負=割安)",
+                    "type": "number"
+                },
+                "hasRidershipData": {
+                    "description": "乗降客数補正が有効か",
+                    "type": "boolean"
+                },
+                "hasStationData": {
+                    "description": "駅距離補正が有効か",
+                    "type": "boolean"
+                },
+                "isLowDataWarning": {
+                    "description": "築年数サンプル不足",
+                    "type": "boolean"
+                },
+                "medianBuildingAge": {
+                    "description": "取引事例中央値築年数",
+                    "type": "integer"
+                },
+                "medianStationMinutes": {
+                    "description": "取引事例中央値駅距離(分)",
+                    "type": "integer"
+                },
+                "ridershipCorrection": {
+                    "description": "乗降客数補正 (-0.15〜0.15)",
+                    "type": "number"
+                },
+                "ridershipScore": {
+                    "description": "需要スコア (有効時のみ)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.RidershipDemandScore"
+                        }
+                    ]
+                },
+                "stationCorrection": {
+                    "description": "駅距離補正 (-0.2〜0.2)",
+                    "type": "number"
+                },
+                "theoreticalPriceJPY": {
+                    "description": "理論価格 (円)",
+                    "type": "number"
+                }
+            }
+        },
+        "domain.UrbanRisk": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "リスクコード（例: URBANIZATION_CONTROL）",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "詳細説明",
+                    "type": "string"
+                },
+                "level": {
+                    "description": "ERROR / WARNING / INFO",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.UrbanRiskLevel"
+                        }
+                    ]
+                },
+                "title": {
+                    "description": "短いタイトル",
+                    "type": "string"
+                }
+            }
+        },
+        "domain.UrbanRiskLevel": {
+            "type": "string",
+            "enum": [
+                "ERROR",
+                "WARNING",
+                "INFO"
+            ],
+            "x-enum-varnames": [
+                "UrbanRiskLevelError",
+                "UrbanRiskLevelWarning",
+                "UrbanRiskLevelInfo"
+            ]
+        },
+        "domain.YearlyResult": {
+            "type": "object",
+            "properties": {
+                "afterTaxCashFlow": {
+                    "type": "number"
+                },
+                "annualDepreciation": {
+                    "type": "number"
+                },
+                "annualExpenses": {
+                    "type": "number"
+                },
+                "annualInterest": {
+                    "type": "number"
+                },
+                "annualLoanPayment": {
+                    "type": "number"
+                },
+                "annualPrincipal": {
+                    "type": "number"
+                },
+                "annualRent": {
+                    "description": "実効賃料収入（空室控除後）",
+                    "type": "number"
+                },
+                "capexAmount": {
+                    "description": "大規模修繕費（当年発生額）",
+                    "type": "number"
+                },
+                "cashFlow": {
+                    "type": "number"
+                },
+                "cumulativeCashFlow": {
+                    "type": "number"
+                },
+                "effectiveRate": {
+                    "description": "その年の適用金利（年利）",
+                    "type": "number"
+                },
+                "incomeTax": {
+                    "type": "number"
+                },
+                "isDeadCrossYear": {
+                    "description": "デッドクロス初年度",
+                    "type": "boolean"
+                },
+                "isInDeadCrossZone": {
+                    "description": "デッドクロス継続中",
+                    "type": "boolean"
+                },
+                "remainingLoanBalance": {
+                    "type": "number"
+                },
+                "taxableIncome": {
+                    "type": "number"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.YieldScenario": {
+            "type": "object",
+            "properties": {
+                "annualRent": {
+                    "description": "年間実効賃料収入（空室控除後）",
+                    "type": "number"
+                },
+                "grossYield": {
+                    "description": "表面利回り（満室想定年収/総投資額）",
+                    "type": "number"
+                }
+            }
+        },
+        "domain.YieldScenarios": {
+            "type": "object",
+            "properties": {
+                "optimistic": {
+                    "description": "楽観: 空室率 × 0.5",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.YieldScenario"
+                        }
+                    ]
+                },
+                "pessimistic": {
+                    "description": "悲観: 空室率 × 1.5",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.YieldScenario"
+                        }
+                    ]
+                },
+                "standard": {
+                    "description": "標準: 空室率 × 1.0",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.YieldScenario"
+                        }
+                    ]
+                }
+            }
+        },
+        "domain.ZoningSummary": {
+            "type": "object",
+            "properties": {
+                "buildingCoverage": {
+                    "description": "最頻の建ぺい率（例: 60%）",
+                    "type": "string"
+                },
+                "cityPlanning": {
+                    "description": "最頻の都市計画区域（例: 第一種住居地域）",
+                    "type": "string"
+                },
+                "floorAreaRatio": {
+                    "description": "最頻の容積率（例: 200%）",
+                    "type": "string"
+                }
+            }
+        },
+        "mlit.Municipality": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "市区町村コード (例: \"13101\")",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "市区町村名 (例: \"千代田区\")",
+                    "type": "string"
+                }
+            }
+        }
+    }
 }
