@@ -72,7 +72,12 @@ export function CustomScenarioSlider({ input, onStateChange }: CustomScenarioSli
   }, [customLoanRateDelta, customVacancyRateDelta, fetchCustomScenario]);
 
   useEffect(() => {
-    onStateChangeRef.current({ customScenario, customLoading, customLoanRateDelta, customVacancyRateDelta });
+    onStateChangeRef.current({
+      customScenario,
+      customLoading,
+      customLoanRateDelta,
+      customVacancyRateDelta,
+    });
   }, [customScenario, customLoading, customLoanRateDelta, customVacancyRateDelta]);
 
   return (

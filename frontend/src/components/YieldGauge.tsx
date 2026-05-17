@@ -16,7 +16,14 @@ interface YieldGaugeProps {
   landPriceStats?: LandPriceStats | null;
 }
 
-export function YieldGauge({ yieldPct, netYieldPct, isGood, targetPct, input, landPriceStats }: YieldGaugeProps) {
+export function YieldGauge({
+  yieldPct,
+  netYieldPct,
+  isGood,
+  targetPct,
+  input,
+  landPriceStats,
+}: YieldGaugeProps) {
   const maxYieldPct = targetPct * 2;
   const gaugePosition = Math.min(yieldPct / maxYieldPct, 1) * 100;
   const targetPosition = 50;

@@ -28,7 +28,8 @@ export function StressScenarioTable({
   input,
   result,
 }: StressScenarioTableProps) {
-  const { customScenario, customLoading, customLoanRateDelta, customVacancyRateDelta } = customState;
+  const { customScenario, customLoading, customLoanRateDelta, customVacancyRateDelta } =
+    customState;
   const [expandedScenario, setExpandedScenario] = useState<number | null>(null);
 
   const actualV = input.actualVacancyRate > 0 ? input.actualVacancyRate : input.vacancyRate;
@@ -86,9 +87,7 @@ export function StressScenarioTable({
                   </span>
                   <span className="text-muted-foreground">空室△</span>
                   <span className="text-right">
-                    {s.vacancyRateDelta !== 0
-                      ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%`
-                      : "±0"}
+                    {s.vacancyRateDelta !== 0 ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%` : "±0"}
                   </span>
                 </div>
               )}
@@ -189,9 +188,7 @@ export function StressScenarioTable({
                       : "±0"}
                   </td>
                   <td className="py-2 text-right">
-                    {s.vacancyRateDelta !== 0
-                      ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%`
-                      : "±0"}
+                    {s.vacancyRateDelta !== 0 ? `+${(s.vacancyRateDelta * 100).toFixed(0)}%` : "±0"}
                   </td>
                   <td
                     data-testid="dscr-value"
@@ -249,8 +246,8 @@ export function StressScenarioTable({
       </div>
 
       <p className="mt-2 text-xs text-muted-foreground">
-        ※ <TermTooltip term="dscr">DSCR</TermTooltip> ={" "}
-        <TermTooltip term="noi">NOI</TermTooltip>（賃料下落・空室調整済み）/
+        ※ <TermTooltip term="dscr">DSCR</TermTooltip> = <TermTooltip term="noi">NOI</TermTooltip>
+        （賃料下落・空室調整済み）/
         年間ローン返済額（保有期間内の最悪年）。1.2以上が実務基準、1.0以上が銀行審査の最低ライン（
         <span className="text-green-600">緑≥1.2</span>・
         <span className="text-yellow-600">黄1.0〜1.2</span>・
@@ -308,9 +305,8 @@ export function StressScenarioTable({
                 </div>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                ※ このエリアの30年後人口推計:{" "}
-                {(populationForecast.changeRate30yr * 100).toFixed(0)}%（現在比）／トレンド:{" "}
-                {populationForecast.trend}
+                ※ このエリアの30年後人口推計: {(populationForecast.changeRate30yr * 100).toFixed(0)}
+                %（現在比）／トレンド: {populationForecast.trend}
               </p>
             </div>
           );
