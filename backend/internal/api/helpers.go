@@ -2,10 +2,47 @@ package api
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
+
+// logSafeParams はアクセスログに記録してよいクエリパラメータキーの許可リスト。
+// PII になりうるキー（address 等）はハンドラ側でマスク済みの場合も含め、ここに列挙しないこと。
+var logSafeParams = map[string]bool{
+	"area": true, "city": true, "prefecture": true, "municipality": true,
+	"year": true, "quarter": true, "to_year": true, "to_quarter": true,
+	"z": true, "x": true, "y": true,
+	"lat": true, "lng": true,
+	"minLat": true, "maxLat": true, "minLng": true, "maxLng": true,
+	"price": true, "area_sqm": true, "building_age": true,
+	"station_minutes": true, "ridership_score": true,
+	"budget": true, "yield": true,
+	"division": true,
+}
+
+// sanitizeQuery はクエリ文字列から許可リスト外のパラメータ値を [REDACTED] に置換して返す。
+func sanitizeQuery(raw string) string {
+	vals, err := url.ParseQuery(raw)
+	if err != nil {
+		return "[UNPARSEABLE]"
+	}
+	out := make(url.Values, len(vals))
+	for k, vs := range vals {
+		if logSafeParams[k] {
+			out[k] = vs
+		} else {
+			redacted := make([]string, len(vs))
+			for i := range vs {
+				redacted[i] = "[REDACTED]"
+			}
+			out[k] = redacted
+		}
+	}
+	// url.Values.Encode() はキーをソートするため元の順序と異なる場合があるが、ログ用途では問題ない。
+	return out.Encode()
+}
 
 // coordsGlobal and coordsJapanOnly are passed as the japanOnly argument of parseLatLng
 // to make call sites self-documenting.
