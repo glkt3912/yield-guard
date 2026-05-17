@@ -170,7 +170,10 @@ function CashFlowChart({ result, equityInvested }: Props) {
             ))}
             <Bar yAxisId="left" dataKey="税引後CF" maxBarSize={20} radius={[2, 2, 0, 0]}>
               {data.map((entry, index) => (
-                <Cell key={index} fill={entry.isDeadCrossZone ? chartColors.danger : chartColors.primary} />
+                <Cell
+                  key={index}
+                  fill={entry.isDeadCrossZone ? chartColors.danger : chartColors.primary}
+                />
               ))}
             </Bar>
             <Line

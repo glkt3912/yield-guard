@@ -37,7 +37,9 @@ function ScoreRow({ item }: { item: ScoreItem }) {
       >
         {isPositive ? `+${item.score}` : item.score}
       </span>
-      <span className="text-muted-foreground flex-1 text-right leading-tight">{item.description}</span>
+      <span className="text-muted-foreground flex-1 text-right leading-tight">
+        {item.description}
+      </span>
     </div>
   );
 }

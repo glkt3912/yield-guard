@@ -76,7 +76,9 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
             <span className="font-mono text-lg text-foreground">{fmt(minimumRequired)}</span>
           </div>
           <div className="border-t pt-3 space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">内訳</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              内訳
+            </p>
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">頭金（借入控除後）</span>
               <span className="font-mono text-foreground">{fmt(downPayment)}</span>
@@ -193,7 +195,9 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
       {/* 1年目の年間費用内訳 */}
       {annualCostItems.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-3">年間費用の内訳（1年目）</h3>
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">
+            年間費用の内訳（1年目）
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
             <ResponsiveContainer width="100%" height={annualPieHeight}>
               <PieChart>
