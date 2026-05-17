@@ -66,7 +66,7 @@ function DifficultyBadge({ difficulty, label }: { difficulty: string; label: str
     "slightly-difficult": "bg-yellow-100 text-yellow-800 border border-yellow-200",
     difficult: "bg-red-100 text-red-800 border border-red-200",
   };
-  const cls = colorMap[difficulty] ?? "bg-muted text-foreground border border";
+  const cls = colorMap[difficulty] ?? "bg-muted text-foreground border";
   return (
     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
       {label}

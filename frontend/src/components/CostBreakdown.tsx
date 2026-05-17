@@ -155,9 +155,9 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
       {/* 諸経費明細テーブル */}
       <div>
         <h3 className="text-sm font-medium text-muted-foreground mb-2">取得時諸経費の明細</h3>
-        <div className="rounded-lg border border overflow-hidden text-sm">
+        <div className="rounded-lg border overflow-hidden text-sm">
           <table className="w-full">
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {[
                 ["仲介手数料（税込）", acquisitionCosts.brokerageFee],
                 ["印紙税", acquisitionCosts.stampDuty],

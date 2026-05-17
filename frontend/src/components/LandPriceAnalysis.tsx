@@ -492,7 +492,7 @@ export function LandPriceAnalysis({
               {stationRidership.slice(0, 5).map((s) => {
                 const scoreInfo = RIDERSHIP_SCORE_LABEL[s.demandScore] ?? {
                   label: s.demandScore,
-                  color: "text-gray-700",
+                  color: "text-foreground",
                 };
                 return (
                   <div
