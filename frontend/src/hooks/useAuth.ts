@@ -18,16 +18,12 @@ interface UseAuthReturn {
 
 export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => getFirebaseAuth() !== null);
 
   useEffect(() => {
     const auth = getFirebaseAuth();
 
-    // Firebase not configured (env vars missing) — skip auth entirely
-    if (!auth) {
-      setLoading(false);
-      return;
-    }
+    if (!auth) return;
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);

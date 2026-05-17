@@ -107,7 +107,7 @@ interface WatchlistPanelProps {
 export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
   const { user, loading: authLoading } = useAuthContext();
   const [items, setItems] = useState<WatchlistItem[]>([]);
-  const [firestoreLoading, setFirestoreLoading] = useState(true);
+  const [firestoreLoading, setFirestoreLoading] = useState(() => getFirebaseDb() !== null);
   const [nameInput, setNameInput] = useState("");
   const [memoInput, setMemoInput] = useState("");
   const [nameError, setNameError] = useState("");
@@ -123,11 +123,7 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
 
     const uid = user.uid;
     const col = itemsCollection(uid);
-    // Firebase not configured — fall back to empty list with no loading spinner
-    if (!col) {
-      setFirestoreLoading(false);
-      return;
-    }
+    if (!col) return;
     const q = query(col, orderBy("addedAt", "desc"));
 
     const unsubscribe = onSnapshot(
