@@ -58,6 +58,7 @@
     --chart-primary: 221 83% 53%;
     --chart-secondary: 199 89% 48%;
     --chart-muted: 215 16% 47%;
+    --chart-orange: 25 95% 53%;
   }
 
   .dark {
@@ -87,6 +88,7 @@
     --chart-primary: 217 91% 60%;
     --chart-secondary: 199 89% 50%;
     --chart-muted: 215 20% 65%;
+    --chart-orange: 25 90% 55%;
   }
 }
 

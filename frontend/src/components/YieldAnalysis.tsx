@@ -710,7 +710,7 @@ export function YieldAnalysis({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="rounded-md bg-white/70 p-3">
+            <div className="rounded-md bg-card/70 p-3">
               <p className="text-xs text-muted-foreground">
                 土地価格 <strong>または</strong> 建築費のどちらか一方を削減する必要がある額
               </p>
@@ -718,7 +718,7 @@ export function YieldAnalysis({
                 ▼ {formatMan(result.requiredCostReduction)}
               </p>
             </div>
-            <div className="rounded-md bg-white/70 p-3">
+            <div className="rounded-md bg-card/70 p-3">
               <p className="text-xs text-muted-foreground">または、必要な月額賃料（満室想定）</p>
               <p className="text-xl font-bold text-orange-700">
                 ▲ {formatYen(result.requiredMonthlyRent)}/月

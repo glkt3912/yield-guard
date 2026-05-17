@@ -40,7 +40,7 @@ export default function MultiExitCompareTable({ rows }: MultiExitCompareTablePro
   ];
 
   return (
-    <div className="rounded-xl border bg-white p-5 shadow-sm">
+    <div className="rounded-xl border bg-card p-5 shadow-sm">
       <h3 className="text-base font-semibold text-foreground mb-4">複数保有年数 出口比較</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">

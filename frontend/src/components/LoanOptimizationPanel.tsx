@@ -65,7 +65,7 @@ export function LoanOptimizationPanel({
             </p>
           </div>
           {!hasLoan ? (
-            <Badge className="flex items-center gap-1 bg-gray-100 text-gray-500 border-gray-200 ml-auto">
+            <Badge className="flex items-center gap-1 bg-muted text-muted-foreground border ml-auto">
               非適用（ローンなし）
             </Badge>
           ) : dscrSafe ? (

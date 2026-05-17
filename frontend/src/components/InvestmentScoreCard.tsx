@@ -28,16 +28,16 @@ function ScoreRow({ item }: { item: ScoreItem }) {
   const isPositive = item.score > 0;
   const isNegative = item.score < 0;
   return (
-    <div className="flex items-start justify-between gap-2 py-1 text-xs border-b border-gray-100 last:border-0">
-      <span className="text-gray-600 min-w-[6rem]">{item.label}</span>
+    <div className="flex items-start justify-between gap-2 py-1 text-xs border-b border last:border-0">
+      <span className="text-muted-foreground min-w-[6rem]">{item.label}</span>
       <span
         className={`font-semibold tabular-nums min-w-[3rem] text-right ${
-          isPositive ? "text-green-600" : isNegative ? "text-red-600" : "text-gray-500"
+          isPositive ? "text-green-600" : isNegative ? "text-red-600" : "text-muted-foreground"
         }`}
       >
         {isPositive ? `+${item.score}` : item.score}
       </span>
-      <span className="text-gray-500 flex-1 text-right leading-tight">{item.description}</span>
+      <span className="text-muted-foreground flex-1 text-right leading-tight">{item.description}</span>
     </div>
   );
 }
@@ -85,7 +85,7 @@ export function InvestmentScoreCard({ score, populationChangeRate, onApplyRecomm
             <span className={`text-3xl font-bold tabular-nums ${gradeStyle.color}`}>
               {totalScore}
             </span>
-            <span className="text-gray-400 text-sm font-normal">/ 100</span>
+            <span className="text-muted-foreground text-sm font-normal">/ 100</span>
             <Badge variant={gradeStyle.badge}>{grade}</Badge>
           </div>
         </CardTitle>
@@ -137,7 +137,7 @@ export function InvestmentScoreCard({ score, populationChangeRate, onApplyRecomm
           </div>
         )}
 
-        <p className="mt-2 text-[10px] text-gray-400 leading-tight">
+        <p className="mt-2 text-[10px] text-muted-foreground leading-tight">
           基準スコア50点 +
           各指標の加減点（0〜100にクランプ）。API取得失敗時は該当指標を0点として算出。
         </p>

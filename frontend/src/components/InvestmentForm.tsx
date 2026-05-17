@@ -539,7 +539,7 @@ export function InvestmentForm({
             <button
               type="button"
               onClick={handleDiscardDraft}
-              className="rounded bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300"
+              className="rounded bg-muted px-3 py-1 text-xs font-medium text-foreground hover:bg-muted/80"
             >
               破棄する
             </button>

@@ -24,7 +24,7 @@ const COLORS = [
   chartColors.danger,
   chartColors.secondary,
   chartColors.muted,
-  chartColors.warning,
+  chartColors.orange,
 ];
 
 export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }: Props) {
@@ -72,18 +72,18 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between text-sm font-semibold">
-            <span className="text-gray-700">最低必要額</span>
-            <span className="font-mono text-lg text-gray-900">{fmt(minimumRequired)}</span>
+            <span className="text-foreground">最低必要額</span>
+            <span className="font-mono text-lg text-foreground">{fmt(minimumRequired)}</span>
           </div>
           <div className="border-t pt-3 space-y-2">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">内訳</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">内訳</p>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">頭金（借入控除後）</span>
-              <span className="font-mono text-gray-900">{fmt(downPayment)}</span>
+              <span className="text-muted-foreground">頭金（借入控除後）</span>
+              <span className="font-mono text-foreground">{fmt(downPayment)}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">諸費用合計</span>
-              <span className="font-mono text-gray-900">{fmt(acquisitionCosts.total)}</span>
+              <span className="text-muted-foreground">諸費用合計</span>
+              <span className="font-mono text-foreground">{fmt(acquisitionCosts.total)}</span>
             </div>
           </div>
           <div className="border-t pt-3">
@@ -107,7 +107,7 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
 
       {/* 初期投資内訳 */}
       <div>
-        <h3 className="text-sm font-medium text-gray-600 mb-3">
+        <h3 className="text-sm font-medium text-muted-foreground mb-3">
           初期投資の内訳（合計: {fmt(totalInitial)}）
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
@@ -138,11 +138,11 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
                     className="inline-block w-3 h-3 rounded-sm"
                     style={{ background: COLORS[idx % COLORS.length] }}
                   />
-                  <span className="text-gray-700">{item.name}</span>
+                  <span className="text-foreground">{item.name}</span>
                 </div>
-                <span className="font-mono text-gray-900">
+                <span className="font-mono text-foreground">
                   {fmt(item.value)}
-                  <span className="text-xs text-gray-400 ml-1">
+                  <span className="text-xs text-muted-foreground ml-1">
                     ({((item.value / totalInitial) * 100).toFixed(1)}%)
                   </span>
                 </span>
@@ -154,8 +154,8 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
 
       {/* 諸経費明細テーブル */}
       <div>
-        <h3 className="text-sm font-medium text-gray-600 mb-2">取得時諸経費の明細</h3>
-        <div className="rounded-lg border border-gray-200 overflow-hidden text-sm">
+        <h3 className="text-sm font-medium text-muted-foreground mb-2">取得時諸経費の明細</h3>
+        <div className="rounded-lg border border overflow-hidden text-sm">
           <table className="w-full">
             <tbody className="divide-y divide-gray-100">
               {[
@@ -172,16 +172,16 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
                     ]
                   : []),
               ].map(([label, value]) => (
-                <tr key={label as string} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 text-gray-600">{label as string}</td>
-                  <td className="px-4 py-2 text-right font-mono text-gray-900">
+                <tr key={label as string} className="hover:bg-muted/30">
+                  <td className="px-4 py-2 text-muted-foreground">{label as string}</td>
+                  <td className="px-4 py-2 text-right font-mono text-foreground">
                     {fmt(value as number)}
                   </td>
                 </tr>
               ))}
-              <tr className="bg-gray-50 font-semibold">
-                <td className="px-4 py-2 text-gray-800">合計</td>
-                <td className="px-4 py-2 text-right font-mono text-gray-900">
+              <tr className="bg-muted/40 font-semibold">
+                <td className="px-4 py-2 text-foreground">合計</td>
+                <td className="px-4 py-2 text-right font-mono text-foreground">
                   {fmt(acquisitionCosts.total)}
                 </td>
               </tr>
@@ -193,7 +193,7 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
       {/* 1年目の年間費用内訳 */}
       {annualCostItems.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-gray-600 mb-3">年間費用の内訳（1年目）</h3>
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">年間費用の内訳（1年目）</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
             <ResponsiveContainer width="100%" height={annualPieHeight}>
               <PieChart>
@@ -225,11 +225,11 @@ export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }
                         className="inline-block w-3 h-3 rounded-sm"
                         style={{ background: COLORS[idx % COLORS.length] }}
                       />
-                      <span className="text-gray-700">{item.name}</span>
+                      <span className="text-foreground">{item.name}</span>
                     </div>
-                    <span className="font-mono text-gray-900">
+                    <span className="font-mono text-foreground">
                       {fmt(item.value)}
-                      <span className="text-xs text-gray-400 ml-1">
+                      <span className="text-xs text-muted-foreground ml-1">
                         ({((item.value / total) * 100).toFixed(1)}%)
                       </span>
                     </span>

@@ -49,7 +49,7 @@ export function Slider({
           className="absolute inset-0 h-2 w-full cursor-pointer opacity-0"
         />
         <div
-          className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-primary bg-white shadow"
+          className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-primary bg-card shadow"
           style={{ left: `calc(${pct}% - 8px)` }}
         />
       </div>

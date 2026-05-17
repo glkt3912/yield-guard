@@ -36,7 +36,7 @@ const STEPS = [
 export function FirstTimerGuide({ onUseSample, onDismiss, sampleProperty }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+      <div className="relative w-full max-w-lg rounded-2xl bg-card shadow-2xl">
         <button
           onClick={onDismiss}
           className="absolute right-4 top-4 rounded-full p-1 text-muted-foreground hover:bg-muted"

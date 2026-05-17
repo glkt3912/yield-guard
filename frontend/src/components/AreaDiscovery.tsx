@@ -66,7 +66,7 @@ function DifficultyBadge({ difficulty, label }: { difficulty: string; label: str
     "slightly-difficult": "bg-yellow-100 text-yellow-800 border border-yellow-200",
     difficult: "bg-red-100 text-red-800 border border-red-200",
   };
-  const cls = colorMap[difficulty] ?? "bg-gray-100 text-gray-800 border border-gray-200";
+  const cls = colorMap[difficulty] ?? "bg-muted text-foreground border border";
   return (
     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
       {label}
@@ -106,7 +106,7 @@ export function AreaDiscovery({ onMunicipalitySelect }: Props) {
   };
 
   return (
-    <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+    <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
       <h2 className="text-base font-semibold text-foreground">エリアを探す</h2>
       <p className="text-xs text-muted-foreground">
         予算と目標利回りを入力して、候補エリアをランキング表示します。

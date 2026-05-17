@@ -5,4 +5,5 @@ export const chartColors = {
   primary:   "hsl(var(--chart-primary))",
   secondary: "hsl(var(--chart-secondary))",
   muted:     "hsl(var(--chart-muted))",
+  orange:    "hsl(var(--chart-orange))",
 } as const;
