@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { YieldAnalysis, getDscrColorClass } from "@/components/YieldAnalysis";
+import { YieldAnalysis } from "@/components/YieldAnalysis";
+import { getDscrColorClass } from "@/components/DscrBadge";
 import { makeInput, makeResult } from "./helpers";
 import type { StressScenarioResult } from "@/types/investment";
 
