@@ -1,3 +1,8 @@
+export interface Municipality {
+  id: string;
+  name: string;
+}
+
 export interface CriticalError {
   code: string;
   status: "REJECT" | "WARNING";

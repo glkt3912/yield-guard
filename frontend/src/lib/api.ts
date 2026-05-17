@@ -17,7 +17,10 @@ import type {
   RentDeclineHint,
   HeatmapResponse,
   GeocodeResult,
+  Municipality,
 } from "@/types/investment";
+
+export type { Municipality };
 
 const BASE = "/api";
 
@@ -29,6 +32,29 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return handleResponse<T>(res);
+}
+
+function buildParams(
+  required: Record<string, string | number>,
+  optional?: Record<string, string | number | undefined>
+): URLSearchParams {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(required)) q.set(k, String(v));
+  if (optional) {
+    for (const [k, v] of Object.entries(optional)) {
+      if (v !== undefined) q.set(k, String(v));
+    }
+  }
+  return q;
+}
+
 /** 土地取引価格の統計を取得 */
 export async function fetchLandPrices(params: {
   area: string;
@@ -38,14 +64,10 @@ export async function fetchLandPrices(params: {
   toYear: number;
   toQuarter: number;
 }): Promise<LandPriceStats> {
-  const q = new URLSearchParams({
-    area: params.area,
-    year: String(params.year),
-    quarter: String(params.quarter),
-    to_year: String(params.toYear),
-    to_quarter: String(params.toQuarter),
-  });
-  if (params.city) q.set("city", params.city);
+  const q = buildParams(
+    { area: params.area, year: params.year, quarter: params.quarter, to_year: params.toYear, to_quarter: params.toQuarter },
+    { city: params.city }
+  );
   const res = await fetch(`${BASE}/land-prices/stats?${q}`);
   return handleResponse<LandPriceStats>(res);
 }
@@ -61,23 +83,12 @@ export async function compareLandPrice(params: {
   price: number;
   areaSqm?: number;
 }): Promise<LandPriceComparison> {
-  const q = new URLSearchParams({
-    area: params.area,
-    year: String(params.year),
-    quarter: String(params.quarter),
-    to_year: String(params.toYear),
-    to_quarter: String(params.toQuarter),
-    price: String(params.price),
-  });
-  if (params.city) q.set("city", params.city);
-  if (params.areaSqm) q.set("area_sqm", String(params.areaSqm));
+  const q = buildParams(
+    { area: params.area, year: params.year, quarter: params.quarter, to_year: params.toYear, to_quarter: params.toQuarter, price: params.price },
+    { city: params.city, area_sqm: params.areaSqm }
+  );
   const res = await fetch(`${BASE}/land-prices/compare?${q}`);
   return handleResponse<LandPriceComparison>(res);
-}
-
-export interface Municipality {
-  id: string;
-  name: string;
 }
 
 /** 都道府県コードから市区町村一覧を取得（XIT002） */
@@ -100,19 +111,10 @@ export async function estimateLandPrice(params: {
   stationMinutes?: number;
   ridershipScore?: RidershipDemandScore;
 }): Promise<TheoreticalPriceResult> {
-  const q = new URLSearchParams({
-    area: params.area,
-    year: String(params.year),
-    quarter: String(params.quarter),
-    to_year: String(params.toYear),
-    to_quarter: String(params.toQuarter),
-    price: String(params.price),
-    area_sqm: String(params.areaSqm),
-    building_age: String(params.buildingAge),
-  });
-  if (params.city) q.set("city", params.city);
-  if (params.stationMinutes) q.set("station_minutes", String(params.stationMinutes));
-  if (params.ridershipScore) q.set("ridership_score", params.ridershipScore);
+  const q = buildParams(
+    { area: params.area, year: params.year, quarter: params.quarter, to_year: params.toYear, to_quarter: params.toQuarter, price: params.price, area_sqm: params.areaSqm, building_age: params.buildingAge },
+    { city: params.city, station_minutes: params.stationMinutes, ridership_score: params.ridershipScore }
+  );
   const res = await fetch(`${BASE}/land-prices/estimate?${q}`);
   return handleResponse<TheoreticalPriceResult>(res);
 }
@@ -191,22 +193,12 @@ export async function fetchHazardInfo(lat: number, lng: number): Promise<UrbanRi
 
 /** 投資シミュレーションを実行 */
 export async function analyze(input: InvestmentInput): Promise<InvestmentResult> {
-  const res = await fetch(`${BASE}/investment/analyze`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  return handleResponse<InvestmentResult>(res);
+  return postJson<InvestmentResult>("/investment/analyze", input);
 }
 
 /** リフォームROIシミュレーションを実行 */
 export async function analyzeRenovation(input: RenovationInput): Promise<RenovationResult> {
-  const res = await fetch(`${BASE}/renovation/analyze`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  return handleResponse<RenovationResult>(res);
+  return postJson<RenovationResult>("/renovation/analyze", input);
 }
 
 /** 投資適地スコアを取得 */
@@ -272,12 +264,7 @@ export async function fetchAreaDiscovery(params: {
 
 /** モンテカルロシミュレーションを実行 */
 export async function simulate(input: MonteCarloInput): Promise<MonteCarloResult> {
-  const res = await fetch(`${BASE}/investment/simulate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  return handleResponse<MonteCarloResult>(res);
+  return postJson<MonteCarloResult>("/investment/simulate", input);
 }
 
 /** 住所文字列から緯度・経度を取得（バックエンド経由でGoogle Maps Geocoding API を呼び出す） */
