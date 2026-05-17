@@ -95,7 +95,11 @@ func (c *genericCache[E]) getOrFetch(key string, fetch func() ([]E, error)) ([]E
 	if err != nil {
 		return nil, err
 	}
-	return v.([]E), nil
+	result, ok := v.([]E)
+	if !ok {
+		return nil, fmt.Errorf("getOrFetch: unexpected value type from singleflight")
+	}
+	return result, nil
 }
 
 // cache は TTL 付きインメモリキャッシュ。各フィールドが独立した mutex を持つ。
