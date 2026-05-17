@@ -55,15 +55,20 @@ func (c *genericCache[E]) get(key string) ([]E, bool) {
 	return copied, true
 }
 
-// set はキャッシュに保存する。最大1000エントリを超えた場合は最も古いエントリを削除する（LRU eviction）。
+// set はキャッシュに保存する。最大1000エントリを超えた場合は最も古い有効エントリを削除する（FIFO eviction）。
+// TTL 切れで c.entries から削除済みのキーは c.keys に残るため、eviction ループで読み飛ばす。
 func (c *genericCache[E]) set(key string, data []E) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if _, exists := c.entries[key]; !exists {
-		if len(c.keys) >= 1000 {
+		for len(c.keys) >= 1000 {
 			oldest := c.keys[0]
 			c.keys = c.keys[1:]
-			delete(c.entries, oldest)
+			if _, stillLive := c.entries[oldest]; stillLive {
+				delete(c.entries, oldest)
+				break
+			}
+			// oldest は TTL 切れで既に削除済み — keys から読み飛ばして続行
 		}
 		c.keys = append(c.keys, key)
 	}
