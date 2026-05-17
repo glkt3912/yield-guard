@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/yield-guard/backend/internal/domain"
 )
 
@@ -20,6 +22,8 @@ type genericEntry[E any] struct {
 type genericCache[E any] struct {
 	mu      sync.RWMutex
 	entries map[string]genericEntry[E]
+	keys    []string           // insertion-order for LRU eviction
+	group   singleflight.Group // deduplicates concurrent fetches
 }
 
 func newGenericCache[E any]() *genericCache[E] {
@@ -51,11 +55,51 @@ func (c *genericCache[E]) get(key string) ([]E, bool) {
 	return copied, true
 }
 
-// set はキャッシュに保存する。
+// set はキャッシュに保存する。最大1000エントリを超えた場合は最も古い有効エントリを削除する（FIFO eviction）。
+// TTL 切れで c.entries から削除済みのキーは c.keys に残るため、eviction ループで読み飛ばす。
 func (c *genericCache[E]) set(key string, data []E) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if _, exists := c.entries[key]; !exists {
+		for len(c.keys) >= 1000 {
+			oldest := c.keys[0]
+			c.keys = c.keys[1:]
+			if _, stillLive := c.entries[oldest]; stillLive {
+				delete(c.entries, oldest)
+				break
+			}
+			// oldest は TTL 切れで既に削除済み — keys から読み飛ばして続行
+		}
+		c.keys = append(c.keys, key)
+	}
 	c.entries[key] = genericEntry[E]{data: data, expiresAt: time.Now().Add(cacheTTL)}
+}
+
+// getOrFetch はキャッシュを確認し、ミスの場合は singleflight でフェッチを deduplicate する。
+// 同一キーへの並行リクエストは1回だけ fetch を呼び出し、結果を共有する。
+func (c *genericCache[E]) getOrFetch(key string, fetch func() ([]E, error)) ([]E, error) {
+	if data, ok := c.get(key); ok {
+		return data, nil
+	}
+	v, err, _ := c.group.Do(key, func() (any, error) {
+		if data, ok := c.get(key); ok {
+			return data, nil
+		}
+		data, err := fetch()
+		if err != nil {
+			return nil, err
+		}
+		c.set(key, data)
+		return data, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	result, ok := v.([]E)
+	if !ok {
+		return nil, fmt.Errorf("getOrFetch: unexpected value type from singleflight")
+	}
+	return result, nil
 }
 
 // cache は TTL 付きインメモリキャッシュ。各フィールドが独立した mutex を持つ。

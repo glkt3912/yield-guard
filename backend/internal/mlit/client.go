@@ -109,14 +109,6 @@ func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domai
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001")))
 		return cached, nil
 	}
-	if cached, ok := c.l2.landPrices.get(ctx, key); ok {
-		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
-		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001")))
-		c.cache.landPrices.set(key, cached)
-		return cached, nil
-	}
-	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001")))
-	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
 	apiURL, err := c.buildLandPricesURL(q)
 	if err != nil {
@@ -125,42 +117,53 @@ func (c *Client) FetchLandPrices(ctx context.Context, q LandPriceQuery) ([]domai
 		return nil, err
 	}
 
-	var lastErr error
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		if attempt > 0 {
-			// 指数バックオフ: 1s, 2s, 4s ...
-			delay := retryBaseDelay * time.Duration(1<<uint(attempt-1))
-			select {
-			case <-ctx.Done():
-				return nil, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
-			case <-time.After(delay):
+	result, err := c.cache.landPrices.getOrFetch(key, func() ([]domain.LandTransaction, error) {
+		if cached, ok := c.l2.landPrices.get(ctx, key); ok {
+			span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+			telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001")))
+			return cached, nil
+		}
+		telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001")))
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
+
+		var lastErr error
+		for attempt := 0; attempt < maxRetries; attempt++ {
+			if attempt > 0 {
+				// 指数バックオフ: 1s, 2s, 4s ...
+				delay := retryBaseDelay * time.Duration(1<<uint(attempt-1))
+				select {
+				case <-ctx.Done():
+					return nil, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
+				case <-time.After(delay):
+				}
+			}
+
+			start := time.Now()
+			data, err := c.doRequest(ctx, apiURL)
+			latencySec := time.Since(start).Seconds()
+			telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
+				metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001")))
+
+			if err == nil {
+				span.SetAttributes(attribute.Int("mlit.retry.count", attempt))
+				c.l2.landPrices.set(ctx, key, data)
+				return data, nil
+			}
+			lastErr = err
+
+			// クライアントエラー (4xx) はリトライしない
+			if isClientError(err) {
+				return nil, err
 			}
 		}
-
-		start := time.Now()
-		result, err := c.doRequest(ctx, apiURL)
-		latencySec := time.Since(start).Seconds()
-		telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
-			metric.WithAttributes(attribute.String("mlit.endpoint", "XIT001")))
-
-		if err == nil {
-			span.SetAttributes(attribute.Int("mlit.retry.count", attempt))
-			c.l2.landPrices.set(ctx, key, result)
-			c.cache.landPrices.set(key, result)
-			return result, nil
-		}
-		lastErr = err
-
-		// クライアントエラー (4xx) はリトライしない
-		if isClientError(err) {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			return nil, err
-		}
+		return nil, fmt.Errorf("API request failed after %d attempts: %w", maxRetries, lastErr)
+	})
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
 	}
-	span.RecordError(lastErr)
-	span.SetStatus(codes.Error, lastErr.Error())
-	return nil, fmt.Errorf("API request failed after %d attempts: %w", maxRetries, lastErr)
+	return result, nil
 }
 
 // FetchMunicipalities は指定都道府県の市区町村一覧を取得する（XIT002）。
@@ -189,71 +192,63 @@ func (c *Client) FetchMunicipalities(ctx context.Context, area string) ([]Munici
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT002")))
 		return cached, nil
 	}
-	if cached, ok := c.l2.municipalities.get(ctx, area); ok {
-		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
-		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT002")))
-		c.cache.municipalities.set(area, cached)
-		return cached, nil
-	}
-	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT002")))
-	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
 	params := url.Values{}
 	params.Set("area", area)
 	apiURL := c.baseURL + endpointMunicipalities + "?" + params.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	result, err := c.cache.municipalities.getOrFetch(area, func() ([]Municipality, error) {
+		if cached, ok := c.l2.municipalities.get(ctx, area); ok {
+			span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+			telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT002")))
+			return cached, nil
+		}
+		telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XIT002")))
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("request build error: %w", err)
+		}
+		if c.apiKey != "" {
+			req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
+		}
+
+		start := time.Now()
+		resp, err := c.httpClient.Do(req)
+		latencySec := time.Since(start).Seconds()
+		telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
+			metric.WithAttributes(attribute.String("mlit.endpoint", "XIT002")))
+		if err != nil {
+			return nil, fmt.Errorf("municipalities API request failed: %w", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			return nil, &clientError{code: resp.StatusCode}
+		}
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("municipalities API returned status %d", resp.StatusCode)
+		}
+
+		var apiResp MunicipalityResponse
+		if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+			return nil, fmt.Errorf("municipalities JSON decode error: %w", err)
+		}
+		if apiResp.Status != "OK" {
+			return nil, fmt.Errorf("municipalities API status: %s", apiResp.Status)
+		}
+
+		span.SetAttributes(attribute.Int("mlit.retry.count", 0))
+		c.l2.municipalities.set(ctx, area, apiResp.Data)
+		return apiResp.Data, nil
+	})
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("request build error: %w", err)
-	}
-	if c.apiKey != "" {
-		req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
-	}
-
-	start := time.Now()
-	resp, err := c.httpClient.Do(req)
-	latencySec := time.Since(start).Seconds()
-	telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
-		metric.WithAttributes(attribute.String("mlit.endpoint", "XIT002")))
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("municipalities API request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-		err := &clientError{code: resp.StatusCode}
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
-	if resp.StatusCode != http.StatusOK {
-		err := fmt.Errorf("municipalities API returned status %d", resp.StatusCode)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, err
-	}
-
-	var apiResp MunicipalityResponse
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("municipalities JSON decode error: %w", err)
-	}
-	if apiResp.Status != "OK" {
-		err := fmt.Errorf("municipalities API status: %s", apiResp.Status)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, err
-	}
-
-	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
-	c.l2.municipalities.set(ctx, area, apiResp.Data)
-	c.cache.municipalities.set(area, apiResp.Data)
-	return apiResp.Data, nil
+	return result, nil
 }
 
 // LatLngToTile は緯度経度をWebMercatorタイル座標に変換する。
@@ -297,14 +292,6 @@ func (c *Client) FetchStationRidership(ctx context.Context, z, x, y int) ([]Stat
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT015")))
 		return cached, nil
 	}
-	if cached, ok := c.l2.ridership.get(ctx, key); ok {
-		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
-		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT015")))
-		c.cache.ridership.set(key, cached)
-		return cached, nil
-	}
-	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT015")))
-	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
 	params := url.Values{}
 	params.Set("response_format", "geojson")
@@ -313,52 +300,55 @@ func (c *Client) FetchStationRidership(ctx context.Context, z, x, y int) ([]Stat
 	params.Set("y", strconv.Itoa(y))
 	apiURL := c.baseURL + endpointStationRidership + "?" + params.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("request build error: %w", err)
-	}
-	if c.apiKey != "" {
-		req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
-	}
+	result, err := c.cache.ridership.getOrFetch(key, func() ([]StationRidership, error) {
+		if cached, ok := c.l2.ridership.get(ctx, key); ok {
+			span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+			telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT015")))
+			return cached, nil
+		}
+		telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT015")))
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
-	start := time.Now()
-	resp, err := c.httpClient.Do(req)
-	latencySec := time.Since(start).Seconds()
-	telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
-		metric.WithAttributes(attribute.String("mlit.endpoint", "XKT015")))
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("station ridership API request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("request build error: %w", err)
+		}
+		if c.apiKey != "" {
+			req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
+		}
 
-	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-		err := &clientError{code: resp.StatusCode}
+		start := time.Now()
+		resp, err := c.httpClient.Do(req)
+		latencySec := time.Since(start).Seconds()
+		telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
+			metric.WithAttributes(attribute.String("mlit.endpoint", "XKT015")))
+		if err != nil {
+			return nil, fmt.Errorf("station ridership API request failed: %w", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			return nil, &clientError{code: resp.StatusCode}
+		}
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("station ridership API returned status %d", resp.StatusCode)
+		}
+
+		var geoResp StationRidershipGeoJSON
+		if err := json.NewDecoder(resp.Body).Decode(&geoResp); err != nil {
+			return nil, fmt.Errorf("station ridership GeoJSON decode error: %w", err)
+		}
+
+		span.SetAttributes(attribute.Int("mlit.retry.count", 0))
+		data := parseStationRiderships(geoResp.Features)
+		c.l2.ridership.set(ctx, key, data)
+		return data, nil
+	})
+	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
-	if resp.StatusCode != http.StatusOK {
-		err := fmt.Errorf("station ridership API returned status %d", resp.StatusCode)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, err
-	}
-
-	var geoResp StationRidershipGeoJSON
-	if err := json.NewDecoder(resp.Body).Decode(&geoResp); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("station ridership GeoJSON decode error: %w", err)
-	}
-
-	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
-	result := parseStationRiderships(geoResp.Features)
-	c.l2.ridership.set(ctx, key, result)
-	c.cache.ridership.set(key, result)
 	return result, nil
 }
 
@@ -424,14 +414,6 @@ func (c *Client) FetchPopulationForecast(ctx context.Context, z, x, y int) ([]do
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT013")))
 		return cached, nil
 	}
-	if cached, ok := c.l2.population.get(ctx, key); ok {
-		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
-		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT013")))
-		c.cache.population.set(key, cached)
-		return cached, nil
-	}
-	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT013")))
-	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
 	params := url.Values{}
 	params.Set("response_format", "geojson")
@@ -440,52 +422,55 @@ func (c *Client) FetchPopulationForecast(ctx context.Context, z, x, y int) ([]do
 	params.Set("y", strconv.Itoa(y))
 	apiURL := c.baseURL + endpointPopulationForecast + "?" + params.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("request build error: %w", err)
-	}
-	if c.apiKey != "" {
-		req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
-	}
+	result, err := c.cache.population.getOrFetch(key, func() ([]domain.PopulationForecastItem, error) {
+		if cached, ok := c.l2.population.get(ctx, key); ok {
+			span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+			telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT013")))
+			return cached, nil
+		}
+		telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XKT013")))
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
-	start := time.Now()
-	resp, err := c.httpClient.Do(req)
-	latencySec := time.Since(start).Seconds()
-	telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
-		metric.WithAttributes(attribute.String("mlit.endpoint", "XKT013")))
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("population forecast API request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("request build error: %w", err)
+		}
+		if c.apiKey != "" {
+			req.Header.Set("Ocp-Apim-Subscription-Key", c.apiKey)
+		}
 
-	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-		err := &clientError{code: resp.StatusCode}
+		start := time.Now()
+		resp, err := c.httpClient.Do(req)
+		latencySec := time.Since(start).Seconds()
+		telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
+			metric.WithAttributes(attribute.String("mlit.endpoint", "XKT013")))
+		if err != nil {
+			return nil, fmt.Errorf("population forecast API request failed: %w", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			return nil, &clientError{code: resp.StatusCode}
+		}
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("population forecast API returned status %d", resp.StatusCode)
+		}
+
+		var geoResp PopulationForecastGeoJSON
+		if err := json.NewDecoder(resp.Body).Decode(&geoResp); err != nil {
+			return nil, fmt.Errorf("population forecast GeoJSON decode error: %w", err)
+		}
+
+		span.SetAttributes(attribute.Int("mlit.retry.count", 0))
+		data := parsePopulationForecasts(geoResp.Features)
+		c.l2.population.set(ctx, key, data)
+		return data, nil
+	})
+	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
-	if resp.StatusCode != http.StatusOK {
-		err := fmt.Errorf("population forecast API returned status %d", resp.StatusCode)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, err
-	}
-
-	var geoResp PopulationForecastGeoJSON
-	if err := json.NewDecoder(resp.Body).Decode(&geoResp); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("population forecast GeoJSON decode error: %w", err)
-	}
-
-	span.SetAttributes(attribute.Int("mlit.retry.count", 0))
-	result := parsePopulationForecasts(geoResp.Features)
-	c.l2.population.set(ctx, key, result)
-	c.cache.population.set(key, result)
 	return result, nil
 }
 
@@ -543,14 +528,6 @@ func (c *Client) FetchLandAppraisals(ctx context.Context, area, city string, yea
 		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XCT001")))
 		return cached, nil
 	}
-	if cached, ok := c.l2.appraisals.get(ctx, key); ok {
-		span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
-		telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XCT001")))
-		c.cache.appraisals.set(key, cached)
-		return cached, nil
-	}
-	telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XCT001")))
-	span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
 
 	params := url.Values{}
 	params.Set("area", area)
@@ -558,39 +535,50 @@ func (c *Client) FetchLandAppraisals(ctx context.Context, area, city string, yea
 	params.Set("division", division)
 	apiURL := c.baseURL + endpointLandAppraisals + "?" + params.Encode()
 
-	var lastErr error
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		if attempt > 0 {
-			delay := retryBaseDelay * time.Duration(1<<uint(attempt-1))
-			select {
-			case <-ctx.Done():
-				return nil, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
-			case <-time.After(delay):
+	result, err := c.cache.appraisals.getOrFetch(key, func() ([]domain.LandAppraisalItem, error) {
+		if cached, ok := c.l2.appraisals.get(ctx, key); ok {
+			span.SetAttributes(attribute.Bool("mlit.cache.hit", true))
+			telemetry.MLITCacheHits.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XCT001")))
+			return cached, nil
+		}
+		telemetry.MLITCacheMisses.Add(ctx, 1, metric.WithAttributes(attribute.String("mlit.endpoint", "XCT001")))
+		span.SetAttributes(attribute.Bool("mlit.cache.hit", false))
+
+		var lastErr error
+		for attempt := 0; attempt < maxRetries; attempt++ {
+			if attempt > 0 {
+				delay := retryBaseDelay * time.Duration(1<<uint(attempt-1))
+				select {
+				case <-ctx.Done():
+					return nil, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
+				case <-time.After(delay):
+				}
+			}
+
+			start := time.Now()
+			data, err := c.doAppraisalsRequest(ctx, apiURL, area, city)
+			latencySec := time.Since(start).Seconds()
+			telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
+				metric.WithAttributes(attribute.String("mlit.endpoint", "XCT001")))
+
+			if err == nil {
+				span.SetAttributes(attribute.Int("mlit.retry.count", attempt))
+				c.l2.appraisals.set(ctx, key, data)
+				return data, nil
+			}
+			lastErr = err
+			if isClientError(err) {
+				return nil, err
 			}
 		}
-
-		start := time.Now()
-		result, err := c.doAppraisalsRequest(ctx, apiURL, area, city)
-		latencySec := time.Since(start).Seconds()
-		telemetry.MLITAPILatencyHistogram.Record(ctx, latencySec,
-			metric.WithAttributes(attribute.String("mlit.endpoint", "XCT001")))
-
-		if err == nil {
-			span.SetAttributes(attribute.Int("mlit.retry.count", attempt))
-			c.l2.appraisals.set(ctx, key, result)
-			c.cache.appraisals.set(key, result)
-			return result, nil
-		}
-		lastErr = err
-		if isClientError(err) {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			return nil, err
-		}
+		return nil, fmt.Errorf("land appraisals API request failed after %d attempts: %w", maxRetries, lastErr)
+	})
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
 	}
-	span.RecordError(lastErr)
-	span.SetStatus(codes.Error, lastErr.Error())
-	return nil, fmt.Errorf("land appraisals API request failed after %d attempts: %w", maxRetries, lastErr)
+	return result, nil
 }
 
 // doAppraisalsRequest は単一の XCT001 HTTPリクエストを実行してパースする。
