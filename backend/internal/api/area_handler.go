@@ -78,15 +78,12 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 	for i := 0; i < limit; i++ {
 		idx, m := i, municipalities[i]
 		g.Go(func() error {
-			if gctx.Err() != nil {
+			select {
+			case <-gctx.Done():
 				return gctx.Err()
+			case sem <- struct{}{}:
 			}
-			sem <- struct{}{}
 			defer func() { <-sem }()
-
-			if gctx.Err() != nil {
-				return gctx.Err()
-			}
 
 			transactions, fetchErr := h.mlitClient.FetchLandPrices(gctx, mlit.LandPriceQuery{
 				Area:      prefecture,
