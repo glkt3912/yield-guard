@@ -30,10 +30,14 @@ import {
   Home,
 } from "lucide-react";
 import type { WatchlistItem, WatchlistStatus, InvestmentResult } from "@/types/investment";
-import WatchlistCompareTable from "@/components/WatchlistCompareTable";
+import dynamic from "next/dynamic";
 import AuthStatusBadge from "@/components/AuthStatusBadge";
 import { useAuthContext } from "@/components/RootLayoutClient";
 import { getFirebaseDb } from "@/lib/firebase";
+
+const WatchlistCompareTable = dynamic(() => import("@/components/WatchlistCompareTable"), {
+  loading: () => <Skeleton className="h-64 w-full rounded-xl" />,
+});
 
 // localStorage keys
 const STORAGE_KEY = "yg_watchlist";
