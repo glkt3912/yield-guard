@@ -8,16 +8,13 @@ import DeadCrossChart from "@/components/DeadCrossChart";
 import { LandPriceAnalysis } from "@/components/LandPriceAnalysis";
 import CostBreakdown from "@/components/CostBreakdown";
 import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
-import { LoanComparePanel } from "@/components/LoanComparePanel";
 import RenovationPanel from "@/components/RenovationPanel";
 import MultiExitCompareTable from "@/components/MultiExitCompareTable";
 import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { HazardAlertBanner } from "@/components/HazardAlertBanner";
-import { MonteCarloChart } from "@/components/MonteCarloChart";
 import NegotiationPanel from "@/components/NegotiationPanel";
 import WatchlistPanel from "@/components/WatchlistPanel";
-import DueDiligenceChecklist from "@/components/DueDiligenceChecklist";
 import { AreaDiscovery } from "@/components/AreaDiscovery";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -41,6 +38,15 @@ import type {
 } from "@/types/investment";
 
 const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
+const MonteCarloChart = dynamic(() => import("@/components/MonteCarloChart").then((m) => ({ default: m.MonteCarloChart })), {
+  loading: () => <Skeleton className="h-64 w-full rounded-xl" />,
+});
+const LoanComparePanel = dynamic(() => import("@/components/LoanComparePanel").then((m) => ({ default: m.LoanComparePanel })), {
+  loading: () => <Skeleton className="h-64 w-full rounded-xl" />,
+});
+const DueDiligenceChecklist = dynamic(() => import("@/components/DueDiligenceChecklist"), {
+  loading: () => <Skeleton className="h-96 w-full rounded-xl" />,
+});
 
 type ResultsTab = "finance" | "loan";
 const DEFAULT_RESULTS_TAB: ResultsTab = "finance";
