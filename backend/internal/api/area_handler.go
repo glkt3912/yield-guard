@@ -1,6 +1,9 @@
 package api
 
 import (
+	"context"
+	"errors"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strconv"
@@ -63,17 +66,12 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 	toYear := now.Year()
 	fromYear := toYear - 2
 
-	type result struct {
-		item domain.AreaDiscoveryItem
-		err  error
-	}
-
 	limit := areaDiscoveryLimit
 	if len(municipalities) < limit {
 		limit = len(municipalities)
 	}
 
-	results := make([]result, limit)
+	results := make([]domain.AreaDiscoveryItem, limit)
 	sem := make(chan struct{}, 5) // 並列5件上限
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -109,7 +107,7 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 				item.LandPriceTrend = "不明"
 				item.YieldDifficulty = "difficult"
 				item.YieldDifficultyLabel = "データ不足"
-				results[idx] = result{item: item}
+				results[idx] = item
 				return nil
 			}
 
@@ -145,17 +143,17 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 			}
 
 			item.LandPriceTrend = "データなし"
-			results[idx] = result{item: item}
+			results[idx] = item
 			return nil
 		})
 	}
-	_ = g.Wait()
+	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
+		slog.WarnContext(ctx, "area discovery partial failure", "err", err)
+	}
 
 	items := make([]domain.AreaDiscoveryItem, 0, limit)
-	for _, r := range results {
-		if r.err == nil {
-			items = append(items, r.item)
-		}
+	for _, item := range results {
+		items = append(items, item)
 	}
 
 	// 達成可能 → やや困難 → 困難 の順、同一難易度内は取引件数降順

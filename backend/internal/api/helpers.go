@@ -3,13 +3,16 @@ package api
 import (
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 // logSafeParams はアクセスログに記録してよいクエリパラメータキーの許可リスト。
-// PII になりうるキー（address 等）はハンドラ側でマスク済みの場合も含め、ここに列挙しないこと。
+// PII になりうるキー（address 等）はここに列挙しないこと。
+// 起動後に書き換えてはならない（read-only として扱う）。
 var logSafeParams = map[string]bool{
 	"area": true, "city": true, "prefecture": true, "municipality": true,
 	"year": true, "quarter": true, "to_year": true, "to_quarter": true,
@@ -23,25 +26,36 @@ var logSafeParams = map[string]bool{
 }
 
 // sanitizeQuery はクエリ文字列から許可リスト外のパラメータ値を [REDACTED] に置換して返す。
+// url.Values.Encode() は値を URL エンコードするため使用せず、ログ可読性を保つため手動でビルドする。
 func sanitizeQuery(raw string) string {
 	vals, err := url.ParseQuery(raw)
 	if err != nil {
 		return "[UNPARSEABLE]"
 	}
-	out := make(url.Values, len(vals))
-	for k, vs := range vals {
-		if logSafeParams[k] {
-			out[k] = vs
-		} else {
-			redacted := make([]string, len(vs))
-			for i := range vs {
-				redacted[i] = "[REDACTED]"
+	keys := make([]string, 0, len(vals))
+	for k := range vals {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var sb strings.Builder
+	first := true
+	for _, k := range keys {
+		for _, v := range vals[k] {
+			if !first {
+				sb.WriteByte('&')
 			}
-			out[k] = redacted
+			first = false
+			sb.WriteString(url.QueryEscape(k))
+			sb.WriteByte('=')
+			if logSafeParams[k] {
+				sb.WriteString(url.QueryEscape(v))
+			} else {
+				sb.WriteString("[REDACTED]")
+			}
 		}
 	}
-	// url.Values.Encode() はキーをソートするため元の順序と異なる場合があるが、ログ用途では問題ない。
-	return out.Encode()
+	return sb.String()
 }
 
 // coordsGlobal and coordsJapanOnly are passed as the japanOnly argument of parseLatLng

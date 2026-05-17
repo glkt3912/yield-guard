@@ -49,7 +49,7 @@ func (h *Handler) HandleRenovationAnalyze(c *gin.Context) {
 		return
 	}
 	if err := validateRenovationInput(input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		badRequest(c, err.Error())
 		return
 	}
 	result := domain.CalcRenovationROI(input)
