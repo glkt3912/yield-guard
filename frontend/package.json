@@ -61,7 +61,7 @@
     "prettier": "^3.8.3",
     "swagger2openapi": "^7.0.8",
     "tailwindcss": "^4.2.2",
-    "typescript": "^5",
+    "typescript": "^6",
     "vitest": "4.1.6"
   }
 }
