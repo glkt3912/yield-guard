@@ -16,6 +16,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { CriticalError, InvestmentResult } from "@/types/investment";
 import { formatMan } from "@/lib/utils";
+import { chartColors } from "@/lib/chartColors";
 import { Skull, ShieldCheck } from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
 import { useResponsiveChart } from "@/lib/useChartHeight";
@@ -140,16 +141,16 @@ function DeadCrossChart({ result }: Props) {
               <ReferenceArea
                 x1={`${deadCrossYear}年`}
                 x2={`${deadCrossEndYear}年`}
-                fill="#fee2e2"
-                fillOpacity={0.5}
+                fill={chartColors.danger}
+                fillOpacity={0.15}
               />
             )}
 
-            <Line type="monotone" dataKey="元金返済" stroke="#ef4444" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="元金返済" stroke={chartColors.danger} strokeWidth={2} dot={false} />
             <Line
               type="monotone"
               dataKey="減価償却費"
-              stroke="#3b82f6"
+              stroke={chartColors.primary}
               strokeWidth={2}
               dot={false}
               strokeDasharray="5 5"
@@ -158,13 +159,13 @@ function DeadCrossChart({ result }: Props) {
             {hasDeadCross && (
               <ReferenceLine
                 x={`${deadCrossYear}年`}
-                stroke="#f97316"
+                stroke={chartColors.warning}
                 strokeWidth={2}
                 label={{
                   value: `開始(${deadCrossYear}年)`,
                   position: "top",
                   fontSize: 11,
-                  fill: "#f97316",
+                  fill: chartColors.warning,
                 }}
               />
             )}

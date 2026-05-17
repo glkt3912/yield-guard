@@ -19,6 +19,7 @@ import { FirstTimerGuide } from "@/components/FirstTimerGuide";
 import { SAMPLE_PROPERTY, ONBOARDING_KEY } from "@/lib/sampleProperty";
 import { FormSheet } from "@/components/FormSheet";
 import { ResultsSection } from "@/components/ResultsSection";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useInvestmentSimulation } from "@/hooks/useInvestmentSimulation";
 
@@ -145,7 +146,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           }}
         />
       )}
-      <header className="border-b bg-white px-4 py-3 shadow-sm lg:px-6 lg:py-4">
+      <header className="border-b bg-card px-4 py-3 shadow-sm lg:px-6 lg:py-4">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
           <ShieldAlert className="h-6 w-6 text-primary lg:h-7 lg:w-7" />
           <div>
@@ -153,6 +154,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
             <p className="text-xs text-muted-foreground">不動産投資リスク可視化ツール</p>
           </div>
           <div className="ml-auto flex items-center gap-2 lg:gap-3">
+            <ThemeToggle />
             {result && lastInput && (
               <button
                 onClick={handleShare}

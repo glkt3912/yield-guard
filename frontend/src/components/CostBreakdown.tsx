@@ -4,6 +4,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recha
 import { AcquisitionCostBreakdown, InvestmentInput, YearlyResult } from "@/types/investment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useChartHeight } from "@/lib/useChartHeight";
+import { chartColors } from "@/lib/chartColors";
 
 interface Props {
   input: InvestmentInput;
@@ -16,7 +17,15 @@ const fmt = (n: number) =>
     ? `${(n / 10_000_000).toFixed(1)}千万円`
     : `${Math.round(n / 10_000).toLocaleString()}万円`;
 
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
+const COLORS = [
+  chartColors.primary,
+  chartColors.success,
+  chartColors.warning,
+  chartColors.danger,
+  chartColors.secondary,
+  chartColors.muted,
+  chartColors.warning,
+];
 
 export default function CostBreakdown({ input, acquisitionCosts, yearlyResults }: Props) {
   const initialPieHeight = useChartHeight(180, 200, 220);
