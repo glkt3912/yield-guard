@@ -6,6 +6,20 @@ import { makeResult } from "./helpers";
 
 // WatchlistCompareTable is a child component; stub it to simplify
 vi.mock("@/components/WatchlistCompareTable", () => ({ default: () => null }));
+vi.mock("@/components/RootLayoutClient", () => ({
+  useAuthContext: () => ({ user: { uid: "test-uid" }, loading: false }),
+}));
+vi.mock("firebase/firestore", () => ({
+  collection: vi.fn(() => null),
+  doc: vi.fn(() => null),
+  addDoc: vi.fn(),
+  updateDoc: vi.fn(),
+  deleteDoc: vi.fn(),
+  query: vi.fn(),
+  orderBy: vi.fn(),
+  onSnapshot: vi.fn(() => () => {}),
+  serverTimestamp: vi.fn(() => null),
+}));
 
 vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast: vi.fn() }),

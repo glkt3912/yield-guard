@@ -106,7 +106,7 @@ interface WatchlistPanelProps {
 
 export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
   const { user, loading: authLoading } = useAuthContext();
-  const [items, setItems] = useState<WatchlistItem[]>([]);
+  const [items, setItems] = useState<WatchlistItem[]>(loadLocalItems);
   const [firestoreLoading, setFirestoreLoading] = useState(() => getFirebaseDb() !== null);
   const [nameInput, setNameInput] = useState("");
   const [memoInput, setMemoInput] = useState("");
