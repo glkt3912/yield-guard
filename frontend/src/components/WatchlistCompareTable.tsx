@@ -145,7 +145,7 @@ export default function WatchlistCompareTable({ items }: WatchlistCompareTablePr
                         item.status === "検討中"
                           ? "bg-blue-100 text-blue-800"
                           : item.status === "見送り"
-                            ? "bg-gray-100 text-gray-600"
+                            ? "bg-muted text-muted-foreground"
                             : "bg-emerald-100 text-emerald-800"
                       }`}
                     >

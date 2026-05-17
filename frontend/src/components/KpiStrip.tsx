@@ -18,7 +18,7 @@ interface KpiCellProps {
 
 function KpiCell({ icon, label, value, sub, subPositive }: KpiCellProps) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border bg-white p-3 shadow-sm">
+    <div className="flex flex-col gap-1 rounded-lg border bg-card p-3 shadow-sm">
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         {icon}
         <span>{label}</span>

@@ -16,6 +16,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { InvestmentResult } from "@/types/investment";
 import { formatMan } from "@/lib/utils";
+import { chartColors } from "@/lib/chartColors";
 import { TrendingUp } from "lucide-react";
 import { TermTooltip } from "@/components/ui/TermTooltip";
 import { useResponsiveChart } from "@/lib/useChartHeight";
@@ -114,7 +115,7 @@ function CashFlowChart({ result, equityInvested }: Props) {
               orientation="right"
               domain={[0, 3]}
               tickFormatter={(v: number) => v.toFixed(1)}
-              tick={{ fontSize: 10, fill: "#8b5cf6" }}
+              tick={{ fontSize: 10, fill: chartColors.secondary }}
               width={isMobile ? 28 : 36}
               dx={isMobile ? 28 : 40}
               label={
@@ -125,7 +126,7 @@ function CashFlowChart({ result, equityInvested }: Props) {
                       angle: 90,
                       position: "insideRight",
                       fontSize: 10,
-                      fill: "#8b5cf6",
+                      fill: chartColors.secondary,
                       dx: 12,
                     }
               }
@@ -141,15 +142,15 @@ function CashFlowChart({ result, equityInvested }: Props) {
               labelStyle={{ fontWeight: "bold" }}
             />
             <Legend />
-            <ReferenceLine yAxisId="left" y={0} stroke="#9ca3af" />
-            <ReferenceLine yAxisId="right" y={0} stroke="#9ca3af" strokeDasharray="4 2" />
+            <ReferenceLine yAxisId="left" y={0} stroke={chartColors.muted} />
+            <ReferenceLine yAxisId="right" y={0} stroke={chartColors.muted} strokeDasharray="4 2" />
             {breakEvenYear && (
               <ReferenceLine
                 yAxisId="right"
                 x={`${breakEvenYear}年`}
-                stroke="#22c55e"
+                stroke={chartColors.success}
                 strokeDasharray="4 4"
-                label={{ value: "回収", position: "top", fontSize: 10, fill: "#22c55e" }}
+                label={{ value: "回収", position: "top", fontSize: 10, fill: chartColors.success }}
               />
             )}
             {rateChangeYears.map(({ year, rate }) => (
@@ -157,58 +158,58 @@ function CashFlowChart({ result, equityInvested }: Props) {
                 key={year}
                 yAxisId="left"
                 x={year}
-                stroke="#f97316"
+                stroke={chartColors.warning}
                 strokeDasharray="4 3"
                 label={{
                   value: `${(rate * 100).toFixed(2)}%`,
                   position: "insideTopRight",
                   fontSize: 9,
-                  fill: "#f97316",
+                  fill: chartColors.warning,
                 }}
               />
             ))}
             <Bar yAxisId="left" dataKey="税引後CF" maxBarSize={20} radius={[2, 2, 0, 0]}>
               {data.map((entry, index) => (
-                <Cell key={index} fill={entry.isDeadCrossZone ? "#fca5a5" : "#60a5fa"} />
+                <Cell key={index} fill={entry.isDeadCrossZone ? chartColors.danger : chartColors.primary} />
               ))}
             </Bar>
             <Line
               yAxisId="right"
               type="monotone"
               dataKey="累積CF"
-              stroke="#f59e0b"
+              stroke={chartColors.warning}
               strokeWidth={2}
               dot={false}
             />
             <ReferenceLine
               yAxisId="dscr"
               y={1.0}
-              stroke="#ef4444"
+              stroke={chartColors.danger}
               strokeDasharray="3 3"
               label={{
                 value: "危険",
                 position: "insideTopRight",
                 fontSize: 9,
-                fill: "#ef4444",
+                fill: chartColors.danger,
               }}
             />
             <ReferenceLine
               yAxisId="dscr"
               y={1.2}
-              stroke="#22c55e"
+              stroke={chartColors.success}
               strokeDasharray="3 3"
               label={{
                 value: "安全",
                 position: "insideTopRight",
                 fontSize: 9,
-                fill: "#22c55e",
+                fill: chartColors.success,
               }}
             />
             <Line
               yAxisId="dscr"
               type="monotone"
               dataKey="DSCR"
-              stroke="#8b5cf6"
+              stroke={chartColors.secondary}
               strokeWidth={2}
               dot={false}
               connectNulls

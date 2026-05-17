@@ -59,7 +59,7 @@ export function ScenarioSection({
               type="checkbox"
               checked={rateSchedule.enabled}
               onChange={(e) => rateSchedule.onToggle(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
+              className="h-4 w-4 rounded border"
             />
             <span className="text-xs text-muted-foreground">有効にする</span>
           </label>
@@ -181,7 +181,7 @@ export function ScenarioSection({
                 type="checkbox"
                 checked={exitYears.includes(yr)}
                 onChange={() => toggleExitYear(yr)}
-                className="h-4 w-4 rounded border-gray-300"
+                className="h-4 w-4 rounded border"
               />
               <span className="text-sm">{yr}年</span>
             </label>

@@ -133,7 +133,7 @@ export function ResultsSection({
           onClick={() => setActiveTab("simulation")}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
             activeTab === "simulation"
-              ? "bg-white shadow-sm text-foreground"
+              ? "bg-card shadow-sm text-foreground"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -147,7 +147,7 @@ export function ResultsSection({
           }}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
             activeTab === "area-discovery"
-              ? "bg-white shadow-sm text-foreground"
+              ? "bg-card shadow-sm text-foreground"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -263,7 +263,7 @@ export function ResultsSection({
                   onClick={() => handleResultsTabChange(id)}
                   className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors whitespace-nowrap ${
                     resultsTab === id
-                      ? "bg-white shadow-sm text-foreground"
+                      ? "bg-card shadow-sm text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -289,7 +289,7 @@ export function ResultsSection({
               {simulationMode === "full" && (
                 <>
                   {result.acquisitionCosts && (
-                    <div className="rounded-xl border bg-white p-5 shadow-sm">
+                    <div className="rounded-xl border bg-card p-5 shadow-sm">
                       <CostBreakdown
                         input={lastInput}
                         acquisitionCosts={result.acquisitionCosts}
