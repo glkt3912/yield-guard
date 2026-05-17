@@ -2,10 +2,61 @@ package api
 
 import (
 	"net/http"
+	"net/url"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
+
+// logSafeParams はアクセスログに記録してよいクエリパラメータキーの許可リスト。
+// PII になりうるキー（address 等）はここに列挙しないこと。
+// 起動後に書き換えてはならない（read-only として扱う）。
+var logSafeParams = map[string]bool{
+	"area": true, "city": true, "prefecture": true, "municipality": true,
+	"year": true, "quarter": true, "to_year": true, "to_quarter": true,
+	"z": true, "x": true, "y": true,
+	"lat": true, "lng": true,
+	"minLat": true, "maxLat": true, "minLng": true, "maxLng": true,
+	"price": true, "area_sqm": true, "building_age": true,
+	"station_minutes": true, "ridership_score": true,
+	"budget": true, "yield": true,
+	"division": true,
+}
+
+// sanitizeQuery はクエリ文字列から許可リスト外のパラメータ値を [REDACTED] に置換して返す。
+// url.Values.Encode() は値を URL エンコードするため使用せず、ログ可読性を保つため手動でビルドする。
+func sanitizeQuery(raw string) string {
+	vals, err := url.ParseQuery(raw)
+	if err != nil {
+		return "[UNPARSEABLE]"
+	}
+	keys := make([]string, 0, len(vals))
+	for k := range vals {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var sb strings.Builder
+	first := true
+	for _, k := range keys {
+		for _, v := range vals[k] {
+			if !first {
+				sb.WriteByte('&')
+			}
+			first = false
+			sb.WriteString(url.QueryEscape(k))
+			sb.WriteByte('=')
+			if logSafeParams[k] {
+				sb.WriteString(url.QueryEscape(v))
+			} else {
+				sb.WriteString("[REDACTED]")
+			}
+		}
+	}
+	return sb.String()
+}
 
 // coordsGlobal and coordsJapanOnly are passed as the japanOnly argument of parseLatLng
 // to make call sites self-documenting.
