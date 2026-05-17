@@ -55,7 +55,9 @@ export function useExternalData(
   const [theoreticalPrice, setTheoreticalPrice] = useState<TheoreticalPriceResult | null>(null);
   const [landAppraisal, setLandAppraisal] = useState<AppraisalComparisonResult | null>(null);
   const [stationRidership, setStationRidership] = useState<StationRidershipResult[] | null>(null);
-  const [populationForecast, setPopulationForecast] = useState<PopulationForecastResult | null>(null);
+  const [populationForecast, setPopulationForecast] = useState<PopulationForecastResult | null>(
+    null
+  );
   const [externalUrbanRisks, setExternalUrbanRisks] = useState<UrbanRisk[] | null>(null);
   const [investmentScore, setInvestmentScore] = useState<InvestmentScoreResult | null>(null);
   const [hazardRisks, setHazardRisks] = useState<UrbanRisk[] | null>(null);

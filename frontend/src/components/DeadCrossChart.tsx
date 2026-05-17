@@ -146,7 +146,13 @@ function DeadCrossChart({ result }: Props) {
               />
             )}
 
-            <Line type="monotone" dataKey="元金返済" stroke={chartColors.danger} strokeWidth={2} dot={false} />
+            <Line
+              type="monotone"
+              dataKey="元金返済"
+              stroke={chartColors.danger}
+              strokeWidth={2}
+              dot={false}
+            />
             <Line
               type="monotone"
               dataKey="減価償却費"

@@ -65,7 +65,13 @@ export async function fetchLandPrices(params: {
   toQuarter: number;
 }): Promise<LandPriceStats> {
   const q = buildParams(
-    { area: params.area, year: params.year, quarter: params.quarter, to_year: params.toYear, to_quarter: params.toQuarter },
+    {
+      area: params.area,
+      year: params.year,
+      quarter: params.quarter,
+      to_year: params.toYear,
+      to_quarter: params.toQuarter,
+    },
     { city: params.city }
   );
   const res = await fetch(`${BASE}/land-prices/stats?${q}`);
@@ -84,7 +90,14 @@ export async function compareLandPrice(params: {
   areaSqm?: number;
 }): Promise<LandPriceComparison> {
   const q = buildParams(
-    { area: params.area, year: params.year, quarter: params.quarter, to_year: params.toYear, to_quarter: params.toQuarter, price: params.price },
+    {
+      area: params.area,
+      year: params.year,
+      quarter: params.quarter,
+      to_year: params.toYear,
+      to_quarter: params.toQuarter,
+      price: params.price,
+    },
     { city: params.city, area_sqm: params.areaSqm }
   );
   const res = await fetch(`${BASE}/land-prices/compare?${q}`);
@@ -112,8 +125,21 @@ export async function estimateLandPrice(params: {
   ridershipScore?: RidershipDemandScore;
 }): Promise<TheoreticalPriceResult> {
   const q = buildParams(
-    { area: params.area, year: params.year, quarter: params.quarter, to_year: params.toYear, to_quarter: params.toQuarter, price: params.price, area_sqm: params.areaSqm, building_age: params.buildingAge },
-    { city: params.city, station_minutes: params.stationMinutes, ridership_score: params.ridershipScore }
+    {
+      area: params.area,
+      year: params.year,
+      quarter: params.quarter,
+      to_year: params.toYear,
+      to_quarter: params.toQuarter,
+      price: params.price,
+      area_sqm: params.areaSqm,
+      building_age: params.buildingAge,
+    },
+    {
+      city: params.city,
+      station_minutes: params.stationMinutes,
+      ridership_score: params.ridershipScore,
+    }
   );
   const res = await fetch(`${BASE}/land-prices/estimate?${q}`);
   return handleResponse<TheoreticalPriceResult>(res);

@@ -106,8 +106,8 @@ interface WatchlistPanelProps {
 
 export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
   const { user, loading: authLoading } = useAuthContext();
-  const [items, setItems] = useState<WatchlistItem[]>([]);
-  const [firestoreLoading, setFirestoreLoading] = useState(true);
+  const [items, setItems] = useState<WatchlistItem[]>(loadLocalItems);
+  const [firestoreLoading, setFirestoreLoading] = useState(() => getFirebaseDb() !== null);
   const [nameInput, setNameInput] = useState("");
   const [memoInput, setMemoInput] = useState("");
   const [nameError, setNameError] = useState("");
@@ -123,11 +123,7 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
 
     const uid = user.uid;
     const col = itemsCollection(uid);
-    // Firebase not configured — fall back to empty list with no loading spinner
-    if (!col) {
-      setFirestoreLoading(false);
-      return;
-    }
+    if (!col) return;
     const q = query(col, orderBy("addedAt", "desc"));
 
     const unsubscribe = onSnapshot(
@@ -199,8 +195,6 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
       setNameError("物件名を入力してください");
       return;
     }
-    if (!user) return;
-
     setNameError("");
 
     const newItem: Omit<WatchlistItem, "id"> = {
@@ -224,24 +218,31 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
         : {}),
     };
 
-    // Optimistic: add a temporary item immediately
-    const tempId = `temp_${Date.now()}`;
-    setItems((prev) => [{ ...newItem, id: tempId }, ...prev]);
+    const localId = `local_${Date.now()}`;
+    const localItem: WatchlistItem = { ...newItem, id: localId };
+
+    setItems((prev) => {
+      const updated = [localItem, ...prev];
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     setNameInput("");
     setMemoInput("");
     toast({ message: `「${trimmed}」をウォッチリストに追加しました`, variant: "success" });
 
-    try {
-      const col = itemsCollection(user.uid);
-      if (col) {
-        await addDoc(col, { ...newItem, createdAt: serverTimestamp() });
+    if (user) {
+      try {
+        const col = itemsCollection(user.uid);
+        if (col) {
+          await addDoc(col, { ...newItem, createdAt: serverTimestamp() });
+        }
+      } catch (err) {
+        console.error("[WatchlistPanel] addDoc failed:", err);
+        setItems((prev) => prev.filter((item) => item.id !== localId));
+        toast({ message: "追加に失敗しました。再度お試しください。", variant: "danger" });
       }
-      // onSnapshot will replace the optimistic item with the server version
-    } catch (err) {
-      console.error("[WatchlistPanel] addDoc failed:", err);
-      // Roll back optimistic update on error
-      setItems((prev) => prev.filter((item) => item.id !== tempId));
-      toast({ message: "追加に失敗しました。再度お試しください。", variant: "danger" });
     }
   }
 
