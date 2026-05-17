@@ -151,9 +151,12 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 		slog.WarnContext(ctx, "area discovery partial failure", "err", err)
 	}
 
+	// MunicipalityCode が空のスロットはキャンセル等で goroutine が未実行のもの
 	items := make([]domain.AreaDiscoveryItem, 0, limit)
 	for _, item := range results {
-		items = append(items, item)
+		if item.MunicipalityCode != "" {
+			items = append(items, item)
+		}
 	}
 
 	// 達成可能 → やや困難 → 困難 の順、同一難易度内は取引件数降順
