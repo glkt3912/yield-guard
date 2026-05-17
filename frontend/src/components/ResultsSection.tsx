@@ -38,12 +38,18 @@ import type {
 } from "@/types/investment";
 
 const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
-const MonteCarloChart = dynamic(() => import("@/components/MonteCarloChart").then((m) => ({ default: m.MonteCarloChart })), {
-  loading: () => <Skeleton className="h-64 w-full rounded-xl" />,
-});
-const LoanComparePanel = dynamic(() => import("@/components/LoanComparePanel").then((m) => ({ default: m.LoanComparePanel })), {
-  loading: () => <Skeleton className="h-64 w-full rounded-xl" />,
-});
+const MonteCarloChart = dynamic(
+  () => import("@/components/MonteCarloChart").then((m) => ({ default: m.MonteCarloChart })),
+  {
+    loading: () => <Skeleton className="h-64 w-full rounded-xl" />,
+  }
+);
+const LoanComparePanel = dynamic(
+  () => import("@/components/LoanComparePanel").then((m) => ({ default: m.LoanComparePanel })),
+  {
+    loading: () => <Skeleton className="h-64 w-full rounded-xl" />,
+  }
+);
 const DueDiligenceChecklist = dynamic(() => import("@/components/DueDiligenceChecklist"), {
   loading: () => <Skeleton className="h-96 w-full rounded-xl" />,
 });
