@@ -21,6 +21,7 @@ function makeScore(totalScore: number, grade: string): InvestmentScoreResult {
       liquefactionRisk: makeScoreItem("液状化", 0),
       embankment: makeScoreItem("盛土", 0),
       disasterHistory: makeScoreItem("災害履歴", 0),
+      landPriceTrend: makeScoreItem("地価トレンド", 0),
       radarData: [],
     },
   };
