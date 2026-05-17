@@ -227,3 +227,15 @@ These rules define the safety boundary for autonomous Claude Code operations.
 
 - **Never merge a PR without explicit instruction** — even if CI passes
 - **Never post comments to Issues or PRs without explicit instruction** — unintended external communication must be avoided
+- **Never use `--squash` when merging** — always use `--merge`; add `--delete-branch` to clean up
+
+### Worktree operations
+
+- **Never run `npm install` in a worktree** — it regenerates `package-lock.json` with the local npm version, causing CI drift and exposing pre-existing lint/format issues
+- **Share `node_modules` via symlink instead:**
+  ```bash
+  git worktree add ../yield-guard-xxx -b branch-name
+  ln -s $(pwd)/frontend/node_modules ../yield-guard-xxx/frontend/node_modules
+  ```
+- **Check main CI status before starting work** — know the baseline so pre-existing failures don't block the PR
+- **Rebase once, just before pushing** — rebase on the latest `origin/main` right before creating the PR, not repeatedly during development
