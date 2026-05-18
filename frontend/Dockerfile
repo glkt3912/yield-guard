@@ -18,10 +18,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 # root実行を避けるために専用ユーザーを作成
 RUN addgroup -g 1001 appgroup && adduser -u 1001 -G appgroup -D appuser
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-RUN chown -R appuser:appgroup .
+COPY --from=builder --chown=appuser:appgroup /app/.next/standalone ./
+COPY --from=builder --chown=appuser:appgroup /app/.next/static ./.next/static
+COPY --from=builder --chown=appuser:appgroup /app/public ./public
 USER appuser
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
