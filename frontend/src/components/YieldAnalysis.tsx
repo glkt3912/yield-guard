@@ -33,8 +33,8 @@ function MobileKpiGrid({ result }: { result: InvestmentResult }) {
       label: "1年目税引後CF",
       value: formatYen(firstYearCF),
       sub: "年間キャッシュフロー",
-      color: firstYearCF >= 0 ? "text-green-600" : "text-red-600",
-      bg: firstYearCF >= 0 ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200",
+      color: firstYearCF >= 0 ? "text-success-fg" : "text-danger-fg",
+      bg: firstYearCF >= 0 ? "bg-success-bg border-success-bg" : "bg-danger-bg border-danger-bg",
     },
   ];
 
@@ -88,19 +88,19 @@ export function YieldAnalysis({
       {isAnalyzing ? (
         <Skeleton className="h-20 w-full rounded-lg" />
       ) : result.aiSummary ? (
-        <Card className="border border-blue-200 bg-blue-50/50">
+        <Card className="border border-info-bg bg-info-bg/50">
           <CardHeader className="cursor-pointer pb-2 pt-4" onClick={() => setAiOpen(!aiOpen)}>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-blue-700">AIレポート</CardTitle>
+              <CardTitle className="text-sm font-medium text-info-fg">AIレポート</CardTitle>
               {aiOpen ? (
-                <ChevronUp className="h-4 w-4 text-blue-500" />
+                <ChevronUp className="h-4 w-4 text-info-icon" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-blue-500" />
+                <ChevronDown className="h-4 w-4 text-info-icon" />
               )}
             </div>
           </CardHeader>
           {aiOpen && (
-            <CardContent className="pt-0 text-sm text-blue-900">{result.aiSummary}</CardContent>
+            <CardContent className="pt-0 text-sm text-info-fg">{result.aiSummary}</CardContent>
           )}
         </Card>
       ) : null}
@@ -191,9 +191,9 @@ export function YieldAnalysis({
       </Card>
 
       {!isGood && (
-        <Card className="border-orange-200 bg-orange-50">
+        <Card className="border-warning-bg bg-warning-bg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base text-orange-800">
+            <CardTitle className="flex items-center gap-2 text-base text-warning-fg">
               <TrendingDown className="h-5 w-5" />
               {targetPct}%達成のために必要な改善（いずれか一方）
             </CardTitle>
@@ -203,13 +203,13 @@ export function YieldAnalysis({
               <p className="text-xs text-muted-foreground">
                 土地価格 <strong>または</strong> 建築費のどちらか一方を削減する必要がある額
               </p>
-              <p className="text-xl font-bold text-orange-700">
+              <p className="text-xl font-bold text-warning-fg">
                 ▼ {formatMan(result.requiredCostReduction)}
               </p>
             </div>
             <div className="rounded-md bg-card/70 p-3">
               <p className="text-xs text-muted-foreground">または、必要な月額賃料（満室想定）</p>
-              <p className="text-xl font-bold text-orange-700">
+              <p className="text-xl font-bold text-warning-fg">
                 ▲ {formatYen(result.requiredMonthlyRent)}/月
               </p>
             </div>
@@ -218,15 +218,15 @@ export function YieldAnalysis({
       )}
 
       {isGood && (
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-success-bg bg-success-bg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base text-green-800">
+            <CardTitle className="flex items-center gap-2 text-base text-success-fg">
               <TrendingUp className="h-5 w-5" />
               {targetPct}%超え達成！余裕度
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-green-700">
+            <p className="text-sm text-success-fg">
               目標の{targetPct}%に対して{" "}
               <span className="font-bold">
                 +{formatPct(result.grossYield - result.yieldTarget)}
@@ -262,21 +262,21 @@ function VacancyScenarioCard({
       vacancyPct: (Math.min(vacancyRate * 0.5, 0.99) * 100).toFixed(0),
       annualRent: yieldScenarios.optimistic.annualRent,
       effectiveYield: yieldScenarios.optimistic.annualRent / totalInvestment,
-      colorClass: "text-green-600",
+      colorClass: "text-success-icon",
     },
     {
       label: "標準",
       vacancyPct: (Math.min(vacancyRate * 1.0, 0.99) * 100).toFixed(0),
       annualRent: yieldScenarios.standard.annualRent,
       effectiveYield: yieldScenarios.standard.annualRent / totalInvestment,
-      colorClass: "text-blue-600",
+      colorClass: "text-info-icon",
     },
     {
       label: "悲観",
       vacancyPct: (Math.min(vacancyRate * 1.5, 0.99) * 100).toFixed(0),
       annualRent: yieldScenarios.pessimistic.annualRent,
       effectiveYield: yieldScenarios.pessimistic.annualRent / totalInvestment,
-      colorClass: "text-red-600",
+      colorClass: "text-danger-icon",
     },
   ];
 
