@@ -20,6 +20,19 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
+  --color-success-bg: hsl(var(--success-bg));
+  --color-success-fg: hsl(var(--success-fg));
+  --color-success-icon: hsl(var(--success-icon));
+  --color-warning-bg: hsl(var(--warning-bg));
+  --color-warning-fg: hsl(var(--warning-fg));
+  --color-warning-icon: hsl(var(--warning-icon));
+  --color-danger-bg: hsl(var(--danger-bg));
+  --color-danger-fg: hsl(var(--danger-fg));
+  --color-danger-icon: hsl(var(--danger-icon));
+  --color-info-bg: hsl(var(--info-bg));
+  --color-info-fg: hsl(var(--info-fg));
+  --color-info-icon: hsl(var(--info-icon));
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -59,6 +72,20 @@
     --chart-secondary: 199 89% 48%;
     --chart-muted: 215 16% 47%;
     --chart-orange: 25 95% 53%;
+
+    /* ステータスサーフェストークン */
+    --success-bg: 142 60% 94%;
+    --success-fg: 142 60% 22%;
+    --success-icon: 142 71% 35%;
+    --warning-bg: 38 90% 93%;
+    --warning-fg: 38 80% 22%;
+    --warning-icon: 38 92% 38%;
+    --danger-bg: 0 80% 94%;
+    --danger-fg: 0 70% 25%;
+    --danger-icon: 0 84% 50%;
+    --info-bg: 217 60% 94%;
+    --info-fg: 217 60% 22%;
+    --info-icon: 217 83% 45%;
   }
 
   .dark {
@@ -89,6 +116,20 @@
     --chart-secondary: 199 89% 50%;
     --chart-muted: 215 20% 65%;
     --chart-orange: 25 90% 55%;
+
+    /* ステータスサーフェストークン */
+    --success-bg: 142 30% 14%;
+    --success-fg: 142 50% 75%;
+    --success-icon: 142 60% 55%;
+    --warning-bg: 38 30% 13%;
+    --warning-fg: 38 70% 72%;
+    --warning-icon: 38 85% 58%;
+    --danger-bg: 0 30% 14%;
+    --danger-fg: 0 60% 78%;
+    --danger-icon: 0 63% 60%;
+    --info-bg: 217 25% 15%;
+    --info-fg: 217 50% 78%;
+    --info-icon: 217 80% 65%;
   }
 }
 
