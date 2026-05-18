@@ -34,7 +34,7 @@ function MobileKpiGrid({ result }: { result: InvestmentResult }) {
       value: formatYen(firstYearCF),
       sub: "年間キャッシュフロー",
       color: firstYearCF >= 0 ? "text-success-fg" : "text-danger-fg",
-      bg: firstYearCF >= 0 ? "bg-success-bg border-success-bg" : "bg-danger-bg border-danger-bg",
+      bg: firstYearCF >= 0 ? "bg-success-bg/50 border-success-bg" : "bg-danger-bg/50 border-danger-bg",
     },
   ];
 
@@ -191,7 +191,7 @@ export function YieldAnalysis({
       </Card>
 
       {!isGood && (
-        <Card className="border-warning-bg bg-warning-bg">
+        <Card className="border-warning-bg bg-warning-bg/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base text-warning-fg">
               <TrendingDown className="h-5 w-5" />
@@ -218,7 +218,7 @@ export function YieldAnalysis({
       )}
 
       {isGood && (
-        <Card className="border-success-bg bg-success-bg">
+        <Card className="border-success-bg bg-success-bg/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base text-success-fg">
               <TrendingUp className="h-5 w-5" />

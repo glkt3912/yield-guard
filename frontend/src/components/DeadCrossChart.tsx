@@ -41,7 +41,7 @@ function DeadCrossAdviceGuide({ deadCrossYear, criticalErrors }: AdviceGuideProp
     <div
       role="note"
       aria-label="デッドクロス対策ガイド"
-      className="mt-4 rounded-md border border-warning-bg bg-warning-bg p-4"
+      className="mt-4 rounded-md border border-warning-bg bg-warning-bg/50 p-4"
     >
       <div className="flex items-center gap-2 mb-2">
         <p className="text-sm font-semibold text-warning-fg">対策ガイド</p>
@@ -179,7 +179,7 @@ function DeadCrossChart({ result }: Props) {
         </ResponsiveContainer>
 
         {hasDeadCross && (
-          <div className="mt-4 rounded-md border border-danger-bg bg-danger-bg p-3 text-sm">
+          <div className="mt-4 rounded-md border border-danger-bg bg-danger-bg/50 p-3 text-sm">
             <p className="font-semibold text-danger-fg">
               ⚠ {deadCrossYear}年目以降、所得税の実質負担が増加します
             </p>
