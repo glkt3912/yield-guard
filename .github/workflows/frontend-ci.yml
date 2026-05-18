@@ -29,6 +29,7 @@ jobs:
   ci:
     name: Format, Lint, Type Check & Build
     runs-on: ubuntu-24.04
+    if: github.event.action != 'closed'
 
     defaults:
       run:
@@ -247,6 +248,7 @@ jobs:
 
       - name: Delete preview deployment
         if: steps.get-url.outputs.url != ''
+        continue-on-error: true
         run: vercel rm "${{ steps.get-url.outputs.url }}" --yes
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
