@@ -82,7 +82,7 @@ function CashFlowChart({ result, equityInvested }: Props) {
             <>
               {" "}
               自己資金回収：
-              <span className="font-semibold text-green-600">{breakEvenYear}年目</span>
+              <span className="font-semibold text-success-icon">{breakEvenYear}年目</span>
             </>
           ) : (
             " 35年以内に自己資金を回収できない見込みです"
@@ -251,7 +251,7 @@ function CashFlowChart({ result, equityInvested }: Props) {
           <div className="text-center">
             <p className="text-xs text-muted-foreground">最終手残り（Equity）</p>
             <p
-              className={`font-bold text-sm ${exitTotalEquity >= 0 ? "text-green-600" : "text-red-600"}`}
+              className={`font-bold text-sm ${exitTotalEquity >= 0 ? "text-success-icon" : "text-danger-icon"}`}
             >
               {formatMan(exitTotalEquity)}
             </p>
@@ -265,7 +265,7 @@ function CashFlowChart({ result, equityInvested }: Props) {
               <TermTooltip term="irr">IRR（内部収益率）</TermTooltip>
             </p>
             <p
-              className={`text-sm font-bold ${result.irr != null ? (result.irr >= 0 ? "text-green-600" : "text-red-600") : "text-muted-foreground"}`}
+              className={`text-sm font-bold ${result.irr != null ? (result.irr >= 0 ? "text-success-icon" : "text-danger-icon") : "text-muted-foreground"}`}
             >
               {result.irr != null ? `${(result.irr * 100).toFixed(2)}%` : "―"}
             </p>
@@ -275,7 +275,7 @@ function CashFlowChart({ result, equityInvested }: Props) {
               <TermTooltip term="npv">NPV（正味現在価値）</TermTooltip>
             </p>
             <p
-              className={`text-sm font-bold ${result.npv >= 0 ? "text-green-600" : "text-red-600"}`}
+              className={`text-sm font-bold ${result.npv >= 0 ? "text-success-icon" : "text-danger-icon"}`}
             >
               {formatMan(result.npv)}
             </p>

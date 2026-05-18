@@ -28,13 +28,13 @@ describe("CashFlowChart", () => {
     const result = makeResult({ exitTotalEquity: 3_000_000 });
     render(<CashFlowChart result={result} equityInvested={2_000_000} />);
     const el = screen.getByText(/300\.0万円/);
-    expect(el).toHaveClass("text-green-600");
+    expect(el).toHaveClass("text-success-icon");
   });
 
   it("exitTotalEquity が負のとき赤色で表示する", () => {
     const result = makeResult({ exitTotalEquity: -1_000_000 });
     render(<CashFlowChart result={result} equityInvested={2_000_000} />);
     const el = screen.getByText(/-100\.0万円/);
-    expect(el).toHaveClass("text-red-600");
+    expect(el).toHaveClass("text-danger-icon");
   });
 });

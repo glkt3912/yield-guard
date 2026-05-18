@@ -41,18 +41,18 @@ function DeadCrossAdviceGuide({ deadCrossYear, criticalErrors }: AdviceGuideProp
     <div
       role="note"
       aria-label="デッドクロス対策ガイド"
-      className="mt-4 rounded-md border border-orange-200 bg-orange-50 p-4"
+      className="mt-4 rounded-md border border-warning-bg bg-warning-bg/50 p-4"
     >
       <div className="flex items-center gap-2 mb-2">
-        <p className="text-sm font-semibold text-orange-900">対策ガイド</p>
+        <p className="text-sm font-semibold text-warning-fg">対策ガイド</p>
         {isEarlyWarning && <Badge variant="danger">早期警告</Badge>}
       </div>
-      <p className="text-sm text-orange-800 mb-3">
+      <p className="text-sm text-warning-fg mb-3">
         保有{deadCrossYear}年目から税負担が増加します。以下の対策を検討してください：
       </p>
       <ul className="space-y-1">
         {ADVICE_ITEMS.map((item, i) => (
-          <li key={i} className="flex items-start gap-2 text-sm text-orange-700">
+          <li key={i} className="flex items-start gap-2 text-sm text-warning-fg">
             <span className="mt-0.5 shrink-0">•</span>
             <span>{item}</span>
           </li>
@@ -99,9 +99,9 @@ function DeadCrossChart({ result }: Props) {
         <div className="flex items-center justify-between">
           <CardTitle data-testid="dead-cross-chart-heading" className="flex items-center gap-2">
             {hasDeadCross ? (
-              <Skull className="h-5 w-5 text-red-500" />
+              <Skull className="h-5 w-5 text-danger-icon" />
             ) : (
-              <ShieldCheck className="h-5 w-5 text-green-500" />
+              <ShieldCheck className="h-5 w-5 text-success-icon" />
             )}
             <TermTooltip term="deadCross">デッドクロス</TermTooltip>予測
           </CardTitle>
@@ -179,11 +179,11 @@ function DeadCrossChart({ result }: Props) {
         </ResponsiveContainer>
 
         {hasDeadCross && (
-          <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm">
-            <p className="font-semibold text-red-800">
+          <div className="mt-4 rounded-md border border-danger-bg bg-danger-bg/50 p-3 text-sm">
+            <p className="font-semibold text-danger-fg">
               ⚠ {deadCrossYear}年目以降、所得税の実質負担が増加します
             </p>
-            <p className="mt-1 text-red-700 text-xs">
+            <p className="mt-1 text-danger-fg text-xs">
               {deadCrossYear}年目 — 元金返済：
               <strong>{formatMan(yearlyResults[deadCrossYear - 1]?.annualPrincipal ?? 0)}</strong>
               ／減価償却費：
