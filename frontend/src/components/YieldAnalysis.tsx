@@ -34,7 +34,10 @@ function MobileKpiGrid({ result }: { result: InvestmentResult }) {
       value: formatYen(firstYearCF),
       sub: "年間キャッシュフロー",
       color: firstYearCF >= 0 ? "text-success-fg" : "text-danger-fg",
-      bg: firstYearCF >= 0 ? "bg-success-bg/50 border-success-bg" : "bg-danger-bg/50 border-danger-bg",
+      bg:
+        firstYearCF >= 0
+          ? "bg-success-bg/50 border-success-bg"
+          : "bg-danger-bg/50 border-danger-bg",
     },
   ];
 
