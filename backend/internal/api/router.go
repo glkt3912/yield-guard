@@ -93,12 +93,25 @@ func NewRouter(h *Handler, appInternalAPIKey string) *gin.Engine {
 
 	// CORS: 許可オリジンを環境変数 ALLOW_ORIGINS（カンマ区切り）から取得
 	// 未設定の場合は localhost:3000 のみ許可
+	// "*.example.com" 形式のエントリはサフィックス一致として扱う（stg の Vercel プレビュー URL 対応）
 	allowOrigins := os.Getenv("ALLOW_ORIGINS")
 	if allowOrigins == "" {
 		allowOrigins = "http://localhost:3000"
 	}
+	origins := strings.Split(allowOrigins, ",")
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     strings.Split(allowOrigins, ","),
+		AllowOriginFunc: func(origin string) bool {
+			for _, o := range origins {
+				if strings.HasPrefix(o, "*.") {
+					if strings.HasSuffix(origin, o[1:]) {
+						return true
+					}
+				} else if o == origin {
+					return true
+				}
+			}
+			return false
+		},
 		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Accept"},
 		AllowCredentials: false,
