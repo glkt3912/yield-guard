@@ -96,6 +96,47 @@ func TestRouter_CORS_MultipleOrigins(t *testing.T) {
 	}
 }
 
+func TestRouter_CORS_WildcardSuffix(t *testing.T) {
+	// *.vercel.app 形式はサフィックス一致で許可される
+	t.Setenv("ALLOW_ORIGINS", "https://prod.example.com,*.vercel.app")
+
+	r := newTestRouter(&mockMLITClient{}, &mockGeocodeClient{})
+
+	allowed := []string{
+		"https://prod.example.com",
+		"https://frontend-git-feat-xxx-team.vercel.app",
+		"https://myapp.vercel.app",
+	}
+	for _, origin := range allowed {
+		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		req.Header.Set("Origin", origin)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		got := w.Header().Get("Access-Control-Allow-Origin")
+		if got != origin {
+			t.Errorf("origin %q should be allowed, got Access-Control-Allow-Origin = %q", origin, got)
+		}
+	}
+
+	denied := []string{
+		"https://evil.com",
+		"https://notvercel.app",
+		"https://evil.vercel.app.evil.com",
+	}
+	for _, origin := range denied {
+		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		req.Header.Set("Origin", origin)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		got := w.Header().Get("Access-Control-Allow-Origin")
+		if got == origin {
+			t.Errorf("origin %q should be denied, but was allowed", origin)
+		}
+	}
+}
+
 // --- ルート登録 ---
 
 func TestRouter_HealthEndpoint(t *testing.T) {
