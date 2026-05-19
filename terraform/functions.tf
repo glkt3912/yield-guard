@@ -43,7 +43,7 @@ resource "google_cloudfunctions2_function" "billing_stop" {
   }
 
   service_config {
-    service_account_email = google_service_account.billing_stop.email
+    service_account_email = google_service_account.billing_stop[0].email
     environment_variables = {
       PROJECT_ID   = var.project_id
       REGION       = var.region
