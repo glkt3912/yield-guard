@@ -40,7 +40,7 @@ jobs:
       TF_VAR_region: "asia-northeast1"
       TF_VAR_mlit_api_key: ${{ secrets.MLIT_API_KEY }}
       TF_VAR_app_internal_api_key: ${{ inputs.environment == 'stg' && secrets.APP_INTERNAL_API_KEY_STG || secrets.APP_INTERNAL_API_KEY }}
-      TF_VAR_vercel_frontend_url: ${{ vars.VERCEL_FRONTEND_URL }}
+      TF_VAR_vercel_frontend_url: ${{ inputs.environment == 'stg' && vars.VERCEL_FRONTEND_URL_STG || vars.VERCEL_FRONTEND_URL }}
       TF_VAR_notification_email: ${{ vars.NOTIFICATION_EMAIL }}
       TF_VAR_billing_account_id: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
       TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
