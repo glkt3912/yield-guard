@@ -70,7 +70,14 @@ export function useRentValidation(
   }, [monthlyRent, area, city, areaSqm]);
 
   if (!stats || !stats.median || monthlyRent <= 0) {
-    return { stats, deviationPct: null, level: null, loading, lowSample: false, lowConfidence: false };
+    return {
+      stats,
+      deviationPct: null,
+      level: null,
+      loading,
+      lowSample: false,
+      lowConfidence: false,
+    };
   }
 
   const deviationPct = ((monthlyRent - stats.median) / stats.median) * 100;
