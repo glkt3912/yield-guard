@@ -16,9 +16,7 @@ export async function generateMetadata({
       ? `物件価格 ${priceNum.toLocaleString()}万円`
       : null;
   const rent =
-    params.rent && !isNaN(rentNum) && rentNum > 0
-      ? `月額賃料 ${rentNum.toLocaleString()}円`
-      : null;
+    params.rent && !isNaN(rentNum) && rentNum > 0 ? `月額賃料 ${rentNum.toLocaleString()}円` : null;
 
   if (!price) return {};
 
