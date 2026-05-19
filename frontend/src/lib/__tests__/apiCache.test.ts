@@ -116,4 +116,30 @@ describe("invalidateCache", () => {
     expect(fetcherA).toHaveBeenCalledTimes(2);
     expect(fetcherB).toHaveBeenCalledTimes(1);
   });
+
+  it("clears in-flight entries matching prefix", async () => {
+    let resolveA!: (v: string) => void;
+    const inflightA = new Promise<string>((r) => (resolveA = r));
+    const fetcherA = vi.fn().mockReturnValueOnce(inflightA).mockResolvedValue("a2");
+    const fetcherB = vi.fn().mockResolvedValue("b");
+
+    // fetcherA は in-flight 状態（まだ未解決）
+    const p1 = cachedFetch("municipalities:13", 60_000, fetcherA);
+
+    // in-flight 中に prefix 無効化
+    invalidateCache("municipalities");
+
+    // 無効化後の呼び出しは fetcher を再実行する（in-flight が削除されているため）
+    const p2 = cachedFetch("municipalities:13", 60_000, fetcherA);
+
+    resolveA("a1");
+    const [r1, r2] = await Promise.all([p1, p2]);
+
+    expect(r1).toBe("a1");
+    expect(r2).toBe("a2");
+    expect(fetcherA).toHaveBeenCalledTimes(2);
+    // b はキャッシュ・in-flight ともに影響なし
+    await cachedFetch("rentStats:13::", 60_000, fetcherB);
+    expect(fetcherB).toHaveBeenCalledTimes(1);
+  });
 });

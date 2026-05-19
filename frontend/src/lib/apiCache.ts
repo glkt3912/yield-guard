@@ -42,4 +42,7 @@ export function invalidateCache(prefix?: string): void {
   for (const k of store.keys()) {
     if (k.startsWith(prefix)) store.delete(k);
   }
+  for (const k of inflight.keys()) {
+    if (k.startsWith(prefix)) inflight.delete(k);
+  }
 }
