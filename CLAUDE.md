@@ -13,9 +13,11 @@ Yield-Guard is a real estate investment decision-support tool that fetches land 
 ## Initial setup (clone後1回)
 
 ```bash
-make install          # frontend 依存関係をインストール
+make install          # frontend 依存関係をインストール（メインリポジトリのみ・worktree 不可）
 make install-hooks    # lefthook git フック (pre-commit: Prettier/lint, pre-push: test)
 ```
+
+> `lefthook install` が失敗する場合は `git config --unset-all --local core.hooksPath` を実行してから再試行する。
 
 ## Key commands
 
