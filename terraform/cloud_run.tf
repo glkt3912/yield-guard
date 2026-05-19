@@ -2,7 +2,7 @@ resource "google_cloud_run_v2_service" "backend" {
   name                = local.service_name
   location            = var.region
   ingress             = "INGRESS_TRAFFIC_ALL"
-  deletion_protection = true
+  deletion_protection = var.env == "prod"
 
   template {
     service_account = google_service_account.backend.email

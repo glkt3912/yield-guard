@@ -1,7 +1,9 @@
 # ─────────────────────────────────────────────────────
 # 通知チャンネル
 # ─────────────────────────────────────────────────────
+# 通知チャンネルはプロジェクト単位のリソースのため prod 専用。
 resource "google_monitoring_notification_channel" "email" {
+  count        = var.env == "prod" ? 1 : 0
   display_name = "Yield Guard アラート通知"
   type         = "email"
   labels = {
@@ -15,6 +17,7 @@ resource "google_monitoring_notification_channel" "email" {
 # Cloud Run 標準メトリクス: run.googleapis.com/<name>
 # ─────────────────────────────────────────────────────
 resource "google_monitoring_dashboard" "yield_guard" {
+  count = var.env == "prod" ? 1 : 0
   dashboard_json = jsonencode({
     displayName = "Yield Guard"
     mosaicLayout = {
@@ -156,8 +159,10 @@ resource "google_monitoring_dashboard" "yield_guard" {
 # アラートポリシー (#253)
 # ─────────────────────────────────────────────────────
 
+# アラートポリシーは prod 専用（stg では通知不要）。
 # 1. MLIT API P99 応答時間 > 15s が 5 分継続
 resource "google_monitoring_alert_policy" "mlit_latency" {
+  count        = var.env == "prod" ? 1 : 0
   display_name = "[Yield Guard] MLIT API P99 応答時間 > 15s"
   combiner     = "OR"
 
@@ -176,7 +181,7 @@ resource "google_monitoring_alert_policy" "mlit_latency" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email[0].id]
   alert_strategy {
     auto_close = "3600s"
   }
@@ -185,6 +190,7 @@ resource "google_monitoring_alert_policy" "mlit_latency" {
 # 2. Cloud Run 5xx エラー率 > 5% が 5 分継続
 # ratio = 5xx_count / total_count
 resource "google_monitoring_alert_policy" "cloudrun_error_rate" {
+  count        = var.env == "prod" ? 1 : 0
   display_name = "[Yield Guard] Cloud Run 5xx エラー率 > 5%"
   combiner     = "OR"
 
@@ -210,7 +216,7 @@ resource "google_monitoring_alert_policy" "cloudrun_error_rate" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email[0].id]
   alert_strategy {
     auto_close = "3600s"
   }
@@ -219,6 +225,7 @@ resource "google_monitoring_alert_policy" "cloudrun_error_rate" {
 # 3. キャッシュヒット率 < 50% が 10 分継続
 # ratio = misses / (misses + hits) → alert when > 0.5 (= hit rate < 50%)
 resource "google_monitoring_alert_policy" "cache_hit_rate" {
+  count        = var.env == "prod" ? 1 : 0
   display_name = "[Yield Guard] キャッシュヒット率 < 50%"
   combiner     = "OR"
 
@@ -248,7 +255,7 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email[0].id]
   alert_strategy {
     auto_close = "3600s"
   }
@@ -278,6 +285,7 @@ resource "google_logging_metric" "warmup_job_failure" {
 }
 
 resource "google_monitoring_alert_policy" "warmup_job_failure" {
+  count        = var.env == "prod" ? 1 : 0
   display_name = "[Yield Guard] ウォームアップジョブが失敗"
   combiner     = "OR"
 
@@ -297,7 +305,7 @@ resource "google_monitoring_alert_policy" "warmup_job_failure" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email[0].id]
   alert_strategy {
     auto_close = "86400s"
   }
@@ -307,6 +315,7 @@ resource "google_monitoring_alert_policy" "warmup_job_failure" {
 
 # 5. Cloud Run インスタンス数が上限 (max_instance_count=2) に到達し 5 分継続
 resource "google_monitoring_alert_policy" "cloudrun_max_instances" {
+  count        = var.env == "prod" ? 1 : 0
   display_name = "[Yield Guard] Cloud Run インスタンス数が上限に到達"
   combiner     = "OR"
 
@@ -325,7 +334,7 @@ resource "google_monitoring_alert_policy" "cloudrun_max_instances" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email[0].id]
   alert_strategy {
     auto_close = "3600s"
   }

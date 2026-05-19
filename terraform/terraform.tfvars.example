@@ -1,7 +1,16 @@
 # Copy this file to terraform.tfvars and fill in real values.
 # terraform.tfvars is excluded from git (see .gitignore).
 #
-# After terraform apply, register the following in GitHub:
+# --- Staging environment ---
+# For stg, use a separate backend config:
+#   terraform init -backend-config=backend-stg.hcl -reconfigure
+#   terraform apply -var-file=terraform.stg.tfvars
+#
+# After stg terraform apply, register in GitHub:
+#   Secrets: WIF_PROVIDER_STG, SA_EMAIL_STG
+#   Vercel project → Environment Variables → Preview: BACKEND_URL = <stg Cloud Run URL>
+#
+# --- After terraform apply, register the following in GitHub (prod):
 #
 # GitHub Secrets（Settings → Secrets and variables → Actions → Secrets）:
 #   WIF_PROVIDER              = terraform output -raw wif_provider

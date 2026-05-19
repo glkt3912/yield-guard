@@ -10,6 +10,7 @@
 # Firestore 3機能（AIサマリーキャッシュ・ジオコードキャッシュ・ウォッチリスト）導入に伴う
 # 月次コスト早期検知アラート: 1,000円 (80%/100%予測) で通知する。
 resource "google_billing_budget" "firestore_early_alert" {
+  count           = var.env == "prod" ? 1 : 0
   provider        = google.billing
   billing_account = var.billing_account_id
   display_name    = "Yield Guard Firestore 早期コストアラート"
@@ -38,7 +39,7 @@ resource "google_billing_budget" "firestore_early_alert" {
 
   all_updates_rule {
     monitoring_notification_channels = [
-      google_monitoring_notification_channel.email.id,
+      google_monitoring_notification_channel.email[0].id,
     ]
     disable_default_iam_recipients = true
   }
@@ -59,6 +60,7 @@ resource "google_billing_budget" "firestore_early_alert" {
 }
 
 resource "google_billing_budget" "monthly" {
+  count           = var.env == "prod" ? 1 : 0
   provider        = google.billing
   billing_account = var.billing_account_id
   display_name    = "Yield Guard 月次予算アラート"
@@ -83,7 +85,7 @@ resource "google_billing_budget" "monthly" {
 
   all_updates_rule {
     monitoring_notification_channels = [
-      google_monitoring_notification_channel.email.id,
+      google_monitoring_notification_channel.email[0].id,
     ]
     pubsub_topic                   = google_pubsub_topic.billing_alerts.id
     disable_default_iam_recipients = true

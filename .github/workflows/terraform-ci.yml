@@ -13,6 +13,12 @@ on:
         type: boolean
         default: false
         required: true
+      environment:
+        description: "Target environment"
+        type: choice
+        options: [prod, stg]
+        default: prod
+        required: true
 
 permissions:
   contents: read
@@ -30,7 +36,7 @@ jobs:
 
     env:
       TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-      TF_VAR_env: "prod"
+      TF_VAR_env: ${{ inputs.environment || 'prod' }}
       TF_VAR_region: "asia-northeast1"
       TF_VAR_mlit_api_key: ${{ secrets.MLIT_API_KEY }}
       TF_VAR_app_internal_api_key: ${{ secrets.APP_INTERNAL_API_KEY }}
@@ -55,11 +61,16 @@ jobs:
       - name: Authenticate to Google Cloud (OIDC)
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093  # v3.0.0
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.SA_EMAIL }}
+          workload_identity_provider: ${{ inputs.environment == 'stg' && secrets.WIF_PROVIDER_STG || secrets.WIF_PROVIDER }}
+          service_account: ${{ inputs.environment == 'stg' && secrets.SA_EMAIL_STG || secrets.SA_EMAIL }}
 
       - name: Terraform Init
-        run: terraform init
+        run: |
+          if [ "${{ inputs.environment }}" = "stg" ]; then
+            terraform init -backend-config=backend-stg.hcl -reconfigure
+          else
+            terraform init
+          fi
         working-directory: terraform
 
       - name: Terraform Validate
