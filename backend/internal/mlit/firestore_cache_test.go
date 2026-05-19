@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/yield-guard/backend/internal/domain"
 )
 
 // fakeDocStore は docStore インターフェースのインメモリ実装。
@@ -220,13 +222,14 @@ func TestNewFirestoreL2_NilClientReturnsNoop(t *testing.T) {
 	}
 }
 
-func TestNewFirestoreL2_NonNilClientReturnsFirestoreL2(t *testing.T) {
-	// newFirestoreL2 の nil チェックは client ポインタの nil チェックのみ。
-	// 非 nil のダミーポインタで型を確認する（実際の接続は不要）。
-	// *firestore.Client のゼロ値ポインタは使えないため、
-	// 代わりに newFirestoreL2CacheGroup の戻り値型から確認する。
+func TestNewFirestoreL2CacheGroup_NilClientProducesNoop(t *testing.T) {
+	// newFirestoreL2CacheGroup に nil を渡すと全フィールドが noopL2 になることを確認。
+	// 実際の *firestore.Client 生成はネットワーク接続を要するためここでは行わない。
 	group := newFirestoreL2CacheGroup(nil)
 	if _, isNoop := group.municipalities.(*noopL2[Municipality]); !isNoop {
 		t.Errorf("nil client should produce noopL2, got %T", group.municipalities)
+	}
+	if _, isNoop := group.landPrices.(*noopL2[domain.LandTransaction]); !isNoop {
+		t.Errorf("nil client should produce noopL2 for landPrices, got %T", group.landPrices)
 	}
 }
