@@ -1,4 +1,7 @@
+# Artifact Registry は prod 専用。stg は prod の同一リポジトリを共用する。
+# repository_id に env suffix がないため stg で作ろうとすると既存リソースと競合する。
 resource "google_artifact_registry_repository" "backend" {
+  count         = var.env == "prod" ? 1 : 0
   repository_id = "yield-guard"
   location      = var.region
   format        = "DOCKER"

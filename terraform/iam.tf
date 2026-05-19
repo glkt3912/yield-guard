@@ -81,7 +81,10 @@ resource "google_project_iam_member" "deployer_run_developer" {
 }
 
 resource "google_artifact_registry_repository_iam_member" "deployer_push" {
-  repository = google_artifact_registry_repository.backend.name
+  # リポジトリは prod TF が作成するが、stg deployer も同リポジトリにプッシュする。
+  # google_artifact_registry_repository.backend は prod 専用 (count=0 for stg) なので
+  # リソース参照ではなくリポジトリ ID を直接指定する。
+  repository = "yield-guard"
   location   = var.region
   role       = "roles/artifactregistry.writer"
   member     = "serviceAccount:${google_service_account.deployer.email}"
@@ -95,13 +98,15 @@ resource "google_service_account_iam_member" "deployer_act_as_backend" {
 }
 
 resource "google_service_account_iam_member" "deployer_act_as_billing_stop" {
+  count = var.env == "prod" ? 1 : 0
   # deployer SA impersonates billing_stop SA when deploying Cloud Function.
-  service_account_id = google_service_account.billing_stop.name
+  service_account_id = google_service_account.billing_stop[0].name
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${google_service_account.deployer.email}"
 }
 
 resource "google_service_account_iam_member" "deployer_act_as_default_compute" {
+  count = var.env == "prod" ? 1 : 0
   # Cloud Functions Gen2 build (Cloud Build) runs as the default Compute SA.
   # deployer SA must be able to act as it to submit the build job.
   service_account_id = "projects/${var.project_id}/serviceAccounts/${data.google_project.project.number}-compute@developer.gserviceaccount.com"
@@ -175,6 +180,7 @@ resource "google_project_iam_member" "deployer_cloudscheduler_admin" {
 }
 
 resource "google_billing_account_iam_member" "deployer_billing_admin" {
+  count    = var.env == "prod" ? 1 : 0
   provider = google.billing
   # Required to create and update Billing Budgets via terraform apply.
   # billing.admin is needed; billing.costsManager does not include budgets.update in practice.
@@ -223,20 +229,23 @@ resource "google_project_iam_member" "backend_firestore_user" {
   member  = "serviceAccount:${google_service_account.backend.email}"
 }
 
-# ─── Billing Stop Cloud Function SA ───────────────────────────────────────────
+# ─── Billing Stop Cloud Function SA (prod 専用) ────────────────────────────────
 resource "google_service_account" "billing_stop" {
+  count        = var.env == "prod" ? 1 : 0
   account_id   = "sa-billing-stop-${var.env}"
   display_name = "yield-guard ${var.env} billing stop (Cloud Function)"
 }
 
 resource "google_project_iam_member" "billing_stop_run_developer" {
+  count   = var.env == "prod" ? 1 : 0
   project = var.project_id
   role    = "roles/run.developer"
-  member  = "serviceAccount:${google_service_account.billing_stop.email}"
+  member  = "serviceAccount:${google_service_account.billing_stop[0].email}"
 }
 
 resource "google_storage_bucket_iam_member" "billing_stop_storage_viewer" {
-  bucket = google_storage_bucket.functions_source.name
+  count  = var.env == "prod" ? 1 : 0
+  bucket = google_storage_bucket.functions_source[0].name
   role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${google_service_account.billing_stop.email}"
+  member = "serviceAccount:${google_service_account.billing_stop[0].email}"
 }

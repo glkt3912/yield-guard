@@ -1,5 +1,8 @@
-# Cloud Function のソースコードをバケットにアップロード
+# Cloud Function のソースコードをバケットにアップロード。
+# バケット名はグローバルユニークのため prod 専用。stg は prod バケットを共用しない
+#（stg に billing stop Function 自体が不要なため）。
 resource "google_storage_bucket" "functions_source" {
+  count                       = var.env == "prod" ? 1 : 0
   name                        = "${var.project_id}-functions-source"
   location                    = var.region
   uniform_bucket_level_access = true
@@ -9,18 +12,21 @@ resource "google_storage_bucket" "functions_source" {
 }
 
 data "archive_file" "billing_stop" {
+  count       = var.env == "prod" ? 1 : 0
   type        = "zip"
   source_dir  = "${path.module}/functions/billing_stop"
   output_path = "${path.module}/functions/billing_stop.zip"
 }
 
 resource "google_storage_bucket_object" "billing_stop" {
-  name   = "billing_stop_${data.archive_file.billing_stop.output_md5}.zip"
-  bucket = google_storage_bucket.functions_source.name
-  source = data.archive_file.billing_stop.output_path
+  count  = var.env == "prod" ? 1 : 0
+  name   = "billing_stop_${data.archive_file.billing_stop[0].output_md5}.zip"
+  bucket = google_storage_bucket.functions_source[0].name
+  source = data.archive_file.billing_stop[0].output_path
 }
 
 resource "google_cloudfunctions2_function" "billing_stop" {
+  count    = var.env == "prod" ? 1 : 0
   name     = "billing-stop-${var.env}"
   location = var.region
   project  = var.project_id
@@ -30,8 +36,8 @@ resource "google_cloudfunctions2_function" "billing_stop" {
     entry_point = "stop_cloud_run"
     source {
       storage_source {
-        bucket = google_storage_bucket.functions_source.name
-        object = google_storage_bucket_object.billing_stop.name
+        bucket = google_storage_bucket.functions_source[0].name
+        object = google_storage_bucket_object.billing_stop[0].name
       }
     }
   }
