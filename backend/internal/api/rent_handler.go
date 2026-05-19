@@ -72,5 +72,6 @@ func (h *Handler) GetRentStats(c *gin.Context) {
 		return
 	}
 
+	result.LowConfidence = result.Count < 3
 	c.JSON(http.StatusOK, result)
 }

@@ -2142,6 +2142,10 @@
                     "description": "サンプル数",
                     "type": "integer"
                 },
+                "low_confidence": {
+                    "description": "サンプル数が3件未満で信頼性低",
+                    "type": "boolean"
+                },
                 "median": {
                     "description": "月額賃料 中央値（円）",
                     "type": "number"
