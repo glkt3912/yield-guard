@@ -67,8 +67,10 @@ resource "google_project_iam_member" "deployer_sa_admin" {
 }
 
 resource "google_project_iam_member" "deployer_ar_repo_admin" {
+  count = var.env == "prod" ? 1 : 0
   # artifactregistry.admin is required to update repository metadata (cleanup_policies etc.)
   # via terraform apply. repoAdmin does not include artifactregistry.repositories.update.
+  # stg does not manage the AR repository (prod-only); writer is already granted via deployer_push.
   project = var.project_id
   role    = "roles/artifactregistry.admin"
   member  = "serviceAccount:${google_service_account.deployer.email}"
@@ -125,8 +127,10 @@ resource "google_storage_bucket_iam_member" "deployer_tfstate_admin" {
 }
 
 resource "google_project_iam_member" "deployer_monitoring_editor" {
+  count = var.env == "prod" ? 1 : 0
   # Required to manage Cloud Monitoring dashboards, alert policies, and notification channels via terraform apply.
   # monitoring.editor covers CRUD for dashboards/alerts/channels without IAM management (unlike monitoring.admin).
+  # stg has no monitoring resources (all guarded with count = prod ? 1 : 0).
   project = var.project_id
   role    = "roles/monitoring.editor"
   member  = "serviceAccount:${google_service_account.deployer.email}"
@@ -140,7 +144,9 @@ resource "google_project_iam_member" "deployer_secret_manager_admin" {
 }
 
 resource "google_project_iam_member" "deployer_storage_admin" {
+  count = var.env == "prod" ? 1 : 0
   # Required to create GCS buckets (e.g. Cloud Function source bucket) via terraform apply.
+  # stg has no GCS buckets to manage. tfstate access is granted separately via deployer_tfstate_admin.
   project = var.project_id
   role    = "roles/storage.admin"
   member  = "serviceAccount:${google_service_account.deployer.email}"
@@ -155,21 +161,27 @@ resource "google_project_iam_member" "deployer_pubsub_editor" {
 }
 
 resource "google_project_iam_member" "deployer_cloudfunctions_admin" {
+  count = var.env == "prod" ? 1 : 0
   # Required to deploy Cloud Functions Gen2 via terraform apply.
+  # stg has no Cloud Functions.
   project = var.project_id
   role    = "roles/cloudfunctions.admin"
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
 resource "google_project_iam_member" "deployer_logging_config_writer" {
+  count = var.env == "prod" ? 1 : 0
   # Required to create and manage log-based metrics via terraform apply.
+  # stg has no log-based metrics (warmup_job_failure metric is prod-only).
   project = var.project_id
   role    = "roles/logging.configWriter"
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
 resource "google_project_iam_member" "deployer_firestore_owner" {
+  count = var.env == "prod" ? 1 : 0
   # Required to create Firestore databases and TTL policies via terraform apply.
+  # stg does not manage Firestore; it reuses the prod (default) database.
   project = var.project_id
   role    = "roles/datastore.owner"
   member  = "serviceAccount:${google_service_account.deployer.email}"
