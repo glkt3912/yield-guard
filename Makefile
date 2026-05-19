@@ -62,7 +62,10 @@ install:
 
 ## install-hooks: lefthook git フックをインストール
 install-hooks:
-	brew install lefthook || true
+	@if ! command -v lefthook >/dev/null 2>&1; then \
+	  echo "==> Installing lefthook via brew..."; \
+	  brew install lefthook; \
+	fi
 	lefthook install
 
 ## logs: Dockerコンテナのログを表示（未起動の場合は案内）

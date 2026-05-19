@@ -10,6 +10,15 @@ Yield-Guard is a real estate investment decision-support tool that fetches land 
 - **Frontend**: Next.js 16 (App Router) / TypeScript / Tailwind CSS v4 / Shadcn/UI / Recharts → Vercel (`frontend/`)
 - **Data**: 国土交通省 不動産情報ライブラリ API (`reinfolib.mlit.go.jp`) — requires `MLIT_API_KEY`
 
+## Initial setup (clone後1回)
+
+```bash
+make install          # frontend 依存関係をインストール（メインリポジトリのみ・worktree 不可）
+make install-hooks    # lefthook git フック (pre-commit: Prettier/lint, pre-push: test)
+```
+
+> `lefthook install` が失敗する場合は `git config --unset-all --local core.hooksPath` を実行してから再試行する。
+
 ## Key commands
 
 ```bash
@@ -237,5 +246,6 @@ These rules define the safety boundary for autonomous Claude Code operations.
   git worktree add ../<worktree-dir> -b branch-name
   ln -s "$(pwd)/frontend/node_modules" "../<worktree-dir>/frontend/node_modules"
   ```
+- **`make install-hooks` はメインリポジトリで1回だけ実行** — lefthook は `.git/hooks/` にフックを置くため、worktree は親リポジトリのフックを自動共有する。worktreeごとの再実行は不要
 - **Check main CI status before starting work** — know the baseline so pre-existing failures don't block the PR
 - **Rebase once, just before pushing** — rebase on the latest `origin/main` right before creating the PR, not repeatedly during development
