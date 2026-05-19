@@ -51,10 +51,7 @@ describe("cachedFetch", () => {
   });
 
   it("does not cache errors and retries on next call", async () => {
-    const fetcher = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("network"))
-      .mockResolvedValueOnce("ok");
+    const fetcher = vi.fn().mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce("ok");
 
     await expect(cachedFetch("key4", 60_000, fetcher)).rejects.toThrow("network");
     const result = await cachedFetch("key4", 60_000, fetcher);

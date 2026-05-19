@@ -359,18 +359,14 @@ export function fetchRentStats(params: {
 }): Promise<RentStatsResult | null> {
   const municipality = params.municipality ?? "";
   const areaSqm = params.areaSqm ?? "";
-  return cachedFetch(
-    `rentStats:${params.area}:${municipality}:${areaSqm}`,
-    TTL_RENT,
-    async () => {
-      const q = new URLSearchParams({ area: params.area });
-      if (params.municipality) q.set("municipality", params.municipality);
-      if (params.areaSqm && params.areaSqm > 0) q.set("area_sqm", String(params.areaSqm));
-      const res = await fetch(`${BASE}/rent-stats?${q}`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (!data || data.count === 0) return null;
-      return data as RentStatsResult;
-    }
-  );
+  return cachedFetch(`rentStats:${params.area}:${municipality}:${areaSqm}`, TTL_RENT, async () => {
+    const q = new URLSearchParams({ area: params.area });
+    if (params.municipality) q.set("municipality", params.municipality);
+    if (params.areaSqm && params.areaSqm > 0) q.set("area_sqm", String(params.areaSqm));
+    const res = await fetch(`${BASE}/rent-stats?${q}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || data.count === 0) return null;
+    return data as RentStatsResult;
+  });
 }
