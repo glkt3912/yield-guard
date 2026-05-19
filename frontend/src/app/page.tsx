@@ -9,12 +9,16 @@ export async function generateMetadata({
   searchParams: Promise<Record<string, string>>;
 }): Promise<Metadata> {
   const params = await searchParams;
-  const price = params.price
-    ? `物件価格 ${Number(params.price).toLocaleString()}万円`
-    : null;
-  const rent = params.rent
-    ? `月額賃料 ${Number(params.rent).toLocaleString()}円`
-    : null;
+  const priceNum = Number(params.price);
+  const rentNum = Number(params.rent);
+  const price =
+    params.price && !isNaN(priceNum) && priceNum > 0
+      ? `物件価格 ${priceNum.toLocaleString()}万円`
+      : null;
+  const rent =
+    params.rent && !isNaN(rentNum) && rentNum > 0
+      ? `月額賃料 ${rentNum.toLocaleString()}円`
+      : null;
 
   if (!price) return {};
 
