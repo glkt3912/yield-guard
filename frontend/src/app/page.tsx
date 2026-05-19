@@ -9,12 +9,14 @@ export async function generateMetadata({
   searchParams: Promise<Record<string, string>>;
 }): Promise<Metadata> {
   const params = await searchParams;
-  const priceNum = Number(params.price);
+
+  // クイックモード: totalPrice、フルモード: landPrice + buildingCost を合算
+  const quickPrice = Number(params.totalPrice);
+  const fullPrice = (Number(params.landPrice) || 0) + (Number(params.buildingCost) || 0);
+  const resolvedPrice = quickPrice > 0 ? quickPrice : fullPrice;
+
   const rentNum = Number(params.rent);
-  const price =
-    params.price && !isNaN(priceNum) && priceNum > 0
-      ? `物件価格 ${priceNum.toLocaleString()}万円`
-      : null;
+  const price = resolvedPrice > 0 ? `物件価格 ${resolvedPrice.toLocaleString()}万円` : null;
   const rent =
     params.rent && !isNaN(rentNum) && rentNum > 0 ? `月額賃料 ${rentNum.toLocaleString()}円` : null;
 
