@@ -84,6 +84,9 @@ resource "google_artifact_registry_repository_iam_member" "deployer_push" {
   # リポジトリは prod TF が作成するが、stg deployer も同リポジトリにプッシュする。
   # google_artifact_registry_repository.backend は prod 専用 (count=0 for stg) なので
   # リソース参照ではなくリポジトリ ID を直接指定する。
+  # depends_on でリポジトリ作成後に IAM を付与することを保証する（prod 初回 apply 時の競合防止）。
+  # stg では backend が count=0 のため depends_on は空依存となり副作用なし。
+  depends_on = [google_artifact_registry_repository.backend]
   repository = "yield-guard"
   location   = var.region
   role       = "roles/artifactregistry.writer"
