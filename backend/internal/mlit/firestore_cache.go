@@ -11,9 +11,34 @@ import (
 )
 
 const (
-	mlitCacheCollection = "mlit_cache"    //nolint:unused
-	mlitCacheTTL        = 24 * time.Hour  //nolint:unused
+	mlitCacheCollection = "mlit_cache"
+	mlitCacheTTL        = 24 * time.Hour
 )
+
+// docStore は firestoreL2 が必要とする最小限のドキュメント読み書き操作を表す。
+// テストでは fakeDocStore で差し替えられる。
+type docStore interface {
+	get(ctx context.Context, docID string) (map[string]any, bool)
+	set(ctx context.Context, docID string, data map[string]any)
+}
+
+// firestoreDocStore は実際の Firestore クライアントを docStore に適合させるアダプタ。
+type firestoreDocStore struct {
+	client     *firestore.Client
+	collection string
+}
+
+func (s *firestoreDocStore) get(ctx context.Context, docID string) (map[string]any, bool) {
+	doc, err := s.client.Collection(s.collection).Doc(docID).Get(ctx)
+	if err != nil {
+		return nil, false
+	}
+	return doc.Data(), true
+}
+
+func (s *firestoreDocStore) set(ctx context.Context, docID string, data map[string]any) {
+	_, _ = s.client.Collection(s.collection).Doc(docID).Set(ctx, data)
+}
 
 // l2Cache はFirestore L2キャッシュの汎用インターフェース。
 type l2Cache[E any] interface {
@@ -23,40 +48,44 @@ type l2Cache[E any] interface {
 
 // firestoreL2 はFirestoreをL2キャッシュとして使用する汎用実装。
 type firestoreL2[E any] struct {
-	client   *firestore.Client
+	store    docStore
 	endpoint string
 }
 
 // noopL2 はFirestore未設定時のダミー実装。
 type noopL2[E any] struct{}
 
-func (n *noopL2[E]) get(_ context.Context, _ string) ([]E, bool) { return nil, false } //nolint:unused
-func (n *noopL2[E]) set(_ context.Context, _ string, _ []E)      {}                    //nolint:unused
+func (n *noopL2[E]) get(_ context.Context, _ string) ([]E, bool) { return nil, false }
+func (n *noopL2[E]) set(_ context.Context, _ string, _ []E)      {}
 
 // newFirestoreL2 は client が nil の場合 noopL2 を、それ以外は firestoreL2 を返す。
 func newFirestoreL2[E any](client *firestore.Client, endpoint string) l2Cache[E] {
 	if client == nil {
 		return &noopL2[E]{}
 	}
-	return &firestoreL2[E]{client: client, endpoint: endpoint}
+	return &firestoreL2[E]{
+		store:    &firestoreDocStore{client: client, collection: mlitCacheCollection},
+		endpoint: endpoint,
+	}
 }
 
-func (f *firestoreL2[E]) docID(key string) string { //nolint:unused
+func (f *firestoreL2[E]) docID(key string) string {
 	return f.endpoint + ":" + key
 }
 
-func (f *firestoreL2[E]) get(ctx context.Context, key string) ([]E, bool) { //nolint:unused
-	doc, err := f.client.Collection(mlitCacheCollection).Doc(f.docID(key)).Get(ctx)
-	if err != nil {
+func (f *firestoreL2[E]) get(ctx context.Context, key string) ([]E, bool) {
+	data, ok := f.store.get(ctx, f.docID(key))
+	if !ok {
 		return nil, false
 	}
-	expiresAt, ok := doc.Data()["expiresAt"].(time.Time)
+
+	expiresAt, ok := data["expiresAt"].(time.Time)
 	if !ok || time.Now().After(expiresAt) {
 		return nil, false
 	}
 
 	var raw []byte
-	switch v := doc.Data()["data"].(type) {
+	switch v := data["data"].(type) {
 	case []byte:
 		raw = v
 	case string:
@@ -72,12 +101,12 @@ func (f *firestoreL2[E]) get(ctx context.Context, key string) ([]E, bool) { //no
 	return result, true
 }
 
-func (f *firestoreL2[E]) set(ctx context.Context, key string, data []E) { //nolint:unused
+func (f *firestoreL2[E]) set(ctx context.Context, key string, data []E) {
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return
 	}
-	_, _ = f.client.Collection(mlitCacheCollection).Doc(f.docID(key)).Set(ctx, map[string]any{
+	f.store.set(ctx, f.docID(key), map[string]any{
 		"data":      string(raw),
 		"expiresAt": time.Now().Add(mlitCacheTTL),
 		"endpoint":  f.endpoint,
