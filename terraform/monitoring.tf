@@ -265,7 +265,8 @@ resource "google_monitoring_alert_policy" "cache_hit_rate" {
 # Cloud Scheduler はジョブ実行結果を Cloud Logging に書き込む（severity=ERROR で失敗）。
 # メトリクスと異なりジョブ初回実行前でも Terraform リソースとして作成できる。
 resource "google_logging_metric" "warmup_job_failure" {
-  name = "warmup-job-failure-${var.env}"
+  count = var.env == "prod" ? 1 : 0
+  name  = "warmup-job-failure-${var.env}"
   filter = join(" AND ", [
     "resource.type=\"cloud_scheduler_job\"",
     "resource.labels.job_id=~\"warmup-.*-${var.env}\"",
@@ -310,7 +311,7 @@ resource "google_monitoring_alert_policy" "warmup_job_failure" {
     auto_close = "86400s"
   }
 
-  depends_on = [google_logging_metric.warmup_job_failure]
+  depends_on = [google_logging_metric.warmup_job_failure[0]]
 }
 
 # 5. Cloud Run インスタンス数が上限 (max_instance_count=2) に到達し 5 分継続

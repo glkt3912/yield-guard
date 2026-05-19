@@ -1,0 +1,27 @@
+# stg 環境用 tfvars テンプレート。
+# このファイルを terraform.stg.tfvars にコピーして値を埋めること。
+# terraform.stg.tfvars は .gitignore 済み（シークレットを含むため）。
+#
+# 使い方:
+#   terraform init -backend-config=backend-stg.hcl -reconfigure
+#   terraform apply -var-file=terraform.stg.tfvars
+#
+# apply 後に GitHub へ登録する値:
+#
+# GitHub Secrets（Settings → Secrets and variables → Actions → Secrets）:
+#   WIF_PROVIDER_STG          = terraform output -raw wif_provider
+#   SA_EMAIL_STG              = terraform output -raw deployer_sa_email
+#   APP_INTERNAL_API_KEY_STG  = var.app_internal_api_key  ← prod とは別の値を生成すること
+#
+# Vercel プロジェクト設定（Preview 環境のみ）:
+#   BACKEND_URL               = terraform output -raw cloud_run_url
+
+project_id           = "your-gcp-project-id"
+region               = "asia-northeast1"
+env                  = "stg"
+mlit_api_key         = "your-mlit-api-key"  # prod と同じ値でも可
+app_internal_api_key = "generate with: openssl rand -hex 32"  # prod とは別の値を使うこと
+gemini_api_key       = ""  # 任意。空文字のままでも動作（AI サマリーが無効になるだけ）
+vercel_frontend_url  = "https://your-stg-preview.vercel.app"
+notification_email   = "your@email.com"
+billing_account_id   = "XXXXXX-XXXXXX-XXXXXX"  # gcloud billing accounts list で確認
