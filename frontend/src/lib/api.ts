@@ -349,6 +349,7 @@ export interface RentStatsResult {
   median: number;
   average: number;
   count: number;
+  low_confidence?: boolean;
 }
 
 /** エリア賃料相場（中央値・平均値・件数）を取得（XIT001 賃貸） */

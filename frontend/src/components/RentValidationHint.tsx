@@ -46,7 +46,7 @@ function badge(
 }
 
 export function RentValidationHint({ monthlyRent, area, city, landArea }: RentValidationHintProps) {
-  const { stats, deviationPct, level, loading, lowSample } = useRentValidation(
+  const { stats, deviationPct, level, loading, lowSample, lowConfidence } = useRentValidation(
     monthlyRent,
     area,
     city,
@@ -65,7 +65,12 @@ export function RentValidationHint({ monthlyRent, area, city, landArea }: RentVa
   return (
     <div className="mt-1">
       <p className={`text-xs ${info.className}`}>{info.message}</p>
-      {lowSample && stats && (
+      {lowConfidence && stats && (
+        <p className="text-xs text-destructive mt-0.5">
+          ※ データが少なく参考程度です（{stats.count}件）
+        </p>
+      )}
+      {!lowConfidence && lowSample && stats && (
         <p className="text-xs text-muted-foreground mt-0.5">
           ※ サンプル数が少ないため参考値です（{stats.count}件）
         </p>

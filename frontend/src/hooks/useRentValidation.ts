@@ -10,6 +10,7 @@ export interface RentValidationState {
   level: RentDeviationLevel;
   loading: boolean;
   lowSample: boolean;
+  lowConfidence: boolean;
 }
 
 const DEBOUNCE_MS = 600;
@@ -69,11 +70,19 @@ export function useRentValidation(
   }, [monthlyRent, area, city, areaSqm]);
 
   if (!stats || !stats.median || monthlyRent <= 0) {
-    return { stats, deviationPct: null, level: null, loading, lowSample: false };
+    return {
+      stats,
+      deviationPct: null,
+      level: null,
+      loading,
+      lowSample: false,
+      lowConfidence: false,
+    };
   }
 
   const deviationPct = ((monthlyRent - stats.median) / stats.median) * 100;
   const lowSample = stats.count < 10;
+  const lowConfidence = !!stats.low_confidence;
 
   let level: RentDeviationLevel = "normal";
   if (deviationPct >= 30) {
@@ -84,5 +93,5 @@ export function useRentValidation(
     level = "low-note";
   }
 
-  return { stats, deviationPct, level, loading, lowSample };
+  return { stats, deviationPct, level, loading, lowSample, lowConfidence };
 }
