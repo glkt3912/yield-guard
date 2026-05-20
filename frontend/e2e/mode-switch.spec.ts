@@ -14,7 +14,7 @@ test("@p2 モード切替：Quick分析後に詳細へ切り替えると結果�
   await expect(sim.grossYield()).toHaveText("9.89");
 
   // 詳細モードに切り替え
-  await page.getByRole("radio", { name: "詳細" }).click();
+  await page.getByRole("radio", { name: "くわしく分析" }).click();
 
   await expect(
     page.getByText(

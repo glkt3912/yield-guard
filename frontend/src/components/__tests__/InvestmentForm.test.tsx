@@ -223,13 +223,13 @@ describe("InvestmentForm", () => {
 
     it("詳細ボタンをクリックすると onModeChange('full') が呼ばれる", async () => {
       const { onModeChange } = await renderForm("quick");
-      await userEvent.click(screen.getByRole("radio", { name: /詳細/ }));
+      await userEvent.click(screen.getByRole("radio", { name: /くわしく分析/ }));
       expect(onModeChange).toHaveBeenCalledWith("full");
     });
 
     it("クイックモードのラジオボタンは aria-checked=true", async () => {
       await renderForm("quick");
-      const quickBtn = screen.getByRole("radio", { name: /クイック/ });
+      const quickBtn = screen.getByRole("radio", { name: /かんたん判定/ });
       expect(quickBtn).toHaveAttribute("aria-checked", "true");
     });
 

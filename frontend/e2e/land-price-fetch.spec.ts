@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }) => {
   await setupApiMocks(page);
   await page.addInitScript((key) => localStorage.setItem(key, "1"), ONBOARDING_KEY);
   await page.goto("/");
-  await page.getByRole("radio", { name: "詳細" }).click();
+  await page.getByRole("radio", { name: "くわしく分析" }).click();
 });
 
 test("@p2 地価データ取得：市区町村を選択して相場取得ボタンを押すと比較結果が表示される", async ({
