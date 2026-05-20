@@ -28,9 +28,9 @@ export function SimulationModeToggle({ mode, onChange, className }: Props) {
       >
         <span className="flex items-center gap-1.5">
           <Zap className="h-3.5 w-3.5" />
-          クイック
+          かんたん判定
         </span>
-        <span className="text-xs font-normal opacity-75">内覧でサッと試す</span>
+        <span className="text-xs font-normal opacity-75">2項目で即判定</span>
       </button>
       <button
         type="button"
@@ -45,9 +45,9 @@ export function SimulationModeToggle({ mode, onChange, className }: Props) {
       >
         <span className="flex items-center gap-1.5">
           <SlidersHorizontal className="h-3.5 w-3.5" />
-          詳細
+          くわしく分析
         </span>
-        <span className="text-xs font-normal opacity-75">じっくり分析する</span>
+        <span className="text-xs font-normal opacity-75">17項目で精密分析</span>
       </button>
     </div>
   );

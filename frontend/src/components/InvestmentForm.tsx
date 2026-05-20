@@ -523,7 +523,14 @@ export function InvestmentForm({
 
   return (
     <div className="space-y-4">
-      {showModeToggle && <SimulationModeToggle mode={simulationMode} onChange={onModeChange} />}
+      {showModeToggle && (
+        <div className="space-y-1.5">
+          <SimulationModeToggle mode={simulationMode} onChange={onModeChange} />
+          <p className="text-xs text-muted-foreground px-1">
+            かんたん判定: 2項目入力→即判定 / くわしく分析: 17項目で精密分析
+          </p>
+        </div>
+      )}
 
       {!isQuick && pendingDraft && (
         <div className="flex items-center justify-between rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-sm">
