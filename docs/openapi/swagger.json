@@ -117,6 +117,179 @@
                 }
             }
         },
+        "/api/hazard": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "location"
+                ],
+                "summary": "ハザード情報",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "緯度 (日本国内 20-46)",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "経度 (日本国内 122-154)",
+                        "name": "lng",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.UrbanRisk"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/investment-score": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "location"
+                ],
+                "summary": "投資適地スコア",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "緯度 (日本国内 20-46)",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "経度 (日本国内 122-154)",
+                        "name": "lng",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.InvestmentScoreResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/investment-score-heatmap": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "location"
+                ],
+                "summary": "投資スコアヒートマップ",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "南端緯度",
+                        "name": "minLat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "北端緯度",
+                        "name": "maxLat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "西端経度",
+                        "name": "minLng",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "東端経度",
+                        "name": "maxLng",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ズームレベル (11-15, デフォルト: 13)",
+                        "name": "z",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.HeatmapResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/investment/analyze": {
             "post": {
                 "consumes": [
@@ -882,6 +1055,53 @@
                 }
             }
         },
+        "/api/urban-risks": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "location"
+                ],
+                "summary": "都市計画リスク",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "緯度 (日本国内 20-46)",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "経度 (日本国内 122-154)",
+                        "name": "lng",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.UrbanRisk"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "produces": [
@@ -1116,6 +1336,46 @@
                 "CriticalStatusReject",
                 "CriticalStatusWarning"
             ]
+        },
+        "domain.HeatmapResponse": {
+            "type": "object",
+            "properties": {
+                "tileCount": {
+                    "type": "integer"
+                },
+                "tiles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.HeatmapTile"
+                    }
+                }
+            }
+        },
+        "domain.HeatmapTile": {
+            "type": "object",
+            "properties": {
+                "centerLat": {
+                    "type": "number"
+                },
+                "centerLng": {
+                    "type": "number"
+                },
+                "grade": {
+                    "type": "string"
+                },
+                "totalScore": {
+                    "type": "integer"
+                },
+                "x": {
+                    "type": "integer"
+                },
+                "y": {
+                    "type": "integer"
+                },
+                "z": {
+                    "type": "integer"
+                }
+            }
         },
         "domain.HistogramBin": {
             "type": "object",
@@ -1435,6 +1695,21 @@
                 "yieldTarget": {
                     "description": "目標表面利回り（例: 0.08）",
                     "type": "number"
+                }
+            }
+        },
+        "domain.InvestmentScoreResult": {
+            "type": "object",
+            "properties": {
+                "breakdown": {
+                    "$ref": "#/definitions/domain.ScoreBreakdown"
+                },
+                "grade": {
+                    "description": "優良/良好/普通/注意/要注意",
+                    "type": "string"
+                },
+                "totalScore": {
+                    "type": "integer"
                 }
             }
         },
@@ -1781,6 +2056,17 @@
                 "PopulationTrendSteepDecline"
             ]
         },
+        "domain.RadarPoint": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "number"
+                }
+            }
+        },
         "domain.RateAdjustment": {
             "type": "object",
             "properties": {
@@ -1977,6 +2263,58 @@
                 }
             }
         },
+        "domain.ScoreBreakdown": {
+            "type": "object",
+            "properties": {
+                "disasterHistory": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "embankment": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "hazardRisk": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "landPriceTrend": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "liquefactionRisk": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "locationOptimization": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "population": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "radarData": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.RadarPoint"
+                    }
+                },
+                "ridership": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                },
+                "urbanArea": {
+                    "$ref": "#/definitions/domain.ScoreItem"
+                }
+            }
+        },
+        "domain.ScoreItem": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "integer"
+                }
+            }
+        },
         "domain.StationRidershipResult": {
             "type": "object",
             "properties": {
@@ -2035,10 +2373,6 @@
         "domain.TaxSimRow": {
             "type": "object",
             "properties": {
-                "baselineTax": {
-                    "description": "給与のみの所得税",
-                    "type": "number"
-                },
                 "combinedIncome": {
                     "description": "給与+不動産 合算課税所得",
                     "type": "number"
