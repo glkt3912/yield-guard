@@ -1,6 +1,7 @@
 import React from "react";
 import { CheckCircle2, AlertTriangle, XOctagon } from "lucide-react";
-import type { InvestmentResult } from "@/types/investment";
+import type { InvestmentResult, InvestmentInput } from "@/types/investment";
+import { calcVerdict, type VerdictLevel } from "@/lib/pdf/verdict";
 
 interface StatusSummaryProps {
   result: InvestmentResult;
@@ -8,10 +9,10 @@ interface StatusSummaryProps {
 
 type StatusLevel = "OK" | "CAUTION" | "RISK";
 
-function getStatus(result: InvestmentResult): StatusLevel {
-  if (result.criticalErrors.some((e) => e.status === "REJECT")) return "RISK";
-  if (result.criticalErrors.some((e) => e.status === "WARNING")) return "CAUTION";
-  return "OK";
+function verdictToStatus(level: VerdictLevel): StatusLevel {
+  if (level === "PASS") return "OK";
+  if (level === "CAUTION") return "CAUTION";
+  return "RISK";
 }
 
 const STATUS_CONFIG: Record<
@@ -36,7 +37,12 @@ const STATUS_CONFIG: Record<
 };
 
 export function StatusSummary({ result }: StatusSummaryProps) {
-  const status = getStatus(result);
+  const dscrStress =
+    result.stressScenarios.length > 0
+      ? Math.min(...result.stressScenarios.map((s) => s.dscr))
+      : result.dscr;
+  const verdict = calcVerdict({} as InvestmentInput, result, result.dscr, dscrStress);
+  const status = verdictToStatus(verdict.level);
   const { label, icon, className } = STATUS_CONFIG[status];
 
   const grossYieldPct = (result.grossYield * 100).toFixed(2);
