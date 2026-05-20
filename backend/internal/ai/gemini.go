@@ -25,16 +25,25 @@ const (
 )
 
 const systemPrompt = `あなたは日本の不動産投資専門アドバイザーです。
-以下の判断基準で分析してください：
-- DSCR 1.2未満: 危険域（ローン返済に余裕がない）
-- DSCR 1.2〜1.5: 要注意
-- DSCR 1.5以上: 安全域
-- デッドクロス10年以内: 税引後CFが悪化するため短期出口戦略が必須
-- 表面利回りはエリア・建物種別・築年数で判断が変わる
-- 木造（耐用年数22年）は減価償却が早くデッドクロスが来やすい
+投資経験のない初心者にも分かるよう、専門用語を使わず平易な日本語で回答してください。
+
+【用語の言い換えルール（回答中で必ず使用）】
+- DSCR → 返済の余裕度
+- デッドクロス → 税負担急増リスク
+- NPV → 将来収益の現在価値
+- IRR → 実質利回り
+
+【判断基準（参考情報）】
+- 返済の余裕度が1.2未満: ローン返済に余裕がない状態
+- 返済の余裕度が1.5以上: 安全域
+- 税負担急増リスクが10年以内に発生: 短期での売却戦略が重要
+- 木造（耐用年数22年）は税負担急増が早く来やすい
 - RC造・SRC造（耐用年数47年）は長期保有向き
-- 軽量鉄骨・重量鉄骨は耐用年数19〜34年で木造とRC造の中間的特性
-回答は3〜4文の日本語のみで返すこと。`
+
+【回答フォーマット（厳守）】
+結論1文・理由2文・アクション1文の計4文で回答すること。
+必ず「月々の返済額」と「10年後の手残り」の数値に言及すること。
+回答は日本語のみ。`
 
 func envOrDefault(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
@@ -229,8 +238,21 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 		buildingAge = fmt.Sprintf("%d年", input.BuildingAge)
 	}
 
+	monthlyPaymentMan := 0.0
+	if len(r.YearlyResults) > 0 {
+		monthlyPaymentMan = r.YearlyResults[0].AnnualLoanPayment / 12 / 10000
+	}
+
+	equity10Man := 0.0
+	for _, row := range r.MultiExitComparison {
+		if row.Year == 10 {
+			equity10Man = row.ExitEquity / 10000
+			break
+		}
+	}
+
 	return fmt.Sprintf(
-		`以下の不動産投資シミュレーション結果を分析し、強み・リスク・推奨アクションを専門家が初心者に説明するスタイルで、数値を引用しながらまとめてください。
+		`以下の不動産投資シミュレーション結果を分析し、強み・リスク・推奨アクションを初心者向けに数値を引用しながらまとめてください。
 
 【物件・ローン条件】
 - 建物種別: %s（築%s）
@@ -239,12 +261,14 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 - 空室率: %.1f%%
 
 【シミュレーション結果】
+- 月々の返済額: %.1f万円（1年目）
 - 表面利回り: %.1f%%
 - 実質利回り: %.1f%%
-- デッドクロス発生: %s
-- DSCR（借入金償還余裕率）: %.2f
+- 税負担急増リスク発生: %s
+- 返済の余裕度: %.2f
+- 10年後の手残り: %.0f万円
 - 保有期間最終手残り: %.0f万円
-- NPV（正味現在価値）: %.0f万円`,
+- 将来収益の現在価値: %.0f万円`,
 		input.BuildingType,
 		buildingAge,
 		input.LoanAmount/10000,
@@ -253,10 +277,12 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 		loanMethod,
 		input.HoldingYears,
 		input.VacancyRate*100,
+		monthlyPaymentMan,
 		r.GrossYield*100,
 		r.NetYield*100,
 		deadCross,
 		r.DSCR,
+		equity10Man,
 		r.ExitTotalEquity/10000,
 		r.NPV/10000,
 	)
