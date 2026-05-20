@@ -225,6 +225,26 @@ export function ResultsSection({
                 yieldTarget={lastInput.yieldTarget}
                 holdingYears={lastInput.holdingYears}
               />
+              {(() => {
+                const row10 = result.multiExitComparison?.find((r) => r.year === 10);
+                if (!row10) return null;
+                const equityMan = Math.floor(row10.exitEquity / 10_000);
+                const isPositive = row10.exitEquity >= 0;
+                return (
+                  <div className="rounded-lg border bg-card p-3 shadow-sm">
+                    <p className="text-xs text-muted-foreground">10年後の手残り</p>
+                    <p
+                      className={`text-xl font-bold ${isPositive ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {isPositive ? "+" : ""}
+                      {equityMan.toLocaleString()}万円
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {isPositive ? "出口時プラス" : "出口時マイナス"}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
           )}
           <HazardAlertBanner hazardRisks={hazardRisks} externalUrbanRisks={externalUrbanRisks} />
