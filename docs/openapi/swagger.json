@@ -117,179 +117,6 @@
                 }
             }
         },
-        "/api/hazard": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "location"
-                ],
-                "summary": "ハザード情報",
-                "parameters": [
-                    {
-                        "type": "number",
-                        "description": "緯度 (日本国内 20-46)",
-                        "name": "lat",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "number",
-                        "description": "経度 (日本国内 122-154)",
-                        "name": "lng",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.UrbanRisk"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/investment-score": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "location"
-                ],
-                "summary": "投資適地スコア",
-                "parameters": [
-                    {
-                        "type": "number",
-                        "description": "緯度 (日本国内 20-46)",
-                        "name": "lat",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "number",
-                        "description": "経度 (日本国内 122-154)",
-                        "name": "lng",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.InvestmentScoreResult"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/investment-score-heatmap": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "location"
-                ],
-                "summary": "投資スコアヒートマップ",
-                "parameters": [
-                    {
-                        "type": "number",
-                        "description": "南端緯度",
-                        "name": "minLat",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "number",
-                        "description": "北端緯度",
-                        "name": "maxLat",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "number",
-                        "description": "西端経度",
-                        "name": "minLng",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "number",
-                        "description": "東端経度",
-                        "name": "maxLng",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "ズームレベル (11-15, デフォルト: 13)",
-                        "name": "z",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.HeatmapResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/investment/analyze": {
             "post": {
                 "consumes": [
@@ -1055,53 +882,6 @@
                 }
             }
         },
-        "/api/urban-risks": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "location"
-                ],
-                "summary": "都市計画リスク",
-                "parameters": [
-                    {
-                        "type": "number",
-                        "description": "緯度 (日本国内 20-46)",
-                        "name": "lat",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "number",
-                        "description": "経度 (日本国内 122-154)",
-                        "name": "lng",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.UrbanRisk"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/health": {
             "get": {
                 "produces": [
@@ -1337,46 +1117,6 @@
                 "CriticalStatusWarning"
             ]
         },
-        "domain.HeatmapResponse": {
-            "type": "object",
-            "properties": {
-                "tileCount": {
-                    "type": "integer"
-                },
-                "tiles": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.HeatmapTile"
-                    }
-                }
-            }
-        },
-        "domain.HeatmapTile": {
-            "type": "object",
-            "properties": {
-                "centerLat": {
-                    "type": "number"
-                },
-                "centerLng": {
-                    "type": "number"
-                },
-                "grade": {
-                    "type": "string"
-                },
-                "totalScore": {
-                    "type": "integer"
-                },
-                "x": {
-                    "type": "integer"
-                },
-                "y": {
-                    "type": "integer"
-                },
-                "z": {
-                    "type": "integer"
-                }
-            }
-        },
         "domain.HistogramBin": {
             "type": "object",
             "properties": {
@@ -1555,6 +1295,10 @@
                     "description": "原状回復費（円/回）例: 150000",
                     "type": "number"
                 },
+                "salaryIncome": {
+                    "description": "税務シミュレーション用（任意）。0 の場合は損益通算・法人比較を計算しない。",
+                    "type": "number"
+                },
                 "vacancyRate": {
                     "description": "空室率 (例: 0.05)",
                     "type": "number"
@@ -1663,6 +1407,14 @@
                         "$ref": "#/definitions/domain.StressScenarioResult"
                     }
                 },
+                "taxSimulation": {
+                    "description": "損益通算・個人/法人比較（SalaryIncome\u003e0時のみ）",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.TaxSimulationResult"
+                        }
+                    ]
+                },
                 "totalInterest": {
                     "description": "保有期間の総支払利息",
                     "type": "number"
@@ -1683,21 +1435,6 @@
                 "yieldTarget": {
                     "description": "目標表面利回り（例: 0.08）",
                     "type": "number"
-                }
-            }
-        },
-        "domain.InvestmentScoreResult": {
-            "type": "object",
-            "properties": {
-                "breakdown": {
-                    "$ref": "#/definitions/domain.ScoreBreakdown"
-                },
-                "grade": {
-                    "description": "優良/良好/普通/注意/要注意",
-                    "type": "string"
-                },
-                "totalScore": {
-                    "type": "integer"
                 }
             }
         },
@@ -1931,6 +1668,51 @@
                 }
             }
         },
+        "domain.OwnershipComparisonResult": {
+            "type": "object",
+            "properties": {
+                "breakevenYear": {
+                    "description": "法人が有利になる年 (-1=保有期間内に逆転なし)",
+                    "type": "integer"
+                },
+                "corporate": {
+                    "$ref": "#/definitions/domain.OwnershipScenario"
+                },
+                "individual": {
+                    "$ref": "#/definitions/domain.OwnershipScenario"
+                }
+            }
+        },
+        "domain.OwnershipScenario": {
+            "type": "object",
+            "properties": {
+                "annualTax": {
+                    "description": "各年の所得税負担（保有年数分）",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "cumulativeBurden": {
+                    "description": "累積税負担（グラフ用）",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "label": {
+                    "type": "string"
+                },
+                "totalTaxBurden": {
+                    "description": "保有期間合計（所得税+譲渡税）",
+                    "type": "number"
+                },
+                "transferTax": {
+                    "description": "売却時譲渡税",
+                    "type": "number"
+                }
+            }
+        },
         "domain.Percentiles": {
             "type": "object",
             "properties": {
@@ -1998,17 +1780,6 @@
                 "PopulationTrendSlowDecline",
                 "PopulationTrendSteepDecline"
             ]
-        },
-        "domain.RadarPoint": {
-            "type": "object",
-            "properties": {
-                "category": {
-                    "type": "string"
-                },
-                "score": {
-                    "type": "number"
-                }
-            }
         },
         "domain.RateAdjustment": {
             "type": "object",
@@ -2183,55 +1954,26 @@
                 "RidershipScoreE"
             ]
         },
-        "domain.ScoreBreakdown": {
+        "domain.SalaryLossCarryoverResult": {
             "type": "object",
             "properties": {
-                "disasterHistory": {
-                    "$ref": "#/definitions/domain.ScoreItem"
+                "baselineSalaryTax": {
+                    "description": "不動産なし時の所得税（年額）",
+                    "type": "number"
                 },
-                "embankment": {
-                    "$ref": "#/definitions/domain.ScoreItem"
+                "salaryIncomeYen": {
+                    "description": "入力給与年収（円）",
+                    "type": "number"
                 },
-                "hazardRisk": {
-                    "$ref": "#/definitions/domain.ScoreItem"
+                "totalTaxSaving": {
+                    "description": "保有期間合計節税額",
+                    "type": "number"
                 },
-                "landPriceTrend": {
-                    "$ref": "#/definitions/domain.ScoreItem"
-                },
-                "liquefactionRisk": {
-                    "$ref": "#/definitions/domain.ScoreItem"
-                },
-                "locationOptimization": {
-                    "$ref": "#/definitions/domain.ScoreItem"
-                },
-                "population": {
-                    "$ref": "#/definitions/domain.ScoreItem"
-                },
-                "radarData": {
+                "yearlyRows": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/domain.RadarPoint"
+                        "$ref": "#/definitions/domain.TaxSimRow"
                     }
-                },
-                "ridership": {
-                    "$ref": "#/definitions/domain.ScoreItem"
-                },
-                "urbanArea": {
-                    "$ref": "#/definitions/domain.ScoreItem"
-                }
-            }
-        },
-        "domain.ScoreItem": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "label": {
-                    "type": "string"
-                },
-                "score": {
-                    "type": "integer"
                 }
             }
         },
@@ -2287,6 +2029,45 @@
                 },
                 "vacancyRateDelta": {
                     "type": "number"
+                }
+            }
+        },
+        "domain.TaxSimRow": {
+            "type": "object",
+            "properties": {
+                "baselineTax": {
+                    "description": "給与のみの所得税",
+                    "type": "number"
+                },
+                "combinedIncome": {
+                    "description": "給与+不動産 合算課税所得",
+                    "type": "number"
+                },
+                "combinedTax": {
+                    "description": "合算後所得税",
+                    "type": "number"
+                },
+                "reTaxableIncome": {
+                    "description": "不動産課税所得（YearlyResult.TaxableIncome）",
+                    "type": "number"
+                },
+                "taxDifference": {
+                    "description": "正=節税 / 負=増税",
+                    "type": "number"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.TaxSimulationResult": {
+            "type": "object",
+            "properties": {
+                "ownershipComparison": {
+                    "$ref": "#/definitions/domain.OwnershipComparisonResult"
+                },
+                "salaryLossCarryover": {
+                    "$ref": "#/definitions/domain.SalaryLossCarryoverResult"
                 }
             }
         },

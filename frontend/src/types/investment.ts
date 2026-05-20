@@ -114,6 +114,9 @@ export interface InvestmentInput {
   restorationCost?: number; // 原状回復費（円/回）例: 150000
   adFee?: number; // 入居者募集 AD（円/回）例: 家賃1ヶ月分
   rentFreePeriod?: number; // フリーレント（ヶ月）例: 0.5
+
+  // 税務シミュレーション用（任意）。0 の場合は損益通算・法人比較を計算しない。
+  salaryIncome?: number; // 給与年収（円）
 }
 
 export interface CapexEvent {
@@ -198,6 +201,42 @@ export interface InvestmentResult {
   totalInterest: number; // 保有期間の総支払利息
   aiSummary?: string;
   multiExitComparison?: MultiExitRow[]; // 複数保有年数の出口比較
+  taxSimulation?: TaxSimulationResult; // 損益通算・個人/法人比較（salaryIncome>0時のみ）
+}
+
+export interface TaxSimRow {
+  year: number;
+  reTaxableIncome: number;
+  combinedIncome: number;
+  combinedTax: number;
+  baselineTax: number;
+  taxDifference: number; // 正=節税 / 負=増税
+}
+
+export interface SalaryLossCarryoverResult {
+  salaryIncomeYen: number;
+  baselineSalaryTax: number;
+  yearlyRows: TaxSimRow[];
+  totalTaxSaving: number;
+}
+
+export interface OwnershipScenario {
+  label: string;
+  annualTax: number[];
+  transferTax: number;
+  totalTaxBurden: number;
+  cumulativeBurden: number[];
+}
+
+export interface OwnershipComparisonResult {
+  individual: OwnershipScenario;
+  corporate: OwnershipScenario;
+  breakevenYear: number; // -1 = 保有期間内に法人有利年なし
+}
+
+export interface TaxSimulationResult {
+  salaryLossCarryover: SalaryLossCarryoverResult;
+  ownershipComparison: OwnershipComparisonResult;
 }
 
 export interface LandTransaction {

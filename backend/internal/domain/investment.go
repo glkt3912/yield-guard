@@ -81,6 +81,7 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 		exitSalePrice, sim.accumulatedDepreciation)
 
 	multiExit := calcMultiExitComparison(input, sim.yearlyResults, yp.miscExpenses)
+	taxSim := CalcTaxSimulation(input, sim.yearlyResults, exitCapGain)
 
 	return InvestmentResult{
 		TotalInvestment:       yp.totalInvestment,
@@ -108,6 +109,7 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 		NPV:                   irrNPV.npv,
 		TotalInterest:         sim.totalInterest,
 		MultiExitComparison:   multiExit,
+		TaxSimulation:         taxSim,
 	}
 }
 
