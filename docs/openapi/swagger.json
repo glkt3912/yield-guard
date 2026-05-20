@@ -1555,6 +1555,10 @@
                     "description": "原状回復費（円/回）例: 150000",
                     "type": "number"
                 },
+                "salaryIncome": {
+                    "description": "税務シミュレーション用（任意）。0 の場合は損益通算・法人比較を計算しない。",
+                    "type": "number"
+                },
                 "vacancyRate": {
                     "description": "空室率 (例: 0.05)",
                     "type": "number"
@@ -1662,6 +1666,14 @@
                     "items": {
                         "$ref": "#/definitions/domain.StressScenarioResult"
                     }
+                },
+                "taxSimulation": {
+                    "description": "損益通算・個人/法人比較（SalaryIncome\u003e0時のみ）",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.TaxSimulationResult"
+                        }
+                    ]
                 },
                 "totalInterest": {
                     "description": "保有期間の総支払利息",
@@ -1931,6 +1943,51 @@
                 }
             }
         },
+        "domain.OwnershipComparisonResult": {
+            "type": "object",
+            "properties": {
+                "breakevenYear": {
+                    "description": "法人が有利になる年 (-1=保有期間内に逆転なし)",
+                    "type": "integer"
+                },
+                "corporate": {
+                    "$ref": "#/definitions/domain.OwnershipScenario"
+                },
+                "individual": {
+                    "$ref": "#/definitions/domain.OwnershipScenario"
+                }
+            }
+        },
+        "domain.OwnershipScenario": {
+            "type": "object",
+            "properties": {
+                "annualTax": {
+                    "description": "各年の所得税負担（保有年数分）",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "cumulativeBurden": {
+                    "description": "累積税負担（グラフ用）",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "label": {
+                    "type": "string"
+                },
+                "totalTaxBurden": {
+                    "description": "保有期間合計（所得税+譲渡税）",
+                    "type": "number"
+                },
+                "transferTax": {
+                    "description": "売却時譲渡税",
+                    "type": "number"
+                }
+            }
+        },
         "domain.Percentiles": {
             "type": "object",
             "properties": {
@@ -2183,6 +2240,29 @@
                 "RidershipScoreE"
             ]
         },
+        "domain.SalaryLossCarryoverResult": {
+            "type": "object",
+            "properties": {
+                "baselineSalaryTax": {
+                    "description": "不動産なし時の所得税（年額）",
+                    "type": "number"
+                },
+                "salaryIncomeYen": {
+                    "description": "入力給与年収（円）",
+                    "type": "number"
+                },
+                "totalTaxSaving": {
+                    "description": "保有期間合計節税額",
+                    "type": "number"
+                },
+                "yearlyRows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.TaxSimRow"
+                    }
+                }
+            }
+        },
         "domain.ScoreBreakdown": {
             "type": "object",
             "properties": {
@@ -2287,6 +2367,41 @@
                 },
                 "vacancyRateDelta": {
                     "type": "number"
+                }
+            }
+        },
+        "domain.TaxSimRow": {
+            "type": "object",
+            "properties": {
+                "combinedIncome": {
+                    "description": "給与+不動産 合算課税所得",
+                    "type": "number"
+                },
+                "combinedTax": {
+                    "description": "合算後所得税",
+                    "type": "number"
+                },
+                "reTaxableIncome": {
+                    "description": "不動産課税所得（YearlyResult.TaxableIncome）",
+                    "type": "number"
+                },
+                "taxDifference": {
+                    "description": "正=節税 / 負=増税",
+                    "type": "number"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.TaxSimulationResult": {
+            "type": "object",
+            "properties": {
+                "ownershipComparison": {
+                    "$ref": "#/definitions/domain.OwnershipComparisonResult"
+                },
+                "salaryLossCarryover": {
+                    "$ref": "#/definitions/domain.SalaryLossCarryoverResult"
                 }
             }
         },

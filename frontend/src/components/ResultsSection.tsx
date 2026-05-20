@@ -10,6 +10,7 @@ import CostBreakdown from "@/components/CostBreakdown";
 import { LoanOptimizationPanel } from "@/components/LoanOptimizationPanel";
 import RenovationPanel from "@/components/RenovationPanel";
 import MultiExitCompareTable from "@/components/MultiExitCompareTable";
+import { TaxSimulationPanel } from "@/components/TaxSimulationPanel";
 import { InvestmentScoreCard } from "@/components/InvestmentScoreCard";
 import { CriticalErrorBanner } from "@/components/CriticalErrorBanner";
 import { HazardAlertBanner } from "@/components/HazardAlertBanner";
@@ -327,6 +328,7 @@ export function ResultsSection({
               {result.multiExitComparison && result.multiExitComparison.length > 0 && (
                 <MultiExitCompareTable rows={result.multiExitComparison} />
               )}
+              {result.taxSimulation && <TaxSimulationPanel result={result} input={lastInput} />}
               {simulationMode === "full" && (
                 <>
                   {result.acquisitionCosts && (

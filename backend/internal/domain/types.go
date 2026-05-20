@@ -151,6 +151,9 @@ type InvestmentInput struct {
 	RestorationCost float64 `json:"restorationCost,omitempty"` // 原状回復費（円/回）例: 150000
 	AdFee           float64 `json:"adFee,omitempty"`           // 入居者募集 AD（円/回）例: 家賃1ヶ月分
 	RentFreePeriod  float64 `json:"rentFreePeriod,omitempty"`  // フリーレント（ヶ月）例: 0.5
+
+	// 税務シミュレーション用（任意）。0 の場合は損益通算・法人比較を計算しない。
+	SalaryIncome float64 `json:"salaryIncome,omitempty"` // 給与年収（円）
 }
 
 // CapexEvent は大規模修繕費の発生スケジュール1件
@@ -383,6 +386,47 @@ type InvestmentResult struct {
 	AISummary string `json:"aiSummary"` // Gemini 生成の投資サマリー（空文字 = 未生成）
 
 	MultiExitComparison []MultiExitRow `json:"multiExitComparison,omitempty"` // 複数保有年数の出口比較
+
+	TaxSimulation *TaxSimulationResult `json:"taxSimulation,omitempty"` // 損益通算・個人/法人比較（SalaryIncome>0時のみ）
+}
+
+// TaxSimulationResult は損益通算・個人/法人比較の結果
+type TaxSimulationResult struct {
+	SalaryLossCarryover SalaryLossCarryoverResult `json:"salaryLossCarryover"`
+	OwnershipComparison OwnershipComparisonResult `json:"ownershipComparison"`
+}
+
+// SalaryLossCarryoverResult は給与所得との損益通算シミュレーション（#399）
+type SalaryLossCarryoverResult struct {
+	SalaryIncomeYen   float64      `json:"salaryIncomeYen"`   // 入力給与年収（円）
+	BaselineSalaryTax float64      `json:"baselineSalaryTax"` // 不動産なし時の所得税（年額）
+	YearlyRows        []TaxSimRow  `json:"yearlyRows"`
+	TotalTaxSaving    float64      `json:"totalTaxSaving"` // 保有期間合計節税額
+}
+
+// TaxSimRow は各年の損益通算詳細
+type TaxSimRow struct {
+	Year            int     `json:"year"`
+	RETaxableIncome float64 `json:"reTaxableIncome"` // 不動産課税所得（YearlyResult.TaxableIncome）
+	CombinedIncome  float64 `json:"combinedIncome"`  // 給与+不動産 合算課税所得
+	CombinedTax     float64 `json:"combinedTax"`     // 合算後所得税
+	TaxDifference   float64 `json:"taxDifference"`   // 正=節税 / 負=増税
+}
+
+// OwnershipComparisonResult は個人 vs 法人の税負担比較（#392）
+type OwnershipComparisonResult struct {
+	Individual    OwnershipScenario `json:"individual"`
+	Corporate     OwnershipScenario `json:"corporate"`
+	BreakevenYear int               `json:"breakevenYear"` // 法人が有利になる年 (-1=保有期間内に逆転なし)
+}
+
+// OwnershipScenario は保有形態別の年次税負担
+type OwnershipScenario struct {
+	Label            string    `json:"label"`
+	AnnualTax        []float64 `json:"annualTax"`        // 各年の所得税負担（保有年数分）
+	TransferTax      float64   `json:"transferTax"`      // 売却時譲渡税
+	TotalTaxBurden   float64   `json:"totalTaxBurden"`   // 保有期間合計（所得税+譲渡税）
+	CumulativeBurden []float64 `json:"cumulativeBurden"` // 累積税負担（グラフ用）
 }
 
 // AcquisitionCostBreakdown は物件取得時の諸経費内訳

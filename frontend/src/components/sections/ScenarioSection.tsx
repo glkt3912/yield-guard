@@ -247,6 +247,33 @@ export function ScenarioSection({
           </div>
         )}
       </div>
+      {/* 税務シミュレーション（任意） */}
+      <div className="border-t pt-4 space-y-3">
+        <p className="text-sm font-semibold text-foreground">税務シミュレーション（任意）</p>
+        <Input
+          label="給与年収"
+          type="number"
+          inputMode="numeric"
+          suffix="万円"
+          min="0"
+          max="100000"
+          step="100"
+          placeholder="例: 600（0なら計算しない）"
+          value={
+            input.salaryIncome != null && input.salaryIncome > 0
+              ? String(Math.round(input.salaryIncome / 10_000))
+              : ""
+          }
+          onChange={(e) => {
+            const v = parseFloat(e.target.value);
+            setNum("salaryIncome", isNaN(v) ? 0 : v * 10_000);
+          }}
+        />
+        <p className="text-xs text-muted-foreground">
+          入力すると損益通算の節税効果と個人/法人の税負担比較が表示されます。
+        </p>
+      </div>
+
       {/* 入退去コスト（任意） */}
       <div className="border-t pt-4">
         <button
