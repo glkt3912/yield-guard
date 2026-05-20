@@ -175,17 +175,20 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 	}
 
 	tiles := make([]domain.HeatmapTile, 0, tileCount)
+	failedTiles := 0
 	for i := 0; i < tileCount; i++ {
 		r := <-results
 		if r.err != nil {
 			slog.WarnContext(ctx, "CalcScoreForTile failed", "error", r.err)
+			failedTiles++
 			continue
 		}
 		tiles = append(tiles, r.tile)
 	}
 
 	c.JSON(http.StatusOK, domain.HeatmapResponse{
-		Tiles:     tiles,
-		TileCount: len(tiles),
+		Tiles:       tiles,
+		TileCount:   len(tiles),
+		FailedTiles: failedTiles,
 	})
 }

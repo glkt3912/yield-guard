@@ -2179,6 +2179,37 @@ func TestGetInvestmentScoreHeatmap_Success(t *testing.T) {
 	if resp.TileCount != len(resp.Tiles) {
 		t.Errorf("tileCount=%d does not match len(tiles)=%d", resp.TileCount, len(resp.Tiles))
 	}
+	if resp.FailedTiles != 0 {
+		t.Errorf("expected FailedTiles=0 on success, got %d", resp.FailedTiles)
+	}
+}
+
+func TestGetInvestmentScoreHeatmap_PartialFailure(t *testing.T) {
+	locSvc := &mockLocationService{
+		calcScoreFunc: func(_ context.Context, _, _, _ int) (domain.InvestmentScoreResult, error) {
+			return domain.InvestmentScoreResult{}, errors.New("MLIT API error")
+		},
+	}
+	r := newTestRouter(&mockMLITClient{}, nil, locSvc)
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/investment-score-heatmap?minLat=35.60&maxLat=35.70&minLng=139.60&maxLng=139.70&z=11",
+		nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 even when tiles fail, got %d", w.Code)
+	}
+	var resp domain.HeatmapResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.FailedTiles == 0 {
+		t.Error("expected FailedTiles > 0 when all tile calculations fail")
+	}
+	if len(resp.Tiles) != 0 {
+		t.Errorf("expected empty tiles on full failure, got %d", len(resp.Tiles))
+	}
 }
 
 func TestGetInvestmentScoreHeatmap_TooManyTiles(t *testing.T) {
