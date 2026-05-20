@@ -678,8 +678,9 @@ type HeatmapTile struct {
 
 // HeatmapResponse はヒートマップエンドポイントのレスポンス
 type HeatmapResponse struct {
-	Tiles     []HeatmapTile `json:"tiles"`
-	TileCount int           `json:"tileCount"`
+	Tiles       []HeatmapTile `json:"tiles"`
+	TileCount   int           `json:"tileCount"`
+	FailedTiles int           `json:"failedTiles"`
 }
 
 // AreaDiscoveryItem は市区町村ごとの投資適性サマリー

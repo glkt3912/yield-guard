@@ -1340,6 +1340,9 @@
         "domain.HeatmapResponse": {
             "type": "object",
             "properties": {
+                "failedTiles": {
+                    "type": "integer"
+                },
                 "tileCount": {
                     "type": "integer"
                 },
