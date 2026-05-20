@@ -75,7 +75,6 @@ func (f *firestoreGeocodeCache) Set(ctx context.Context, address string, result 
 	if _, err := f.client.Collection(geocodeCacheCollection).Doc(key).Set(ctx, map[string]any{
 		"data":      string(raw),
 		"expiresAt": time.Now().Add(geocodeCacheTTL),
-		"address":   address,
 	}); err != nil {
 		slog.WarnContext(ctx, "geocode_cache: failed to write to Firestore", "error", err)
 	}
