@@ -243,12 +243,17 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 		monthlyPaymentMan = r.YearlyResults[0].AnnualLoanPayment / 12 / 10000
 	}
 
-	equity10Man := 0.0
+	equity10Man := -1.0
 	for _, row := range r.MultiExitComparison {
 		if row.Year == 10 {
 			equity10Man = row.ExitEquity / 10000
 			break
 		}
+	}
+
+	equity10Line := ""
+	if equity10Man != -1.0 {
+		equity10Line = fmt.Sprintf("\n- 10年後の手残り: %.0f万円", equity10Man)
 	}
 
 	return fmt.Sprintf(
@@ -265,8 +270,7 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 - 表面利回り: %.1f%%
 - 実質利回り: %.1f%%
 - 税負担急増リスク発生: %s
-- 返済の余裕度: %.2f
-- 10年後の手残り: %.0f万円
+- 返済の余裕度: %.2f%s
 - 保有期間最終手残り: %.0f万円
 - 将来収益の現在価値: %.0f万円`,
 		input.BuildingType,
@@ -282,7 +286,7 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 		r.NetYield*100,
 		deadCross,
 		r.DSCR,
-		equity10Man,
+		equity10Line,
 		r.ExitTotalEquity/10000,
 		r.NPV/10000,
 	)
