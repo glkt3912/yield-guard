@@ -233,6 +233,7 @@ export function ResultsSection({
                 holdingYears={lastInput.holdingYears}
               />
               {(() => {
+                if (lastInput.holdingYears < 10) return null;
                 const row10 = result.multiExitComparison?.find((r) => r.year === 10);
                 if (!row10) return null;
                 const equityMan = Math.round(row10.exitEquity / 10_000);
