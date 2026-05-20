@@ -1,5 +1,5 @@
 import React from "react";
-import { TrendingUp, ShieldCheck, AlertCircle, Banknote } from "lucide-react";
+import { TrendingUp, ShieldCheck, AlertCircle, Banknote, CreditCard } from "lucide-react";
 import type { InvestmentResult } from "@/types/investment";
 
 interface KpiStripProps {
@@ -40,6 +40,10 @@ function KpiCell({ icon, label, value, sub, subPositive }: KpiCellProps) {
 }
 
 export function KpiStrip({ result, yieldTarget = 0.08, holdingYears = 30 }: KpiStripProps) {
+  const monthlyPaymentMan = Math.floor(
+    (result.yearlyResults[0]?.annualLoanPayment ?? 0) / 12 / 10_000
+  );
+
   const grossYieldPct = result.grossYield * 100;
   const yieldDiff = grossYieldPct - yieldTarget * 100;
   const yieldDiffStr = (yieldDiff >= 0 ? "+" : "") + yieldDiff.toFixed(2) + "pp vs 目標";
@@ -66,7 +70,13 @@ export function KpiStrip({ result, yieldTarget = 0.08, holdingYears = 30 }: KpiS
   const equitySub = equityPositive ? "出口時プラス" : "出口時マイナス";
 
   return (
-    <div aria-label="KPIサマリ" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div aria-label="KPIサマリ" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <KpiCell
+        icon={<CreditCard className="h-3.5 w-3.5" aria-hidden />}
+        label="月々の返済額"
+        value={`${monthlyPaymentMan.toLocaleString()}万円`}
+        sub="元利合計（1年目）"
+      />
       <KpiCell
         icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden />}
         label="表面利回り"
