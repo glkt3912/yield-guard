@@ -57,6 +57,7 @@ jobs:
         with:
           working-directory: backend
           version: v2.11.4
+          cache-invalidation-interval: 1
 
       - name: go test
         run: |

@@ -14,6 +14,7 @@ import (
 	"github.com/yield-guard/backend/internal/api"
 	"github.com/yield-guard/backend/internal/logger"
 	"github.com/yield-guard/backend/internal/mlit"
+	"github.com/yield-guard/backend/internal/service"
 	"github.com/yield-guard/backend/internal/telemetry"
 )
 
@@ -78,7 +79,8 @@ func main() {
 
 	mlitClient := mlit.NewClientWithFirestore(mlitAPIKey, fsClient)
 	geocodeClient := api.NewNominatimGeocodeClient(api.NewFirestoreGeocodeCache(fsClient))
-	handler := api.NewHandler(mlitClient, geocodeClient)
+	scoreSvc := service.NewInvestmentScoreService(mlitClient)
+	handler := api.NewHandler(mlitClient, geocodeClient, scoreSvc)
 	router := api.NewRouter(handler, appInternalAPIKey)
 
 	srv := &http.Server{
