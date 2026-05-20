@@ -60,7 +60,7 @@ test("@p3 ハザードアラートバナー：洪水リスクが表示される"
   });
   await page.goto("/");
 
-  await page.getByRole("radio", { name: "詳細" }).click();
+  await page.getByRole("radio", { name: "くわしく分析" }).click();
   await page.getByLabel("土地取得価格").fill("1200");
   await page.getByLabel("建物価格").fill("800");
   await page.getByLabel("築年数").fill("20");

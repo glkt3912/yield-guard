@@ -40,7 +40,7 @@ export class SimulationPage {
     monthlyRent: string;
     loanAmount?: string;
   }) {
-    await this.page.getByRole("radio", { name: "詳細" }).click();
+    await this.page.getByRole("radio", { name: "くわしく分析" }).click();
     await this.page.getByLabel("土地取得価格").fill(params.landPrice);
     await this.page.getByLabel("建物価格").fill(params.buildingCost);
     await this.page.getByLabel("築年数").fill(params.buildingAge);
