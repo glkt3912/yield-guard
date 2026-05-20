@@ -243,16 +243,18 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 		monthlyPaymentMan = r.YearlyResults[0].AnnualLoanPayment / 12 / 10000
 	}
 
-	equity10Man := -1.0
+	found10 := false
+	var equity10Man float64
 	for _, row := range r.MultiExitComparison {
 		if row.Year == 10 {
 			equity10Man = row.ExitEquity / 10000
+			found10 = true
 			break
 		}
 	}
 
 	equity10Line := ""
-	if equity10Man != -1.0 {
+	if found10 {
 		equity10Line = fmt.Sprintf("\n- 10年後の手残り: %.0f万円", equity10Man)
 	}
 

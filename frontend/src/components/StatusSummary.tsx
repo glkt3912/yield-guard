@@ -27,7 +27,10 @@ const LEVEL_CONFIG = {
 } as const;
 
 export function StatusSummary({ result, input }: StatusSummaryProps) {
-  const dscrStress = result.stressScenarios.find((sc) => sc.label === "複合ストレス")?.dscr ?? 0;
+  const dscrStress =
+    result.stressScenarios.length > 0
+      ? Math.min(...result.stressScenarios.map((s) => s.dscr))
+      : result.dscr;
   const verdict = calcVerdict(input, result, result.dscr, dscrStress);
   const { label, icon, className } = LEVEL_CONFIG[verdict.level];
 

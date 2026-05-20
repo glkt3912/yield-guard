@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
+	"github.com/yield-guard/backend/internal/service"
 )
 
 func init() {
@@ -278,9 +279,16 @@ func (m *mockMLITClient) FetchRentStats(ctx context.Context, q mlit.LandPriceQue
 	return domain.RentStatsResult{}, nil
 }
 
-// newTestRouter はモッククライアントを使ったテスト用ルーターを返す
-func newTestRouter(client MLITClient, geocodeClient GeocodeClient) *gin.Engine {
-	h := NewHandler(client, geocodeClient)
+// newTestRouter はモッククライアントを使ったテスト用ルーターを返す。
+// locationSvc が nil の場合は mlitClient を使った InvestmentScoreService を生成する。
+func newTestRouter(client MLITClient, geocodeClient GeocodeClient, locationSvc ...service.LocationService) *gin.Engine {
+	var svc service.LocationService
+	if len(locationSvc) > 0 && locationSvc[0] != nil {
+		svc = locationSvc[0]
+	} else {
+		svc = service.NewInvestmentScoreService(client)
+	}
+	h := NewHandler(client, geocodeClient, svc)
 	return NewRouter(h, os.Getenv("APP_INTERNAL_API_KEY"))
 }
 

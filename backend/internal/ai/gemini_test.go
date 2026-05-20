@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -146,6 +147,64 @@ func (s *callableGeminiSummarizer) GenerateSummary(ctx context.Context, input do
 		s.cache.set(setCtx, key, summary)
 	}()
 	return summary
+}
+
+func TestBuildPrompt_ExitEquity_NegativeSentinelValue_IsIncluded(t *testing.T) {
+	// Bug 2 回帰テスト: ExitEquity = -10000 のとき equity10Man = -1.0 になり、
+	// 旧センチネル値（-1.0）と一致して「10年後の手残り」行がプロンプトから欠落していた。
+	input := domain.InvestmentInput{
+		BuildingType: "木造",
+		LoanYears:    35,
+		HoldingYears: 10,
+	}
+	r := domain.InvestmentResult{
+		YearlyResults: []domain.YearlyResult{
+			{AnnualLoanPayment: 600_000},
+		},
+		MultiExitComparison: []domain.MultiExitRow{
+			{Year: 10, ExitEquity: -10_000}, // / 10000 = -1.0（旧センチネルと衝突）
+		},
+	}
+
+	prompt := buildPrompt(input, r)
+
+	if !strings.Contains(prompt, "10年後の手残り") {
+		t.Errorf("ExitEquity=-10000 のとき '10年後の手残り' がプロンプトに含まれるべき\nactual prompt:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, "-1万円") {
+		t.Errorf("ExitEquity=-10000 のとき '-1万円' がプロンプトに含まれるべき\nactual prompt:\n%s", prompt)
+	}
+}
+
+func TestBuildPrompt_NoMultiExitComparison_OmitsEquityLine(t *testing.T) {
+	input := domain.InvestmentInput{BuildingType: "木造"}
+	r := domain.InvestmentResult{
+		YearlyResults:       []domain.YearlyResult{{AnnualLoanPayment: 600_000}},
+		MultiExitComparison: nil,
+	}
+
+	prompt := buildPrompt(input, r)
+
+	if strings.Contains(prompt, "10年後の手残り") {
+		t.Errorf("MultiExitComparison が nil のとき '10年後の手残り' はプロンプトに含まれてはいけない\nactual prompt:\n%s", prompt)
+	}
+}
+
+func TestBuildPrompt_ExitEquity_Zero_IsIncluded(t *testing.T) {
+	// ExitEquity = 0 のとき「0万円」として出力されること（ゼロ値の正常系）
+	input := domain.InvestmentInput{BuildingType: "木造", HoldingYears: 10}
+	r := domain.InvestmentResult{
+		YearlyResults: []domain.YearlyResult{{AnnualLoanPayment: 600_000}},
+		MultiExitComparison: []domain.MultiExitRow{
+			{Year: 10, ExitEquity: 0},
+		},
+	}
+
+	prompt := buildPrompt(input, r)
+
+	if !strings.Contains(prompt, "10年後の手残り") {
+		t.Errorf("ExitEquity=0 のとき '10年後の手残り' がプロンプトに含まれるべき\nactual prompt:\n%s", prompt)
+	}
 }
 
 func TestGeminiSummarizer_GenerateSummary_CacheMiss_CallsSetOnce(t *testing.T) {
