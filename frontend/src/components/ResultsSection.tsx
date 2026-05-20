@@ -20,7 +20,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import dynamic from "next/dynamic";
-import { AlertTriangle, BarChart3, ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
+import {
+  AlertTriangle,
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  ShieldAlert,
+  TrendingUp,
+} from "lucide-react";
 import { PREFECTURE_CENTERS } from "@/lib/prefectureCenters";
 import type {
   InvestmentInput,
@@ -219,12 +226,33 @@ export function ResultsSection({
           {result && lastInput && (
             <div className="space-y-3">
               <CriticalErrorBanner errors={result.criticalErrors} />
-              <StatusSummary result={result} />
+              <StatusSummary result={result} input={lastInput} />
               <KpiStrip
                 result={result}
                 yieldTarget={lastInput.yieldTarget}
                 holdingYears={lastInput.holdingYears}
               />
+              {(() => {
+                const row10 = result.multiExitComparison?.find((r) => r.year === 10);
+                if (!row10) return null;
+                const equityMan = Math.round(row10.exitEquity / 10_000);
+                const equityStr =
+                  Math.abs(equityMan) >= 10_000
+                    ? `${(equityMan / 10_000).toFixed(1)}億円`
+                    : `${equityMan.toLocaleString()}万円`;
+                const isPositive = row10.exitEquity >= 0;
+                return (
+                  <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
+                    <TrendingUp className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                    <span className="text-sm text-muted-foreground">10年後の手残り</span>
+                    <span
+                      className={`ml-auto text-xl font-bold ${isPositive ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {equityStr}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           )}
           <HazardAlertBanner hazardRisks={hazardRisks} externalUrbanRisks={externalUrbanRisks} />
