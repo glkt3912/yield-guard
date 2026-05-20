@@ -1,5 +1,5 @@
 import React from "react";
-import { TrendingUp, ShieldCheck, AlertCircle, Banknote } from "lucide-react";
+import { TrendingUp, ShieldCheck, AlertCircle, Banknote, CreditCard } from "lucide-react";
 import type { InvestmentResult } from "@/types/investment";
 
 interface KpiStripProps {
@@ -65,8 +65,21 @@ export function KpiStrip({ result, yieldTarget = 0.08, holdingYears = 30 }: KpiS
   const equityPositive = result.exitTotalEquity >= 0;
   const equitySub = equityPositive ? "出口時プラス" : "出口時マイナス";
 
+  const monthlyPayment =
+    result.yearlyResults.length > 0
+      ? Math.floor(result.yearlyResults[0].annualLoanPayment / 12 / 10_000)
+      : null;
+
   return (
-    <div aria-label="KPIサマリ" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div aria-label="KPIサマリ" className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      {monthlyPayment !== null && (
+        <KpiCell
+          icon={<CreditCard className="h-3.5 w-3.5" aria-hidden />}
+          label="月々の返済額"
+          value={`${monthlyPayment.toLocaleString()}万円`}
+          sub="1年目・元利合計"
+        />
+      )}
       <KpiCell
         icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden />}
         label="表面利回り"
