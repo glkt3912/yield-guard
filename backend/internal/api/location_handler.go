@@ -434,13 +434,14 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 		return
 	}
 
+	// parseZoom は z ∈ [11,15] を保証する
 	var maxTiles int
-	switch {
-	case z <= 12:
+	switch z {
+	case 11, 12:
 		maxTiles = 20
-	case z <= 14:
+	case 13, 14:
 		maxTiles = 30
-	default:
+	default: // z == 15
 		maxTiles = maxHeatmapTiles
 	}
 
@@ -465,11 +466,6 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 	for tx := xMin; tx <= xMax; tx++ {
 		for ty := yMin; ty <= yMax; ty++ {
 			go func(tx, ty int) {
-				defer func() {
-					if r := recover(); r != nil {
-						results <- tileResult{err: fmt.Errorf("panic in calcScoreForTile: %v", r)}
-					}
-				}()
 				select {
 				case <-ctx.Done():
 					results <- tileResult{err: ctx.Err()}
@@ -477,6 +473,11 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 				case sem <- struct{}{}:
 				}
 				defer func() { <-sem }()
+				defer func() {
+					if r := recover(); r != nil {
+						results <- tileResult{err: fmt.Errorf("panic in calcScoreForTile: %v", r)}
+					}
+				}()
 				score, err := h.calcScoreForTile(ctx, z, tx, ty)
 				if err != nil {
 					results <- tileResult{err: err}
