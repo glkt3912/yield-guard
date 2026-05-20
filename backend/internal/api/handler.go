@@ -11,6 +11,7 @@ import (
 	"github.com/yield-guard/backend/internal/ai"
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
+	"github.com/yield-guard/backend/internal/service"
 )
 
 // MLITClient は国交省APIクライアントのインターフェース（テスト時にモック注入可能）
@@ -37,9 +38,10 @@ type Handler struct {
 	mlitClient    MLITClient
 	geocodeClient GeocodeClient
 	summarizer    ai.Summarizer
+	locationSvc   service.LocationService
 }
 
-func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient, fsClient ...*firestore.Client) *Handler {
+func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient, locationSvc service.LocationService, fsClient ...*firestore.Client) *Handler {
 	var fs *firestore.Client
 	if len(fsClient) > 0 {
 		fs = fsClient[0]
@@ -48,6 +50,7 @@ func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient, fsClient ...
 		mlitClient:    mlitClient,
 		geocodeClient: geocodeClient,
 		summarizer:    ai.NewSummarizer(fs),
+		locationSvc:   locationSvc,
 	}
 }
 
