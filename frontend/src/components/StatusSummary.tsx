@@ -46,7 +46,7 @@ export function StatusSummary({ result, input }: StatusSummaryProps) {
       <span className="font-semibold">[{label}]</span>
       <span className="hidden sm:inline text-muted-foreground">|</span>
       <span>
-        利回り {grossYieldPct}% / DSCR {dscrVal} / デッドクロス {dcYear}
+        利回り {grossYieldPct}% / 返済の余裕度 {dscrVal} / 税負担急増リスク {dcYear}
       </span>
     </div>
   );
