@@ -34,7 +34,6 @@ type MLITClient interface {
 	FetchRentStats(ctx context.Context, q mlit.LandPriceQuery, areaSqm float64) (domain.RentStatsResult, error)
 }
 
-// Handler はすべての HTTP エンドポイントを束ねる構造体
 type Handler struct {
 	mlitClient    MLITClient
 	geocodeClient GeocodeClient

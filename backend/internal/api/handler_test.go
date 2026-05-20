@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
+	"github.com/yield-guard/backend/internal/service"
 )
 
 func init() {
@@ -278,9 +279,28 @@ func (m *mockMLITClient) FetchRentStats(ctx context.Context, q mlit.LandPriceQue
 	return domain.RentStatsResult{}, nil
 }
 
-// newTestRouter はモッククライアントを使ったテスト用ルーターを返す
-func newTestRouter(client MLITClient, geocodeClient GeocodeClient) *gin.Engine {
-	h := NewHandler(client, geocodeClient)
+// mockLocationService は service.LocationService のテスト用モック
+type mockLocationService struct {
+	calcScoreFunc func(ctx context.Context, z, x, y int) (domain.InvestmentScoreResult, error)
+}
+
+func (m *mockLocationService) CalcScoreForTile(ctx context.Context, z, x, y int) (domain.InvestmentScoreResult, error) {
+	if m.calcScoreFunc != nil {
+		return m.calcScoreFunc(ctx, z, x, y)
+	}
+	return domain.CalcInvestmentScore(domain.InvestmentScoreInput{}), nil
+}
+
+// newTestRouter はモッククライアントを使ったテスト用ルーターを返す。
+// locationSvc が nil の場合は mlitClient を使った InvestmentScoreService を生成する。
+func newTestRouter(client MLITClient, geocodeClient GeocodeClient, locationSvc ...service.LocationService) *gin.Engine {
+	var svc service.LocationService
+	if len(locationSvc) > 0 && locationSvc[0] != nil {
+		svc = locationSvc[0]
+	} else {
+		svc = service.NewInvestmentScoreService(client)
+	}
+	h := NewHandler(client, geocodeClient, svc)
 	return NewRouter(h, os.Getenv("APP_INTERNAL_API_KEY"))
 }
 
@@ -1289,6 +1309,28 @@ func TestGetInvestmentScore_PartialAPIFailure(t *testing.T) {
 	// flood 失敗 → hazard=0、urban +10 → base50 + 10 = 60
 	if result.TotalScore != 60 {
 		t.Errorf("expected score 60 with flood API failure, got %d", result.TotalScore)
+	}
+}
+
+func TestGetInvestmentScore_WithMockLocationService(t *testing.T) {
+	locSvc := &mockLocationService{
+		calcScoreFunc: func(_ context.Context, _, _, _ int) (domain.InvestmentScoreResult, error) {
+			return domain.InvestmentScoreResult{TotalScore: 75, Grade: "良好"}, nil
+		},
+	}
+	r := newTestRouter(&mockMLITClient{}, nil, locSvc)
+	req := httptest.NewRequest(http.MethodGet, "/api/investment-score?lat=35.68&lng=139.69", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var result domain.InvestmentScoreResult
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if result.TotalScore != 75 {
+		t.Errorf("expected score 75 from mock, got %d", result.TotalScore)
 	}
 }
 

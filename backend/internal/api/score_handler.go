@@ -141,18 +141,20 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 	for tx := xMin; tx <= xMax; tx++ {
 		for ty := yMin; ty <= yMax; ty++ {
 			go func(tx, ty int) {
-				defer func() {
-					if r := recover(); r != nil {
-						results <- tileResult{err: fmt.Errorf("panic in CalcScoreForTile: %v", r)}
-					}
-				}()
 				select {
 				case <-ctx.Done():
 					results <- tileResult{err: ctx.Err()}
 					return
 				case sem <- struct{}{}:
 				}
+				// sem-release は先に登録（LIFO で後から実行）、recover は後に登録（先に実行）
+				// → パニック時もセマフォが必ず解放される
 				defer func() { <-sem }()
+				defer func() {
+					if r := recover(); r != nil {
+						results <- tileResult{err: fmt.Errorf("panic in CalcScoreForTile: %v", r)}
+					}
+				}()
 				score, err := h.locationSvc.CalcScoreForTile(ctx, z, tx, ty)
 				if err != nil {
 					results <- tileResult{err: err}
