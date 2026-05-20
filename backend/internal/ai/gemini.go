@@ -24,17 +24,24 @@ const (
 	aiSummaryCacheCollection = "ai_summary_cache"
 )
 
-const systemPrompt = `あなたは日本の不動産投資専門アドバイザーです。
-以下の判断基準で分析してください：
-- DSCR 1.2未満: 危険域（ローン返済に余裕がない）
-- DSCR 1.2〜1.5: 要注意
-- DSCR 1.5以上: 安全域
-- デッドクロス10年以内: 税引後CFが悪化するため短期出口戦略が必須
-- 表面利回りはエリア・建物種別・築年数で判断が変わる
-- 木造（耐用年数22年）は減価償却が早くデッドクロスが来やすい
+const systemPrompt = `あなたは日本の不動産投資専門アドバイザーです。投資経験のない初心者にもわかる言葉で説明してください。
+
+【禁止用語】次の専門用語は使用しないこと：DSCR、IRR、NPV、デッドクロス、キャップレート、ネット利回り
+【言い換え表現】
+- DSCR → 返済の余裕度（1.2以上で安全、1.0未満で危険）
+- デッドクロス → 税負担が急増するタイミング
+- IRR → 投資効率
+- NPV → 将来の収益の現在価値
+
+【判断基準】
+- 返済の余裕度が1.2未満: 危険域（ローン返済に余裕がない）
+- 返済の余裕度が1.2〜1.5: 要注意
+- 返済の余裕度が1.5以上: 安全域
+- 税負担急増リスクが10年以内: 短期出口戦略が必須
+- 木造（耐用年数22年）は税負担急増が来やすい
 - RC造・SRC造（耐用年数47年）は長期保有向き
-- 軽量鉄骨・重量鉄骨は耐用年数19〜34年で木造とRC造の中間的特性
-回答は3〜4文の日本語のみで返すこと。`
+
+【出力形式】必ず「結論1文・理由2文・アクション1文」の計4文で返すこと。日本語のみ。`
 
 func envOrDefault(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
@@ -214,9 +221,9 @@ func (s *GeminiSummarizer) call(ctx context.Context, input domain.InvestmentInpu
 }
 
 func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string {
-	deadCross := "なし"
+	taxBurdenRisk := "なし"
 	if r.DeadCrossYear > 0 {
-		deadCross = fmt.Sprintf("%d年目", r.DeadCrossYear)
+		taxBurdenRisk = fmt.Sprintf("%d年目", r.DeadCrossYear)
 	}
 
 	loanMethod := "元利均等"
@@ -229,8 +236,13 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 		buildingAge = fmt.Sprintf("%d年", input.BuildingAge)
 	}
 
+	var monthlyPayment float64
+	if len(r.YearlyResults) > 0 {
+		monthlyPayment = r.YearlyResults[0].AnnualLoanPayment / 12
+	}
+
 	return fmt.Sprintf(
-		`以下の不動産投資シミュレーション結果を分析し、強み・リスク・推奨アクションを専門家が初心者に説明するスタイルで、数値を引用しながらまとめてください。
+		`以下の不動産投資シミュレーション結果を初心者向けに分析し、結論1文・理由2文・アクション1文の計4文でまとめてください。専門用語は禁止です。
 
 【物件・ローン条件】
 - 建物種別: %s（築%s）
@@ -241,10 +253,10 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 【シミュレーション結果】
 - 表面利回り: %.1f%%
 - 実質利回り: %.1f%%
-- デッドクロス発生: %s
-- DSCR（借入金償還余裕率）: %.2f
-- 保有期間最終手残り: %.0f万円
-- NPV（正味現在価値）: %.0f万円`,
+- 税負担が急増するタイミング: %s
+- 返済の余裕度（毎月の収入が返済額の何倍か）: %.2f倍
+- 月々の返済額: %.0f万円
+- %d年後の手残り: %.0f万円`,
 		input.BuildingType,
 		buildingAge,
 		input.LoanAmount/10000,
@@ -255,10 +267,11 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 		input.VacancyRate*100,
 		r.GrossYield*100,
 		r.NetYield*100,
-		deadCross,
+		taxBurdenRisk,
 		r.DSCR,
+		monthlyPayment/10000,
+		input.HoldingYears,
 		r.ExitTotalEquity/10000,
-		r.NPV/10000,
 	)
 }
 
