@@ -17,9 +17,34 @@ const (
 	geocodeCacheKeyLen     = 32
 )
 
+// geocodeDocStore は firestoreGeocodeCache が必要とする最小限のドキュメント読み書き操作を表す。
+// テストでは fakeGeocodeDocStore で差し替えられる。
+type geocodeDocStore interface {
+	get(ctx context.Context, docID string) (map[string]any, bool)
+	set(ctx context.Context, docID string, data map[string]any) error
+}
+
+// firestoreGeocodeDocStore は実際の Firestore クライアントを geocodeDocStore に適合させるアダプタ。
+type firestoreGeocodeDocStore struct {
+	client *firestore.Client
+}
+
+func (s *firestoreGeocodeDocStore) get(ctx context.Context, docID string) (map[string]any, bool) {
+	doc, err := s.client.Collection(geocodeCacheCollection).Doc(docID).Get(ctx)
+	if err != nil {
+		return nil, false
+	}
+	return doc.Data(), true
+}
+
+func (s *firestoreGeocodeDocStore) set(ctx context.Context, docID string, data map[string]any) error {
+	_, err := s.client.Collection(geocodeCacheCollection).Doc(docID).Set(ctx, data)
+	return err
+}
+
 // firestoreGeocodeCache は Firestore を使ったジオコードキャッシュ実装
 type firestoreGeocodeCache struct {
-	client *firestore.Client
+	store geocodeDocStore
 }
 
 // NewFirestoreGeocodeCache は Firestore クライアントからキャッシュを返す。
@@ -28,7 +53,7 @@ func NewFirestoreGeocodeCache(client *firestore.Client) GeocodeCache {
 	if client == nil {
 		return &noopGeocodeCache{}
 	}
-	return &firestoreGeocodeCache{client: client}
+	return &firestoreGeocodeCache{store: &firestoreGeocodeDocStore{client: client}}
 }
 
 func (f *firestoreGeocodeCache) cacheKey(address string) string {
@@ -38,12 +63,11 @@ func (f *firestoreGeocodeCache) cacheKey(address string) string {
 
 func (f *firestoreGeocodeCache) Get(ctx context.Context, address string) (*GeocodeResult, bool) {
 	key := f.cacheKey(address)
-	doc, err := f.client.Collection(geocodeCacheCollection).Doc(key).Get(ctx)
-	if err != nil {
+	data, ok := f.store.get(ctx, key)
+	if !ok {
 		return nil, false
 	}
 
-	data := doc.Data()
 	expiresAt, ok := data["expiresAt"].(time.Time)
 	if !ok || time.Now().After(expiresAt) {
 		return nil, false
@@ -72,7 +96,7 @@ func (f *firestoreGeocodeCache) Set(ctx context.Context, address string, result 
 	if err != nil {
 		return
 	}
-	if _, err := f.client.Collection(geocodeCacheCollection).Doc(key).Set(ctx, map[string]any{
+	if err := f.store.set(ctx, key, map[string]any{
 		"data":      string(raw),
 		"expiresAt": time.Now().Add(geocodeCacheTTL),
 	}); err != nil {
