@@ -107,17 +107,15 @@ export default function InvestmentScoreHeatmap({
         スコアは需要・安全性の評価です。表面利回りとは別軸の指標です。
       </p>
       {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
-      {failedTiles > 0 &&
-        tiles.length + failedTiles > 0 &&
-        failedTiles / (tiles.length + failedTiles) > 0.5 && (
-          <Alert className="mb-3">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-xs">
-              一部のエリアデータを取得できませんでした（{failedTiles} タイル失敗）。
-              表示されているスコアは部分的な結果です。
-            </AlertDescription>
-          </Alert>
-        )}
+      {failedTiles > 0 && failedTiles / (tiles.length + failedTiles) > 0.5 && (
+        <Alert className="mb-3">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-xs">
+            一部のエリアデータを取得できませんでした（{failedTiles} タイル失敗）。
+            表示されているスコアは部分的な結果です。
+          </AlertDescription>
+        </Alert>
+      )}
       <div style={{ height: 480 }}>
         <MapContainer
           center={[centerLat, centerLng]}
