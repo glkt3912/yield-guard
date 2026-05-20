@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
@@ -163,5 +164,32 @@ func TestCalcScoreForTile_AllEmpty(t *testing.T) {
 	}
 	if result.Grade != "普通" {
 		t.Errorf("expected grade 普通, got %q", result.Grade)
+	}
+}
+
+func TestCalcScoreForTile_WithLandPriceTrend(t *testing.T) {
+	now := time.Now().Year()
+	mock := &mockMLITClient{
+		landPricesFunc: func(_ context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
+			// 直近期間(now-2〜now-1): 坪単価 2,000,000 円
+			// 旧期間(now-4〜now-3): 坪単価 1,800,000 円 → 上昇率 +11% → score=10
+			if q.Year == now-2 {
+				return []domain.LandTransaction{{PricePerTsubo: 2_000_000}}, nil
+			}
+			return []domain.LandTransaction{{PricePerTsubo: 1_800_000}}, nil
+		},
+	}
+	svc := NewInvestmentScoreService(mock)
+	// 渋谷付近タイル（PrefCodeFromLatLng が "13" を返す座標）
+	result, err := svc.CalcScoreForTile(context.Background(), 14, 14547, 6451)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// 上昇率 >10% → LandPriceTrend score = +10
+	if result.Breakdown.LandPriceTrend.Score != 10 {
+		t.Errorf("expected LandPriceTrend score 10 with >10%% rise, got %d", result.Breakdown.LandPriceTrend.Score)
+	}
+	if result.Breakdown.LandPriceTrend.Description == "" {
+		t.Error("expected non-empty LandPriceTrend description")
 	}
 }

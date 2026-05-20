@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
@@ -34,7 +35,7 @@ type InvestmentScoreService struct {
 	client MLITClient
 }
 
-func NewInvestmentScoreService(client MLITClient) *InvestmentScoreService {
+func NewInvestmentScoreService(client MLITClient) LocationService {
 	return &InvestmentScoreService{client: client}
 }
 
@@ -43,6 +44,7 @@ type apiResult[T any] struct {
 	err  error
 }
 
+// fanOut は api/helpers.go の同名関数のコピー。循環インポート回避のため複製している。
 func fanOut[T any](fetch func() (T, error)) <-chan apiResult[T] {
 	ch := make(chan apiResult[T], 1)
 	go func() {
@@ -72,6 +74,7 @@ func (s *InvestmentScoreService) CalcScoreForTile(ctx context.Context, z, x, y i
 	lanCh := fanOut(func() ([]domain.LandslideHazardItem, error) { return s.client.FetchLandslideHazard(ctx, z, x, y) })
 
 	// 地価トレンド: タイル中心座標→都道府県コードを逆引きし、新旧2期間を並列取得する
+	// 直近2年 vs その2年前の期間を動的に算出する
 	centerLat, centerLng := mlit.TileToLatLng(x, y, z)
 	prefCode := domain.PrefCodeFromLatLng(centerLat, centerLng)
 	type landResult struct {
@@ -81,12 +84,13 @@ func (s *InvestmentScoreService) CalcScoreForTile(ctx context.Context, z, x, y i
 	recentLandCh := make(chan landResult, 1)
 	oldLandCh := make(chan landResult, 1)
 	if prefCode != "" {
+		now := time.Now().Year()
 		go func() {
-			tx, e := s.client.FetchLandPrices(ctx, mlit.LandPriceQuery{Area: prefCode, Year: 2023, Quarter: 1, ToYear: 2024, ToQuarter: 4})
+			tx, e := s.client.FetchLandPrices(ctx, mlit.LandPriceQuery{Area: prefCode, Year: now - 2, Quarter: 1, ToYear: now - 1, ToQuarter: 4})
 			recentLandCh <- landResult{domain.CalcLandPriceStats(ctx, tx), e}
 		}()
 		go func() {
-			tx, e := s.client.FetchLandPrices(ctx, mlit.LandPriceQuery{Area: prefCode, Year: 2021, Quarter: 1, ToYear: 2022, ToQuarter: 4})
+			tx, e := s.client.FetchLandPrices(ctx, mlit.LandPriceQuery{Area: prefCode, Year: now - 4, Quarter: 1, ToYear: now - 3, ToQuarter: 4})
 			oldLandCh <- landResult{domain.CalcLandPriceStats(ctx, tx), e}
 		}()
 	} else {
