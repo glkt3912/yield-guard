@@ -209,7 +209,6 @@ export interface TaxSimRow {
   reTaxableIncome: number;
   combinedIncome: number;
   combinedTax: number;
-  baselineTax: number;
   taxDifference: number; // 正=節税 / 負=増税
 }
 

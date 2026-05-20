@@ -119,7 +119,6 @@ func CalcTaxSimulation(input InvestmentInput, yearly []YearlyResult, exitCapital
 			RETaxableIncome: yr.TaxableIncome,
 			CombinedIncome:  combinedTaxable,
 			CombinedTax:     combinedTax,
-			BaselineTax:     baselineTax,
 			TaxDifference:   diff,
 		}
 	}
@@ -144,12 +143,16 @@ func CalcTaxSimulation(input InvestmentInput, yearly []YearlyResult, exitCapital
 		}
 	}
 
-	// 売却時の譲渡税
-	indivTransferTax := exitCapitalGain * longTermTransferTaxRate
-	if holdingYears <= 5 {
-		indivTransferTax = exitCapitalGain * shortTermTransferTaxRate
+	// 売却時の譲渡税（譲渡損の場合は課税なし）
+	var indivTransferTax, corpTransferTax float64
+	if exitCapitalGain > 0 {
+		if holdingYears <= 5 {
+			indivTransferTax = exitCapitalGain * shortTermTransferTaxRate
+		} else {
+			indivTransferTax = exitCapitalGain * longTermTransferTaxRate
+		}
+		corpTransferTax = exitCapitalGain * corporateEffectiveRate
 	}
-	corpTransferTax := exitCapitalGain * corporateEffectiveRate
 
 	indivCumul := makeCumulative(indivAnnual, indivTransferTax)
 	corpCumul := makeCumulative(corpAnnual, corpTransferTax)

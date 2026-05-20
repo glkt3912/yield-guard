@@ -1,15 +1,10 @@
 package domain
 
 import (
-	"math"
 	"testing"
 )
 
 const taxEpsilon = 1.0 // 1円単位の誤差を許容
-
-func approxEqualTax(a, b, eps float64) bool {
-	return math.Abs(a-b) <= eps
-}
 
 func TestCalcIncomeTax(t *testing.T) {
 	tests := []struct {
@@ -31,7 +26,7 @@ func TestCalcIncomeTax(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := calcIncomeTax(tt.taxable)
-			if !approxEqualTax(got, tt.wantApprox, taxEpsilon) {
+			if !approxEqual(got, tt.wantApprox, taxEpsilon) {
 				t.Errorf("calcIncomeTax(%.0f) = %.0f, want %.0f", tt.taxable, got, tt.wantApprox)
 			}
 		})
@@ -55,7 +50,7 @@ func TestCalcSalaryDeduction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := calcSalaryDeduction(tt.salary)
-			if !approxEqualTax(got, tt.wantApprox, taxEpsilon) {
+			if !approxEqual(got, tt.wantApprox, taxEpsilon) {
 				t.Errorf("calcSalaryDeduction(%.0f) = %.0f, want %.0f", tt.salary, got, tt.wantApprox)
 			}
 		})
@@ -164,5 +159,37 @@ func TestCalcTaxSimulation_LowIncomeNeverBreakeven(t *testing.T) {
 	// 低所得者は法人税率(33.4%) > 個人実効税率(15%程度)なので法人不利
 	if cmp.BreakevenYear != -1 {
 		t.Errorf("低年収(300万)では法人有利年は -1 であるべき、got %d", cmp.BreakevenYear)
+	}
+}
+
+func TestCalcTaxSimulation_NegativeExitCapitalGain(t *testing.T) {
+	// 譲渡損（exitCapitalGain < 0）のとき TransferTax が 0 になること
+	yearly := []YearlyResult{
+		{Year: 1, TaxableIncome: 100_000},
+	}
+	input := InvestmentInput{
+		SalaryIncome: 6_000_000,
+		HoldingYears: 1,
+	}
+
+	result := CalcTaxSimulation(input, yearly, -500_000)
+	if result == nil {
+		t.Fatal("結果が nil")
+	}
+
+	indiv := result.OwnershipComparison.Individual
+	corp := result.OwnershipComparison.Corporate
+
+	if indiv.TransferTax != 0 {
+		t.Errorf("譲渡損のとき個人 TransferTax = 0 を期待、got %.0f", indiv.TransferTax)
+	}
+	if corp.TransferTax != 0 {
+		t.Errorf("譲渡損のとき法人 TransferTax = 0 を期待、got %.0f", corp.TransferTax)
+	}
+	if indiv.TotalTaxBurden < 0 {
+		t.Errorf("個人 TotalTaxBurden が負になってはいけない、got %.0f", indiv.TotalTaxBurden)
+	}
+	if corp.TotalTaxBurden < 0 {
+		t.Errorf("法人 TotalTaxBurden が負になってはいけない、got %.0f", corp.TotalTaxBurden)
 	}
 }

@@ -410,7 +410,6 @@ type TaxSimRow struct {
 	RETaxableIncome float64 `json:"reTaxableIncome"` // 不動産課税所得（YearlyResult.TaxableIncome）
 	CombinedIncome  float64 `json:"combinedIncome"`  // 給与+不動産 合算課税所得
 	CombinedTax     float64 `json:"combinedTax"`     // 合算後所得税
-	BaselineTax     float64 `json:"baselineTax"`     // 給与のみの所得税
 	TaxDifference   float64 `json:"taxDifference"`   // 正=節税 / 負=増税
 }
 

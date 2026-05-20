@@ -45,7 +45,12 @@ export function TaxSimulationPanel({ result, input }: Props) {
 
   const { individual, corporate, breakevenYear } = ownershipComparison;
   const holdingYears = input.holdingYears || 10;
-  const ownershipChartData = Array.from({ length: holdingYears }, (_, i) => ({
+  const safeLen = Math.min(
+    holdingYears,
+    individual.cumulativeBurden.length,
+    corporate.cumulativeBurden.length
+  );
+  const ownershipChartData = Array.from({ length: safeLen }, (_, i) => ({
     year: `${i + 1}年`,
     個人: Math.round(individual.cumulativeBurden[i] / 10_000),
     法人: Math.round(corporate.cumulativeBurden[i] / 10_000),
