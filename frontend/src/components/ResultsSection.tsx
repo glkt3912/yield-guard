@@ -30,6 +30,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { PREFECTURE_CENTERS } from "@/lib/prefectureCenters";
+import { formatYen, formatPct } from "@/lib/utils";
 import type {
   InvestmentInput,
   InvestmentResult,
@@ -354,6 +355,20 @@ export function ResultsSection({
                   {monteCarloResult && <MonteCarloChart result={monteCarloResult} />}
                 </>
               )}
+              {simulationMode === "quick" && result.requiredCostReduction > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+                  <p className="font-medium text-amber-800">
+                    目標利回り {formatPct(result.yieldTarget)} を達成するには
+                    <span className="mx-1 font-bold">
+                      {formatYen(result.requiredCostReduction)}
+                    </span>
+                    の値引き交渉が必要です
+                  </p>
+                  <p className="mt-1 text-xs text-amber-700">
+                    詳細は「ローン・交渉」タブで確認できます
+                  </p>
+                </div>
+              )}
               {simulationMode === "quick" && (
                 <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-center text-sm text-muted-foreground">
                   <p>キャッシュフローグラフ・デッドクロス分析・モンテカルロは</p>
@@ -387,6 +402,9 @@ export function ResultsSection({
           {lastInput && (
             <DueDiligenceChecklist
               propertyKey={`${lastInput.landPrice}-${lastInput.buildingCost}-${lastInput.monthlyRent}-${lastInput.loanAmount}`}
+              result={result ?? undefined}
+              hazardRisks={hazardRisks ?? undefined}
+              holdingYears={lastInput.holdingYears}
             />
           )}
         </>
