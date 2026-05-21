@@ -57,6 +57,29 @@ func TestCalcSalaryDeduction(t *testing.T) {
 	}
 }
 
+func TestCalcBasicDeduction(t *testing.T) {
+	tests := []struct {
+		name        string
+		totalIncome float64
+		want        float64
+	}{
+		{"2400万円以下: 上限", 24_000_000, 480_000},
+		{"2400万円超: 下限+1", 24_000_001, 320_000},
+		{"2450万円以下: 上限", 24_500_000, 320_000},
+		{"2450万円超: 下限+1", 24_500_001, 160_000},
+		{"2500万円以下: 上限", 25_000_000, 160_000},
+		{"2500万円超: ゼロ", 25_000_001, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := calcBasicDeduction(tt.totalIncome)
+			if got != tt.want {
+				t.Errorf("calcBasicDeduction(%.0f) = %.0f, want %.0f", tt.totalIncome, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestCalcTaxSimulation_NilWhenNoSalary(t *testing.T) {
 	input := InvestmentInput{SalaryIncome: 0, HoldingYears: 10}
 	result := CalcTaxSimulation(input, []YearlyResult{}, 0)
