@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, CheckCircle2, Circle, ClipboardCheck, ShieldCheck } from "lucide-react";
 import { getChecklist, saveChecklist, type DueDiligenceState } from "@/lib/dueDiligenceStorage";
@@ -61,7 +61,11 @@ export const DUE_DILIGENCE_ITEMS: DueDiligenceCategory[] = [
       { id: "fin_bank_hearing", label: "金融機関へのヒアリング" },
       { id: "fin_equity", label: "自己資金の確保確認" },
       { id: "fin_insurance", label: "火災・地震保険の見積もり" },
-      { id: "fin_dead_cross_plan", label: "税負担急増リスク前の売却計画を立てる" },
+      {
+        id: "fin_dead_cross_plan",
+        label: "税負担急増リスク前の売却計画を立てる",
+        autoLinked: true,
+      },
     ],
   },
 ];
@@ -103,23 +107,27 @@ export default function DueDiligenceChecklist({
     saveChecklist(propertyKey, next);
   };
 
-  // Derive auto-highlight IDs from simulation result and hazard data
-  const autoHighlightIds = new Set<string>();
-  if (result) {
-    if (result.dscr < 1.2) {
-      autoHighlightIds.add("fin_bank_hearing");
+  // Derive auto-highlight IDs from simulation result and hazard data.
+  // deadCrossYear: 0 or negative = no dead cross; positive = year it occurs.
+  const autoHighlightIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (result) {
+      if (result.dscr < 1.2) {
+        ids.add("fin_bank_hearing");
+      }
+      if (
+        result.deadCrossYear > 0 &&
+        holdingYears !== undefined &&
+        result.deadCrossYear <= holdingYears
+      ) {
+        ids.add("fin_dead_cross_plan");
+      }
     }
-    if (
-      result.deadCrossYear > 0 &&
-      holdingYears !== undefined &&
-      result.deadCrossYear <= holdingYears
-    ) {
-      autoHighlightIds.add("fin_dead_cross_plan");
+    if (hazardRisks?.some((r) => r.level === "ERROR")) {
+      ids.add("risk_hazard");
     }
-  }
-  if (hazardRisks?.some((r) => r.level === "ERROR")) {
-    autoHighlightIds.add("risk_hazard");
-  }
+    return ids;
+  }, [result, hazardRisks, holdingYears]);
 
   const checkedCount = ALL_IDS.filter((id) => state[id]).length;
   const totalCount = ALL_IDS.length;
