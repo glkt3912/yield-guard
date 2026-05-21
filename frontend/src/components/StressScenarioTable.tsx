@@ -68,14 +68,18 @@ export function StressScenarioTable({
               </button>
               {isExpanded && (
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t px-3 pb-3 pt-2 text-sm">
-                  <span className="text-muted-foreground">DSCR</span>
+                  <span className="text-muted-foreground">
+                    <TermTooltip term="dscr">DSCR</TermTooltip>
+                  </span>
                   <span
                     className={`flex items-center justify-end gap-1 font-medium ${getDscrColorClass(s.dscr)}`}
                   >
                     {dscrIcon}
                     {s.dscr.toFixed(2)}
                   </span>
-                  <span className="text-muted-foreground">CF黒転年</span>
+                  <span className="text-muted-foreground">
+                    <TermTooltip term="breakeven_cf">CF黒転年</TermTooltip>
+                  </span>
                   <span className="text-right">
                     {s.breakEvenYear === -1 ? "なし" : `${s.breakEvenYear}年目`}
                   </span>
@@ -128,13 +132,17 @@ export function StressScenarioTable({
             </button>
             {expandedScenario === stressScenarios.length && (
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t px-3 pb-3 pt-2 text-sm">
-                <span className="text-muted-foreground">DSCR</span>
+                <span className="text-muted-foreground">
+                  <TermTooltip term="dscr">DSCR</TermTooltip>
+                </span>
                 <span
                   className={`text-right font-medium ${getDscrColorClass(customScenario.dscr)}`}
                 >
                   {customScenario.dscr.toFixed(2)}
                 </span>
-                <span className="text-muted-foreground">CF黒転年</span>
+                <span className="text-muted-foreground">
+                  <TermTooltip term="breakeven_cf">CF黒転年</TermTooltip>
+                </span>
                 <span className="text-right">
                   {customScenario.breakEvenYear === -1
                     ? "なし"
@@ -166,7 +174,9 @@ export function StressScenarioTable({
                 <TermTooltip term="dscr">DSCR</TermTooltip>{" "}
                 <TermTooltip term="dscrThreshold">基準</TermTooltip>
               </th>
-              <th className="pb-2 text-right font-medium">CF黒転年</th>
+              <th className="pb-2 text-right font-medium">
+                <TermTooltip term="breakeven_cf">CF黒転年</TermTooltip>
+              </th>
               <th className="pb-2 text-right font-medium">判定</th>
             </tr>
           </thead>

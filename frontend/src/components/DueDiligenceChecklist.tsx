@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Circle, ClipboardCheck, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Circle, ClipboardCheck, ShieldCheck } from "lucide-react";
 import { getChecklist, saveChecklist, type DueDiligenceState } from "@/lib/dueDiligenceStorage";
+import type { InvestmentResult, UrbanRisk } from "@/types/investment";
 
 // ---------------------------------------------------------------------------
 // Item definitions
@@ -12,7 +13,7 @@ import { getChecklist, saveChecklist, type DueDiligenceState } from "@/lib/dueDi
 export interface DueDiligenceItem {
   id: string;
   label: string;
-  /** true = can be auto-linked to risk data; currently informational only */
+  /** true = can be auto-linked to risk data */
   autoLinked?: boolean;
 }
 
@@ -60,6 +61,11 @@ export const DUE_DILIGENCE_ITEMS: DueDiligenceCategory[] = [
       { id: "fin_bank_hearing", label: "金融機関へのヒアリング" },
       { id: "fin_equity", label: "自己資金の確保確認" },
       { id: "fin_insurance", label: "火災・地震保険の見積もり" },
+      {
+        id: "fin_dead_cross_plan",
+        label: "税負担急増リスク前の売却計画を立てる",
+        autoLinked: true,
+      },
     ],
   },
 ];
@@ -73,9 +79,17 @@ const ALL_IDS: string[] = DUE_DILIGENCE_ITEMS.flatMap((cat) => cat.items.map((i)
 interface DueDiligenceChecklistProps {
   /** Unique key per property used as the localStorage identifier */
   propertyKey: string;
+  result?: InvestmentResult;
+  hazardRisks?: UrbanRisk[];
+  holdingYears?: number;
 }
 
-export default function DueDiligenceChecklist({ propertyKey }: DueDiligenceChecklistProps) {
+export default function DueDiligenceChecklist({
+  propertyKey,
+  result,
+  hazardRisks,
+  holdingYears,
+}: DueDiligenceChecklistProps) {
   const [{ state, mounted }, setChecklistState] = useState<{
     state: DueDiligenceState;
     mounted: boolean;
@@ -92,6 +106,28 @@ export default function DueDiligenceChecklist({ propertyKey }: DueDiligenceCheck
     setChecklistState({ state: next, mounted: true });
     saveChecklist(propertyKey, next);
   };
+
+  // Derive auto-highlight IDs from simulation result and hazard data.
+  // deadCrossYear: 0 or negative = no dead cross; positive = year it occurs.
+  const autoHighlightIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (result) {
+      if (result.dscr < 1.2) {
+        ids.add("fin_bank_hearing");
+      }
+      if (
+        result.deadCrossYear > 0 &&
+        holdingYears !== undefined &&
+        result.deadCrossYear <= holdingYears
+      ) {
+        ids.add("fin_dead_cross_plan");
+      }
+    }
+    if (hazardRisks?.some((r) => r.level === "ERROR")) {
+      ids.add("risk_hazard");
+    }
+    return ids;
+  }, [result, hazardRisks, holdingYears]);
 
   const checkedCount = ALL_IDS.filter((id) => state[id]).length;
   const totalCount = ALL_IDS.length;
@@ -139,20 +175,30 @@ export default function DueDiligenceChecklist({ propertyKey }: DueDiligenceCheck
             <ul className="space-y-1" role="list">
               {category.items.map((item) => {
                 const checked = !!state[item.id];
+                const highlighted = !checked && autoHighlightIds.has(item.id);
                 return (
                   <li key={item.id}>
                     <button
                       type="button"
                       onClick={() => toggle(item.id)}
                       className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                        checked ? "text-foreground" : "text-muted-foreground"
+                        highlighted
+                          ? "border-l-2 border-amber-400 bg-amber-50/60 text-foreground"
+                          : checked
+                            ? "text-foreground"
+                            : "text-muted-foreground"
                       }`}
                       aria-pressed={checked}
-                      aria-label={`${item.label}${checked ? "（確認済み）" : "（未確認）"}`}
+                      aria-label={`${item.label}${checked ? "（確認済み）" : highlighted ? "（要確認）" : "（未確認）"}`}
                     >
                       {checked ? (
                         <CheckCircle2
                           className="h-4 w-4 shrink-0 text-emerald-600"
+                          aria-hidden="true"
+                        />
+                      ) : highlighted ? (
+                        <AlertTriangle
+                          className="h-4 w-4 shrink-0 text-amber-500"
                           aria-hidden="true"
                         />
                       ) : (
@@ -162,7 +208,12 @@ export default function DueDiligenceChecklist({ propertyKey }: DueDiligenceCheck
                         />
                       )}
                       <span className={checked ? "line-through opacity-60" : ""}>{item.label}</span>
-                      {item.autoLinked && (
+                      {highlighted && (
+                        <span className="ml-auto shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                          要確認
+                        </span>
+                      )}
+                      {!highlighted && item.autoLinked && (
                         <span className="ml-auto shrink-0 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
                           自動連携
                         </span>

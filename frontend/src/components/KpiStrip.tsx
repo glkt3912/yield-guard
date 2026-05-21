@@ -1,6 +1,7 @@
 import React from "react";
 import { TrendingUp, ShieldCheck, AlertCircle, Banknote, CreditCard } from "lucide-react";
 import type { InvestmentResult } from "@/types/investment";
+import { TermTooltip } from "@/components/ui/TermTooltip";
 
 interface KpiStripProps {
   result: InvestmentResult;
@@ -10,7 +11,7 @@ interface KpiStripProps {
 
 interface KpiCellProps {
   icon: React.ReactNode;
-  label: string;
+  label: React.ReactNode;
   value: string;
   sub: string;
   subPositive?: boolean;
@@ -79,28 +80,28 @@ export function KpiStrip({ result, yieldTarget = 0.08, holdingYears = 30 }: KpiS
       />
       <KpiCell
         icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden />}
-        label="表面利回り"
+        label={<TermTooltip term="grossYield">表面利回り</TermTooltip>}
         value={`${grossYieldPct.toFixed(2)}%`}
         sub={yieldDiffStr}
         subPositive={yieldDiff >= 0}
       />
       <KpiCell
         icon={<ShieldCheck className="h-3.5 w-3.5" aria-hidden />}
-        label="DSCR（1年目）"
+        label={<TermTooltip term="dscr">DSCR（1年目）</TermTooltip>}
         value={result.dscr.toFixed(2)}
         sub={dscrDiffStr}
         subPositive={dscrDiff >= 0}
       />
       <KpiCell
         icon={<AlertCircle className="h-3.5 w-3.5" aria-hidden />}
-        label="デッドクロス"
+        label={<TermTooltip term="deadCross">デッドクロス</TermTooltip>}
         value={dcYear}
         sub={dcSub}
         subPositive={dcPositive}
       />
       <KpiCell
         icon={<Banknote className="h-3.5 w-3.5" aria-hidden />}
-        label="出口 Equity"
+        label={<TermTooltip term="exitEquity">出口 Equity</TermTooltip>}
         value={equityStr}
         sub={equitySub}
         subPositive={equityPositive}
