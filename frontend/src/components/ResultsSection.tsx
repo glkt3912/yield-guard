@@ -356,7 +356,10 @@ export function ResultsSection({
                 </>
               )}
               {simulationMode === "quick" && result.requiredCostReduction > 0 && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+                <div
+                  role="alert"
+                  className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm"
+                >
                   <p className="font-medium text-amber-800">
                     目標利回り {formatPct(result.yieldTarget)} を達成するには
                     <span className="mx-1 font-bold">
