@@ -1,3 +1,10 @@
+---
+purpose: ユーザーシナリオ・機能別ユースケース一覧
+triggers: [usecase, scenario, user story, feature]
+audience: all
+token_weight: medium
+---
+
 # ユースケース一覧
 
 Yield-Guard が解決するユーザーシナリオをまとめます。

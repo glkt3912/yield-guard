@@ -1,3 +1,11 @@
+---
+purpose: 用途地域・都市計画区域のドメイン型仕様
+triggers: [zoning, 用途地域, urban planning, ZoningType, 都市計画]
+audience: backend-dev
+token_weight: light
+reads_next: [docs/llm/domain.md]
+---
+
 # 用途地域・都市計画区域 ドメイン型仕様
 
 実装: `backend/internal/domain/zoning.go`

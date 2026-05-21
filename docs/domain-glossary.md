@@ -1,3 +1,10 @@
+---
+purpose: 不動産投資ドメイン用語・概念・指標の解説
+triggers: [glossary, 用語, NOI, cap rate, LTV, 表面利回り, 実質利回り, キャッシュフロー]
+audience: all
+token_weight: heavy
+---
+
 # 不動産投資 概念・指標 解説
 
 このドキュメントは Yield-Guard が扱う不動産投資の概念・指標を「**なぜ重要か・何を意味するか・どう使うか**」の観点で解説する。  

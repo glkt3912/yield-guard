@@ -1,3 +1,10 @@
+---
+purpose: 内部通信認証・CORS・セキュリティ設計の仕様
+triggers: [security, auth, cors, api key, internal key, APP_INTERNAL_API_KEY]
+audience: backend-dev
+token_weight: medium
+---
+
 # セキュリティ設計
 
 ## 内部通信認証（APP_INTERNAL_API_KEY）

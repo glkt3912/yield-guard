@@ -1,3 +1,11 @@
+---
+purpose: 全 HTTP エンドポイントの詳細仕様（リクエスト/レスポンス/認証）
+triggers: [api, endpoint, handler, request, response, auth]
+audience: backend-dev, frontend-dev
+token_weight: heavy
+reads_next: [docs/llm/backend.md]
+---
+
 # APIリファレンス
 
 バックエンド: `backend/internal/api/handler.go` / `router.go`
