@@ -1,3 +1,11 @@
+---
+purpose: 売却価格算出・譲渡所得税計算の仕様
+triggers: [exit strategy, 出口戦略, 譲渡所得, 売却, calcExit, capital gains]
+audience: backend-dev
+token_weight: medium
+reads_next: [docs/llm/domain.md]
+---
+
 # 出口戦略・譲渡所得税計算仕様
 
 `backend/internal/domain/investment.go` の `calcExit` 関数（非公開）が担当。

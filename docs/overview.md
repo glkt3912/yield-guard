@@ -1,3 +1,10 @@
+---
+purpose: プロジェクト全体像・システム構成の概要
+triggers: [overview, project, system, architecture overview]
+audience: all
+token_weight: medium
+---
+
 # プロジェクト概要とアーキテクチャ
 
 ## ツールの目的

@@ -1,3 +1,10 @@
+---
+purpose: 技術選定の背景・設計原則の説明
+triggers: [architecture, design, why, clean architecture, gin, next.js]
+audience: all
+token_weight: medium
+---
+
 # アーキテクチャ詳細
 
 ## 技術選定の背景（Why）

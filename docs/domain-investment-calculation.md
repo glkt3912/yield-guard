@@ -1,3 +1,11 @@
+---
+purpose: InvestmentInput 全フィールド定義・計算手順の詳細仕様
+triggers: [investment calculation, InvestmentInput, Analyze, 計算ロジック, 収益計算]
+audience: backend-dev
+token_weight: heavy
+reads_next: [docs/llm/domain.md]
+---
+
 # 投資計算ロジック詳細仕様
 
 `backend/internal/domain/investment.go` の `Analyze` 関数が中心。

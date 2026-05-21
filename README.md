@@ -50,7 +50,13 @@ cp .env.example .env
 # .env を編集して MLIT_API_KEY を設定する
 # APIキー申請: https://www.reinfolib.mlit.go.jp/api/request/（審査5営業日）
 # APP_INTERNAL_API_KEY は本番環境（Vercel→Cloud Run 間認証）用。ローカルでは未設定でよい
+
+# 依存関係のインストールとフックの設定（初回のみ）
+make install          # frontend の npm install
+make install-hooks    # lefthook の pre-commit / pre-push フック登録
 ```
+
+> `make install-hooks` が失敗する場合は `git config --unset-all --local core.hooksPath` を実行してから再試行する。
 
 ### Docker（推奨）
 
@@ -103,6 +109,19 @@ cd frontend && npm install && npm run dev
 リクエスト/レスポンス仕様の詳細は [docs/api-reference.md](docs/api-reference.md) を参照。
 
 ## ドキュメント体系
+
+### Claude Code 向けエントリードキュメント（`docs/llm/`）
+
+作業開始前に対応するファイルを参照することでトークン消費を最小化できる。
+
+| 作業内容 | エントリードキュメント |
+|---------|-------------------|
+| バックエンド / API / Go | [docs/llm/backend.md](docs/llm/backend.md) |
+| フロントエンド / UI / TSX | [docs/llm/frontend.md](docs/llm/frontend.md) |
+| 投資計算 / ドメインロジック | [docs/llm/domain.md](docs/llm/domain.md) |
+| ブランチ / worktree / PR | [docs/llm/worktree.md](docs/llm/worktree.md) |
+
+### 詳細設計ドキュメント（`docs/`）
 
 | 対象層 | ドキュメント |
 |--------|-------------|

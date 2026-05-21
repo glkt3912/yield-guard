@@ -1,3 +1,11 @@
+---
+purpose: Playwright E2E テストのセレクタ優先順位ガイド
+triggers: [e2e, playwright, selector, test, data-testid]
+audience: frontend-dev
+token_weight: medium
+reads_next: [docs/llm/frontend.md]
+---
+
 # E2E セレクタ ガイドライン
 
 Playwright を使った E2E テストを追加・変更する際の指針。

@@ -1,3 +1,11 @@
+---
+purpose: 減価償却計算・デッドクロス判定の詳細仕様（法定耐用年数含む）
+triggers: [depreciation, dead cross, 減価償却, デッドクロス, BuildingType, UsefulLife]
+audience: backend-dev
+token_weight: medium
+reads_next: [docs/llm/domain.md]
+---
+
 # 減価償却・デッドクロス詳細仕様
 
 `backend/internal/domain/types.go` に `BuildingType` / `UsefulLife` / `CalcResidualUsefulLife` がある。

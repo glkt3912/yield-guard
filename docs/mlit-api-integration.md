@@ -1,3 +1,11 @@
+---
+purpose: MLIT API クライアントの実装仕様（認証・キャッシュ・リトライ戦略）
+triggers: [mlit, client.go, geocode, land-prices, reinfolib, cache, retry]
+audience: backend-dev
+token_weight: heavy
+reads_next: [docs/llm/backend.md]
+---
+
 # 国交省不動産取引価格APIクライアント仕様
 
 `backend/internal/mlit/client.go` / `client_test.go` / `types.go`

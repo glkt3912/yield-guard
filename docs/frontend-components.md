@@ -1,3 +1,11 @@
+---
+purpose: フロントエンドコンポーネントの詳細仕様・状態フロー
+triggers: [component, dashboard, form, chart, watchlist, state, props]
+audience: frontend-dev
+token_weight: heavy
+reads_next: [docs/llm/frontend.md]
+---
+
 # フロントエンドコンポーネント仕様
 
 `frontend/src/components/` 配下。フレームワーク: Next.js 16 (App Router)
