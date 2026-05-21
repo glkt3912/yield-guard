@@ -15,12 +15,16 @@ last_updated: 2026-05-21
 
 ## 計算ロジックの所在
 
-| 計算内容 | 関数 / ファイル |
-|---------|--------------|
-| 粗利回り（表面・実質） | `investment.go` — `CalcGrossYield` |
-| デッドクロス判定 | `investment.go` — `CalcDeadCross` |
-| 出口戦略・譲渡所得税 | `investment.go` — `CalcExitStrategy` |
-| 減価償却（法定耐用年数） | `investment.go` — 詳細は `docs/domain-depreciation-dead-cross.md` |
+すべての計算は `Analyze` 関数（公開）がエントリーポイント。個別ロジックは内部で分岐する。
+
+| 計算内容 | 関数 / フィールド |
+|---------|----------------|
+| 投資シミュレーション全体 | `investment.go` — `Analyze(ctx, InvestmentInput) InvestmentResult` |
+| 粗利回り（結果フィールド） | `InvestmentResult.GrossYield` |
+| デッドクロス発生年（結果フィールド） | `InvestmentResult.DeadCrossYear` |
+| 出口戦略・譲渡所得税（非公開） | `investment.go` — `calcExit(...)` |
+| DSCR 計算（公開ユーティリティ） | `investment.go` — `CalcDSCR(noi, annualDebtService)` |
+| 減価償却（法定耐用年数） | `investment.go` 内部 — 詳細は `docs/domain-depreciation-dead-cross.md` |
 
 ## 型変更時の注意
 
@@ -33,10 +37,10 @@ last_updated: 2026-05-21
 ## テスト追加パターン
 
 ```go
-func TestCalcXxx(t *testing.T) {
+func TestAnalyze_Xxx(t *testing.T) {
     input := domain.InvestmentInput{ /* フィールド */ }
-    result := CalcXxx(input)
-    assert.Equal(t, expected, result.Field)
+    result := domain.Analyze(context.Background(), input)
+    assert.Equal(t, expected, result.GrossYield)
 }
 ```
 

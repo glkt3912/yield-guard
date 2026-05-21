@@ -110,6 +110,19 @@ cd frontend && npm install && npm run dev
 
 ## ドキュメント体系
 
+### Claude Code 向けエントリードキュメント（`docs/llm/`）
+
+作業開始前に対応するファイルを参照することでトークン消費を最小化できる。
+
+| 作業内容 | エントリードキュメント |
+|---------|-------------------|
+| バックエンド / API / Go | [docs/llm/backend.md](docs/llm/backend.md) |
+| フロントエンド / UI / TSX | [docs/llm/frontend.md](docs/llm/frontend.md) |
+| 投資計算 / ドメインロジック | [docs/llm/domain.md](docs/llm/domain.md) |
+| ブランチ / worktree / PR | [docs/llm/worktree.md](docs/llm/worktree.md) |
+
+### 詳細設計ドキュメント（`docs/`）
+
 | 対象層 | ドキュメント |
 |--------|-------------|
 | 全体設計・デプロイフロー | [docs/overview.md](docs/overview.md) |
