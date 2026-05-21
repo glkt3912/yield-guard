@@ -68,16 +68,18 @@ func calcSalaryDeduction(salary float64) float64 {
 	}
 }
 
-// calcSalaryTaxableIncome は給与年収から給与所得控除・基礎控除を差し引いた課税所得を返す。
-// 基礎控除は48万円（所得税法86条、2020年以降・所得2,400万円以下の場合）。
-func calcSalaryTaxableIncome(salary float64) float64 {
-	deduction := calcSalaryDeduction(salary)
-	const basicDeduction = 480_000
-	taxable := salary - deduction - basicDeduction
-	if taxable < 0 {
+// calcBasicDeduction は合計所得金額（基礎控除適用前）に応じた基礎控除額を返す（所得税法86条、2020年以降）。
+func calcBasicDeduction(totalIncome float64) float64 {
+	switch {
+	case totalIncome <= 24_000_000:
+		return 480_000
+	case totalIncome <= 24_500_000:
+		return 320_000
+	case totalIncome <= 25_000_000:
+		return 160_000
+	default:
 		return 0
 	}
-	return taxable
 }
 
 // CalcTaxSimulation は給与年収を元に損益通算と個人/法人比較を算出する。
@@ -96,7 +98,12 @@ func CalcTaxSimulation(input InvestmentInput, yearly []YearlyResult, exitCapital
 		holdingYears = len(yearly)
 	}
 
-	salaryTaxable := calcSalaryTaxableIncome(input.SalaryIncome)
+	salaryDeduction := calcSalaryDeduction(input.SalaryIncome)
+	salaryIncomeAmt := input.SalaryIncome - salaryDeduction
+	salaryTaxable := salaryIncomeAmt - calcBasicDeduction(salaryIncomeAmt)
+	if salaryTaxable < 0 {
+		salaryTaxable = 0
+	}
 	baselineTax := calcTotalTax(salaryTaxable)
 
 	// --- 損益通算シミュレーション (#399) ---
@@ -105,8 +112,12 @@ func CalcTaxSimulation(input InvestmentInput, yearly []YearlyResult, exitCapital
 
 	for i := 0; i < holdingYears; i++ {
 		yr := yearly[i]
-		// 合算課税所得: 給与課税所得 + 不動産課税所得（負なら損益通算で圧縮）
-		combinedTaxable := salaryTaxable + yr.TaxableIncome
+		// 合計所得金額（基礎控除前）= 給与所得金額 + 不動産課税所得
+		preBasic := salaryIncomeAmt + yr.TaxableIncome
+		if preBasic < 0 {
+			preBasic = 0
+		}
+		combinedTaxable := preBasic - calcBasicDeduction(preBasic)
 		if combinedTaxable < 0 {
 			combinedTaxable = 0
 		}
@@ -131,7 +142,11 @@ func CalcTaxSimulation(input InvestmentInput, yearly []YearlyResult, exitCapital
 		reTaxable := yearly[i].TaxableIncome
 
 		// 個人: 給与+不動産の合算から「給与のみ」を引いた差分を不動産帰属税とみなす
-		combinedTaxable := salaryTaxable + reTaxable
+		preBasic := salaryIncomeAmt + reTaxable
+		if preBasic < 0 {
+			preBasic = 0
+		}
+		combinedTaxable := preBasic - calcBasicDeduction(preBasic)
 		if combinedTaxable < 0 {
 			combinedTaxable = 0
 		}
