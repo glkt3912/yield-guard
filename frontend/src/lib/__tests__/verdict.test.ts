@@ -94,3 +94,28 @@ describe("calcVerdict", () => {
     expect(v.autoComment).toContain("0.90");
   });
 });
+
+describe("calcVerdict – DSCR 境界値", () => {
+  it("DSCR 1.19 → CAUTION（1.20 未満）", () => {
+    const v = calcVerdict(makeInput(), makeResult({ criticalErrors: [] }), 1.19, 1.0);
+    expect(v.level).toBe("CAUTION");
+  });
+
+  it("DSCR 1.20 → PASS（閾値ちょうど、他条件 OK）", () => {
+    const v = calcVerdict(makeInput(), makeResult({ criticalErrors: [] }), 1.2, 1.0);
+    expect(v.level).toBe("PASS");
+  });
+
+  it("DSCR 0 → REJECT（1.00 未満）", () => {
+    const v = calcVerdict(makeInput(), makeResult({ criticalErrors: [] }), 0, 0);
+    expect(v.level).toBe("REJECT");
+  });
+
+  it("DSCR 1.20 でも criticalErrors に REJECT があれば REJECT", () => {
+    const result = makeResult({
+      criticalErrors: [{ code: "NEGATIVE_CF", status: "REJECT", message: "キャッシュフロー赤字" }],
+    });
+    const v = calcVerdict(makeInput(), result, 1.2, 1.0);
+    expect(v.level).toBe("REJECT");
+  });
+});
