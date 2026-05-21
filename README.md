@@ -50,7 +50,13 @@ cp .env.example .env
 # .env を編集して MLIT_API_KEY を設定する
 # APIキー申請: https://www.reinfolib.mlit.go.jp/api/request/（審査5営業日）
 # APP_INTERNAL_API_KEY は本番環境（Vercel→Cloud Run 間認証）用。ローカルでは未設定でよい
+
+# 依存関係のインストールとフックの設定（初回のみ）
+make install          # frontend の npm install
+make install-hooks    # lefthook の pre-commit / pre-push フック登録
 ```
+
+> `make install-hooks` が失敗する場合は `git config --unset-all --local core.hooksPath` を実行してから再試行する。
 
 ### Docker（推奨）
 

@@ -5,6 +5,15 @@ reads_next: []
 last_updated: 2026-05-21
 ---
 
+## 初回セットアップ（clone 後1回）
+
+```bash
+make install          # frontend npm install（メインリポジトリのみ・worktree では不要）
+make install-hooks    # lefthook の pre-commit / pre-push フック登録
+```
+
+> `make install-hooks` が失敗する場合: `git config --unset-all --local core.hooksPath` を実行してから再試行する。
+
 ## Worktree 作成手順
 
 ```bash
