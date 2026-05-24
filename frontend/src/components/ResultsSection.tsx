@@ -245,7 +245,10 @@ export function ResultsSection({
                     : `${equityMan.toLocaleString()}万円`;
                 const isPositive = row10.exitEquity >= 0;
                 return (
-                  <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
+                  <div
+                    className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm"
+                    data-testid="ten-year-equity-card"
+                  >
                     <TrendingUp className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                     <span className="text-sm text-muted-foreground">10年後の手残り</span>
                     <span

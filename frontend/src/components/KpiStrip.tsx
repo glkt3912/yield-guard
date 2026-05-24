@@ -71,7 +71,11 @@ export function KpiStrip({ result, yieldTarget = 0.08, holdingYears = 30 }: KpiS
   const equitySub = equityPositive ? "出口時プラス" : "出口時マイナス";
 
   return (
-    <div aria-label="KPIサマリ" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div
+      role="region"
+      aria-label="KPIサマリ"
+      className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
+    >
       <KpiCell
         icon={<CreditCard className="h-3.5 w-3.5" aria-hidden />}
         label="月々の返済額"

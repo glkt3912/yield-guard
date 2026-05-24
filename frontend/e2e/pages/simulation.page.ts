@@ -27,7 +27,7 @@ export class SimulationPage {
   async runQuickSimulation(price: string, rent: string) {
     await this.page.getByLabel("物件価格（土地＋建物の総額）").fill(price);
     await this.page.getByLabel("想定月額賃料").fill(rent);
-    await this.page.getByText("シミュレーション実行").click();
+    await this.page.getByTestId("quick-simulate-button").click();
     await expect(this.page.getByTestId("gross-yield-value")).toHaveText(/.+/, {
       timeout: 10_000,
     });
@@ -48,7 +48,7 @@ export class SimulationPage {
     if (params.loanAmount) {
       await this.page.getByLabel("ローン金額").fill(params.loanAmount);
     }
-    await this.page.getByText("シミュレーション実行").click();
+    await this.page.getByTestId("full-simulate-button").click();
     await expect(this.page.getByTestId("gross-yield-value")).toHaveText(/.+/, {
       timeout: 10_000,
     });
@@ -72,5 +72,17 @@ export class SimulationPage {
 
   deadCrossChartHeading() {
     return this.page.getByTestId("dead-cross-chart-heading");
+  }
+
+  kpiStrip() {
+    return this.page.getByLabel("KPIサマリ");
+  }
+
+  statusSummaryBadge() {
+    return this.page.getByTestId("status-summary-badge");
+  }
+
+  tenYearEquityCard() {
+    return this.page.getByTestId("ten-year-equity-card");
   }
 }

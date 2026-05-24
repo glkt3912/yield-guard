@@ -153,6 +153,7 @@ export function FullModeForm({
             loading={loading}
             disabled={hasErrors || loading}
             onClick={handleAnalyze}
+            data-testid="full-simulate-button"
           >
             <Calculator className="h-5 w-5" />
             シミュレーション実行
