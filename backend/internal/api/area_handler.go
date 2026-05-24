@@ -197,6 +197,9 @@ func (h *Handler) HandleAreaSummary(c *gin.Context) {
 		item.TransactionCount = stats.Count
 		item.DataSufficient = stats.Count >= 3
 		item.YieldDifficulty, item.YieldDifficultyLabel = domain.CalcYieldDifficulty(stats.MedianTsubo, 0, 0.08)
+		if item.YieldDifficultyLabel == "" {
+			item.YieldDifficultyLabel = "データ不足"
+		}
 	}
 
 	// 市区町村名を municipalities から取得する（ベストエフォート）

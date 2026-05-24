@@ -2244,7 +2244,7 @@ func TestHandleAreaSummary_MissingParams(t *testing.T) {
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 		if w.Code != http.StatusBadRequest {
-			t.Fatalf("url=%s: expected 400, got %d: %s", tc.url, w.Code, w.Body.String())
+			t.Errorf("url=%s: expected 400, got %d: %s", tc.url, w.Code, w.Body.String())
 		}
 		var resp map[string]string
 		_ = json.NewDecoder(w.Body).Decode(&resp)
@@ -2308,8 +2308,9 @@ func TestHandleAreaSummary_Success(t *testing.T) {
 	if _, ok := resp["summary"]; !ok {
 		t.Error("expected 'summary' key in response")
 	}
-	// noopSummarizer returns "" → fallback to YieldDifficultyLabel (achievable/slightly-difficult/difficult)
-	if resp["summary"] == "" {
-		t.Error("expected non-empty summary in response")
+	// PricePerTsubo=100_000 → CalcYieldDifficulty → "達成可能"
+	// noopSummarizer returns "" → fallback to YieldDifficultyLabel
+	if resp["summary"] != "達成可能" {
+		t.Errorf("expected summary=%q, got %q", "達成可能", resp["summary"])
 	}
 }
