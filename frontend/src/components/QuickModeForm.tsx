@@ -300,6 +300,7 @@ export function QuickModeForm({
             loading={loading}
             disabled={hasErrors || loading}
             onClick={handleAnalyze}
+            data-testid="quick-simulate-button"
           >
             <Calculator className="h-5 w-5" />
             シミュレーション実行
