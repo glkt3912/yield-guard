@@ -145,6 +145,7 @@ func NewRouter(h *Handler, appInternalAPIKey string) *gin.Engine {
 		api.GET("/investment-score", h.GetInvestmentScore)
 		api.GET("/investment-score-heatmap", analyzeRL.middleware(), h.GetInvestmentScoreHeatmap)
 		api.GET("/area-discovery", analyzeRL.middleware(), h.HandleAreaDiscovery)
+		api.GET("/area-discovery/summary", analyzeRL.middleware(), h.HandleAreaSummary)
 		api.GET("/geocode", h.GetGeocode)
 		api.GET("/rent-stats", analyzeRL.middleware(), h.GetRentStats)
 	}

@@ -20,6 +20,15 @@ interface MetricRow {
 
 const METRIC_ROWS: MetricRow[] = [
   {
+    label: "月々の返済額",
+    key: "monthlyPayment",
+    format: (v) =>
+      v != null
+        ? `${(Number(v) / 10_000).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}万円`
+        : "-",
+    best: "min",
+  },
+  {
     label: "表面利回り",
     key: "grossYield",
     format: (v) => (v != null ? `${(Number(v) * 100).toFixed(1)}%` : "-"),

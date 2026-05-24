@@ -217,6 +217,10 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
               exitTotalEquity: currentResult.exitTotalEquity,
               deadCrossYear: currentResult.deadCrossYear,
               npv: currentResult.npv,
+              monthlyPayment:
+                currentResult.yearlyResults[0]?.annualLoanPayment != null
+                  ? currentResult.yearlyResults[0].annualLoanPayment / 12
+                  : undefined,
             },
           }
         : {}),

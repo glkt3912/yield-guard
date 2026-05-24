@@ -509,6 +509,7 @@ export interface WatchlistMetrics {
   exitTotalEquity: number;
   deadCrossYear?: number; // -1 = none (best)
   npv?: number;
+  monthlyPayment?: number; // 月々の返済額（円）
 }
 
 export interface WatchlistItem {

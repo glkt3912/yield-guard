@@ -61,14 +61,19 @@ func envOrDefault(key, fallback string) string {
 	return fallback
 }
 
-// Summarizer generates an AI investment summary.
+// Summarizer generates AI investment summaries.
 type Summarizer interface {
 	GenerateSummary(ctx context.Context, input domain.InvestmentInput, result domain.InvestmentResult) string
+	GenerateAreaSummary(ctx context.Context, item domain.AreaDiscoveryItem) string
 }
 
 type noopSummarizer struct{}
 
 func (noopSummarizer) GenerateSummary(_ context.Context, _ domain.InvestmentInput, _ domain.InvestmentResult) string {
+	return ""
+}
+
+func (noopSummarizer) GenerateAreaSummary(_ context.Context, _ domain.AreaDiscoveryItem) string {
 	return ""
 }
 
@@ -229,6 +234,74 @@ func (s *GeminiSummarizer) call(ctx context.Context, input domain.InvestmentInpu
 		return "", fmt.Errorf("unexpected response type from Gemini")
 	}
 	return string(part), nil
+}
+
+func (s *GeminiSummarizer) GenerateAreaSummary(ctx context.Context, item domain.AreaDiscoveryItem) string {
+	key := fmt.Sprintf("area:%s:%s", item.MunicipalityCode, item.YieldDifficulty)
+
+	if cached, ok := s.cache.get(ctx, key); ok {
+		return cached
+	}
+
+	tctx, cancel := context.WithTimeout(ctx, aiCallTimeout)
+	defer cancel()
+
+	summary, err := s.callAreaSummary(tctx, item)
+	if err != nil {
+		slog.WarnContext(ctx, "Gemini area summary failed", "error", err)
+		return ""
+	}
+
+	go func() {
+		setCtx, setCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer setCancel()
+		s.cache.set(setCtx, key, summary)
+	}()
+
+	return summary
+}
+
+func (s *GeminiSummarizer) callAreaSummary(ctx context.Context, item domain.AreaDiscoveryItem) (string, error) {
+	model := s.client.GenerativeModel(envOrDefault("GEMINI_MODEL", defaultGeminiModel))
+	model.SetMaxOutputTokens(120)
+	model.SetTemperature(0.3)
+
+	prompt := buildAreaPrompt(item)
+	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
+	if err != nil {
+		return "", err
+	}
+	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil || len(resp.Candidates[0].Content.Parts) == 0 {
+		return "", fmt.Errorf("empty response from Gemini")
+	}
+	part, ok := resp.Candidates[0].Content.Parts[0].(genai.Text)
+	if !ok {
+		return "", fmt.Errorf("unexpected response type from Gemini")
+	}
+	return string(part), nil
+}
+
+func buildAreaPrompt(item domain.AreaDiscoveryItem) string {
+	dataNote := ""
+	if !item.DataSufficient {
+		dataNote = "（取引件数が少なくデータは参考値）"
+	}
+	return fmt.Sprintf(
+		`あなたは日本の不動産投資アドバイザーです。以下のエリアデータをもとに、投資家向けに投資難易度と特徴を2文以内の日本語で要約してください。専門用語は使わず平易に。
+
+【エリア情報】
+- エリア名: %s
+- 坪単価中央値: %.0f円%s
+- 取引件数: %d件
+- 利回り達成難易度: %s
+
+2文以内で回答してください。`,
+		item.MunicipalityName,
+		item.MedianTsubo,
+		dataNote,
+		item.TransactionCount,
+		item.YieldDifficultyLabel,
+	)
 }
 
 func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string {
