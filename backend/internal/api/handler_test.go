@@ -2227,3 +2227,89 @@ func TestGetInvestmentScoreHeatmap_TooManyTiles(t *testing.T) {
 		t.Fatalf("expected 400 for too many tiles, got %d: %s", w.Code, w.Body.String())
 	}
 }
+
+// ---- HandleAreaSummary (/api/area-discovery/summary) ----
+
+func TestHandleAreaSummary_MissingParams(t *testing.T) {
+	cases := []struct {
+		url string
+	}{
+		{"/api/area-discovery/summary"},
+		{"/api/area-discovery/summary?area=13"},
+		{"/api/area-discovery/summary?municipality=13101"},
+	}
+	for _, tc := range cases {
+		r := newTestRouter(&mockMLITClient{}, nil)
+		req := httptest.NewRequest(http.MethodGet, tc.url, nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("url=%s: expected 400, got %d: %s", tc.url, w.Code, w.Body.String())
+		}
+		var resp map[string]string
+		_ = json.NewDecoder(w.Body).Decode(&resp)
+		if resp["error"] == "" {
+			t.Errorf("url=%s: expected error message in response body", tc.url)
+		}
+	}
+}
+
+func TestHandleAreaSummary_NoTransactions_Fallback(t *testing.T) {
+	client := &mockMLITClient{
+		fetchFunc: func(_ context.Context, _ mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
+			return []domain.LandTransaction{}, nil
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/area-discovery/summary?area=13&municipality=13101", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	// noopSummarizer returns "" → fallback to YieldDifficultyLabel "データ不足"
+	if resp["summary"] != "データ不足" {
+		t.Errorf("expected fallback summary=%q, got %q", "データ不足", resp["summary"])
+	}
+}
+
+func TestHandleAreaSummary_Success(t *testing.T) {
+	client := &mockMLITClient{
+		fetchFunc: func(_ context.Context, _ mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
+			return []domain.LandTransaction{
+				{Period: "2024年第1四半期", TradePrice: 5_000_000, Area: 50, PricePerSqm: 100_000, PricePerTsubo: 100_000},
+				{Period: "2024年第2四半期", TradePrice: 5_500_000, Area: 55, PricePerSqm: 100_000, PricePerTsubo: 100_000},
+				{Period: "2024年第3四半期", TradePrice: 6_000_000, Area: 60, PricePerSqm: 100_000, PricePerTsubo: 100_000},
+			}, nil
+		},
+		muniFunc: func(_ context.Context, _ string) ([]mlit.Municipality, error) {
+			return []mlit.Municipality{
+				{ID: "13101", Name: "千代田区"},
+			}, nil
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/area-discovery/summary?area=13&municipality=13101", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if _, ok := resp["summary"]; !ok {
+		t.Error("expected 'summary' key in response")
+	}
+	// noopSummarizer returns "" → fallback to YieldDifficultyLabel (achievable/slightly-difficult/difficult)
+	if resp["summary"] == "" {
+		t.Error("expected non-empty summary in response")
+	}
+}

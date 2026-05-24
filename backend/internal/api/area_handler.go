@@ -113,31 +113,7 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 			item.MedianTsubo = stats.MedianTsubo
 			item.TransactionCount = stats.Count
 			item.DataSufficient = stats.Count >= 3
-
-			// 利回り達成難易度: 予算（または中央坪単価×30坪+建物代）に対して目標利回りが必要とする月額家賃を試算し、
-			// 1坪あたり月額賃料の現実性で判定する
-			var totalCostEst float64
-			if budget > 0 {
-				totalCostEst = budget
-			} else {
-				totalCostEst = stats.MedianTsubo*30 + 10_000_000
-			}
-			annualRentNeeded := totalCostEst * targetYield
-
-			// 1坪あたり月額賃料が現実的か判定（目安: 8,000円以下=達成可能, 15,000円超=困難）
-			monthlyRentNeeded := annualRentNeeded / 12
-			areaTsubo := 30.0
-			rentPerTsubo := monthlyRentNeeded / areaTsubo
-			if rentPerTsubo <= 8000 {
-				item.YieldDifficulty = "achievable"
-				item.YieldDifficultyLabel = "達成可能"
-			} else if rentPerTsubo <= 15000 {
-				item.YieldDifficulty = "slightly-difficult"
-				item.YieldDifficultyLabel = "やや困難"
-			} else {
-				item.YieldDifficulty = "difficult"
-				item.YieldDifficultyLabel = "困難"
-			}
+			item.YieldDifficulty, item.YieldDifficultyLabel = domain.CalcYieldDifficulty(stats.MedianTsubo, budget, targetYield)
 
 			item.LandPriceTrend = "データなし"
 			results[idx] = item
@@ -210,6 +186,9 @@ func (h *Handler) HandleAreaSummary(c *gin.Context) {
 	}
 
 	if err != nil || len(transactions) == 0 {
+		if err != nil {
+			slog.WarnContext(ctx, "area summary: land price fetch failed", "area", area, "municipality", municipality, "err", err)
+		}
 		item.DataSufficient = false
 		item.YieldDifficultyLabel = "データ不足"
 	} else {
@@ -217,21 +196,7 @@ func (h *Handler) HandleAreaSummary(c *gin.Context) {
 		item.MedianTsubo = stats.MedianTsubo
 		item.TransactionCount = stats.Count
 		item.DataSufficient = stats.Count >= 3
-		if stats.MedianTsubo > 0 {
-			totalCostEst := stats.MedianTsubo*30 + 10_000_000
-			annualRentNeeded := totalCostEst * 0.08
-			rentPerTsubo := annualRentNeeded / 12 / 30
-			if rentPerTsubo <= 8000 {
-				item.YieldDifficulty = "achievable"
-				item.YieldDifficultyLabel = "達成可能"
-			} else if rentPerTsubo <= 15000 {
-				item.YieldDifficulty = "slightly-difficult"
-				item.YieldDifficultyLabel = "やや困難"
-			} else {
-				item.YieldDifficulty = "difficult"
-				item.YieldDifficultyLabel = "困難"
-			}
-		}
+		item.YieldDifficulty, item.YieldDifficultyLabel = domain.CalcYieldDifficulty(stats.MedianTsubo, 0, 0.08)
 	}
 
 	// 市区町村名を municipalities から取得する（ベストエフォート）
