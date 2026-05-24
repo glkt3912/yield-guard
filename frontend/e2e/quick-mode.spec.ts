@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { analyzeFixture } from "./fixtures/analyze-response";
+import { QUICK_PRICE_MAN, QUICK_RENT_YEN } from "./helpers/constants";
 import { SimulationPage } from "./pages/simulation.page";
 
 test.describe("Quick mode ハッピーパス", () => {
@@ -29,7 +30,7 @@ test.describe("Quick mode リクエストボディ検証", () => {
       },
     });
 
-    await sim.runQuickSimulation("1700", "150000");
+    await sim.runQuickSimulation(QUICK_PRICE_MAN, QUICK_RENT_YEN);
 
     await expect(sim.grossYield()).toHaveText("9.89");
 
