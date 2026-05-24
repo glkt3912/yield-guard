@@ -113,31 +113,7 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 			item.MedianTsubo = stats.MedianTsubo
 			item.TransactionCount = stats.Count
 			item.DataSufficient = stats.Count >= 3
-
-			// 利回り達成難易度: 予算（または中央坪単価×30坪+建物代）に対して目標利回りが必要とする月額家賃を試算し、
-			// 1坪あたり月額賃料の現実性で判定する
-			var totalCostEst float64
-			if budget > 0 {
-				totalCostEst = budget
-			} else {
-				totalCostEst = stats.MedianTsubo*30 + 10_000_000
-			}
-			annualRentNeeded := totalCostEst * targetYield
-
-			// 1坪あたり月額賃料が現実的か判定（目安: 8,000円以下=達成可能, 15,000円超=困難）
-			monthlyRentNeeded := annualRentNeeded / 12
-			areaTsubo := 30.0
-			rentPerTsubo := monthlyRentNeeded / areaTsubo
-			if rentPerTsubo <= 8000 {
-				item.YieldDifficulty = "achievable"
-				item.YieldDifficultyLabel = "達成可能"
-			} else if rentPerTsubo <= 15000 {
-				item.YieldDifficulty = "slightly-difficult"
-				item.YieldDifficultyLabel = "やや困難"
-			} else {
-				item.YieldDifficulty = "difficult"
-				item.YieldDifficultyLabel = "困難"
-			}
+			item.YieldDifficulty, item.YieldDifficultyLabel = domain.CalcYieldDifficulty(stats.MedianTsubo, budget, targetYield)
 
 			item.LandPriceTrend = "データなし"
 			results[idx] = item
@@ -170,4 +146,76 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 		Items:      items,
 		Prefecture: prefecture,
 	})
+}
+
+// HandleAreaSummary はエリア選択時に投資難易度を AI が 2 文で要約して返す
+// @Summary     エリア AI サマリー
+// @Tags        area
+// @Produce     json
+// @Param       area          query  string  true   "都道府県コード (例: 13)"
+// @Param       municipality  query  string  true   "市区町村コード (例: 13101)"
+// @Success     200  {object}  map[string]string
+// @Failure     400  {object}  map[string]string
+// @Failure     500  {object}  map[string]string
+// @Router      /api/area-discovery/summary [get]
+func (h *Handler) HandleAreaSummary(c *gin.Context) {
+	area := c.Query("area")
+	municipality := c.Query("municipality")
+	if area == "" || municipality == "" {
+		badRequest(c, "area と municipality は必須パラメータです")
+		return
+	}
+
+	ctx := c.Request.Context()
+	now := time.Now()
+	toYear := now.Year()
+	fromYear := toYear - 2
+
+	transactions, err := h.mlitClient.FetchLandPrices(ctx, mlit.LandPriceQuery{
+		Area:      area,
+		City:      municipality,
+		Year:      fromYear,
+		Quarter:   1,
+		ToYear:    toYear,
+		ToQuarter: 4,
+	})
+
+	item := domain.AreaDiscoveryItem{
+		MunicipalityCode: municipality,
+		MunicipalityName: municipality,
+	}
+
+	if err != nil || len(transactions) == 0 {
+		if err != nil {
+			slog.WarnContext(ctx, "area summary: land price fetch failed", "area", area, "municipality", municipality, "err", err)
+		}
+		item.DataSufficient = false
+		item.YieldDifficultyLabel = "データ不足"
+	} else {
+		stats := domain.CalcLandPriceStats(ctx, transactions)
+		item.MedianTsubo = stats.MedianTsubo
+		item.TransactionCount = stats.Count
+		item.DataSufficient = stats.Count >= 3
+		item.YieldDifficulty, item.YieldDifficultyLabel = domain.CalcYieldDifficulty(stats.MedianTsubo, 0, 0.08)
+		if item.YieldDifficultyLabel == "" {
+			item.YieldDifficultyLabel = "データ不足"
+		}
+	}
+
+	// 市区町村名を municipalities から取得する（ベストエフォート）
+	if municipalities, mErr := h.mlitClient.FetchMunicipalities(ctx, area); mErr == nil {
+		for _, m := range municipalities {
+			if m.ID == municipality {
+				item.MunicipalityName = m.Name
+				break
+			}
+		}
+	}
+
+	summary := h.summarizer.GenerateAreaSummary(ctx, item)
+	if summary == "" {
+		summary = item.YieldDifficultyLabel
+	}
+
+	c.JSON(http.StatusOK, gin.H{"summary": summary})
 }

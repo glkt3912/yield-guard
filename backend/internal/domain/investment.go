@@ -232,6 +232,30 @@ func CalcLandPriceStats(ctx context.Context, transactions []LandTransaction) Lan
 	}
 }
 
+// CalcYieldDifficulty は坪単価中央値・予算・目標利回りから利回り達成難易度を返す。
+// difficulty は "achievable" | "slightly-difficult" | "difficult"。
+// medianTsubo が 0 の場合は ("", "") を返す。
+func CalcYieldDifficulty(medianTsubo, budget, targetYield float64) (difficulty, label string) {
+	if medianTsubo <= 0 {
+		return "", ""
+	}
+	var totalCostEst float64
+	if budget > 0 {
+		totalCostEst = budget
+	} else {
+		totalCostEst = medianTsubo*30 + 10_000_000
+	}
+	rentPerTsubo := totalCostEst * targetYield / 12 / 30
+	switch {
+	case rentPerTsubo <= 8000:
+		return "achievable", "達成可能"
+	case rentPerTsubo <= 15000:
+		return "slightly-difficult", "やや困難"
+	default:
+		return "difficult", "困難"
+	}
+}
+
 // CompareLandPrice は検討中の土地価格と相場を比較する
 func CompareLandPrice(stats LandPriceStats, landPrice, areaSqm float64) LandPriceComparison {
 	tsubo := areaSqm / SqmPerTsubo
