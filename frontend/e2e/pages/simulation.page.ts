@@ -73,4 +73,16 @@ export class SimulationPage {
   deadCrossChartHeading() {
     return this.page.getByTestId("dead-cross-chart-heading");
   }
+
+  kpiStrip() {
+    return this.page.getByLabel("KPIサマリ");
+  }
+
+  statusSummaryBadge() {
+    return this.page.getByTestId("status-summary-badge");
+  }
+
+  tenYearEquityCard() {
+    return this.page.getByText("10年後の手残り");
+  }
 }
