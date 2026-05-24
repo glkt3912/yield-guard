@@ -10,7 +10,7 @@ test.describe("標準購入シナリオ ハッピーパス", () => {
     await sim.runQuickSimulation("1700", "150000");
 
     await expect(sim.kpiStrip().getByText("月々の返済額")).toBeVisible();
-    await expect(sim.statusSummaryBadge()).toBeVisible();
+    await expect(sim.statusSummaryBadge()).toHaveText(/投資適格|要交渉|見送り推奨/);
     await expect(sim.tenYearEquityCard()).toBeVisible();
   });
 });

@@ -83,6 +83,6 @@ export class SimulationPage {
   }
 
   tenYearEquityCard() {
-    return this.page.getByText("10年後の手残り");
+    return this.page.getByTestId("ten-year-equity-card");
   }
 }
