@@ -184,13 +184,15 @@ export function ResultsSection({
             </div>
           )}
           <AreaDiscovery
-            onMunicipalitySelect={(_code, name, prefecture) => {
+            onMunicipalitySelect={(_code, name, prefecture, centerLat, centerLng) => {
               setSelectedMunicipalityMsg(
                 `「${name}」を選択しました。下の地図上で物件位置をクリックしてください。`
               );
-              setMunicipalityCenter(
-                PREFECTURE_CENTERS[prefecture] ?? { lat: 35.6812, lng: 139.7671 }
-              );
+              const center =
+                centerLat !== 0 && centerLng !== 0
+                  ? { lat: centerLat, lng: centerLng }
+                  : (PREFECTURE_CENTERS[prefecture] ?? { lat: 35.6812, lng: 139.7671 });
+              setMunicipalityCenter(center);
             }}
           />
           {municipalityCenter && (

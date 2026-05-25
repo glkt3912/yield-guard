@@ -94,6 +94,18 @@
                         "name": "municipality",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "予算 (円, 例: 50000000)",
+                        "name": "budget",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "目標利回り (小数, 例: 0.08)",
+                        "name": "yield",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1248,6 +1260,14 @@
         "domain.AreaDiscoveryItem": {
             "type": "object",
             "properties": {
+                "centerLat": {
+                    "description": "市区町村代表緯度",
+                    "type": "number"
+                },
+                "centerLng": {
+                    "description": "市区町村代表経度",
+                    "type": "number"
+                },
                 "dataSufficient": {
                     "description": "取引件数3件以上",
                     "type": "boolean"
@@ -1271,7 +1291,7 @@
                     "type": "integer"
                 },
                 "yieldDifficulty": {
-                    "description": "\"achievable\" | \"slightly-difficult\" | \"difficult\"",
+                    "description": "\"achievable\" | \"slightly-difficult\" | \"difficult\" | \"unknown\"",
                     "type": "string"
                 },
                 "yieldDifficultyLabel": {

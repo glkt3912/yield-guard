@@ -21,6 +21,8 @@ function makeItem(overrides: Partial<AreaDiscoveryItem> = {}): AreaDiscoveryItem
     yieldDifficultyLabel: "難しい",
     landPriceTrend: "上昇",
     dataSufficient: true,
+    centerLat: 35.694,
+    centerLng: 139.753,
     ...overrides,
   };
 }

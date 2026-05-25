@@ -98,11 +98,15 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 				MunicipalityCode: m.ID,
 				MunicipalityName: m.Name,
 			}
+			if lat, lng, ok := domain.MunicipalityCenter(m.ID); ok {
+				item.CenterLat = lat
+				item.CenterLng = lng
+			}
 
 			if fetchErr != nil || len(transactions) == 0 {
 				item.DataSufficient = false
 				item.LandPriceTrend = "不明"
-				item.YieldDifficulty = "difficult"
+				item.YieldDifficulty = "unknown"
 				item.YieldDifficultyLabel = "データ不足"
 				results[idx] = item
 				return nil
@@ -132,9 +136,9 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 		}
 	}
 
-	// 達成可能 → やや困難 → 困難 の順、同一難易度内は取引件数降順
+	// 達成可能 → やや困難 → 困難 → 不明の順、同一難易度内は取引件数降順
 	sort.Slice(items, func(i, j int) bool {
-		difficultyOrder := map[string]int{"achievable": 0, "slightly-difficult": 1, "difficult": 2}
+		difficultyOrder := map[string]int{"achievable": 0, "slightly-difficult": 1, "difficult": 2, "unknown": 3}
 		di, dj := difficultyOrder[items[i].YieldDifficulty], difficultyOrder[items[j].YieldDifficulty]
 		if di != dj {
 			return di < dj
@@ -152,8 +156,10 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 // @Summary     エリア AI サマリー
 // @Tags        area
 // @Produce     json
-// @Param       area          query  string  true   "都道府県コード (例: 13)"
-// @Param       municipality  query  string  true   "市区町村コード (例: 13101)"
+// @Param       area          query  string   true   "都道府県コード (例: 13)"
+// @Param       municipality  query  string   true   "市区町村コード (例: 13101)"
+// @Param       budget        query  number   false  "予算 (円, 例: 50000000)"
+// @Param       yield         query  number   false  "目標利回り (小数, 例: 0.08)"
 // @Success     200  {object}  map[string]string
 // @Failure     400  {object}  map[string]string
 // @Failure     500  {object}  map[string]string
@@ -164,6 +170,19 @@ func (h *Handler) HandleAreaSummary(c *gin.Context) {
 	if area == "" || municipality == "" {
 		badRequest(c, "area と municipality は必須パラメータです")
 		return
+	}
+
+	budget := 0.0
+	targetYield := 0.08
+	if budgetStr := c.Query("budget"); budgetStr != "" {
+		if v, err := strconv.ParseFloat(budgetStr, 64); err == nil && v > 0 {
+			budget = v
+		}
+	}
+	if yieldStr := c.Query("yield"); yieldStr != "" {
+		if v, err := strconv.ParseFloat(yieldStr, 64); err == nil && v > 0 {
+			targetYield = v
+		}
 	}
 
 	ctx := c.Request.Context()
@@ -190,14 +209,16 @@ func (h *Handler) HandleAreaSummary(c *gin.Context) {
 			slog.WarnContext(ctx, "area summary: land price fetch failed", "area", area, "municipality", municipality, "err", err)
 		}
 		item.DataSufficient = false
+		item.YieldDifficulty = "unknown"
 		item.YieldDifficultyLabel = "データ不足"
 	} else {
 		stats := domain.CalcLandPriceStats(ctx, transactions)
 		item.MedianTsubo = stats.MedianTsubo
 		item.TransactionCount = stats.Count
 		item.DataSufficient = stats.Count >= 3
-		item.YieldDifficulty, item.YieldDifficultyLabel = domain.CalcYieldDifficulty(stats.MedianTsubo, 0, 0.08)
+		item.YieldDifficulty, item.YieldDifficultyLabel = domain.CalcYieldDifficulty(stats.MedianTsubo, budget, targetYield)
 		if item.YieldDifficultyLabel == "" {
+			item.YieldDifficulty = "unknown"
 			item.YieldDifficultyLabel = "データ不足"
 		}
 	}
