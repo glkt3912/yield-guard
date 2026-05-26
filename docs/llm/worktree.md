@@ -2,7 +2,7 @@
 purpose: ブランチ作成・worktree・PR 作業の手順
 triggers: [worktree, branch, pr, pull request, rebase, merge]
 reads_next: []
-last_updated: 2026-05-21
+last_updated: 2026-05-26
 ---
 
 ## 初回セットアップ（clone 後1回）
@@ -19,11 +19,32 @@ make install-hooks    # lefthook の pre-commit / pre-push フック登録
 ```bash
 # メインリポジトリのルートで実行
 git worktree add ../<worktree-dir> -b <branch-name>
-ln -s "$(pwd)/frontend/node_modules" "../<worktree-dir>/frontend/node_modules"
+cd ../<worktree-dir>/frontend && npm ci
 ```
 
-- `npm install` は worktree 内で**絶対に実行しない**（`package-lock.json` が壊れる）
+- `npm ci` は `package-lock.json` を**絶対に変更しない**（lockfile と不一致ならエラーで停止する）
+- `npm install` は**実行しない**（`package-lock.json` を書き換える可能性がある）
 - `make install-hooks` も不要（メインリポジトリの `.git/hooks/` を自動共有）
+
+> **symlink を使わない理由**: Next.js 16 の Turbopack はプロジェクトルート外を指す symlink を拒否するため、
+> `ln -s` で `node_modules` を共有すると `next dev` が起動できない。`npm ci` で実ディレクトリとして持つ。
+
+## ブラウザ動作確認（E2E）をする場合
+
+worktree のフロントエンドを起動するときは**メインリポジトリと別ポート**を使う。
+
+```bash
+cd ../<worktree-dir>/frontend && npx next dev -p 3003
+```
+
+バックエンドの `ALLOW_ORIGINS` はポートごとに許可が必要なため、`.env` に worktree のポートを追加する。
+
+```bash
+# .env（メインリポジトリ）
+ALLOW_ORIGINS=http://localhost:3002,http://localhost:3003
+```
+
+追加後はバックエンドを再起動する。
 
 ## ブランチ命名
 

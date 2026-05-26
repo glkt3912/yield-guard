@@ -41,7 +41,7 @@ test.describe("Full mode リクエストボディ検証", () => {
       landPrice: "1200",
       buildingCost: "800",
       buildingAge: "20",
-      monthlyRent: "150000",
+      monthlyRent: "15",
     });
 
     await expect(sim.grossYield()).toHaveText("9.89");
