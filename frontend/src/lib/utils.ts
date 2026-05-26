@@ -26,9 +26,17 @@ export function formatTsubo(value: number): string {
   return `${Math.round(value).toLocaleString("ja-JP")}円/坪`;
 }
 
-/** 円 → 万円文字列 (入力フィールド向け) */
+/** 円 → 万円文字列 (入力フィールド向け、0のとき空文字) */
 export function toMan(yen: number): string {
+  if (yen === 0) return "";
   return String(Math.round(yen / 10_000));
+}
+
+/** 円 → 万円文字列・小数対応 (月額賃料など小数が生じるフィールド向け、0のとき空文字) */
+export function toManFloat(yen: number): string {
+  if (yen === 0) return "";
+  const v = yen / 10_000;
+  return v % 1 === 0 ? String(v) : v.toFixed(1);
 }
 
 /** 万円文字列 → 円 */
