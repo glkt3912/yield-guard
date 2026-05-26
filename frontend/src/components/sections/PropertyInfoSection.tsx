@@ -5,7 +5,7 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, ShieldCheck, HelpCircle } from "lucide-react";
 import type { InvestmentInput, BuildingType, RentDeclineHint } from "@/types/investment";
-import { toMan, fromMan, toPct, fromPct } from "@/lib/utils";
+import { toMan, fromMan, toManFloat, toPct, fromPct } from "@/lib/utils";
 import { BUILDING_TYPES, RENT_DECLINE_DEFAULTS } from "@/lib/investmentFormConstants";
 import { ZONING_TYPES, ZONING_META, type ZoningType } from "@/lib/zoning";
 import { RentValidationHint } from "@/components/RentValidationHint";
@@ -410,7 +410,7 @@ export function PropertyInfoSection({
             type="number"
             inputMode="decimal"
             suffix="m²"
-            value={String(input.landArea)}
+            value={input.landArea === 0 ? "" : String(input.landArea)}
             onChange={(e) => setNum("landArea", parseFloat(e.target.value) || 0)}
           />
           <div className="sm:col-span-2">
@@ -443,16 +443,18 @@ export function PropertyInfoSection({
             label="築年数"
             type="number"
             inputMode="numeric"
-            suffix="年（0=新築）"
-            value={String(input.buildingAge)}
+            suffix="年"
+            placeholder="0=新築"
+            value={input.buildingAge === 0 ? "" : String(input.buildingAge)}
             onChange={(e) => setNum("buildingAge", parseInt(e.target.value) || 0)}
           />
           <Input
             label="最寄り駅徒歩"
             type="number"
             inputMode="numeric"
-            suffix="分（0=未入力）"
-            value={String(input.stationMinutes)}
+            suffix="分"
+            placeholder="未入力可"
+            value={input.stationMinutes === 0 ? "" : String(input.stationMinutes)}
             onChange={(e) => setNum("stationMinutes", parseInt(e.target.value) || 0)}
           />
           <Select
@@ -517,7 +519,7 @@ export function PropertyInfoSection({
                   step="1"
                   min="0"
                   max="20"
-                  value={String(input.rentGrowthYears ?? 0)}
+                  value={(input.rentGrowthYears ?? 0) === 0 ? "" : String(input.rentGrowthYears)}
                   onChange={(e) => setNum("rentGrowthYears", parseInt(e.target.value) || 0)}
                 />
               </div>
@@ -537,10 +539,10 @@ export function PropertyInfoSection({
             <Input
               label="想定月額賃料"
               type="number"
-              inputMode="numeric"
-              suffix="円"
-              value={String(input.monthlyRent)}
-              onChange={(e) => setNum("monthlyRent", parseFloat(e.target.value) || 0)}
+              inputMode="decimal"
+              suffix="万円"
+              value={toManFloat(input.monthlyRent)}
+              onChange={(e) => setNum("monthlyRent", fromMan(e.target.value))}
               error={fieldError("monthlyRent")}
             />
             <RentValidationHint

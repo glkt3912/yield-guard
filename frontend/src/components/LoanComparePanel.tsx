@@ -209,7 +209,7 @@ export function LoanComparePanel({ baseInput }: Props) {
                         : 0;
                     return (
                       <td key={i} className="px-3 py-2 text-center">
-                        {toMan(monthlyPayment)}万円
+                        {toMan(monthlyPayment) || "0"}万円
                       </td>
                     );
                   })}
@@ -325,7 +325,7 @@ export function LoanComparePanel({ baseInput }: Props) {
                     const equity = propertyValue * (1 - sc.ltv);
                     return (
                       <td key={i} className="px-3 py-2 text-center">
-                        {toMan(equity)}万円
+                        {toMan(equity) || "0"}万円
                       </td>
                     );
                   })}
@@ -342,7 +342,7 @@ export function LoanComparePanel({ baseInput }: Props) {
                       );
                     return (
                       <td key={i} className="px-3 py-2 text-center">
-                        {toMan(res.totalInterest)}万円
+                        {toMan(res.totalInterest) || "0"}万円
                       </td>
                     );
                   })}
