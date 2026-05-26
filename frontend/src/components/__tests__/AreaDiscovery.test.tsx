@@ -21,6 +21,8 @@ function makeItem(overrides: Partial<AreaDiscoveryItem> = {}): AreaDiscoveryItem
     yieldDifficultyLabel: "難しい",
     landPriceTrend: "上昇",
     dataSufficient: true,
+    centerLat: 35.694,
+    centerLng: 139.753,
     ...overrides,
   };
 }
@@ -206,7 +208,7 @@ describe("AreaDiscovery", () => {
     });
 
     await userEvent.click(screen.getByText("千代田区"));
-    expect(onMunicipalitySelect).toHaveBeenCalledWith("13101", "千代田区", "13");
+    expect(onMunicipalitySelect).toHaveBeenCalledWith("13101", "千代田区", "13", 35.694, 139.753);
   });
 
   it("結果が表示されると地図に関するヒントが表示される", async () => {

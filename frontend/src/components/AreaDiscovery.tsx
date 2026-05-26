@@ -56,7 +56,9 @@ interface Props {
   onMunicipalitySelect?: (
     municipalityCode: string,
     municipalityName: string,
-    prefecture: string
+    prefecture: string,
+    centerLat: number,
+    centerLng: number
   ) => void;
 }
 
@@ -65,6 +67,7 @@ function DifficultyBadge({ difficulty, label }: { difficulty: string; label: str
     achievable: "bg-green-100 text-green-800 border border-green-200",
     "slightly-difficult": "bg-yellow-100 text-yellow-800 border border-yellow-200",
     difficult: "bg-red-100 text-red-800 border border-red-200",
+    unknown: "bg-gray-100 text-gray-600 border border-gray-200",
   };
   const cls = colorMap[difficulty] ?? "bg-muted text-foreground border";
   return (
@@ -194,7 +197,13 @@ export function AreaDiscovery({ onMunicipalitySelect }: Props) {
                 <tr
                   key={item.municipalityCode}
                   onClick={() =>
-                    onMunicipalitySelect?.(item.municipalityCode, item.municipalityName, prefecture)
+                    onMunicipalitySelect?.(
+                      item.municipalityCode,
+                      item.municipalityName,
+                      prefecture,
+                      item.centerLat,
+                      item.centerLng
+                    )
                   }
                   className="cursor-pointer border-b hover:bg-muted/30 transition-colors"
                 >

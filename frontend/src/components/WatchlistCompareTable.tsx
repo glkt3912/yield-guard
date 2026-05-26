@@ -105,7 +105,7 @@ function getValue(metrics: WatchlistMetrics | undefined, key: MetricKey): number
  */
 function findBestIndex(items: WatchlistItem[], row: MetricRow): number {
   const values = items.map((item) => getValue(item.metrics, row.key));
-  const validValues = values.filter((v): v is number => v !== null);
+  const validValues = values.filter((v): v is number => v != null);
   if (validValues.length === 0) return -1;
 
   const bestValue = row.best === "max" ? Math.max(...validValues) : Math.min(...validValues);

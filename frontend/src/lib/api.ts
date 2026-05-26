@@ -299,10 +299,12 @@ export interface AreaDiscoveryItem {
   municipalityName: string;
   medianTsubo: number;
   transactionCount: number;
-  yieldDifficulty: "achievable" | "slightly-difficult" | "difficult";
+  yieldDifficulty: "achievable" | "slightly-difficult" | "difficult" | "unknown";
   yieldDifficultyLabel: string;
   landPriceTrend: string;
   dataSufficient: boolean;
+  centerLat: number;
+  centerLng: number;
 }
 
 export interface AreaDiscoveryResponse {

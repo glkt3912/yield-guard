@@ -2314,3 +2314,63 @@ func TestHandleAreaSummary_Success(t *testing.T) {
 		t.Errorf("expected summary=%q, got %q", "達成可能", resp["summary"])
 	}
 }
+
+func TestHandleAreaSummary_BudgetYieldParams(t *testing.T) {
+	client := &mockMLITClient{
+		fetchFunc: func(_ context.Context, _ mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
+			return []domain.LandTransaction{
+				{Period: "2024年第1四半期", TradePrice: 5_000_000, Area: 50, PricePerSqm: 100_000, PricePerTsubo: 3_000_000},
+				{Period: "2024年第2四半期", TradePrice: 5_500_000, Area: 55, PricePerSqm: 100_000, PricePerTsubo: 3_000_000},
+				{Period: "2024年第3四半期", TradePrice: 6_000_000, Area: 60, PricePerSqm: 100_000, PricePerTsubo: 3_000_000},
+			}, nil
+		},
+		muniFunc: func(_ context.Context, _ string) ([]mlit.Municipality, error) {
+			return []mlit.Municipality{{ID: "13101", Name: "千代田区"}}, nil
+		},
+	}
+	r := newTestRouter(client, nil)
+
+	// budget=50000000, yield=0.08 の場合: medianTsubo=3000000 → rentPerTsubo=20000 → "困難"
+	req := httptest.NewRequest(http.MethodGet, "/api/area-discovery/summary?area=13&municipality=13101&budget=50000000&yield=0.08", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	// noopSummarizer returns "" → fallback to YieldDifficultyLabel = "困難"
+	if resp["summary"] != "困難" {
+		t.Errorf("expected summary=%q, got %q", "困難", resp["summary"])
+	}
+}
+
+func TestHandleAreaSummary_NoData_UnknownDifficulty(t *testing.T) {
+	client := &mockMLITClient{
+		fetchFunc: func(_ context.Context, _ mlit.LandPriceQuery) ([]domain.LandTransaction, error) {
+			return nil, nil
+		},
+		muniFunc: func(_ context.Context, _ string) ([]mlit.Municipality, error) {
+			return []mlit.Municipality{{ID: "13101", Name: "千代田区"}}, nil
+		},
+	}
+	r := newTestRouter(client, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/area-discovery/summary?area=13&municipality=13101", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	// noopSummarizer returns "" → fallback to YieldDifficultyLabel = "データ不足"
+	if resp["summary"] != "データ不足" {
+		t.Errorf("expected summary=%q, got %q", "データ不足", resp["summary"])
+	}
+}

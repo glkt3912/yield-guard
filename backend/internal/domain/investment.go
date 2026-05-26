@@ -239,13 +239,19 @@ func CalcYieldDifficulty(medianTsubo, budget, targetYield float64) (difficulty, 
 	if medianTsubo <= 0 {
 		return "", ""
 	}
-	var totalCostEst float64
+	var rentPerTsubo float64
 	if budget > 0 {
-		totalCostEst = budget
+		// budget / medianTsubo = 購入可能坪数。エリアごとに坪単価が異なるため面積は変わる。
+		// rentPerTsubo = budget × yield / 12 / (budget/medianTsubo) = medianTsubo × yield / 12
+		tsuboCount := budget / medianTsubo
+		if tsuboCount < 1 {
+			tsuboCount = 1
+		}
+		rentPerTsubo = budget * targetYield / 12 / tsuboCount
 	} else {
-		totalCostEst = medianTsubo*30 + 10_000_000
+		totalCostEst := medianTsubo*30 + 10_000_000
+		rentPerTsubo = totalCostEst * targetYield / 12 / 30
 	}
-	rentPerTsubo := totalCostEst * targetYield / 12 / 30
 	switch {
 	case rentPerTsubo <= 8000:
 		return "achievable", "達成可能"
