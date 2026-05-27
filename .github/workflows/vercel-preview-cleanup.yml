@@ -4,12 +4,6 @@ on:
   pull_request:
     branches: [main]
     types: [closed]
-    paths:
-      - "frontend/**"
-      - "docs/openapi/**"
-      - ".github/workflows/frontend-ci.yml"
-      - ".github/workflows/vercel-preview-cleanup.yml"
-      - "Makefile"
 
 permissions:
   contents: read
