@@ -116,6 +116,7 @@ graph TD
 | Backend CI | `backend/**`, `backend-ci.yml` | `golangci-lint` / `go test -race` / `go build` |
 | Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `vitest run` / `build` / Vercel デプロイ（main push: 本番 / PR: プレビュー URL を PR コメントに自動投稿） |
 | E2E（Frontend CI内） | `frontend/**`, `frontend-ci.yml` | `playwright test`（PR: `@p1`+`@p2` のみ / main push: 全10件） |
+| Vercel プレビュー削除 | `frontend/**`, `vercel-preview-cleanup.yml` | PR クローズ時にプレビューデプロイを削除（`frontend-ci.yml` の `cancel-in-progress` による競合キャンセルを防ぐため独立ワークフロー化） |
 
 Dependabot により Go modules・npm の依存パッケージが毎週月曜（JST）に自動更新される（エコシステムごとに1PR）。
 

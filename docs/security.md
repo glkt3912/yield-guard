@@ -283,6 +283,7 @@ MLIT API クライアント（`backend/internal/mlit/client.go`）は以下の�
 - `terraform/cloud_run.tf` — Cloud Run v2 サービス定義
 - `.github/workflows/deploy-backend.yml` — バックエンドデプロイワークフロー（SHA 固定・Trivy スキャン）
 - `.github/workflows/frontend-ci.yml` — フロントエンド CI + Vercel デプロイワークフロー
+- `.github/workflows/vercel-preview-cleanup.yml` — PR クローズ時の Vercel プレビュー削除ワークフロー（`frontend-ci.yml` から分離）
 - `.github/dependabot.yml` — Dependabot 自動更新設定（gomod / npm / github-actions）
 - `backend/internal/telemetry/setup.go` — OTel TracerProvider / MeterProvider 初期化
 - `backend/internal/logger/logger.go` — Cloud Logging 準拠 slog ハンドラー
