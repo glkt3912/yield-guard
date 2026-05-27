@@ -2,6 +2,7 @@ import React from "react";
 import { CheckCircle2, AlertTriangle, XOctagon } from "lucide-react";
 import type { InvestmentInput, InvestmentResult } from "@/types/investment";
 import { calcVerdict } from "@/lib/pdf/verdict";
+import { TermTooltip } from "@/components/ui/TermTooltip";
 
 interface StatusSummaryProps {
   result: InvestmentResult;
@@ -49,7 +50,9 @@ export function StatusSummary({ result, input }: StatusSummaryProps) {
       <span className="font-semibold">[{label}]</span>
       <span className="hidden sm:inline text-muted-foreground">|</span>
       <span>
-        利回り {grossYieldPct}% / 返済の余裕度 {dscrVal} / 税負担急増リスク {dcYear}
+        <TermTooltip term="grossYield">利回り</TermTooltip> {grossYieldPct}% /{" "}
+        <TermTooltip term="dscr">返済の余裕度</TermTooltip> {dscrVal} /{" "}
+        <TermTooltip term="deadCross">税負担急増リスク</TermTooltip> {dcYear}
       </span>
     </div>
   );

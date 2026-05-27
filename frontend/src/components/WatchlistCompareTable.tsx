@@ -1,9 +1,13 @@
 "use client";
 
+"use client";
+
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart2, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { WatchlistItem, WatchlistMetrics } from "@/types/investment";
+import { TermTooltip } from "@/components/ui/TermTooltip";
+import type { GLOSSARY } from "@/lib/glossary";
 
 interface WatchlistCompareTableProps {
   items: WatchlistItem[]; // 2–4 items already selected
@@ -16,6 +20,7 @@ interface MetricRow {
   key: MetricKey;
   format: (v: number | null | undefined) => string;
   best: "max" | "min";
+  termKey?: keyof typeof GLOSSARY;
 }
 
 const METRIC_ROWS: MetricRow[] = [
@@ -27,30 +32,35 @@ const METRIC_ROWS: MetricRow[] = [
         ? `${(Number(v) / 10_000).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}万円`
         : "-",
     best: "min",
+    termKey: "monthlyPayment",
   },
   {
     label: "表面利回り",
     key: "grossYield",
     format: (v) => (v != null ? `${(Number(v) * 100).toFixed(1)}%` : "-"),
     best: "max",
+    termKey: "grossYield",
   },
   {
     label: "実質利回り",
     key: "netYield",
     format: (v) => (v != null ? `${(Number(v) * 100).toFixed(1)}%` : "-"),
     best: "max",
+    termKey: "netYield",
   },
   {
     label: "DSCR",
     key: "dscr",
     format: (v) => (v != null ? Number(v).toFixed(2) : "-"),
     best: "max",
+    termKey: "dscr",
   },
   {
     label: "IRR",
     key: "irr",
     format: (v) => (v != null ? `${(Number(v) * 100).toFixed(1)}%` : "-"),
     best: "max",
+    termKey: "irr",
   },
   {
     label: "総投資額",
@@ -69,6 +79,7 @@ const METRIC_ROWS: MetricRow[] = [
         ? `${(Number(v) / 10_000).toLocaleString("ja-JP", { maximumFractionDigits: 0 })}万円`
         : "-",
     best: "max",
+    termKey: "exitEquity",
   },
   {
     label: "デッドクロス年",
@@ -78,6 +89,7 @@ const METRIC_ROWS: MetricRow[] = [
       return Number(v) <= 0 ? "なし（最良）" : `${Number(v)}年目`;
     },
     best: "max", // <=0 (none) is best, larger deadCrossYear means it arrives later = better
+    termKey: "deadCross",
   },
   {
     label: "NPV",
@@ -87,6 +99,7 @@ const METRIC_ROWS: MetricRow[] = [
         ? `${(Number(v) / 10_000).toLocaleString("ja-JP", { maximumFractionDigits: 0 })}万円`
         : "-",
     best: "max",
+    termKey: "npv",
   },
 ];
 
@@ -170,7 +183,11 @@ export default function WatchlistCompareTable({ items }: WatchlistCompareTablePr
                 return (
                   <tr key={row.key} className="border-b border-border/60 last:border-0">
                     <td className="py-2 pr-3 text-xs text-muted-foreground whitespace-nowrap">
-                      {row.label}
+                      {row.termKey ? (
+                        <TermTooltip term={row.termKey}>{row.label}</TermTooltip>
+                      ) : (
+                        row.label
+                      )}
                     </td>
                     {items.map((item, colIdx) => {
                       // raw: comparison value (Infinity for deadCrossYear=-1)
