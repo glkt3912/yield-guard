@@ -74,6 +74,7 @@ export function KpiStrip({ result, yieldTarget = 0.08, holdingYears = 30 }: KpiS
     <div
       role="region"
       aria-label="KPIサマリ"
+      data-testid="kpi-strip"
       className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
     >
       <KpiCell
