@@ -10,7 +10,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type {
   InvestmentInput,
@@ -38,6 +38,9 @@ import { calcYieldBenchmark } from "@/lib/yieldBenchmark";
 import { useResponsiveChart } from "@/lib/useChartHeight";
 
 const SQM_PER_TSUBO = 3.30578;
+
+const LAND_PRICE_DESCRIPTION =
+  "周辺の取引相場と比較することで、検討物件の価格が割安・割高かを判定し、購入交渉の根拠となります。";
 
 type LandValueJudgment = "土地値割れ" | "土地値近辺" | "土地値超";
 
@@ -142,6 +145,7 @@ export function LandPriceAnalysis({
             <MapPin className="h-5 w-5 text-primary" />
             土地価格相場分析
           </CardTitle>
+          <CardDescription>{LAND_PRICE_DESCRIPTION}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-800">
@@ -177,6 +181,7 @@ export function LandPriceAnalysis({
           </CardTitle>
           <Badge variant={ASSESSMENT_BADGE[assessment] ?? "outline"}>{badgeLabel}</Badge>
         </div>
+        <CardDescription>{LAND_PRICE_DESCRIPTION}</CardDescription>
         <p className="text-xs text-muted-foreground">
           取引件数: {stats.count}件 　平均坪単価: {formatTsubo(stats.averageTsubo)} 　中央値:{" "}
           {formatTsubo(stats.medianTsubo)}

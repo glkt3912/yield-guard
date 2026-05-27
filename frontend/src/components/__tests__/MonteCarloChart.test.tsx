@@ -48,7 +48,7 @@ describe("MonteCarloChart", () => {
 
   it("試行回数が表示される", () => {
     render(<MonteCarloChart result={makeMonteCarloResult({ simulationCount: 1000 })} />);
-    expect(screen.getByText(/1,000 試行/)).toBeInTheDocument();
+    expect(screen.getByText(/1,000.*シミュレーション/)).toBeInTheDocument();
   });
 
   it("IRR正値達成率が表示される", () => {
