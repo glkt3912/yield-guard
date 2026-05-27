@@ -126,7 +126,7 @@ function DscrTrendIcon({ dscr }: { dscr: number | null }) {
 
 export default function WatchlistCompareTable({ items }: WatchlistCompareTableProps) {
   return (
-    <Card className="rounded-xl shadow-sm">
+    <Card className="rounded-xl shadow-sm" data-testid="watchlist-compare-table">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <BarChart2 className="h-4 w-4 text-primary" aria-hidden="true" />
