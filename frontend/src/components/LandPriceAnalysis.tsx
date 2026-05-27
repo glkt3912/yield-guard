@@ -39,6 +39,9 @@ import { useResponsiveChart } from "@/lib/useChartHeight";
 
 const SQM_PER_TSUBO = 3.30578;
 
+const LAND_PRICE_DESCRIPTION =
+  "周辺の取引相場と比較することで、検討物件の価格が割安・割高かを判定し、購入交渉の根拠となります。";
+
 type LandValueJudgment = "土地値割れ" | "土地値近辺" | "土地値超";
 
 function calcLandValueJudgment(totalPrice: number, estimatedLandValue: number): LandValueJudgment {
@@ -142,9 +145,7 @@ export function LandPriceAnalysis({
             <MapPin className="h-5 w-5 text-primary" />
             土地価格相場分析
           </CardTitle>
-          <CardDescription>
-            周辺の取引相場と比較することで、検討物件の価格が割安・割高かを判定し、購入交渉の根拠となります。
-          </CardDescription>
+          <CardDescription>{LAND_PRICE_DESCRIPTION}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-800">
