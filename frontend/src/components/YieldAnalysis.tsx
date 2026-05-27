@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useCallback } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import type {
   InvestmentInput,
   InvestmentResult,
@@ -137,6 +137,9 @@ export function YieldAnalysis({
       <Card>
         <CardHeader>
           <CardTitle className="text-base">ストレステストシナリオ（銀行融資審査用）</CardTitle>
+          <CardDescription>
+            金利上昇・空室悪化など逆境シナリオでDSCRを検証し、融資返済余力を事前に確認します。
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <CustomScenarioSlider input={input} onStateChange={handleCustomStateChange} />

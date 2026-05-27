@@ -12,7 +12,7 @@ import {
   ReferenceArea,
   ResponsiveContainer,
 } from "recharts";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { CriticalError, InvestmentResult } from "@/types/investment";
 import { formatMan } from "@/lib/utils";
@@ -115,10 +115,10 @@ function DeadCrossChart({ result }: Props) {
             </Badge>
           )}
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          元金返済額 &gt;
-          減価償却費となるゾーンでは、帳簿上黒字でも実質的な税負担が増加します（黒字倒産リスク）
-        </p>
+        <CardDescription>
+          元金返済額が減価償却費を上回る「デッドクロス」が発生すると、
+          帳簿上は黒字でも実際のキャッシュが枯渇する「黒字倒産リスク」が生じます。
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={chartHeight}>

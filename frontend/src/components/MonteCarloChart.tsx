@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import type { MonteCarloResult } from "@/types/investment";
 import { formatMan, formatPct } from "@/lib/utils";
 import { Sigma } from "lucide-react";
@@ -61,9 +61,10 @@ export function MonteCarloChart({ result }: Props) {
           <Sigma className="h-5 w-5 text-primary" />
           モンテカルロ・シミュレーション結果
         </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          空室率・金利を正規分布でサンプリングした {simulationCount.toLocaleString()} 試行の確率分布
-        </p>
+        <CardDescription>
+          賃料・空室率・金利の変動を{simulationCount.toLocaleString()}回シミュレーションし、
+          リターンの分布と下振れリスクを確率的に評価します。
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* サマリーバッジ */}

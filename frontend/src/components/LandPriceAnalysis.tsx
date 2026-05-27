@@ -10,7 +10,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type {
   InvestmentInput,
@@ -177,6 +177,9 @@ export function LandPriceAnalysis({
           </CardTitle>
           <Badge variant={ASSESSMENT_BADGE[assessment] ?? "outline"}>{badgeLabel}</Badge>
         </div>
+        <CardDescription>
+          周辺の取引相場と比較することで、検討物件の価格が割安・割高かを判定し、購入交渉の根拠となります。
+        </CardDescription>
         <p className="text-xs text-muted-foreground">
           取引件数: {stats.count}件 　平均坪単価: {formatTsubo(stats.averageTsubo)} 　中央値:{" "}
           {formatTsubo(stats.medianTsubo)}

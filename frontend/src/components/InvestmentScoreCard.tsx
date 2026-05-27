@@ -1,7 +1,7 @@
 "use client";
 
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { InvestmentScoreResult, ScoreItem } from "@/types/investment";
@@ -91,6 +91,9 @@ export function InvestmentScoreCard({ score, populationChangeRate, onApplyRecomm
             <Badge variant={gradeStyle.badge}>{grade}</Badge>
           </div>
         </CardTitle>
+        <CardDescription>
+          人口動態・駅需要・ハザードリスクを総合評価。70点以上が優良物件、50点以下は要注意の目安です。
+        </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
         {breakdown.radarData.length > 0 && (
