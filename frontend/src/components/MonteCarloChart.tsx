@@ -15,6 +15,7 @@ import type { MonteCarloResult } from "@/types/investment";
 import { formatMan, formatPct } from "@/lib/utils";
 import { Sigma } from "lucide-react";
 import { useChartHeight } from "@/lib/useChartHeight";
+import { TermTooltip } from "@/components/ui/TermTooltip";
 
 interface Props {
   result: MonteCarloResult;
@@ -87,7 +88,9 @@ export function MonteCarloChart({ result }: Props) {
 
         {/* IRRヒストグラム */}
         <div>
-          <p className="mb-2 text-sm font-medium">IRR 分布</p>
+          <p className="mb-2 text-sm font-medium">
+            <TermTooltip term="irr">IRR</TermTooltip> 分布
+          </p>
           {irrData.length === 0 ? (
             <p className="text-xs text-muted-foreground">IRRを算出できた試行がありませんでした。</p>
           ) : (
@@ -131,7 +134,9 @@ export function MonteCarloChart({ result }: Props) {
             <thead>
               <tr className="border-b text-xs text-muted-foreground">
                 <th className="pb-1 text-left">シナリオ</th>
-                <th className="pb-1 text-right">IRR</th>
+                <th className="pb-1 text-right">
+                  <TermTooltip term="irr">IRR</TermTooltip>
+                </th>
                 <th className="pb-1 text-right">最終純資産</th>
               </tr>
             </thead>

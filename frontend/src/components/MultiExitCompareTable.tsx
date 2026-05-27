@@ -1,6 +1,9 @@
+"use client";
+
 import React from "react";
 import { AlertTriangle } from "lucide-react";
 import type { MultiExitRow } from "@/types/investment";
+import { TermTooltip } from "@/components/ui/TermTooltip";
 
 interface MultiExitCompareTableProps {
   rows: MultiExitRow[];
@@ -28,14 +31,17 @@ export default function MultiExitCompareTable({ rows }: MultiExitCompareTablePro
   const maxEquity = Math.max(...rows.map((r) => r.exitEquity));
   const maxEquityIdx = rows.findIndex((r) => r.exitEquity === maxEquity);
 
-  const labels = [
-    "想定売却価格",
-    "譲渡税率",
-    "譲渡税額",
-    "残債残高",
-    "累積税引後CF",
-    "出口エクイティ合計",
-    "IRR",
+  const labelRows: { id: string; label: React.ReactNode }[] = [
+    { id: "想定売却価格", label: "想定売却価格" },
+    { id: "譲渡税率", label: <TermTooltip term="transferTaxRate">譲渡税率</TermTooltip> },
+    { id: "譲渡税額", label: "譲渡税額" },
+    { id: "残債残高", label: "残債残高" },
+    { id: "累積税引後CF", label: "累積税引後CF" },
+    {
+      id: "出口エクイティ合計",
+      label: <TermTooltip term="exitEquity">出口エクイティ合計</TermTooltip>,
+    },
+    { id: "IRR", label: <TermTooltip term="irr">IRR</TermTooltip> },
   ];
 
   return (
@@ -69,8 +75,8 @@ export default function MultiExitCompareTable({ rows }: MultiExitCompareTablePro
             </tr>
           </thead>
           <tbody>
-            {labels.map((label, labelIdx) => (
-              <tr key={label} className={labelIdx % 2 === 0 ? "bg-muted/20" : ""}>
+            {labelRows.map(({ id, label }, labelIdx) => (
+              <tr key={id} className={labelIdx % 2 === 0 ? "bg-muted/20" : ""}>
                 <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">{label}</td>
                 {rows.map((row, colIdx) => {
                   let value: string;
@@ -78,22 +84,22 @@ export default function MultiExitCompareTable({ rows }: MultiExitCompareTablePro
                   if (colIdx === maxEquityIdx) {
                     className += " bg-green-50";
                   }
-                  if (label === "想定売却価格") {
+                  if (id === "想定売却価格") {
                     value = formatYen(row.salePrice);
-                  } else if (label === "譲渡税率") {
+                  } else if (id === "譲渡税率") {
                     value = formatPct(row.transferTaxRate);
-                  } else if (label === "譲渡税額") {
+                  } else if (id === "譲渡税額") {
                     value = formatYen(row.transferTax);
-                  } else if (label === "残債残高") {
+                  } else if (id === "残債残高") {
                     value = formatYen(row.remainingLoan);
-                  } else if (label === "累積税引後CF") {
+                  } else if (id === "累積税引後CF") {
                     value = formatYen(row.cumulativeCf);
-                  } else if (label === "出口エクイティ合計") {
+                  } else if (id === "出口エクイティ合計") {
                     value = formatYen(row.exitEquity);
                     if (colIdx === maxEquityIdx) {
                       className += " font-semibold text-green-700";
                     }
-                  } else if (label === "IRR") {
+                  } else if (id === "IRR") {
                     value = row.irr != null ? formatPct(row.irr) : "-";
                   } else {
                     value = "-";

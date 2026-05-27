@@ -4,7 +4,7 @@ export interface GlossaryEntry {
   tip: string;
 }
 
-export const GLOSSARY: Record<string, GlossaryEntry> = {
+export const GLOSSARY = {
   deadCross: {
     title: "デッドクロス",
     body: "元金返済額が減価償却費を上回る状態。帳簿上は黒字でも実質キャッシュが枯渇する「黒字倒産リスク」が生じます。",
@@ -70,4 +70,14 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     body: "満室想定年間賃料収入 ÷ 総投資額（物件価格＋諸経費）で算出した収益率。空室・経費を考慮しない粗い指標です。",
     tip: "実質利回りより 2〜3% 低くなるのが一般的です",
   },
-};
+  monthlyPayment: {
+    title: "月々の返済額",
+    body: "元金＋利息を合計した毎月のローン返済額。元利均等返済では一定額、元金均等返済では逓減します。",
+    tip: "返済額が家賃収入を大きく上回ると毎月のキャッシュが不足します",
+  },
+  transferTaxRate: {
+    title: "譲渡税率",
+    body: "不動産売却益に課税される税率。保有5年以下の短期譲渡は約39.63%、5年超の長期譲渡は約20.315%（所得税・住民税合計）。",
+    tip: "保有5年を超えてから売却すると税負担が約半分になります",
+  },
+} satisfies Record<string, GlossaryEntry>;

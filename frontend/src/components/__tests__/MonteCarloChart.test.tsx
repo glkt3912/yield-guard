@@ -81,7 +81,13 @@ describe("MonteCarloChart", () => {
 
   it("IRRヒストグラムセクションが表示される", () => {
     render(<MonteCarloChart result={makeMonteCarloResult()} />);
-    expect(screen.getByText("IRR 分布")).toBeInTheDocument();
+    // Text is split across elements (TermTooltip wraps "IRR"), so use function matcher
+    expect(
+      screen.getByText((_, el) => {
+        const text = el?.textContent?.trim().replace(/\s+/g, " ") ?? "";
+        return el?.tagName === "P" && /IRR\s*分布/.test(text);
+      })
+    ).toBeInTheDocument();
   });
 
   it("最終純資産ヒストグラムセクションが表示される", () => {
