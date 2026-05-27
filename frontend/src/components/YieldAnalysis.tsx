@@ -17,7 +17,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { YieldGauge } from "@/components/YieldGauge";
 import { CustomScenarioSlider, type CustomScenarioState } from "@/components/CustomScenarioSlider";
 import { StressScenarioTable } from "@/components/StressScenarioTable";
-import { TermTooltip } from "@/components/ui/TermTooltip";
 
 function MobileKpiGrid({ result }: { result: InvestmentResult }) {
   const firstYearCF = result.yearlyResults[0]?.afterTaxCashFlow ?? 0;
@@ -165,51 +164,23 @@ export function YieldAnalysis({
         </CardHeader>
         <CardContent>
           <dl className="space-y-2">
-            {(
-              [
-                {
-                  id: "grossYield",
-                  label: <TermTooltip term="grossYield">表面利回り</TermTooltip>,
-                  value: `${yieldPct.toFixed(2)}%`,
-                },
-                {
-                  id: "netYield",
-                  label: <TermTooltip term="netYield">実質利回り</TermTooltip>,
-                  value: `${netYieldPct.toFixed(2)}%`,
-                },
-                {
-                  id: "totalInvestment",
-                  label: "総投資額",
-                  value: formatMan(result.totalInvestment),
-                  highlight: true,
-                },
-                {
-                  id: "miscExpenses",
-                  label: "　うち諸経費",
-                  value: formatYen(result.miscExpenses),
-                },
-                {
-                  id: "annualRent",
-                  label: (
-                    <>
-                      <TermTooltip term="noi">NOI</TermTooltip>（空室控除後年間収入）
-                    </>
-                  ),
-                  value: formatYen(result.yearlyResults[0]?.annualRent ?? 0),
-                },
-                {
-                  id: "annualLoan",
-                  label: "年間ローン返済",
-                  value: formatYen(result.yearlyResults[0]?.annualLoanPayment ?? 0),
-                },
-                {
-                  id: "cf",
-                  label: "1年目税引後CF",
-                  value: formatYen(result.yearlyResults[0]?.afterTaxCashFlow ?? 0),
-                },
-              ] as { id: string; label: React.ReactNode; value: string; highlight?: boolean }[]
-            ).map(({ id, label, value, highlight }) => (
-              <div key={id} className="flex justify-between text-sm">
+            {[
+              { label: "総投資額", value: formatMan(result.totalInvestment), highlight: true },
+              { label: "　うち諸経費", value: formatYen(result.miscExpenses) },
+              {
+                label: "年間実効賃料収入（空室控除後）",
+                value: formatYen(result.yearlyResults[0]?.annualRent ?? 0),
+              },
+              {
+                label: "年間ローン返済",
+                value: formatYen(result.yearlyResults[0]?.annualLoanPayment ?? 0),
+              },
+              {
+                label: "1年目税引後CF",
+                value: formatYen(result.yearlyResults[0]?.afterTaxCashFlow ?? 0),
+              },
+            ].map(({ label, value, highlight }) => (
+              <div key={label} className="flex justify-between text-sm">
                 <dt
                   className={`text-muted-foreground ${highlight ? "font-semibold text-foreground" : ""}`}
                 >

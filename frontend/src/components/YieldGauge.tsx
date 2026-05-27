@@ -52,7 +52,7 @@ export function YieldGauge({
         <div className="flex items-center justify-between">
           <div className="min-w-0 flex-1">
             <p className="text-xs text-muted-foreground sm:text-sm">
-              表面利回り（満室想定年収 / 総投資額）
+              <TermTooltip term="grossYield">表面利回り</TermTooltip>（満室想定年収 / 総投資額）
             </p>
             <div className="flex items-end gap-2">
               <span

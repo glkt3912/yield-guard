@@ -4,7 +4,7 @@ export interface GlossaryEntry {
   tip: string;
 }
 
-export const GLOSSARY: Record<string, GlossaryEntry> = {
+export const GLOSSARY = {
   deadCross: {
     title: "デッドクロス",
     body: "元金返済額が減価償却費を上回る状態。帳簿上は黒字でも実質キャッシュが枯渇する「黒字倒産リスク」が生じます。",
@@ -80,4 +80,4 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     body: "不動産売却益に課税される税率。保有5年以下の短期譲渡は約39.63%、5年超の長期譲渡は約20.315%（所得税・住民税合計）。",
     tip: "保有5年を超えてから売却すると税負担が約半分になります",
   },
-};
+} satisfies Record<string, GlossaryEntry>;
