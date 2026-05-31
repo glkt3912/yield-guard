@@ -301,9 +301,13 @@ func TsuboToSqm(tsubo float64) float64 {
 	return tsubo * SqmPerTsubo
 }
 
+// landTrendMinSamples は年次比較に必要な最小取引件数。
+// どちらかの年がこの件数を下回る場合は信頼性が低いため "不明" を返す。
+const landTrendMinSamples = 2
+
 // CalcLandPriceTrend は取引データを年次グルーピングして坪単価変化率を算出し
 // "上昇" | "安定" | "下落" | "不明" を返す。
-// 直近2年分の有効データがない場合は "不明" を返す。
+// 直近2年分の有効データがない、またはどちらかの年の件数が landTrendMinSamples 未満の場合は "不明" を返す。
 func CalcLandPriceTrend(transactions []LandTransaction) string {
 	byYear := map[int][]float64{}
 	for _, t := range transactions {
@@ -328,6 +332,10 @@ func CalcLandPriceTrend(transactions []LandTransaction) string {
 
 	recentYear := years[len(years)-1]
 	prevYear := years[len(years)-2]
+
+	if len(byYear[recentYear]) < landTrendMinSamples || len(byYear[prevYear]) < landTrendMinSamples {
+		return "不明"
+	}
 
 	recentMedian := medianFloat64(byYear[recentYear])
 	prevMedian := medianFloat64(byYear[prevYear])
