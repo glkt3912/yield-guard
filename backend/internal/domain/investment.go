@@ -71,6 +71,7 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 		AcquisitionCostOptions{
 			BrokerageMultiplier: 1.0,
 			LoanAmount:          input.LoanAmount,
+			IsNewBuilding:       input.BuildingAge == 0,
 		},
 	)
 	yieldScenarios := calcYieldScenarios(input, yp.totalInvestment)
