@@ -12,10 +12,7 @@ interface Props {
   yearlyResults: YearlyResult[];
 }
 
-const fmt = (n: number) =>
-  n >= 10_000_000
-    ? `${(n / 10_000_000).toFixed(1)}千万円`
-    : `${Math.round(n / 10_000).toLocaleString()}万円`;
+const fmt = (n: number) => `${Math.round(n / 10_000).toLocaleString()}万円`;
 
 const COLORS = [
   chartColors.primary,
