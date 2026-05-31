@@ -27,6 +27,7 @@ import subprocess
 from pathlib import Path
 from fontTools.ttLib import TTFont
 from fontTools.merge import Merger
+from fontTools.varLib import instancer
 
 # ── 設定 ────────────────────────────────────────────────────────────────────
 
@@ -96,11 +97,30 @@ def find_chunks_with_missing(current_ttf: Path, weight: str, missing_cps: set) -
     return chunks
 
 
+def ensure_static(src_ttf: Path, weight_int: int) -> None:
+    """variable font（fvar あり）を static インスタンスに変換して上書き保存する。
+    pdfkit は weight axis を解釈しないため、Bold スロットには wght=700 の static TTF が必要。
+    tmp ファイル経由で atomic に書き込むことで、失敗時にオリジナルが破損しないようにする。"""
+    font = TTFont(src_ttf)
+    if "fvar" not in font:
+        return
+    print(f"  variable font を検出 → wght={weight_int} で static 化")
+    instancer.instantiateVariableFont(font, {"wght": weight_int})
+    tmp = src_ttf.with_suffix(".tmp")
+    font.save(str(tmp))
+    tmp.replace(src_ttf)  # atomic rename（失敗時はオリジナルを保持）
+    size_kb = src_ttf.stat().st_size // 1024
+    print(f"  → static 化完了 ({size_kb} KB)")
+
+
 def build_subset(label: str, weight: str, chars_file: Path) -> None:
     print(f"\n[{label}] ビルド開始 (weight={weight})")
     src_ttf = FONTS_OUT_DIR / f"NotoSansJP-{label}.ttf"
     tmp_merged = Path(f"/tmp/NotoSansJP-{label}-merged.ttf")
     tmp_subset = Path(f"/tmp/NotoSansJP-{label}-subset.ttf")
+
+    # variable font の場合は先に static 化する（pdfkit は wght axis 非対応）
+    ensure_static(src_ttf, int(weight))
 
     # 現在のフォントで欠落しているグリフを特定
     current = TTFont(src_ttf)
