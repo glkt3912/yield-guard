@@ -55,15 +55,16 @@ func CalcStampDuty(price float64) float64 {
 // 適用税率（根拠: 租税特別措置法・不動産登記法）:
 //   - 土地所有権移転: 固定資産税評価額 × 2.0%（本則。軽減措置 〜2026/3/31 期限切れ）
 //   - 建物所有権移転（中古）: 固定資産税評価額 × 2.0%
-//   - 建物所有権保存（新築）: 固定資産税評価額 × 0.15%（軽減措置 〜2027/3/31）
+//   - 建物所有権保存（新築）: 固定資産税評価額 × 0.4%（本則）
+//     ※ 自己居住用軽減措置（0.15%、租税特別措置法72条の2）は投資用賃貸物件に適用不可
 //   - 抵当権設定: 融資額 × 0.4%（投資用物件は住宅ローン軽減0.1%対象外）
 func CalcRegistrationTax(landAssessed, buildingAssessed, loanAmount float64, isNewBuilding bool) float64 {
 	landTransfer := landAssessed * 0.02
 
 	var buildingTransfer float64
 	if isNewBuilding {
-		// 根拠: 租税特別措置法72条の2 新築住宅用建物の所有権保存登記 軽減措置
-		buildingTransfer = buildingAssessed * 0.0015
+		// 所有権保存登記（本則0.4%）。自己居住用軽減(0.15%)は投資用物件に適用不可
+		buildingTransfer = buildingAssessed * 0.004
 	} else {
 		buildingTransfer = buildingAssessed * 0.02
 	}
@@ -123,8 +124,22 @@ func DefaultAcquisitionCostOptions() AcquisitionCostOptions {
 // 評価額が未入力（0）の場合は推定モード（土地: landPrice×70%、建物: buildingCost×60%）を使用する。
 func CalcAcquisitionCosts(landPrice, buildingCost float64, opts AcquisitionCostOptions) AcquisitionCostBreakdown {
 	totalPrice := landPrice + buildingCost
-	brokerage := CalcBrokerageFee(totalPrice, opts.BrokerageMultiplier)
-	stamp := CalcStampDuty(totalPrice)
+
+	// 新築は建物が請負契約（宅建業法の仲介対象外）のため、仲介手数料の基準は土地代金のみ
+	brokerageBase := totalPrice
+	if opts.IsNewBuilding {
+		brokerageBase = landPrice
+	}
+	brokerage := CalcBrokerageFee(brokerageBase, opts.BrokerageMultiplier)
+
+	// 新築: 売買契約書(土地)と請負契約書(建物)に分けて印紙税を計算する。
+	// 合算すると上位ブラケットに入り過大計上になるため（例: 土地800万+建物400万 → 合算20,000円 vs 分割12,000円）。
+	var stamp float64
+	if opts.IsNewBuilding {
+		stamp = CalcStampDuty(landPrice) + CalcStampDuty(buildingCost)
+	} else {
+		stamp = CalcStampDuty(totalPrice)
+	}
 
 	assessedLand := opts.AssessedLandValue
 	if assessedLand == 0 {

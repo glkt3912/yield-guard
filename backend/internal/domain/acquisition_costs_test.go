@@ -112,10 +112,10 @@ func TestCalcRegistrationTax(t *testing.T) {
 			buildingAssessed: 10_000_000,
 			loanAmount:       25_000_000,
 			isNew:            true,
-			// 土地: 400,000
-			// 建物(新築): 10,000,000×0.0015=15,000
-			// 抵当権: 100,000
-			want: 515_000,
+			// 土地: 20,000,000×0.02=400,000
+			// 建物(新築保存登記・本則): 10,000,000×0.004=40,000
+			// 抵当権: 25,000,000×0.004=100,000
+			want: 540_000,
 		},
 		{
 			name:             "融資なし",
@@ -258,9 +258,9 @@ func TestCalcRegistrationTax_Patterns(t *testing.T) {
 			loanAmount:       0,
 			isNew:            true,
 			// 土地: 10,000,000×0.02=200,000
-			// 建物(新築): 8,000,000×0.0015=12,000
+			// 建物(新築保存登記・本則): 8,000,000×0.004=32,000
 			// 抵当権: 0
-			want: 212_000,
+			want: 232_000,
 		},
 		{
 			name:             "中古・融資なし（土地移転+建物移転）",
@@ -327,6 +327,39 @@ func TestCalcAcquisitionCosts(t *testing.T) {
 	// 不動産取得税: 土地24,500,000×0.5×0.03=367,500, 建物14,400,000×0.03=432,000 → 合計799,500
 	if math.Abs(result.RealEstateAcquisitionTax-799_500) > 1 {
 		t.Errorf("RealEstateAcquisitionTax = %.0f, want 799500", result.RealEstateAcquisitionTax)
+	}
+	wantTotal := result.BrokerageFee + result.StampDuty + result.RegistrationTax + result.RealEstateAcquisitionTax
+	if result.Total != wantTotal {
+		t.Errorf("Total = %.0f, want %.0f", result.Total, wantTotal)
+	}
+}
+
+func TestCalcAcquisitionCosts_NewBuilding(t *testing.T) {
+	// 5900万円: 土地3500万 + 建物2400万, ローン3000万, 新築
+	landPrice := 35_000_000.0
+	buildingCost := 24_000_000.0
+	opts := AcquisitionCostOptions{
+		BrokerageMultiplier: 1.0,
+		LoanAmount:          30_000_000,
+		IsNewBuilding:       true,
+	}
+	result := CalcAcquisitionCosts(landPrice, buildingCost, opts)
+
+	// 仲介手数料: 土地のみ基準 (35,000,000×0.03+60,000)×1.1 = 1,221,000
+	if result.BrokerageFee != 1_221_000 {
+		t.Errorf("BrokerageFee = %.0f, want 1221000", result.BrokerageFee)
+	}
+	// 印紙税: 売買契約書(土地35M)+請負契約書(建物24M)を分割計算
+	// CalcStampDuty(35,000,000)=20,000 + CalcStampDuty(24,000,000)=20,000 → 40,000
+	if result.StampDuty != 40_000 {
+		t.Errorf("StampDuty = %.0f, want 40000", result.StampDuty)
+	}
+	// 登録免許税: 土地移転2% + 建物保存登記(本則)0.4% + 抵当権0.4%
+	// 土地推定: 35,000,000×0.7=24,500,000 → 24,500,000×0.02=490,000
+	// 建物推定: 24,000,000×0.6=14,400,000 → 14,400,000×0.004=57,600
+	// 抵当権: 30,000,000×0.004=120,000 → 合計: 667,600
+	if result.RegistrationTax != 667_600 {
+		t.Errorf("RegistrationTax = %.0f, want 667600", result.RegistrationTax)
 	}
 	wantTotal := result.BrokerageFee + result.StampDuty + result.RegistrationTax + result.RealEstateAcquisitionTax
 	if result.Total != wantTotal {

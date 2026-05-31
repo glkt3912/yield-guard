@@ -1555,6 +1555,10 @@
                     "description": "保険料率 (例: 0.003 = 0.3%)",
                     "type": "number"
                 },
+                "isFirstRegistration": {
+                    "description": "IsFirstRegistration は所有権保存登記（開発業者直売の新築）か移転登記（中古・転売）かを示す。\nnil の場合は BuildingAge == 0 から自動判定する。\n築0年でも非開発業者からの転売（移転登記 2%）の場合は false を明示的に指定すること。",
+                    "type": "boolean"
+                },
                 "landArea": {
                     "description": "土地面積 (m²)",
                     "type": "number"
