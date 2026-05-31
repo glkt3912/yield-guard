@@ -3323,3 +3323,179 @@ func TestCalcYieldDifficulty(t *testing.T) {
 		}
 	})
 }
+
+// --- CalcLandPriceTrend ---
+
+func TestCalcLandPriceTrend_Empty(t *testing.T) {
+	got := CalcLandPriceTrend(nil)
+	if got != "不明" {
+		t.Errorf("empty: got %q, want 不明", got)
+	}
+}
+
+func TestCalcLandPriceTrend_OneYear(t *testing.T) {
+	txs := []LandTransaction{
+		{Period: "令和5年第1四半期", PricePerTsubo: 100_000},
+		{Period: "令和5年第3四半期", PricePerTsubo: 120_000},
+	}
+	got := CalcLandPriceTrend(txs)
+	if got != "不明" {
+		t.Errorf("one year only: got %q, want 不明", got)
+	}
+}
+
+func TestCalcLandPriceTrend_Rise(t *testing.T) {
+	// 前年中央値 100,000 → 今年中央値 110,000 (+10%) → 上昇
+	txs := []LandTransaction{
+		{Period: "令和4年第1四半期", PricePerTsubo: 100_000},
+		{Period: "令和4年第2四半期", PricePerTsubo: 100_000},
+		{Period: "令和5年第1四半期", PricePerTsubo: 110_000},
+		{Period: "令和5年第2四半期", PricePerTsubo: 110_000},
+	}
+	got := CalcLandPriceTrend(txs)
+	if got != "上昇" {
+		t.Errorf("rise: got %q, want 上昇", got)
+	}
+}
+
+func TestCalcLandPriceTrend_Stable(t *testing.T) {
+	// +2% → 安定
+	txs := []LandTransaction{
+		{Period: "令和4年第1四半期", PricePerTsubo: 100_000},
+		{Period: "令和4年第2四半期", PricePerTsubo: 100_000},
+		{Period: "令和5年第1四半期", PricePerTsubo: 102_000},
+		{Period: "令和5年第2四半期", PricePerTsubo: 102_000},
+	}
+	got := CalcLandPriceTrend(txs)
+	if got != "安定" {
+		t.Errorf("stable: got %q, want 安定", got)
+	}
+}
+
+func TestCalcLandPriceTrend_Decline(t *testing.T) {
+	// -10% → 下落
+	txs := []LandTransaction{
+		{Period: "令和4年第1四半期", PricePerTsubo: 100_000},
+		{Period: "令和4年第2四半期", PricePerTsubo: 100_000},
+		{Period: "令和5年第1四半期", PricePerTsubo: 90_000},
+		{Period: "令和5年第2四半期", PricePerTsubo: 90_000},
+	}
+	got := CalcLandPriceTrend(txs)
+	if got != "下落" {
+		t.Errorf("decline: got %q, want 下落", got)
+	}
+}
+
+func TestCalcLandPriceTrend_WesternEra(t *testing.T) {
+	// 西暦形式 Period
+	txs := []LandTransaction{
+		{Period: "2023年第1四半期", PricePerTsubo: 100_000},
+		{Period: "2023年第2四半期", PricePerTsubo: 100_000},
+		{Period: "2024年第1四半期", PricePerTsubo: 108_000},
+		{Period: "2024年第2四半期", PricePerTsubo: 108_000},
+	}
+	got := CalcLandPriceTrend(txs)
+	if got != "上昇" {
+		t.Errorf("western era rise: got %q, want 上昇", got)
+	}
+}
+
+func TestCalcLandPriceTrend_MixedEra(t *testing.T) {
+	// 和暦と西暦が混在（令和5年=2023, 2024年）、-10% → 下落
+	txs := []LandTransaction{
+		{Period: "令和5年第1四半期", PricePerTsubo: 200_000},
+		{Period: "令和5年第2四半期", PricePerTsubo: 200_000},
+		{Period: "2024年第1四半期", PricePerTsubo: 180_000},
+		{Period: "2024年第2四半期", PricePerTsubo: 180_000},
+	}
+	got := CalcLandPriceTrend(txs)
+	if got != "下落" {
+		t.Errorf("mixed era decline: got %q, want 下落", got)
+	}
+}
+
+func TestCalcLandPriceTrend_Boundary_ExactlyMinus5(t *testing.T) {
+	// -5% ちょうどは安定（change < -5 で下落、≥ -5 は安定）
+	txs := []LandTransaction{
+		{Period: "令和4年第1四半期", PricePerTsubo: 100_000},
+		{Period: "令和4年第2四半期", PricePerTsubo: 100_000},
+		{Period: "令和5年第1四半期", PricePerTsubo: 95_000},
+		{Period: "令和5年第2四半期", PricePerTsubo: 95_000},
+	}
+	got := CalcLandPriceTrend(txs)
+	if got != "安定" {
+		t.Errorf("boundary -5%%: got %q, want 安定", got)
+	}
+}
+
+func TestCalcLandPriceTrend_Boundary_ExactlyPlus5(t *testing.T) {
+	// +5% ちょうどは安定（change > 5 で上昇）
+	txs := []LandTransaction{
+		{Period: "令和4年第1四半期", PricePerTsubo: 100_000},
+		{Period: "令和4年第2四半期", PricePerTsubo: 100_000},
+		{Period: "令和5年第1四半期", PricePerTsubo: 105_000},
+		{Period: "令和5年第2四半期", PricePerTsubo: 105_000},
+	}
+	got := CalcLandPriceTrend(txs)
+	if got != "安定" {
+		t.Errorf("boundary +5%%: got %q, want 安定", got)
+	}
+}
+
+func TestCalcLandPriceTrend_ZeroPriceSkipped(t *testing.T) {
+	// PricePerTsubo == 0 の取引は除外される
+	// 0 除外後に令和5年のみ残る → 不明
+	txs := []LandTransaction{
+		{Period: "令和4年第1四半期", PricePerTsubo: 0},
+		{Period: "令和5年第1四半期", PricePerTsubo: 100_000},
+		{Period: "令和5年第2四半期", PricePerTsubo: 110_000},
+	}
+	got := CalcLandPriceTrend(txs)
+	if got != "不明" {
+		t.Errorf("zero price skipped: got %q, want 不明", got)
+	}
+}
+
+func TestCalcLandPriceTrend_InvalidPeriod(t *testing.T) {
+	// パース不能な Period 文字列はすべて除外される → 不明
+	txs := []LandTransaction{
+		{Period: "不明", PricePerTsubo: 100_000},
+		{Period: "", PricePerTsubo: 120_000},
+		{Period: "第3四半期", PricePerTsubo: 80_000},
+	}
+	got := CalcLandPriceTrend(txs)
+	if got != "不明" {
+		t.Errorf("invalid period: got %q, want 不明", got)
+	}
+}
+
+func TestCalcLandPriceTrend_ThreeYears_UsesLatestTwo(t *testing.T) {
+	// 3年分のデータがある場合、最新2年（令和5年 vs 令和6年）のみ使う
+	// 令和4年: 50,000（外れ値）は無視される
+	txs := []LandTransaction{
+		{Period: "令和4年第1四半期", PricePerTsubo: 50_000},
+		{Period: "令和4年第2四半期", PricePerTsubo: 50_000},
+		{Period: "令和5年第1四半期", PricePerTsubo: 100_000},
+		{Period: "令和5年第2四半期", PricePerTsubo: 100_000},
+		{Period: "令和6年第1四半期", PricePerTsubo: 112_000},
+		{Period: "令和6年第2四半期", PricePerTsubo: 108_000},
+	}
+	// 令和5年中央値=100,000 令和6年中央値=110,000 → +10% → 上昇
+	got := CalcLandPriceTrend(txs)
+	if got != "上昇" {
+		t.Errorf("three years: got %q, want 上昇", got)
+	}
+}
+
+func TestCalcLandPriceTrend_InsufficientSamplesPerYear(t *testing.T) {
+	// 最新年のサンプルが landTrendMinSamples(2) 未満 → 不明
+	txs := []LandTransaction{
+		{Period: "令和4年第1四半期", PricePerTsubo: 100_000},
+		{Period: "令和4年第2四半期", PricePerTsubo: 100_000},
+		{Period: "令和5年第1四半期", PricePerTsubo: 200_000}, // 1件のみ
+	}
+	got := CalcLandPriceTrend(txs)
+	if got != "不明" {
+		t.Errorf("insufficient samples: got %q, want 不明", got)
+	}
+}
