@@ -99,13 +99,16 @@ def find_chunks_with_missing(current_ttf: Path, weight: str, missing_cps: set) -
 
 def ensure_static(src_ttf: Path, weight_int: int) -> None:
     """variable font（fvar あり）を static インスタンスに変換して上書き保存する。
-    pdfkit は weight axis を解釈しないため、Bold スロットには wght=700 の static TTF が必要。"""
+    pdfkit は weight axis を解釈しないため、Bold スロットには wght=700 の static TTF が必要。
+    tmp ファイル経由で atomic に書き込むことで、失敗時にオリジナルが破損しないようにする。"""
     font = TTFont(src_ttf)
     if "fvar" not in font:
         return
     print(f"  variable font を検出 → wght={weight_int} で static 化")
     instancer.instantiateVariableFont(font, {"wght": weight_int})
-    font.save(str(src_ttf))
+    tmp = src_ttf.with_suffix(".tmp")
+    font.save(str(tmp))
+    tmp.replace(src_ttf)  # atomic rename（失敗時はオリジナルを保持）
     size_kb = src_ttf.stat().st_size // 1024
     print(f"  → static 化完了 ({size_kb} KB)")
 
