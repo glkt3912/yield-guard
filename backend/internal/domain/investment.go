@@ -65,13 +65,17 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 
 	criticalErrors := calcCriticalErrors(input, sim.deadCrossYear, dp.usefulLife)
 	stressScenarios := calcAllStressScenarios(ctx, input)
+	isNewBuilding := input.BuildingAge == 0
+	if input.IsFirstRegistration != nil {
+		isNewBuilding = *input.IsFirstRegistration
+	}
 	acquisitionCosts := CalcAcquisitionCosts(
 		input.LandPrice,
 		input.BuildingCost,
 		AcquisitionCostOptions{
 			BrokerageMultiplier: 1.0,
 			LoanAmount:          input.LoanAmount,
-			IsNewBuilding:       input.BuildingAge == 0,
+			IsNewBuilding:       isNewBuilding,
 		},
 	)
 	yieldScenarios := calcYieldScenarios(input, yp.totalInvestment)

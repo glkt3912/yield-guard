@@ -349,6 +349,11 @@ func TestCalcAcquisitionCosts_NewBuilding(t *testing.T) {
 	if result.BrokerageFee != 1_221_000 {
 		t.Errorf("BrokerageFee = %.0f, want 1221000", result.BrokerageFee)
 	}
+	// 印紙税: 売買契約書(土地35M)+請負契約書(建物24M)を分割計算
+	// CalcStampDuty(35,000,000)=20,000 + CalcStampDuty(24,000,000)=20,000 → 40,000
+	if result.StampDuty != 40_000 {
+		t.Errorf("StampDuty = %.0f, want 40000", result.StampDuty)
+	}
 	// 登録免許税: 土地移転2% + 建物保存登記(本則)0.4% + 抵当権0.4%
 	// 土地推定: 35,000,000×0.7=24,500,000 → 24,500,000×0.02=490,000
 	// 建物推定: 24,000,000×0.6=14,400,000 → 14,400,000×0.004=57,600

@@ -3499,3 +3499,52 @@ func TestCalcLandPriceTrend_InsufficientSamplesPerYear(t *testing.T) {
 		t.Errorf("insufficient samples: got %q, want 不明", got)
 	}
 }
+
+// TestAnalyze_AcquisitionCosts_NewBuild は Analyze() 経由で IsFirstRegistration が
+// 正しく導線に乗ることを検証する（regression guard for investment.go:isNewBuilding derivation）
+func TestAnalyze_AcquisitionCosts_NewBuild(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:    35_000_000,
+		BuildingCost: 24_000_000,
+		BuildingAge:  0, // 新築 → IsNewBuilding=true が自動設定されるべき
+		MonthlyRent:  120_000,
+		LoanAmount:   30_000_000,
+		AnnualLoanRate: 0.015,
+		LoanYears:    35,
+		ExpenseRate:  0.2,
+		VacancyRate:  0.05,
+	}
+
+	result := Analyze(context.Background(), base)
+	ac := result.AcquisitionCosts
+
+	// 仲介手数料: 土地のみ基準 (35M×0.03+6万)×1.1 = 1,221,000
+	if ac.BrokerageFee != 1_221_000 {
+		t.Errorf("新築: BrokerageFee = %.0f, want 1,221,000 (土地代金のみ基準)", ac.BrokerageFee)
+	}
+	// 印紙税: 分割計算 35M(20,000) + 24M(20,000) = 40,000
+	if ac.StampDuty != 40_000 {
+		t.Errorf("新築: StampDuty = %.0f, want 40,000 (売買/請負 分割)", ac.StampDuty)
+	}
+	// 登録免許税: 保存登記(0.4%) を使用していること
+	// 土地推定=24.5M→490,000 + 建物推定=14.4M→57,600 + 抵当権=120,000 → 667,600
+	if ac.RegistrationTax != 667_600 {
+		t.Errorf("新築: RegistrationTax = %.0f, want 667,600 (保存登記0.4%%)", ac.RegistrationTax)
+	}
+
+	// IsFirstRegistration=false で明示的に移転登記(2%)を強制できること（築0年転売物件）
+	falseVal := false
+	base2 := base
+	base2.IsFirstRegistration = &falseVal
+	result2 := Analyze(context.Background(), base2)
+	ac2 := result2.AcquisitionCosts
+
+	// 仲介手数料: 中古扱いなので土地+建物合計基準
+	if ac2.BrokerageFee != 2_013_000 {
+		t.Errorf("築0年転売: BrokerageFee = %.0f, want 2,013,000 (合計基準)", ac2.BrokerageFee)
+	}
+	// 登録免許税: 移転登記(2%)を使用 → 建物: 14.4M×0.02=288,000 → 898,000
+	if ac2.RegistrationTax != 898_000 {
+		t.Errorf("築0年転売: RegistrationTax = %.0f, want 898,000 (移転登記2%%)", ac2.RegistrationTax)
+	}
+}

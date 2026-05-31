@@ -131,7 +131,15 @@ func CalcAcquisitionCosts(landPrice, buildingCost float64, opts AcquisitionCostO
 		brokerageBase = landPrice
 	}
 	brokerage := CalcBrokerageFee(brokerageBase, opts.BrokerageMultiplier)
-	stamp := CalcStampDuty(totalPrice)
+
+	// 新築: 売買契約書(土地)と請負契約書(建物)に分けて印紙税を計算する。
+	// 合算すると上位ブラケットに入り過大計上になるため（例: 土地800万+建物400万 → 合算20,000円 vs 分割12,000円）。
+	var stamp float64
+	if opts.IsNewBuilding {
+		stamp = CalcStampDuty(landPrice) + CalcStampDuty(buildingCost)
+	} else {
+		stamp = CalcStampDuty(totalPrice)
+	}
 
 	assessedLand := opts.AssessedLandValue
 	if assessedLand == 0 {

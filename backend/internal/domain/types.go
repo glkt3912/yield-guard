@@ -154,6 +154,11 @@ type InvestmentInput struct {
 
 	// 税務シミュレーション用（任意）。0 の場合は損益通算・法人比較を計算しない。
 	SalaryIncome float64 `json:"salaryIncome,omitempty"` // 給与年収（円）
+
+	// IsFirstRegistration は所有権保存登記（開発業者直売の新築）か移転登記（中古・転売）かを示す。
+	// nil の場合は BuildingAge == 0 から自動判定する。
+	// 築0年でも非開発業者からの転売（移転登記 2%）の場合は false を明示的に指定すること。
+	IsFirstRegistration *bool `json:"isFirstRegistration,omitempty"`
 }
 
 // CapexEvent は大規模修繕費の発生スケジュール1件
