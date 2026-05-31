@@ -300,3 +300,109 @@ func SqmToTsubo(sqm float64) float64 {
 func TsuboToSqm(tsubo float64) float64 {
 	return tsubo * SqmPerTsubo
 }
+
+// CalcLandPriceTrend は取引データを年次グルーピングして坪単価変化率を算出し
+// "上昇" | "安定" | "下落" | "不明" を返す。
+// 直近2年分の有効データがない場合は "不明" を返す。
+func CalcLandPriceTrend(transactions []LandTransaction) string {
+	byYear := map[int][]float64{}
+	for _, t := range transactions {
+		if t.PricePerTsubo <= 0 {
+			continue
+		}
+		y := parsePeriodYear(t.Period)
+		if y == 0 {
+			continue
+		}
+		byYear[y] = append(byYear[y], t.PricePerTsubo)
+	}
+	if len(byYear) < 2 {
+		return "不明"
+	}
+
+	years := make([]int, 0, len(byYear))
+	for y := range byYear {
+		years = append(years, y)
+	}
+	sort.Ints(years)
+
+	recentYear := years[len(years)-1]
+	prevYear := years[len(years)-2]
+
+	recentMedian := medianFloat64(byYear[recentYear])
+	prevMedian := medianFloat64(byYear[prevYear])
+	if prevMedian == 0 {
+		return "不明"
+	}
+
+	changeRate := (recentMedian - prevMedian) / prevMedian * 100
+	switch {
+	case changeRate > 5:
+		return "上昇"
+	case changeRate < -5:
+		return "下落"
+	default:
+		return "安定"
+	}
+}
+
+// parsePeriodYear は国交省 API の取引時点文字列から西暦年を返す。
+// 例: "令和5年第3四半期" → 2023, "2024年第1四半期" → 2024
+func parsePeriodYear(s string) int {
+	eraMap := []struct {
+		prefix string
+		base   int
+	}{
+		{"令和", 2018},
+		{"平成", 1988},
+		{"昭和", 1925},
+		{"大正", 1911},
+		{"明治", 1867},
+	}
+	for _, e := range eraMap {
+		if len(s) >= len(e.prefix) && s[:len(e.prefix)] == e.prefix {
+			rest := s[len(e.prefix):]
+			numEnd := 0
+			for numEnd < len(rest) && rest[numEnd] >= '0' && rest[numEnd] <= '9' {
+				numEnd++
+			}
+			if numEnd == 0 {
+				return 0
+			}
+			n := 0
+			for _, c := range rest[:numEnd] {
+				n = n*10 + int(c-'0')
+			}
+			return e.base + n
+		}
+	}
+	// 西暦形式 "2024年..." または "2024第..."
+	numEnd := 0
+	for numEnd < len(s) && s[numEnd] >= '0' && s[numEnd] <= '9' {
+		numEnd++
+	}
+	if numEnd == 4 {
+		n := 0
+		for _, c := range s[:4] {
+			n = n*10 + int(c-'0')
+		}
+		if n >= 1900 && n <= 2100 {
+			return n
+		}
+	}
+	return 0
+}
+
+func medianFloat64(vals []float64) float64 {
+	if len(vals) == 0 {
+		return 0
+	}
+	cp := make([]float64, len(vals))
+	copy(cp, vals)
+	sort.Float64s(cp)
+	n := len(cp)
+	if n%2 == 0 {
+		return (cp[n/2-1] + cp[n/2]) / 2
+	}
+	return cp[n/2]
+}

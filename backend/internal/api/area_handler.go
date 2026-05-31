@@ -119,7 +119,7 @@ func (h *Handler) HandleAreaDiscovery(c *gin.Context) {
 			item.DataSufficient = stats.Count >= 3
 			item.YieldDifficulty, item.YieldDifficultyLabel = domain.CalcYieldDifficulty(stats.MedianTsubo, budget, targetYield)
 
-			item.LandPriceTrend = "データなし"
+			item.LandPriceTrend = domain.CalcLandPriceTrend(transactions)
 			results[idx] = item
 			return nil
 		})
