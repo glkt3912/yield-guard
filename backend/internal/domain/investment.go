@@ -82,8 +82,7 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 	ltvSensitivity := CalcLTVSensitivity(input, nil)
 
 	equity := yp.totalInvestment - input.LoanAmount
-	irrNPV := calcIRRNPV(input, sim.yearlyResults, equity, exitNet,
-		exitSalePrice, sim.accumulatedDepreciation)
+	irrNPV := calcIRRNPV(input, sim.yearlyResults, equity, exitNet)
 
 	multiExit := calcMultiExitComparison(input, sim.yearlyResults, yp.miscExpenses)
 	taxSim := CalcTaxSimulation(input, sim.yearlyResults, exitCapGain)
