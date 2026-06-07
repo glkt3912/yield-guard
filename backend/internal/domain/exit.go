@@ -57,9 +57,20 @@ func calcTransferTax(capitalGain float64, holdingYears int) float64 {
 	return capitalGain * transferTaxRateForHolding(holdingYears)
 }
 
+// decayedSalePrice は収益還元法による想定売却価格に保有期間中の価格下落率を複利適用する。
+// priceDeclineRate が 0 以下の場合は減衰なしの価格をそのまま返す。
+func decayedSalePrice(salePrice, priceDeclineRate float64, years int) float64 {
+	if priceDeclineRate <= 0 {
+		return salePrice
+	}
+	return salePrice * math.Pow(1-priceDeclineRate, float64(years))
+}
+
 // calcExit は出口戦略（売却）の試算を行う
 //
-// 売却価格: NOI（純収益）/ 目標利回り（実質ベース）で収益還元法により算出
+// 売却価格: NOI（純収益）/ 目標利回り（実質ベース）で収益還元法により算出し、
+//
+//	PriceDeclineRate が指定されていれば保有期間分の価格下落を反映する
 // 取得費: 土地 + 建物簿価 + 取得時諸経費（税法上の取得費）
 // 売却費用: 仲介手数料の上限額を概算控除（消費税込み）
 // 税率: 保有5年超で長期(20.315%)、5年以下で短期(39.63%)。
@@ -79,10 +90,11 @@ func calcExit(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciat
 
 	exitYear := yearly[holdIdx]
 
-	// 収益還元法: 売却価格 = NOI / 目標利回り（実質ベース）
+	// 収益還元法: 売却価格 = NOI / 目標利回り（実質ベース）に価格下落率を反映
 	// NOI = 実効賃料収入 - 運営経費（ローン利息は含まない）
+	// 価格下落を売却価格・手残り・IRR で同一前提とするため、ここで一括適用する。
 	noi := exitYear.AnnualRent - exitYear.AnnualExpenses
-	salePrice = noi / input.ExitYieldTarget
+	salePrice = decayedSalePrice(noi/input.ExitYieldTarget, input.PriceDeclineRate, input.HoldingYears)
 
 	sellExpenses := calcSellingExpenses(salePrice)
 	acquisitionCostForTax := calcAcquisitionCostForTax(input, accumulatedDepreciation)
@@ -96,36 +108,15 @@ func calcExit(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciat
 	return
 }
 
-// calcTerminalValueWithDecline は価格下落率を考慮した売却時ターミナルバリューを計算する。
-// 売却費用・取得費・譲渡税は calcExit と共通のヘルパー（calcSellingExpenses /
-// calcAcquisitionCostForTax / calcTransferTax）を用いる。
-func calcTerminalValueWithDecline(
-	input InvestmentInput,
-	yearly []YearlyResult,
-	adjustedSalePrice float64,
-	accumulatedDepreciation float64,
-) float64 {
-	holdIdx := input.HoldingYears - 1
-	if holdIdx >= len(yearly) {
-		holdIdx = len(yearly) - 1
-	}
-	exitYear := yearly[holdIdx]
-	sellExpenses := calcSellingExpenses(adjustedSalePrice)
-	acquisitionCostForTax := calcAcquisitionCostForTax(input, accumulatedDepreciation)
-	capGain := adjustedSalePrice - sellExpenses - acquisitionCostForTax
-	transferTax := calcTransferTax(capGain, input.HoldingYears)
-	return adjustedSalePrice - sellExpenses - transferTax - exitYear.RemainingLoanBalance
-}
-
 // calcIRRNPV は IRR / NPV を計算して返す。
 // equity がゼロ以下（オーバーローン）または HoldingYears=0 の場合は計算が成立しないためゼロ値を返す。
+// terminal value には calcExit が算出した出口手残り（exitNet）を使う。
+// exitNet は価格下落率を反映済みのため、ここで再度減衰を適用しない（二重適用の防止）。
 func calcIRRNPV(
 	input InvestmentInput,
 	yearlyResults []YearlyResult,
 	equity float64,
 	exitNet float64,
-	exitSalePrice float64,
-	accumulatedDepreciation float64,
 ) irrNPVResult {
 	if equity <= 0 || input.HoldingYears <= 0 {
 		return irrNPVResult{}
@@ -134,14 +125,8 @@ func calcIRRNPV(
 	for i := 0; i < input.HoldingYears && i < len(yearlyResults); i++ {
 		irrCFs[i] = yearlyResults[i].AfterTaxCashFlow
 	}
-	irrTerminalValue := exitNet
-	if input.PriceDeclineRate > 0 {
-		decayFactor := math.Pow(1-input.PriceDeclineRate, float64(input.HoldingYears))
-		adjustedSalePrice := exitSalePrice * decayFactor
-		irrTerminalValue = calcTerminalValueWithDecline(input, yearlyResults, adjustedSalePrice, accumulatedDepreciation)
-	}
-	npv := CalcNPV(irrCFs, irrTerminalValue, input.DiscountRate, equity)
-	irr, _ := CalcIRR(irrCFs, irrTerminalValue, equity)
+	npv := CalcNPV(irrCFs, exitNet, input.DiscountRate, equity)
+	irr, _ := CalcIRR(irrCFs, exitNet, equity)
 	return irrNPVResult{irr: irr, npv: npv}
 }
 
@@ -171,9 +156,9 @@ func calcMultiExitComparison(input InvestmentInput, yearly []YearlyResult, miscE
 			continue
 		}
 
-		// 売却価格: NOI / exitYieldTarget（その年のNOIを使用）
+		// 売却価格: NOI / exitYieldTarget（その年のNOIを使用）に保有年数分の価格下落を反映
 		noi := exitYear.AnnualRent - exitYear.AnnualExpenses
-		salePrice := noi / input.ExitYieldTarget
+		salePrice := decayedSalePrice(noi/input.ExitYieldTarget, input.PriceDeclineRate, yr)
 
 		// 売却費用（仲介手数料上限・消費税込み）
 		sellExpenses := calcSellingExpenses(salePrice)

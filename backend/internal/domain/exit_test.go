@@ -1,6 +1,10 @@
 package domain
 
-import "testing"
+import (
+	"context"
+	"math"
+	"testing"
+)
 
 // TestCalcSellingExpenses は仲介手数料上限（消費税込み）の概算式を検証する。
 func TestCalcSellingExpenses(t *testing.T) {
@@ -84,4 +88,59 @@ func TestCalcAcquisitionCostForTax(t *testing.T) {
 			t.Errorf("簿価ゼロ下限が効いていない: got %.0f, want %.0f", got, want)
 		}
 	})
+}
+
+// TestDecayedSalePrice は価格下落率の複利適用とゼロ時のパススルーを検証する。
+func TestDecayedSalePrice(t *testing.T) {
+	// 下落率 0 以下は減衰なし
+	if got := decayedSalePrice(30_000_000, 0, 10); !approxEqual(got, 30_000_000, epsilon) {
+		t.Errorf("rate=0: got %.2f, want 30000000", got)
+	}
+	// 2% × 10年: 30,000,000 × 0.98^10
+	want := 30_000_000 * math.Pow(0.98, 10)
+	if got := decayedSalePrice(30_000_000, 0.02, 10); !approxEqual(got, want, epsilon) {
+		t.Errorf("rate=2%%/10y: got %.2f, want %.2f", got, want)
+	}
+}
+
+// TestAnalyze_PriceDecline_HeadlineReflected は #774 の修正を検証する。
+// PriceDeclineRate が出口ヘッドライン（売却価格・手残り・出口エクイティ）に反映され、
+// かつ IRR の terminal value と二重適用されていないことを確認する。
+func TestAnalyze_PriceDecline_HeadlineReflected(t *testing.T) {
+	base := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    8_000_000,
+		BuildingAge:     10,
+		BuildingType:    BuildingTypeWood,
+		MonthlyRent:     80_000,
+		LoanAmount:      10_000_000,
+		AnnualLoanRate:  0.02,
+		LoanYears:       25,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+		DiscountRate:    0.05,
+	}
+	base.Defaults()
+	zero := Analyze(context.Background(), base)
+
+	declined := base
+	declined.PriceDeclineRate = 0.02
+	declined.Defaults()
+	got := Analyze(context.Background(), declined)
+
+	// NOI は PriceDeclineRate に依存しないため、売却価格は zero × 0.98^10 に一致するはず
+	decay := math.Pow(0.98, float64(base.HoldingYears))
+	wantSalePrice := zero.ExitSalePrice * decay
+	if !approxEqual(got.ExitSalePrice, wantSalePrice, 1) {
+		t.Errorf("ExitSalePrice = %.0f, want %.0f (= %.0f × 0.98^10)。下落が反映されていない/二重適用の疑い",
+			got.ExitSalePrice, wantSalePrice, zero.ExitSalePrice)
+	}
+
+	// 手残り・出口エクイティも下落分だけ減少する
+	if !(got.ExitNetProceeds < zero.ExitNetProceeds) {
+		t.Errorf("ExitNetProceeds が減少していない: zero=%.0f declined=%.0f", zero.ExitNetProceeds, got.ExitNetProceeds)
+	}
+	if !(got.ExitTotalEquity < zero.ExitTotalEquity) {
+		t.Errorf("ExitTotalEquity が減少していない: zero=%.0f declined=%.0f", zero.ExitTotalEquity, got.ExitTotalEquity)
+	}
 }
