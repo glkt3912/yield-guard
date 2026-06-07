@@ -21,6 +21,42 @@ type irrNPVResult struct {
 	npv float64
 }
 
+// calcSellingExpenses は売却価格から仲介手数料の上限額（消費税込み）を概算する。
+// 根拠: 宅建業法46条 上限 = 売却価格×3%+6万円（+消費税10%）
+func calcSellingExpenses(salePrice float64) float64 {
+	return (salePrice*0.03 + 60_000) * 1.10
+}
+
+// calcAcquisitionCostForTax は税法上の取得費を返す。
+// 取得費 = 土地取得費 + 建物簿価（減価償却累計控除後） + 取得時諸経費（MiscExpenseRate分のみ）。
+// 根拠: 所得税法38条（取得費に含まれる付随費用）。
+// 注意: 融資諸費用（loanFee = LoanAmount × LoanFeeRate）は資金調達コストであり
+//
+//	税法上の取得費に該当しないため除外する（所得税法基本通達38-8参照）。
+func calcAcquisitionCostForTax(input InvestmentInput, accumulatedDepreciation float64) float64 {
+	bookValueBuilding := math.Max(input.BuildingCost-accumulatedDepreciation, 0)
+	return input.LandPrice + bookValueBuilding +
+		(input.LandPrice+input.BuildingCost)*input.MiscExpenseRate
+}
+
+// transferTaxRateForHolding は保有年数から譲渡所得税率を返す（5年超=長期、5年以下=短期）。
+// 租税特別措置法31条の3の10年超軽減(14.21%)は居住用財産の特例のため投資用には適用しない。
+func transferTaxRateForHolding(holdingYears int) float64 {
+	if holdingYears > 5 {
+		return longTermTransferTaxRate
+	}
+	return shortTermTransferTaxRate
+}
+
+// calcTransferTax は譲渡所得と保有年数から譲渡所得税を返す。
+// 譲渡損益が 0 以下の場合は課税されないため 0 を返す。
+func calcTransferTax(capitalGain float64, holdingYears int) float64 {
+	if capitalGain <= 0 {
+		return 0
+	}
+	return capitalGain * transferTaxRateForHolding(holdingYears)
+}
+
 // calcExit は出口戦略（売却）の試算を行う
 //
 // 売却価格: NOI（純収益）/ 目標利回り（実質ベース）で収益還元法により算出
@@ -46,47 +82,21 @@ func calcExit(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciat
 	noi := exitYear.AnnualRent - exitYear.AnnualExpenses
 	salePrice = noi / input.ExitYieldTarget
 
-	// 売却費用（仲介手数料上限額の概算・消費税込み）
-	// 根拠: 宅建業法46条 上限 = 売却価格×3%+6万円（+消費税10%）
-	sellExpenses := (salePrice*0.03+60_000) * 1.10
-
-	// 建物の税務上の簿価（定額法累計控除後）
-	bookValueBuilding := input.BuildingCost - accumulatedDepreciation
-	if bookValueBuilding < 0 {
-		bookValueBuilding = 0
-	}
-
-	// 取得費（税法上）= 土地取得費 + 建物簿価 + 取得時諸経費（MiscExpenseRate分のみ）
-	// 根拠: 所得税法38条（取得費に含まれる付随費用）
-	// 注意: 融資諸費用（loanFee = LoanAmount × LoanFeeRate）は資金調達コストであり
-	//       税法上の取得費に該当しないため除外する（所得税法基本通達38-8参照）。
-	acquisitionCostForTax := input.LandPrice + bookValueBuilding +
-		(input.LandPrice+input.BuildingCost)*input.MiscExpenseRate
+	sellExpenses := calcSellingExpenses(salePrice)
+	acquisitionCostForTax := calcAcquisitionCostForTax(input, accumulatedDepreciation)
 
 	// 譲渡所得 = 売却価格 - 売却費用 - 取得費（税法上）
 	capitalGain = salePrice - sellExpenses - acquisitionCostForTax
-
-	if capitalGain > 0 {
-		// 投資用物件の譲渡所得税: 保有5年超=長期(20.315%)、5年以下=短期(39.63%)の2段階
-		// 租税特別措置法31条の3の10年超軽減(14.21%)は居住用財産の特例のため対象外
-		var taxRate float64
-		if input.HoldingYears > 5 {
-			taxRate = longTermTransferTaxRate
-		} else {
-			taxRate = shortTermTransferTaxRate
-		}
-		transferTax = capitalGain * taxRate
-	}
+	transferTax = calcTransferTax(capitalGain, input.HoldingYears)
 
 	netProceeds = salePrice - sellExpenses - transferTax - exitYear.RemainingLoanBalance
 	totalEquity = netProceeds + exitYear.CumulativeCashFlow
 	return
 }
 
-// calcTerminalValueWithDecline は価格下落率を考慮した売却時ターミナルバリューを計算する
-// 注意: 売却費用・譲渡税の計算ロジックは calcExit と重複している。
-//
-//	税率・仲介手数料率を変更する際は両方を更新すること。
+// calcTerminalValueWithDecline は価格下落率を考慮した売却時ターミナルバリューを計算する。
+// 売却費用・取得費・譲渡税は calcExit と共通のヘルパー（calcSellingExpenses /
+// calcAcquisitionCostForTax / calcTransferTax）を用いる。
 func calcTerminalValueWithDecline(
 	input InvestmentInput,
 	yearly []YearlyResult,
@@ -98,22 +108,10 @@ func calcTerminalValueWithDecline(
 		holdIdx = len(yearly) - 1
 	}
 	exitYear := yearly[holdIdx]
-	sellExpenses := (adjustedSalePrice*0.03+60_000) * 1.10
-	bookValueBuilding := math.Max(input.BuildingCost-accumulatedDepreciation, 0)
-	// 取得費（税法上）: 融資諸費用(loanFee)は資金調達コストのため除外し MiscExpenseRate 分のみ算入
-	acquisitionCostForTax := input.LandPrice + bookValueBuilding +
-		(input.LandPrice+input.BuildingCost)*input.MiscExpenseRate
+	sellExpenses := calcSellingExpenses(adjustedSalePrice)
+	acquisitionCostForTax := calcAcquisitionCostForTax(input, accumulatedDepreciation)
 	capGain := adjustedSalePrice - sellExpenses - acquisitionCostForTax
-	var transferTax float64
-	if capGain > 0 {
-		var taxRate float64
-		if input.HoldingYears > 5 {
-			taxRate = longTermTransferTaxRate
-		} else {
-			taxRate = shortTermTransferTaxRate
-		}
-		transferTax = capGain * taxRate
-	}
+	transferTax := calcTransferTax(capGain, input.HoldingYears)
 	return adjustedSalePrice - sellExpenses - transferTax - exitYear.RemainingLoanBalance
 }
 
@@ -176,38 +174,24 @@ func calcMultiExitComparison(input InvestmentInput, yearly []YearlyResult, miscE
 		salePrice := noi / input.ExitYieldTarget
 
 		// 売却費用（仲介手数料上限・消費税込み）
-		sellExpenses := (salePrice*0.03 + 60_000) * 1.10
+		sellExpenses := calcSellingExpenses(salePrice)
 
 		// 建物の税務上の簿価: yearly[0..yr-1] の AnnualDepreciation を積算
 		yearDepreciation := 0.0
 		for i := 0; i < yr; i++ {
 			yearDepreciation += yearly[i].AnnualDepreciation
 		}
-		bookValueBuilding := input.BuildingCost - yearDepreciation
-		if bookValueBuilding < 0 {
-			bookValueBuilding = 0
-		}
 
 		// 取得費（税法上）= 土地 + 建物簿価 + MiscExpenseRate分のみ（融資諸費用は除外）
-		acquisitionCostForTax := input.LandPrice + bookValueBuilding +
-			(input.LandPrice+input.BuildingCost)*input.MiscExpenseRate
+		acquisitionCostForTax := calcAcquisitionCostForTax(input, yearDepreciation)
 
 		// 譲渡所得 = 売却価格 - 売却費用 - 取得費（税法上）
 		capitalGain := salePrice - sellExpenses - acquisitionCostForTax
 
 		// 譲渡税率: 5年以下=短期(39.63%)、5年超=長期(20.315%)
-		var taxRate float64
+		taxRate := transferTaxRateForHolding(yr)
 		isShortTerm := yr <= 5
-		if isShortTerm {
-			taxRate = shortTermTransferTaxRate
-		} else {
-			taxRate = longTermTransferTaxRate
-		}
-
-		transferTax := 0.0
-		if capitalGain > 0 {
-			transferTax = capitalGain * taxRate
-		}
+		transferTax := calcTransferTax(capitalGain, yr)
 
 		remainingLoan := exitYear.RemainingLoanBalance
 
