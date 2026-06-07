@@ -20,18 +20,18 @@
     "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
-    "@radix-ui/react-label": "^2.1.0",
-    "@radix-ui/react-select": "^2.1.1",
-    "@radix-ui/react-separator": "^1.1.0",
-    "@radix-ui/react-slider": "^1.2.0",
-    "@radix-ui/react-tooltip": "^1.1.2",
+    "@radix-ui/react-label": "^2.1.9",
+    "@radix-ui/react-select": "^2.3.0",
+    "@radix-ui/react-separator": "^1.1.9",
+    "@radix-ui/react-slider": "^1.4.0",
+    "@radix-ui/react-tooltip": "^1.2.9",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "firebase": "^12.14.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.17.0",
-    "next": "^16.2.6",
-    "pdfmake": "^0.3.9",
+    "next": "^16.2.7",
+    "pdfmake": "^0.3.10",
     "react": "^19",
     "react-dom": "^19",
     "react-leaflet": "^5.0.0",
@@ -51,9 +51,9 @@
     "@types/pdfmake": "^0.3.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitest/coverage-v8": "4.1.7",
+    "@vitest/coverage-v8": "4.1.8",
     "eslint": "^9",
-    "eslint-config-next": "^16.2.6",
+    "eslint-config-next": "^16.2.7",
     "eslint-config-prettier": "^10.1.8",
     "jsdom": "^29.1.1",
     "openapi-typescript": "^7.13.0",
@@ -62,6 +62,6 @@
     "swagger2openapi": "^7.0.8",
     "tailwindcss": "^4.2.2",
     "typescript": "^5",
-    "vitest": "4.1.7"
+    "vitest": "4.1.8"
   }
 }
