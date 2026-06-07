@@ -62,7 +62,9 @@ func calcTransferTax(capitalGain float64, holdingYears int) float64 {
 // 売却価格: NOI（純収益）/ 目標利回り（実質ベース）で収益還元法により算出
 // 取得費: 土地 + 建物簿価 + 取得時諸経費（税法上の取得費）
 // 売却費用: 仲介手数料の上限額を概算控除（消費税込み）
-// 税率: 保有5年超で長期、10年超で軽減税率を適用
+// 税率: 保有5年超で長期(20.315%)、5年以下で短期(39.63%)。
+//
+//	投資用物件には10年超軽減(14.21%)は適用しない（居住用財産の特例のため）。
 func calcExit(input InvestmentInput, yearly []YearlyResult, accumulatedDepreciation float64) (
 	salePrice, capitalGain, transferTax, netProceeds, totalEquity float64,
 ) {
