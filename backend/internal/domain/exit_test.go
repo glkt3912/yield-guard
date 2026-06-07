@@ -1,0 +1,87 @@
+package domain
+
+import "testing"
+
+// TestCalcSellingExpenses は仲介手数料上限（消費税込み）の概算式を検証する。
+func TestCalcSellingExpenses(t *testing.T) {
+	// 売却価格 30,000,000 円: (30,000,000×0.03 + 60,000) × 1.10 = 960,000 × 1.10 = 1,056,000
+	got := calcSellingExpenses(30_000_000)
+	want := 1_056_000.0
+	if !approxEqual(got, want, epsilon) {
+		t.Errorf("calcSellingExpenses(30,000,000) = %.2f, want %.2f", got, want)
+	}
+
+	// 売却価格 0 円: (0 + 60,000) × 1.10 = 66,000
+	if got := calcSellingExpenses(0); !approxEqual(got, 66_000, epsilon) {
+		t.Errorf("calcSellingExpenses(0) = %.2f, want 66000", got)
+	}
+}
+
+// TestTransferTaxRateForHolding は保有年数による短期/長期の税率切替（境界は5年）を検証する。
+func TestTransferTaxRateForHolding(t *testing.T) {
+	tests := []struct {
+		holdingYears int
+		want         float64
+	}{
+		{0, shortTermTransferTaxRate},
+		{5, shortTermTransferTaxRate}, // 5年“以下”は短期（境界は短期側）
+		{6, longTermTransferTaxRate},  // 5年“超”で長期
+		{20, longTermTransferTaxRate},
+	}
+	for _, tt := range tests {
+		if got := transferTaxRateForHolding(tt.holdingYears); got != tt.want {
+			t.Errorf("transferTaxRateForHolding(%d) = %v, want %v", tt.holdingYears, got, tt.want)
+		}
+	}
+}
+
+// TestCalcTransferTax は譲渡所得・保有年数からの譲渡税額と、譲渡損益0以下の非課税を検証する。
+func TestCalcTransferTax(t *testing.T) {
+	tests := []struct {
+		name         string
+		capitalGain  float64
+		holdingYears int
+		want         float64
+	}{
+		{"譲渡益・長期", 10_000_000, 6, 10_000_000 * longTermTransferTaxRate},
+		{"譲渡益・短期", 10_000_000, 5, 10_000_000 * shortTermTransferTaxRate},
+		{"譲渡損は非課税", -5_000_000, 10, 0},
+		{"譲渡益ゼロは非課税", 0, 10, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := calcTransferTax(tt.capitalGain, tt.holdingYears); !approxEqual(got, tt.want, epsilon) {
+				t.Errorf("calcTransferTax(%.0f, %d) = %.2f, want %.2f", tt.capitalGain, tt.holdingYears, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestCalcAcquisitionCostForTax は税法上の取得費（建物簿価＋諸経費、融資諸費用除外）と
+// 減価償却累計が建物価格を超えた場合の簿価ゼロ下限を検証する。
+func TestCalcAcquisitionCostForTax(t *testing.T) {
+	in := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    10_000_000,
+		MiscExpenseRate: 0.07,
+		LoanAmount:      13_000_000,
+		LoanFeeRate:     0.02, // 取得費には算入されないことを確認する
+	}
+	misc := (in.LandPrice + in.BuildingCost) * in.MiscExpenseRate // 1,050,000
+
+	t.Run("償却途中（簿価あり）", func(t *testing.T) {
+		accDep := 4_000_000.0
+		want := in.LandPrice + (in.BuildingCost - accDep) + misc // 5,000,000 + 6,000,000 + 1,050,000
+		if got := calcAcquisitionCostForTax(in, accDep); !approxEqual(got, want, epsilon) {
+			t.Errorf("got %.0f, want %.0f", got, want)
+		}
+	})
+
+	t.Run("償却累計が建物価格超過→簿価ゼロ下限", func(t *testing.T) {
+		accDep := 12_000_000.0 // BuildingCost(10M) を超える
+		want := in.LandPrice + 0 + misc
+		if got := calcAcquisitionCostForTax(in, accDep); !approxEqual(got, want, epsilon) {
+			t.Errorf("簿価ゼロ下限が効いていない: got %.0f, want %.0f", got, want)
+		}
+	})
+}
