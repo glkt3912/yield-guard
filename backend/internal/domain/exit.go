@@ -41,6 +41,11 @@ func calcAcquisitionCostForTax(input InvestmentInput, accumulatedDepreciation fl
 
 // transferTaxRateForHolding は保有年数から譲渡所得税率を返す（5年超=長期、5年以下=短期）。
 // 租税特別措置法31条の3の10年超軽減(14.21%)は居住用財産の特例のため投資用には適用しない。
+//
+// 簡略化: 税法上の長期/短期は「譲渡した年の1月1日時点で所有期間が5年超」で判定する
+// （租税特別措置法31条）。本実装は取得月を持たないため holdingYears > 5 の単純比較で近似する。
+// このため厳密には取得から概ね6年保有しないと長期にならないケースがある（境界年は短期＝保守側に倒れる）。
+// 取得日入力を伴う厳密判定は別タスク（取得時期の1/1基準対応）として切り出す。
 func transferTaxRateForHolding(holdingYears int) float64 {
 	if holdingYears > 5 {
 		return longTermTransferTaxRate

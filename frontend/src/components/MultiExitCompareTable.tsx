@@ -122,6 +122,11 @@ export default function MultiExitCompareTable({ rows }: MultiExitCompareTablePro
         ※
         緑ハイライト列が出口エクイティ最大。短期譲渡税（保有5年以下）は税率39.63%、長期（5年超）は20.315%が適用されます。
       </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        ※
+        長期/短期は税法上「譲渡した年の1月1日時点で所有期間5年超」で判定します（本ツールは保有年数で簡略判定）。
+        取得時期によっては実質的に取得から約6年の保有が必要になるため、5〜6年目の売却は税率を保守的にご確認ください。
+      </p>
     </div>
   );
 }

@@ -144,3 +144,54 @@ func TestAnalyze_PriceDecline_HeadlineReflected(t *testing.T) {
 		t.Errorf("ExitTotalEquity が減少していない: zero=%.0f declined=%.0f", zero.ExitTotalEquity, got.ExitTotalEquity)
 	}
 }
+
+// TestMultiExit_TransferTaxBoundary は短期/長期の境界（5年=短期 / 6年=長期）が
+// 出口比較テーブルの税率・短期警告フラグに反映されることを検証する（#776）。
+// 本ツールは保有年数による簡略判定のため、5年=短期・6年=長期となる。
+func TestMultiExit_TransferTaxBoundary(t *testing.T) {
+	in := InvestmentInput{
+		LandPrice:       5_000_000,
+		BuildingCost:    8_000_000,
+		BuildingAge:     10,
+		BuildingType:    BuildingTypeWood,
+		MonthlyRent:     90_000,
+		LoanAmount:      10_000_000,
+		AnnualLoanRate:  0.02,
+		LoanYears:       25,
+		HoldingYears:    10,
+		ExitYieldTarget: 0.06,
+		ExitYears:       []int{5, 6},
+	}
+	in.Defaults()
+	res := Analyze(context.Background(), in)
+
+	rowByYear := map[int]MultiExitRow{}
+	for _, r := range res.MultiExitComparison {
+		rowByYear[r.Year] = r
+	}
+
+	r5, ok5 := rowByYear[5]
+	r6, ok6 := rowByYear[6]
+	if !ok5 || !ok6 {
+		t.Fatalf("expected rows for year 5 and 6, got years %v", func() []int {
+			var ys []int
+			for _, r := range res.MultiExitComparison {
+				ys = append(ys, r.Year)
+			}
+			return ys
+		}())
+	}
+
+	if !r5.IsShortTermWarn {
+		t.Errorf("5年目は短期判定（IsShortTermWarn=true）であるべき")
+	}
+	if !approxEqual(r5.TransferTaxRate, shortTermTransferTaxRate, epsilon) {
+		t.Errorf("5年目税率 = %.5f, want 短期 %.5f", r5.TransferTaxRate, shortTermTransferTaxRate)
+	}
+	if r6.IsShortTermWarn {
+		t.Errorf("6年目は長期判定（IsShortTermWarn=false）であるべき")
+	}
+	if !approxEqual(r6.TransferTaxRate, longTermTransferTaxRate, epsilon) {
+		t.Errorf("6年目税率 = %.5f, want 長期 %.5f", r6.TransferTaxRate, longTermTransferTaxRate)
+	}
+}
