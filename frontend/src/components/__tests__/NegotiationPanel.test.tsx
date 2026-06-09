@@ -113,7 +113,7 @@ describe("NegotiationPanel", () => {
   });
 
   it("isAboveYieldTarget=trueのとき表面利回りの値が表示される", () => {
-    const result = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
+    const result = makeResult({ marketGrossYield: 0.09, isAboveYieldTarget: true });
     render(
       <NegotiationPanel
         result={result}
@@ -127,7 +127,7 @@ describe("NegotiationPanel", () => {
   });
 
   it("isAboveYieldTarget=falseのとき表面利回りの値が表示される", () => {
-    const result = makeResult({ grossYield: 0.05, isAboveYieldTarget: false });
+    const result = makeResult({ marketGrossYield: 0.05, isAboveYieldTarget: false });
     render(
       <NegotiationPanel
         result={result}

@@ -296,9 +296,9 @@ export function StressScenarioTable({
                 <div className="text-right font-medium">{(popV * 100).toFixed(0)}%</div>
                 <div className="text-muted-foreground">表面利回り</div>
                 <div
-                  className={`text-right font-medium ${popNetYield * 100 >= 8 ? "text-green-600" : "text-red-600"}`}
+                  className={`text-right font-medium ${result.marketGrossYield * (1 - popV) * 100 >= 8 ? "text-green-600" : "text-red-600"}`}
                 >
-                  {(result.grossYield * (1 - popV) * 100).toFixed(2)}%
+                  {(result.marketGrossYield * (1 - popV) * 100).toFixed(2)}%
                 </div>
                 <div className="text-muted-foreground">
                   <TermTooltip term="netYield">実質利回り</TermTooltip>

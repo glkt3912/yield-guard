@@ -137,7 +137,7 @@ export default function NegotiationPanel({ result, input, comparison, theoretica
               <p
                 className={`text-lg font-bold ${result.isAboveYieldTarget ? "text-emerald-600" : "text-red-600"}`}
               >
-                {formatPct(result.grossYield)}
+                {formatPct(result.marketGrossYield)}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 目標 {formatPct(input.yieldTarget)}

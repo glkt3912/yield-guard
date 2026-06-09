@@ -17,7 +17,7 @@ const makeLandPriceStats = (overrides?: Partial<LandPriceStats>): LandPriceStats
 
 describe("YieldAnalysis", () => {
   it("表面利回りの数値を表示する", () => {
-    const result = makeResult({ grossYield: 0.09 });
+    const result = makeResult({ marketGrossYield: 0.09 });
     render(<YieldAnalysis result={result} input={makeInput()} />);
     expect(screen.getByText("9.00")).toBeInTheDocument();
   });

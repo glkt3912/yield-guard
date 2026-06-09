@@ -45,7 +45,7 @@ export function KpiStrip({ result, yieldTarget = 0.08, holdingYears = 30 }: KpiS
     (result.yearlyResults[0]?.annualLoanPayment ?? 0) / 12 / 10_000
   );
 
-  const grossYieldPct = result.grossYield * 100;
+  const grossYieldPct = result.marketGrossYield * 100;
   const yieldDiff = grossYieldPct - yieldTarget * 100;
   const yieldDiffStr = (yieldDiff >= 0 ? "+" : "") + yieldDiff.toFixed(2) + "pp vs 目標";
 
