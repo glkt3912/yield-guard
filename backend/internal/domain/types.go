@@ -358,10 +358,15 @@ type MultiExitRow struct {
 type InvestmentResult struct {
 	TotalInvestment float64 `json:"totalInvestment"` // 総投資額（土地+建物+諸経費）
 	MiscExpenses    float64 `json:"miscExpenses"`
-	GrossYield      float64 `json:"grossYield"`      // 表面利回り（満室想定年収/総投資額）
-	NetYield        float64 `json:"netYield"`        // 実質利回り（実効収入-経費)/総投資額）
+	// GrossYield は総投資利回り（満室想定年収/総投資額。諸費用込み）。
+	// 市場慣行の「表面利回り」とは分母が異なる（諸費用を含む分だけ低く出る）保守的指標。
+	GrossYield float64 `json:"grossYield"`
+	// MarketGrossYield は表面利回り（満室想定年収/物件価格[土地+建物]。市場慣行ベース）。
+	// 物件広告・REINS の「表面利回り」と直接比較でき、8%境界線（IsAboveYieldTarget）判定にも用いる。
+	MarketGrossYield   float64 `json:"marketGrossYield"`
+	NetYield           float64 `json:"netYield"` // 実質利回り（実効収入-経費)/総投資額）
 	IsAboveYieldTarget bool    `json:"isAboveYieldTarget"`
-	YieldTarget        float64 `json:"yieldTarget"` // 目標表面利回り（例: 0.08）
+	YieldTarget        float64 `json:"yieldTarget"` // 目標表面利回り（例: 0.08。物件価格ベースの MarketGrossYield と比較）
 
 	// 目標利回り達成に必要な改善額（土地・建築費いずれか一方を削減する額）
 	RequiredCostReduction float64 `json:"requiredCostReduction"`

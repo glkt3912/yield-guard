@@ -366,7 +366,7 @@ func buildPrompt(input domain.InvestmentInput, r domain.InvestmentResult) string
 		input.HoldingYears,
 		input.VacancyRate*100,
 		monthlyPaymentMan,
-		r.GrossYield*100,
+		r.MarketGrossYield*100,
 		r.NetYield*100,
 		deadCross,
 		r.DSCR,
