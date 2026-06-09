@@ -20,7 +20,8 @@ last_updated: 2026-05-21
 | 計算内容 | 関数 / フィールド |
 |---------|----------------|
 | 投資シミュレーション全体 | `investment.go` — `Analyze(ctx, InvestmentInput) InvestmentResult` |
-| 粗利回り（結果フィールド） | `InvestmentResult.GrossYield` |
+| 表面利回り（市場慣行・8%判定基準） | `InvestmentResult.MarketGrossYield` |
+| 総投資利回り（諸費用込み・保守的指標） | `InvestmentResult.GrossYield` |
 | デッドクロス発生年（結果フィールド） | `InvestmentResult.DeadCrossYear` |
 | 出口戦略・譲渡所得税（非公開） | `investment.go` — `calcExit(...)` |
 | DSCR 計算（公開ユーティリティ） | `investment.go` — `CalcDSCR(noi, annualDebtService)` |
