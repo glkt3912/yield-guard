@@ -98,6 +98,7 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
     totalInvestment: 16_050_000,
     miscExpenses: 1_050_000,
     grossYield: 0.09,
+    grossYieldOnTotalInvestment: 0.084,
     netYield: 0.065,
     isAboveYieldTarget: true,
     yieldTarget: 0.08,

@@ -156,7 +156,7 @@ export interface StressScenarioResult {
 
 export interface YieldScenario {
   annualRent: number; // 年間実効賃料収入（空室控除後）
-  grossYield: number; // 表面利回り（満室想定年収/総投資額）
+  grossYield: number; // 表面利回り（満室想定年収/物件価格）
 }
 
 export interface YieldScenarios {
@@ -177,7 +177,8 @@ export interface LTVSensitivityRow {
 export interface InvestmentResult {
   totalInvestment: number;
   miscExpenses: number;
-  grossYield: number;
+  grossYield: number; // 表面利回り（満室想定年収/物件価格[土地+建物]）。市場慣行に合わせ諸費用を含めない
+  grossYieldOnTotalInvestment: number; // 総投資利回り（満室想定年収/総投資額[土地+建物+諸経費]）
   netYield: number;
   isAboveYieldTarget: boolean;
   yieldTarget: number;

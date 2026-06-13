@@ -270,8 +270,12 @@ export function StressScenarioTable({
         populationForecast.snapshots.length > 0 &&
         (() => {
           const popV = Math.min(actualV + populationForecast.vacancyRateDelta, 0.99);
-          const popNetYield = result.grossYield * (1 - popV) * (1 - input.expenseRate);
-          const popAnnualRent = result.grossYield * result.totalInvestment * (1 - popV);
+          // CF 逆算は総投資額ベースで行うため総投資利回り（grossYieldOnTotalInvestment）を用いる。
+          // 表示する「表面利回り」（下部）は物件価格ベースの result.grossYield を使う。
+          const popNetYield =
+            result.grossYieldOnTotalInvestment * (1 - popV) * (1 - input.expenseRate);
+          const popAnnualRent =
+            result.grossYieldOnTotalInvestment * result.totalInvestment * (1 - popV);
           const popCF =
             popAnnualRent -
             (result.yearlyResults[0]?.annualLoanPayment ?? 0) -
