@@ -81,10 +81,48 @@ func TestAnalyze_GrossYield(t *testing.T) {
 		t.Errorf("TotalInvestment = %.0f, want %.0f", result.TotalInvestment, wantTotal)
 	}
 
-	// 表面利回り: (120,000 * 12) / 16,050,000 ≈ 0.0897
-	wantGross := (120_000.0 * 12) / wantTotal
+	// 表面利回り（市場慣行・物件価格ベース）: (120,000 * 12) / 15,000,000 = 0.096
+	wantPropertyPrice := 5_000_000.0 + 10_000_000.0
+	wantGross := (120_000.0 * 12) / wantPropertyPrice
 	if !approxEqual(result.GrossYield, wantGross, 0.0001) {
 		t.Errorf("GrossYield = %.4f, want %.4f", result.GrossYield, wantGross)
+	}
+
+	// 総投資利回り（諸費用込み・総投資額ベース）: (120,000 * 12) / 16,050,000 ≈ 0.0897
+	wantGrossOnTotal := (120_000.0 * 12) / wantTotal
+	if !approxEqual(result.GrossYieldOnTotalInvestment, wantGrossOnTotal, 0.0001) {
+		t.Errorf("GrossYieldOnTotalInvestment = %.4f, want %.4f", result.GrossYieldOnTotalInvestment, wantGrossOnTotal)
+	}
+
+	// 物件価格ベースの表面利回りは諸費用を分母に含まないため、必ず総投資利回りより高い (#773)
+	if !(result.GrossYield > result.GrossYieldOnTotalInvestment) {
+		t.Errorf("GrossYield(%.4f) は GrossYieldOnTotalInvestment(%.4f) より大きいはず", result.GrossYield, result.GrossYieldOnTotalInvestment)
+	}
+}
+
+// TestAnalyze_YieldTargetBoundaryUsesPropertyPrice は8%境界判定が物件価格ベースの
+// 表面利回りで行われることを検証する (#773)。諸費用込みでは8%未満だが物件価格ベースでは
+// 8%以上となる物件で IsAboveYieldTarget が true になることを確認する。
+func TestAnalyze_YieldTargetBoundaryUsesPropertyPrice(t *testing.T) {
+	input := InvestmentInput{
+		LandPrice:    5_000_000,
+		BuildingCost: 10_000_000, // 物件価格 15,000,000
+		// 月額100,000 → 年間1,200,000
+		//   物件価格ベース: 1,200,000 / 15,000,000      = 0.080 → 8%境界ちょうど（達成）
+		//   総投資額ベース: 1,200,000 / 16,050,000      ≈ 0.0748 → 8%未満
+		MonthlyRent: 100_000,
+	}
+	input.Defaults() // YieldTarget=0.08, MiscExpenseRate=0.07 など
+	result := Analyze(context.Background(), input)
+
+	if result.GrossYield < 0.08 {
+		t.Fatalf("前提: GrossYield(%.4f) は 0.08 以上のはず", result.GrossYield)
+	}
+	if result.GrossYieldOnTotalInvestment >= 0.08 {
+		t.Fatalf("前提: GrossYieldOnTotalInvestment(%.4f) は 0.08 未満のはず", result.GrossYieldOnTotalInvestment)
+	}
+	if !result.IsAboveYieldTarget {
+		t.Errorf("IsAboveYieldTarget = false, want true（物件価格ベースで8%%達成のため）")
 	}
 }
 
@@ -1413,9 +1451,10 @@ func TestAnalyze_YieldScenarios(t *testing.T) {
 	result := Analyze(context.Background(), input)
 	sc := result.YieldScenarios
 
-	totalInvestment := 5_000_000.0 + 10_000_000.0 + 15_000_000.0*0.07 // 16,050,000
-	annualGross := 120_000.0 * 12                                        // 1,440,000
-	expectedGrossYield := annualGross / totalInvestment
+	propertyPrice := 5_000_000.0 + 10_000_000.0 // 15,000,000（物件価格 = 土地+建物）
+	annualGross := 120_000.0 * 12               // 1,440,000
+	// 表面利回りは市場慣行に合わせ物件価格ベース（諸費用を含まない・#773）
+	expectedGrossYield := annualGross / propertyPrice
 
 	// 楽観: 空室率 × 0.5 = 5%
 	wantOptRent := annualGross * (1 - 0.10*0.5)

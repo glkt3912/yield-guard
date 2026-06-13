@@ -15,7 +15,7 @@ const (
 	// SqmPerTsubo は 1坪あたりの平方メートル数（mlit パッケージからも参照）
 	SqmPerTsubo = 3.30578
 
-	LoanMethodEqualPayment   = "equal-payment"  // 元利均等返済
+	LoanMethodEqualPayment   = "equal-payment"   // 元利均等返済
 	LoanMethodEqualPrincipal = "equal-principal" // 元金均等返済
 
 	DepreciationMethodStraightLine     = "straight-line"     // 定額法
@@ -35,7 +35,7 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 	input.Defaults()
 
 	yp := initYieldParams(input)
-	requiredRent, landDrop := calcRequiredForTarget(input, yp.totalInvestment)
+	requiredRent, landDrop := calcRequiredForTarget(input, yp.propertyPrice)
 	lp := initLoanParams(input)
 	dp := initDepreciationParams(input)
 
@@ -78,7 +78,7 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 			IsNewBuilding:       isNewBuilding,
 		},
 	)
-	yieldScenarios := calcYieldScenarios(input, yp.totalInvestment)
+	yieldScenarios := calcYieldScenarios(input, yp.propertyPrice)
 	ltvSensitivity := CalcLTVSensitivity(input, nil)
 
 	equity := yp.totalInvestment - input.LoanAmount
@@ -88,32 +88,33 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 	taxSim := CalcTaxSimulation(input, sim.yearlyResults, exitCapGain)
 
 	return InvestmentResult{
-		TotalInvestment:       yp.totalInvestment,
-		MiscExpenses:          yp.miscExpenses,
-		GrossYield:            yp.grossYield,
-		NetYield:              yp.netYield,
-		IsAboveYieldTarget:    yp.grossYield >= input.YieldTarget,
-		YieldTarget:           input.YieldTarget,
-		RequiredCostReduction: landDrop,
-		RequiredMonthlyRent:   requiredRent,
-		DeadCrossYear:         sim.deadCrossYear,
-		YearlyResults:         sim.yearlyResults,
-		CriticalErrors:        criticalErrors,
-		AcquisitionCosts:      acquisitionCosts,
-		ExitSalePrice:         exitSalePrice,
-		ExitCapitalGain:       exitCapGain,
-		ExitTransferTax:       exitTax,
-		ExitNetProceeds:       exitNet,
-		ExitTotalEquity:       exitEquity,
-		StressScenarios:       stressScenarios,
-		YieldScenarios:        yieldScenarios,
-		DSCR:                  dscr,
-		LTVSensitivity:        ltvSensitivity,
-		IRR:                   irrNPV.irr,
-		NPV:                   irrNPV.npv,
-		TotalInterest:         sim.totalInterest,
-		MultiExitComparison:   multiExit,
-		TaxSimulation:         taxSim,
+		TotalInvestment:             yp.totalInvestment,
+		MiscExpenses:                yp.miscExpenses,
+		GrossYield:                  yp.grossYield,
+		GrossYieldOnTotalInvestment: yp.grossYieldOnTotalInvestment,
+		NetYield:                    yp.netYield,
+		IsAboveYieldTarget:          yp.grossYield >= input.YieldTarget,
+		YieldTarget:                 input.YieldTarget,
+		RequiredCostReduction:       landDrop,
+		RequiredMonthlyRent:         requiredRent,
+		DeadCrossYear:               sim.deadCrossYear,
+		YearlyResults:               sim.yearlyResults,
+		CriticalErrors:              criticalErrors,
+		AcquisitionCosts:            acquisitionCosts,
+		ExitSalePrice:               exitSalePrice,
+		ExitCapitalGain:             exitCapGain,
+		ExitTransferTax:             exitTax,
+		ExitNetProceeds:             exitNet,
+		ExitTotalEquity:             exitEquity,
+		StressScenarios:             stressScenarios,
+		YieldScenarios:              yieldScenarios,
+		DSCR:                        dscr,
+		LTVSensitivity:              ltvSensitivity,
+		IRR:                         irrNPV.irr,
+		NPV:                         irrNPV.npv,
+		TotalInterest:               sim.totalInterest,
+		MultiExitComparison:         multiExit,
+		TaxSimulation:               taxSim,
 	}
 }
 

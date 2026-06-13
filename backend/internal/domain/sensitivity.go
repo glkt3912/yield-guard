@@ -61,15 +61,16 @@ func CalcLTVSensitivity(input InvestmentInput, ltvRange []float64) []LTVSensitiv
 
 // calcRequiredForTarget は目標利回り達成に必要な値を逆算する
 // costReduction は「土地価格または建築費のいずれか一方」を削減すべき金額を表す
-func calcRequiredForTarget(input InvestmentInput, totalInvestment float64) (requiredRent, costReduction float64) {
+// YieldTarget（8%境界）は物件価格ベースの表面利回りで判定するため、逆算も物件価格基準で行う。
+func calcRequiredForTarget(input InvestmentInput, propertyPrice float64) (requiredRent, costReduction float64) {
 	target := input.YieldTarget
-	requiredAnnualRent := totalInvestment * target
+	requiredAnnualRent := propertyPrice * target
 	requiredRent = requiredAnnualRent / 12
 
 	currentAnnualRent := input.MonthlyRent * 12
-	requiredTotalInvestment := currentAnnualRent / target
+	requiredPropertyPrice := currentAnnualRent / target
 
-	excess := totalInvestment - requiredTotalInvestment
+	excess := propertyPrice - requiredPropertyPrice
 	if excess > 0 {
 		costReduction = excess
 	}

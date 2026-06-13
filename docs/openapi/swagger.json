@@ -1701,7 +1701,11 @@
                     "type": "number"
                 },
                 "grossYield": {
-                    "description": "表面利回り（満室想定年収/総投資額）",
+                    "description": "GrossYield は表面利回り（満室想定年収/物件価格[土地+建物]）。市場慣行（物件広告・REINS）に合わせ諸費用を分母に含めない。",
+                    "type": "number"
+                },
+                "grossYieldOnTotalInvestment": {
+                    "description": "GrossYieldOnTotalInvestment は総投資利回り（満室想定年収/総投資額[土地+建物+諸経費]）。実際の投下資本に対する利回り。",
                     "type": "number"
                 },
                 "irr": {
@@ -1729,7 +1733,7 @@
                     }
                 },
                 "netYield": {
-                    "description": "実質利回り（実効収入-経費)/総投資額）",
+                    "description": "実質利回り（実効収入-経費)/総投資額）。GrossYield と分母が異なる点に注意。",
                     "type": "number"
                 },
                 "npv": {
@@ -1776,7 +1780,7 @@
                     "$ref": "#/definitions/domain.YieldScenarios"
                 },
                 "yieldTarget": {
-                    "description": "目標表面利回り（例: 0.08）",
+                    "description": "目標表面利回り（例: 0.08）。物件価格ベースの GrossYield で判定。",
                     "type": "number"
                 }
             }
@@ -2648,7 +2652,7 @@
                     "type": "number"
                 },
                 "grossYield": {
-                    "description": "表面利回り（満室想定年収/総投資額）",
+                    "description": "表面利回り（満室想定年収/物件価格）",
                     "type": "number"
                 }
             }

@@ -13,11 +13,13 @@ const dscrSafeThreshold = 1.2
 
 // yieldParams は yield / vacancy の初期計算結果をまとめた内部 struct。
 type yieldParams struct {
-	miscExpenses    float64
-	totalInvestment float64
-	annualRent      float64
-	grossYield      float64
-	netYield        float64
+	miscExpenses                float64
+	propertyPrice               float64 // 物件価格（土地+建物、諸費用を含まない）
+	totalInvestment             float64
+	annualRent                  float64
+	grossYield                  float64 // 表面利回り（満室想定年収/物件価格）— 市場慣行
+	grossYieldOnTotalInvestment float64 // 総投資利回り（満室想定年収/総投資額）
+	netYield                    float64
 }
 
 // loanParams はローン初期値をまとめた内部 struct。
@@ -49,12 +51,19 @@ type simulationResult struct {
 func initYieldParams(input InvestmentInput) yieldParams {
 	effectiveVacancy := math.Min(input.VacancyRate+input.VacancyRateDelta, 0.99)
 	loanFee := input.LoanAmount * input.LoanFeeRate
-	miscExpenses := (input.LandPrice+input.BuildingCost)*input.MiscExpenseRate + loanFee
-	totalInvestment := input.LandPrice + input.BuildingCost + miscExpenses
+	propertyPrice := input.LandPrice + input.BuildingCost
+	miscExpenses := propertyPrice*input.MiscExpenseRate + loanFee
+	totalInvestment := propertyPrice + miscExpenses
 	annualRent := input.MonthlyRent * 12 * (1 - effectiveVacancy)
+	// 表面利回り（GrossYield）は市場慣行（物件広告・REINS）に合わせ物件価格ベースで算出する。
+	// 諸費用込みの総投資額ベースは grossYieldOnTotalInvestment（総投資利回り）として別途保持する。
 	grossYield := 0.0
+	if propertyPrice > 0 {
+		grossYield = (input.MonthlyRent * 12) / propertyPrice
+	}
+	grossYieldOnTotalInvestment := 0.0
 	if totalInvestment > 0 {
-		grossYield = (input.MonthlyRent * 12) / totalInvestment
+		grossYieldOnTotalInvestment = (input.MonthlyRent * 12) / totalInvestment
 	}
 	// initYieldParams は初年度の利回り指標を計算する。
 	// 経費インフレ率は年次シミュレーション（simulateYears）で複利適用するため、
@@ -65,11 +74,13 @@ func initYieldParams(input InvestmentInput) yieldParams {
 		netYield = (annualRent - annualExpenses) / totalInvestment
 	}
 	return yieldParams{
-		miscExpenses:    miscExpenses,
-		totalInvestment: totalInvestment,
-		annualRent:      annualRent,
-		grossYield:      grossYield,
-		netYield:        netYield,
+		miscExpenses:                miscExpenses,
+		propertyPrice:               propertyPrice,
+		totalInvestment:             totalInvestment,
+		annualRent:                  annualRent,
+		grossYield:                  grossYield,
+		grossYieldOnTotalInvestment: grossYieldOnTotalInvestment,
+		netYield:                    netYield,
 	}
 }
 
@@ -470,13 +481,13 @@ func calcStressScenario(ctx context.Context, base InvestmentInput, label string,
 
 // calcYieldScenarios は楽観・標準・悲観の3シナリオにおける年間実効賃料と表面利回りを算出する。
 // 楽観: vacancyRate × 0.5、標準: vacancyRate × 1.0、悲観: vacancyRate × 1.5
-// 注意: 表面利回りは満室想定年収/総投資額（空室率に依存しない）であるが、
+// 注意: 表面利回りは満室想定年収/物件価格（空室率に依存しない・市場慣行）であるが、
 //
 //	AnnualRent（実効賃料）は空室率を反映した値を返す。
-func calcYieldScenarios(input InvestmentInput, totalInvestment float64) YieldScenarios {
+func calcYieldScenarios(input InvestmentInput, propertyPrice float64) YieldScenarios {
 	grossYield := 0.0
-	if totalInvestment > 0 {
-		grossYield = (input.MonthlyRent * 12) / totalInvestment
+	if propertyPrice > 0 {
+		grossYield = (input.MonthlyRent * 12) / propertyPrice
 	}
 
 	calcScenario := func(vacancyMultiplier float64) YieldScenario {
