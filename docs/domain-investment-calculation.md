@@ -37,7 +37,7 @@ reads_next: [docs/llm/domain.md]
 | `DiscountRate` | float64 | 率 | NPV/IRR計算の割引率（0.05 = 5%）。`0` 指定時は `Defaults()` で 0.05 に補完 | 0.05 |
 | `PriceDeclineRate` | float64 | 率 | 物件価格の年間下落率（0.02 = 年2%）。IRR/NPVのターミナルバリューにのみ反映 | 0 |
 | `DepreciationMethod` | string | — | 減価償却方式: `"straight-line"` または `"declining-balance"` | `"straight-line"` |
-| `YieldTarget` | float64 | 率 | 目標表面利回り（例: 0.08 = 8%）。`IsAboveYieldTarget` の判定基準。0 指定時は `Defaults()` で 0.08 に補完 | 0.08 |
+| `YieldTarget` | float64 | 率 | 目標表面利回り（例: 0.08 = 8%）。物件価格ベースの `GrossYield` に対する `IsAboveYieldTarget` の判定基準。0 指定時は `Defaults()` で 0.08 に補完 | 0.08 |
 | `RateAdjustmentSchedule` | []RateAdjustment | — | 変動金利スケジュール。各要素に `afterYear`（適用開始年）と `rate`（適用金利、絶対値）を持つ。空配列 = 固定金利 | [] |
 | `CapexSchedule` | []CapexEvent | — | 大規模修繕費スケジュール（最大5件）。各要素に `year`（発生年）と `amount`（円）を持つ | [] |
 | `RentGrowthRate` | float64 | 率 | 年間賃料上昇率（例: 0.02 = 2%）。`RentGrowthYears` と組み合わせ新築・リノベ物件の賃料上昇期を表現 | 0 |
@@ -112,12 +112,25 @@ return rate + rateDelta  // rateDelta は常に加算
 ## 表面利回り（GrossYield）
 
 ```
-表面利回り = (MonthlyRent × 12) / 総投資額
+物件価格   = LandPrice + BuildingCost      ← 諸費用を含まない
+表面利回り = (MonthlyRent × 12) / 物件価格
 ```
 
-**空室率を含まない**満室想定年収で計算する。
+**空室率を含まない**満室想定年収を、**物件価格（土地+建物、諸費用を含まない）**で割って計算する。これは物件広告・REINS・業者資料で「表面利回り」と呼ばれる**市場慣行の定義**に一致させたものである（#773）。
 
 > **根拠・出典**: 全国宅地建物取引業協会連合会（全宅連）および不動産情報サービス各社（SUUMO・HOME'S 等）が物件掲載時に使用する慣習的指標。物件間の横断比較に用いる。実際の収入は空室や経費分だけ下振れするため、実質利回りと併用して判断する。
+
+### 8%境界線の判定基準（YieldTarget）
+
+`IsAboveYieldTarget`（および目玉機能の「8%境界線」）は**物件価格ベースの表面利回り（GrossYield）** で判定する（`GrossYield >= YieldTarget`）。諸費用込みの総投資利回りではなく市場慣行の表面利回りを用いることで、物件広告に記載された利回りとアプリ表示値が一致する。目標逆算（`calcRequiredForTarget`）も同じく物件価格ベースで行う。
+
+## 総投資利回り（GrossYieldOnTotalInvestment）
+
+```
+総投資利回り = (MonthlyRent × 12) / 総投資額   ← 総投資額 = 物件価格 + 諸経費
+```
+
+諸費用を分母に含む、実際の投下資本に対する利回り。表面利回りより必ず低くなる。市場慣行の表面利回り（物件価格ベース）とは別フィールドとして保持し、UI では「総投資利回り」として区別して表示する。
 
 ## 空室シナリオ別利回り（calcYieldScenarios）
 
@@ -129,12 +142,12 @@ return rate + rateDelta  // rateDelta は常に加算
 悲観シナリオ: effectiveVacancy = min(VacancyRate × 1.5, 0.99)
 
 AnnualRent = MonthlyRent × 12 × (1 - effectiveVacancy)
-GrossYield = (MonthlyRent × 12) / 総投資額  ← 全シナリオ共通（満室想定）
+GrossYield = (MonthlyRent × 12) / 物件価格  ← 全シナリオ共通（満室想定）
 ```
 
 **0.99 キャップの意図**: 悲観×1.5 で空室率が 100% を超える場合（例: 入力 80% × 1.5 = 120%）、年間賃料がゼロ以下になることを防ぐ。`math.Min(..., 0.99)` で最大99%に制限する。
 
-**GrossYield の一定性**: 表面利回りは「満室想定年収 / 総投資額」で定義され、シナリオ間で変化しない。シナリオで変化するのは `AnnualRent`（実効賃料）のみ。
+**GrossYield の一定性**: 表面利回りは「満室想定年収 / 物件価格」で定義され、シナリオ間で変化しない。シナリオで変化するのは `AnnualRent`（実効賃料）のみ。
 
 ---
 
@@ -219,17 +232,20 @@ NOI          = 1,041,600 − 276,240 = 765,360円
 
 `input.YieldTarget`（デフォルト 0.08 = 8%）を基準に2つの逆算値を返す（`backend/internal/domain/sensitivity.go`）。
 
+8%境界が物件価格ベースの表面利回りで判定されるため、逆算も**物件価格ベース**で行う。
+
 ```go
 target := input.YieldTarget          // 目標表面利回り（例: 0.08）
+propertyPrice := LandPrice + BuildingCost  // 物件価格（諸費用を含まない）
 
-// 目標年収 = 総投資額 × 目標利回り
-requiredMonthlyRent = (totalInvestment × target) / 12
+// 目標年収 = 物件価格 × 目標利回り
+requiredMonthlyRent = (propertyPrice × target) / 12
 
-// 現賃料で目標利回り達成に必要な総投資額
-requiredTotalInvestment = (MonthlyRent × 12) / target
+// 現賃料で目標利回り達成に必要な物件価格
+requiredPropertyPrice = (MonthlyRent × 12) / target
 
-// 過剰投資額（削減が必要な額）
-costReduction = max(totalInvestment - requiredTotalInvestment, 0)
+// 過剰額（削減が必要な額）
+costReduction = max(propertyPrice - requiredPropertyPrice, 0)
 ```
 
 - `RequiredMonthlyRent`: 現在の投資額で目標利回りを達成するために必要な月額賃料
@@ -447,9 +463,10 @@ yearAnnualRent = baseAnnualRent × (1 - RentDeclineRate)^y
 |-----------|------|
 | `TotalInvestment` | 総投資額（土地 + 建物 + 諸経費） |
 | `MiscExpenses` | 諸経費額 |
-| `GrossYield` | 表面利回り |
+| `GrossYield` | 表面利回り（満室想定年収 / 物件価格[土地+建物]、市場慣行） |
+| `GrossYieldOnTotalInvestment` | 総投資利回り（満室想定年収 / 総投資額[土地+建物+諸経費]） |
 | `NetYield` | 実質利回り |
-| `IsAboveYieldTarget` | 表面利回り ≥ 目標利回り（`yieldTarget`）かどうか |
+| `IsAboveYieldTarget` | 表面利回り（物件価格ベース）≥ 目標利回り（`yieldTarget`）かどうか |
 | `YieldTarget` | 判定に使用した目標利回り（例: 0.08 = 8%） |
 | `RequiredCostReduction` | 目標利回り達成に必要なコスト削減額（いずれか一方） |
 | `RequiredMonthlyRent` | 目標利回り達成に必要な月額賃料 |
