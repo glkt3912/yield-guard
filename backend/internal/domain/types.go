@@ -6,12 +6,12 @@ import "fmt"
 type BuildingType string
 
 const (
-	BuildingTypeWood        BuildingType = "木造"             // 耐用年数 22年
-	BuildingTypeLightSteel  BuildingType = "軽量鉄骨(4mm以下)" // 耐用年数 27年
+	BuildingTypeWood           BuildingType = "木造"          // 耐用年数 22年
+	BuildingTypeLightSteel     BuildingType = "軽量鉄骨(4mm以下)" // 耐用年数 27年
 	BuildingTypeLightSteelThin BuildingType = "軽量鉄骨(3mm以下)" // 耐用年数 19年 (薄板・プレハブ系)
-	BuildingTypeHeavySteel  BuildingType = "重量鉄骨"          // 耐用年数 34年
-	BuildingTypeRC          BuildingType = "RC造"             // 耐用年数 47年
-	BuildingTypeSRC         BuildingType = "SRC造"            // 耐用年数 47年 (鉄骨鉄筋コンクリート)
+	BuildingTypeHeavySteel     BuildingType = "重量鉄骨"        // 耐用年数 34年
+	BuildingTypeRC             BuildingType = "RC造"         // 耐用年数 47年
+	BuildingTypeSRC            BuildingType = "SRC造"        // 耐用年数 47年 (鉄骨鉄筋コンクリート)
 )
 
 // IsValid は定義済みの建物種別定数のいずれかであるかを返す
@@ -274,7 +274,7 @@ func (i *InvestmentInput) Defaults() {
 // YearlyResult は各年の収支シミュレーション結果
 type YearlyResult struct {
 	Year                 int     `json:"year"`
-	AnnualRent           float64 `json:"annualRent"`           // 実効賃料収入（空室控除後）
+	AnnualRent           float64 `json:"annualRent"` // 実効賃料収入（空室控除後）
 	AnnualLoanPayment    float64 `json:"annualLoanPayment"`
 	AnnualInterest       float64 `json:"annualInterest"`
 	AnnualPrincipal      float64 `json:"annualPrincipal"`
@@ -282,7 +282,7 @@ type YearlyResult struct {
 	AnnualExpenses       float64 `json:"annualExpenses"`
 	TaxableIncome        float64 `json:"taxableIncome"`
 	IncomeTax            float64 `json:"incomeTax"`
-	CapexAmount          float64 `json:"capexAmount"`          // 大規模修繕費（当年発生額）
+	CapexAmount          float64 `json:"capexAmount"` // 大規模修繕費（当年発生額）
 	CashFlow             float64 `json:"cashFlow"`
 	AfterTaxCashFlow     float64 `json:"afterTaxCashFlow"`
 	RemainingLoanBalance float64 `json:"remainingLoanBalance"`
@@ -321,7 +321,7 @@ type StressScenarioResult struct {
 // YieldScenario は1つの空室シナリオにおける利回り結果
 type YieldScenario struct {
 	AnnualRent float64 `json:"annualRent"` // 年間実効賃料収入（空室控除後）
-	GrossYield float64 `json:"grossYield"` // 表面利回り（満室想定年収/総投資額）
+	GrossYield float64 `json:"grossYield"` // 総投資利回り（満室想定年収/総投資額。諸費用込み）
 }
 
 // YieldScenarios は楽観・標準・悲観シナリオの利回り結果セット
@@ -408,10 +408,10 @@ type TaxSimulationResult struct {
 
 // SalaryLossCarryoverResult は給与所得との損益通算シミュレーション（#399）
 type SalaryLossCarryoverResult struct {
-	SalaryIncomeYen   float64      `json:"salaryIncomeYen"`   // 入力給与年収（円）
-	BaselineSalaryTax float64      `json:"baselineSalaryTax"` // 不動産なし時の所得税（年額）
-	YearlyRows        []TaxSimRow  `json:"yearlyRows"`
-	TotalTaxSaving    float64      `json:"totalTaxSaving"` // 保有期間合計節税額
+	SalaryIncomeYen   float64     `json:"salaryIncomeYen"`   // 入力給与年収（円）
+	BaselineSalaryTax float64     `json:"baselineSalaryTax"` // 不動産なし時の所得税（年額）
+	YearlyRows        []TaxSimRow `json:"yearlyRows"`
+	TotalTaxSaving    float64     `json:"totalTaxSaving"` // 保有期間合計節税額
 }
 
 // TaxSimRow は各年の損益通算詳細
@@ -466,26 +466,26 @@ type LandTransaction struct {
 
 // TheoreticalPriceResult は築年数・駅距離・乗降客数補正による理論価格推定の結果
 type TheoreticalPriceResult struct {
-	TheoreticalPriceJPY  float64              `json:"theoreticalPriceJPY"`  // 理論価格 (円)
-	DeviationPct         float64              `json:"deviationPct"`          // 乖離率 % (正=割高, 負=割安)
-	AgeCorrection        float64              `json:"ageCorrection"`         // 築年数補正 (-0.3〜0.3)
-	StationCorrection    float64              `json:"stationCorrection"`     // 駅距離補正 (-0.2〜0.2)
-	RidershipCorrection  float64              `json:"ridershipCorrection"`   // 乗降客数補正 (-0.15〜0.15)
-	MedianBuildingAge    int                  `json:"medianBuildingAge"`     // 取引事例中央値築年数
-	MedianStationMinutes int                  `json:"medianStationMinutes"`  // 取引事例中央値駅距離(分)
-	IsLowDataWarning     bool                 `json:"isLowDataWarning"`      // 築年数サンプル不足
-	HasStationData       bool                 `json:"hasStationData"`        // 駅距離補正が有効か
+	TheoreticalPriceJPY  float64              `json:"theoreticalPriceJPY"`      // 理論価格 (円)
+	DeviationPct         float64              `json:"deviationPct"`             // 乖離率 % (正=割高, 負=割安)
+	AgeCorrection        float64              `json:"ageCorrection"`            // 築年数補正 (-0.3〜0.3)
+	StationCorrection    float64              `json:"stationCorrection"`        // 駅距離補正 (-0.2〜0.2)
+	RidershipCorrection  float64              `json:"ridershipCorrection"`      // 乗降客数補正 (-0.15〜0.15)
+	MedianBuildingAge    int                  `json:"medianBuildingAge"`        // 取引事例中央値築年数
+	MedianStationMinutes int                  `json:"medianStationMinutes"`     // 取引事例中央値駅距離(分)
+	IsLowDataWarning     bool                 `json:"isLowDataWarning"`         // 築年数サンプル不足
+	HasStationData       bool                 `json:"hasStationData"`           // 駅距離補正が有効か
 	RidershipScore       RidershipDemandScore `json:"ridershipScore,omitempty"` // 需要スコア (有効時のみ)
-	HasRidershipData     bool                 `json:"hasRidershipData"`      // 乗降客数補正が有効か
+	HasRidershipData     bool                 `json:"hasRidershipData"`         // 乗降客数補正が有効か
 }
 
 // StationRidershipResult は駅別乗降客数APIのレスポンス（ドメイン層）
 type StationRidershipResult struct {
-	StationName  string               `json:"stationName"`
-	LineName     string               `json:"lineName"`
-	Passengers   int                  `json:"passengers"`   // 乗降客数/日
-	DemandScore  RidershipDemandScore `json:"demandScore"`  // 需要スコア A〜E
-	Correction   float64              `json:"correction"`   // 理論価格補正係数
+	StationName string               `json:"stationName"`
+	LineName    string               `json:"lineName"`
+	Passengers  int                  `json:"passengers"`  // 乗降客数/日
+	DemandScore RidershipDemandScore `json:"demandScore"` // 需要スコア A〜E
+	Correction  float64              `json:"correction"`  // 理論価格補正係数
 }
 
 // LocationOptimizationItem は XKT003 立地適正化計画のドメイン層受け渡し用軽量型
@@ -518,13 +518,13 @@ type UrbanZoningItem struct {
 
 // LiquefactionRiskItem は XKT025 液状化発生傾向図のドメイン層受け渡し用軽量型
 type LiquefactionRiskItem struct {
-	TendencyLevel int    // liquefaction_tendency_level（6段階: 低値ほど高リスク）
+	TendencyLevel int // liquefaction_tendency_level（6段階: 低値ほど高リスク）
 	Note          string
 }
 
 // FloodHazardItem は XKT026 洪水浸水想定区域のドメイン層受け渡し用軽量型
 type FloodHazardItem struct {
-	DepthRank int    // A31a_205（浸水深ランク）
+	DepthRank int // A31a_205（浸水深ランク）
 	RiverName string
 }
 
@@ -612,8 +612,8 @@ type LandPriceStats struct {
 	Transactions   []LandTransaction `json:"transactions"`
 	LowDataWarning bool              `json:"lowDataWarning"` // 件数 < 10 件時 true
 	WarningMessage string            `json:"warningMessage,omitempty"`
-	Zoning     *ZoningSummary `json:"zoning,omitempty"`     // 取引データから抽出した用途地域情報
-	UrbanRisks []UrbanRisk    `json:"urbanRisks,omitempty"` // 都市計画リスク一覧
+	Zoning         *ZoningSummary    `json:"zoning,omitempty"`     // 取引データから抽出した用途地域情報
+	UrbanRisks     []UrbanRisk       `json:"urbanRisks,omitempty"` // 都市計画リスク一覧
 }
 
 // LandPriceComparison は検討中の土地価格と相場の比較

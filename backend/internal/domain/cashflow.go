@@ -14,6 +14,7 @@ const dscrSafeThreshold = 1.2
 // yieldParams は yield / vacancy の初期計算結果をまとめた内部 struct。
 type yieldParams struct {
 	miscExpenses     float64
+	propertyPrice    float64 // 物件価格（土地+建物、諸費用を含まない）
 	totalInvestment  float64
 	annualRent       float64
 	grossYield       float64 // 総投資利回り（満室想定年収/総投資額。諸費用込み）
@@ -74,6 +75,7 @@ func initYieldParams(input InvestmentInput) yieldParams {
 	}
 	return yieldParams{
 		miscExpenses:     miscExpenses,
+		propertyPrice:    propertyPrice,
 		totalInvestment:  totalInvestment,
 		annualRent:       annualRent,
 		grossYield:       grossYield,

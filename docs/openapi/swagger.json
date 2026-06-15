@@ -2652,7 +2652,7 @@
                     "type": "number"
                 },
                 "grossYield": {
-                    "description": "表面利回り（満室想定年収/総投資額）",
+                    "description": "総投資利回り（満室想定年収/総投資額。諸費用込み）",
                     "type": "number"
                 }
             }
