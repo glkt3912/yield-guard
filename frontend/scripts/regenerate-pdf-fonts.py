@@ -3,23 +3,33 @@
 PDF用 NotoSansJP フォントサブセット再生成スクリプト
 
 【実行条件】
-  pip install fonttools
-  npm install @fontsource/noto-sans-jp  （frontend/ で実行）
+  pip install fonttools brotli
+  npm install --no-save @fontsource/noto-sans-jp   （frontend/ で実行）
 
 【使い方】
   cd frontend
   python3 scripts/regenerate-pdf-fonts.py
 
-【背景】
-  pdfmake はフォントファイル単体で全グリフを解決するため、Web用サブセット
-  （ブラウザが複数チャンクをオンデマンドロードする前提で生成されたもの）では
-  PDFに含まれる漢字が欠落する。
-  本スクリプトは generatePdf.ts / verdict.ts / charts.ts で実際に使われる
-  全文字を列挙し、@fontsource の woff2 チャンクから必要グリフを抽出して
-  public/fonts/ に配置する。
+【背景 / 設計判断（重要）】
+  pdfmake はフォントファイル単体で全グリフを解決するため、Web用に分割された
+  woff2 チャンク（ブラウザがオンデマンドロードする前提）をそのまま使うと
+  PDF に含まれる漢字が欠落する。
 
-【新しい漢字を追加した場合】
-  NEEDED_TEXT に該当文字を追記してから本スクリプトを再実行する。
+  さらに **可変フォント（fvar あり）を instancer で static 化した TTF は、
+  pdfmake がバンドルする pdfkit のフォント埋め込み処理を無限ハングさせる**
+  （Issue #783）。サブセットして小さくしてもハングは解消しない＝サイズではなく
+  フォント構造の非互換が原因。
+
+  そこで本スクリプトは instancer を一切使わず、@fontsource が配布する
+  **ウェイト別（400 / 700）の static woff2 チャンク**から必要グリフを集めて
+  クリーンな static TTF を生成する。
+    - Regular = weight 400 チャンク群
+    - Bold    = weight 700 チャンク群（pdfkit は wght axis 非対応のため、
+                太字は「本物の 700 ウェイトの static フォント」を別ファイルで持つ）
+
+  グリフ欠落の whack-a-mole を避けるため、収録範囲は手書きの文字列ではなく
+  **JIS X 0208（第1+第2水準, 約6,900漢字）+ かな + 記号 + 半角英数**を採用する。
+  これで実務日本語（バックエンド生成メッセージ含む）の欠落はまず起きない。
 """
 
 import glob
@@ -27,7 +37,6 @@ import subprocess
 from pathlib import Path
 from fontTools.ttLib import TTFont
 from fontTools.merge import Merger
-from fontTools.varLib import instancer
 
 # ── 設定 ────────────────────────────────────────────────────────────────────
 
@@ -36,142 +45,107 @@ FRONTEND_DIR = SCRIPT_DIR.parent
 FONTS_OUT_DIR = FRONTEND_DIR / "public" / "fonts"
 FONTSOURCE_DIR = FRONTEND_DIR / "node_modules" / "@fontsource" / "noto-sans-jp" / "files"
 
-# PDF出力で使われる全文字（generatePdf.ts / verdict.ts / charts.ts の文字列リテラルから収集）
-# ※ 新しい漢字をPDFに追加した場合はここに追記して再実行すること
-NEEDED_TEXT = (
-    # generatePdf.ts — ラベル・セクションタイトル
-    "不動産投資分析レポート物件概要価格土地建物費用築年数構造最寄り駅徒歩月額賃料"
-    "想定空室率ローン金額利金期間分析情報実施日総投資額表面利回り"
-    "P1投資サマリーP2年間キャッシュフローP3ストレステスト結果P4取得コスト内訳"
-    "DSCR基本複合実質LTV出口収益"
-    "売却後総CF累積益戦略年後売却想定価格譲渡所得税手取り"
-    "ストレステスト要約シナリオ判定安全危険ベースライン"
-    "賃料収入返済運営経費税引前後残債"
-    "初期内訳諸合計取得時明細仲介手数料込印紙登録免許税概算"
-    "固定資産日割精算年間費用目"
-    "総合判定適格要交渉見送り推奨"
-    # verdict.ts — autoComment / reasons
-    "DSCR基準達成未達超過以上下回水準満最低余裕注意"
-    "重大リスク検出現時点複数確認信号デッドクロス発生投資回収負債減価償却"
-    # charts.ts — グラフ凡例
-    "ローン減価償却残額渉"
-    # 記号・特殊文字
-    "×÷―…≦≧　！％＋－＝？勧号略奨"
-    # ひらがな全域
-    "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん"
-    "ゃゅょっ"
-    # カタカナ全域
-    "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"
-    "ァィゥェォャュョッー"
-    # 記号
-    "（）「」【】・、。"
-    # ASCII（pdfmakeが参照するため念のため含める）
-    " 0123456789%.-/:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-)
-
 WEIGHTS = {
     "Regular": "400",
     "Bold": "700",
 }
 
-
-# ── ロジック ─────────────────────────────────────────────────────────────────
-
-def write_chars_file(path: Path) -> None:
-    chars = "".join(sorted(set(NEEDED_TEXT)))
-    path.write_text(chars, encoding="utf-8")
-    print(f"  文字数: {len(chars)}")
+# pdfmake は横書き・OpenType シェーピング不要なので GSUB/GPOS は落としてサイズを抑える
+LAYOUT_FEATURES = ""
 
 
-def find_chunks_with_missing(current_ttf: Path, weight: str, missing_cps: set) -> list[str]:
-    pattern = str(FONTSOURCE_DIR / f"*-{weight}-normal.woff2")
+def build_charset() -> str:
+    """JIS X 0208（第1+第2水準）+ かな・記号・全角形 + ASCII を網羅した文字集合を返す。"""
+    chars: set[str] = set()
+    # JIS X 0208 全区点を EUC-JP 経由で Unicode 化
+    for hi in range(0x21, 0x7F):
+        for lo in range(0x21, 0x7F):
+            try:
+                chars.add(bytes([hi + 0x80, lo + 0x80]).decode("euc_jp"))
+            except UnicodeDecodeError:
+                pass
+    # ASCII
+    for cp in range(0x20, 0x7F):
+        chars.add(chr(cp))
+    # CJK記号・かな・全角形・囲み数字・幾何記号（PDFのラベルや凡例で使用）
+    for lo, hi in [
+        (0x3000, 0x30FF),  # CJK記号・ひらがな・カタカナ
+        (0x2460, 0x24FF),  # 囲み英数字
+        (0x25A0, 0x25FF),  # 幾何学模様（凡例マーカー等）
+        (0xFF00, 0xFFEF),  # 半角・全角形
+    ]:
+        for cp in range(lo, hi):
+            chars.add(chr(cp))
+    return "".join(sorted(chars))
+
+
+def find_chunks(weight: str, needed_cps: set[int]) -> list[str]:
+    """指定ウェイトの woff2 チャンクのうち、必要コードポイントを含むものを返す。"""
     chunks = []
-    for wf in sorted(glob.glob(pattern)):
+    for wf in sorted(glob.glob(str(FONTSOURCE_DIR / f"*-{weight}-normal.woff2"))):
         try:
-            font = TTFont(wf)
-            cmap = font.getBestCmap() or {}
-            if missing_cps & set(cmap.keys()):
-                chunks.append(wf)
+            cmap = TTFont(wf).getBestCmap() or {}
         except Exception:
-            pass
+            continue
+        if needed_cps & set(cmap.keys()):
+            chunks.append(wf)
     return chunks
 
 
-def ensure_static(src_ttf: Path, weight_int: int) -> None:
-    """variable font（fvar あり）を static インスタンスに変換して上書き保存する。
-    pdfkit は weight axis を解釈しないため、Bold スロットには wght=700 の static TTF が必要。
-    tmp ファイル経由で atomic に書き込むことで、失敗時にオリジナルが破損しないようにする。"""
-    font = TTFont(src_ttf)
-    if "fvar" not in font:
-        return
-    print(f"  variable font を検出 → wght={weight_int} で static 化")
-    instancer.instantiateVariableFont(font, {"wght": weight_int})
-    tmp = src_ttf.with_suffix(".tmp")
-    font.save(str(tmp))
-    tmp.replace(src_ttf)  # atomic rename（失敗時はオリジナルを保持）
-    size_kb = src_ttf.stat().st_size // 1024
-    print(f"  → static 化完了 ({size_kb} KB)")
-
-
-def build_subset(label: str, weight: str, chars_file: Path) -> None:
+def build_font(label: str, weight: str, chars_file: Path, needed_cps: set[int]) -> None:
     print(f"\n[{label}] ビルド開始 (weight={weight})")
-    src_ttf = FONTS_OUT_DIR / f"NotoSansJP-{label}.ttf"
-    tmp_merged = Path(f"/tmp/NotoSansJP-{label}-merged.ttf")
-    tmp_subset = Path(f"/tmp/NotoSansJP-{label}-subset.ttf")
-
-    # variable font の場合は先に static 化する（pdfkit は wght axis 非対応）
-    ensure_static(src_ttf, int(weight))
-
-    # 現在のフォントで欠落しているグリフを特定
-    current = TTFont(src_ttf)
-    current_cmap = current.getBestCmap() or {}
-    needed_cps = set(ord(c) for c in NEEDED_TEXT if ord(c) > 0x7F)
-    missing_cps = needed_cps - set(current_cmap.keys())
-    print(f"  欠落グリフ数: {len(missing_cps)}")
-
-    if not missing_cps:
-        print("  → 欠落なし、スキップ")
-        return
-
     if not FONTSOURCE_DIR.exists():
         raise FileNotFoundError(
             f"{FONTSOURCE_DIR} が見つかりません。\n"
-            "frontend/ で `npm install @fontsource/noto-sans-jp` を実行してください。"
+            "frontend/ で `npm install --no-save @fontsource/noto-sans-jp` を実行してください。"
         )
 
-    # 必要なチャンクを特定してマージ
-    chunks = find_chunks_with_missing(src_ttf, weight, missing_cps)
-    print(f"  マージ対象チャンク数: {len(chunks)}")
-    merger = Merger()
-    merged = merger.merge([str(src_ttf)] + chunks)
-    merged.save(str(tmp_merged))
+    chunks = find_chunks(weight, needed_cps)
+    print(f"  対象チャンク数: {len(chunks)}")
+    if not chunks:
+        raise RuntimeError(f"weight={weight} のチャンクが見つかりません")
 
-    # 必要文字のみに絞り込む
+    # チャンクをマージしてから必要文字に絞り込む（instancer は使わない）
+    tmp_merged = Path(f"/tmp/NotoSansJP-{label}-merged.ttf")
+    if len(chunks) == 1:
+        TTFont(chunks[0]).save(str(tmp_merged))
+    else:
+        Merger().merge(chunks).save(str(tmp_merged))
+
+    dst = FONTS_OUT_DIR / f"NotoSansJP-{label}.ttf"
     subprocess.run(
         [
             "pyftsubset", str(tmp_merged),
             f"--text-file={chars_file}",
-            f"--output-file={tmp_subset}",
-            "--layout-features=*",
+            f"--output-file={dst}",
+            f"--layout-features={LAYOUT_FEATURES}",
             "--no-hinting",
         ],
         check=True,
     )
 
-    # 配置
-    dst = FONTS_OUT_DIR / f"NotoSansJP-{label}.ttf"
-    dst.write_bytes(tmp_subset.read_bytes())
+    ft = TTFont(dst)
+    cmap = ft.getBestCmap() or {}
+    missing = sorted(c for c in chars_file.read_text(encoding="utf-8") if ord(c) > 0x7F and ord(c) not in cmap)
     size_kb = dst.stat().st_size // 1024
-    print(f"  → {dst} ({size_kb} KB)")
+    print(
+        f"  → {dst} ({size_kb} KB, weight={ft['OS/2'].usWeightClass}, "
+        f"glyphs={ft['maxp'].numGlyphs}, missing={len(missing)})"
+    )
+    if missing:
+        print(f"  ⚠ 欠落: {''.join(missing[:60])}")
 
 
 def main() -> None:
+    print("=== PDF用 NotoSansJP サブセット再生成（clean static / instancer 不使用）===")
+    charset = build_charset()
+    print(f"収録文字数: {len(charset)}")
     chars_file = Path("/tmp/pdf_chars.txt")
-    print("=== PDF用 NotoSansJP サブセット再生成 ===")
-    write_chars_file(chars_file)
+    chars_file.write_text(charset, encoding="utf-8")
+    needed_cps = {ord(c) for c in charset if ord(c) > 0x7F}
 
     for label, weight in WEIGHTS.items():
-        build_subset(label, weight, chars_file)
+        build_font(label, weight, chars_file, needed_cps)
 
     print("\n完了。git diff --stat frontend/public/fonts/ で変化を確認してください。")
 
