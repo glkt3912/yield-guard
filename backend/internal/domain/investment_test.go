@@ -81,10 +81,52 @@ func TestAnalyze_GrossYield(t *testing.T) {
 		t.Errorf("TotalInvestment = %.0f, want %.0f", result.TotalInvestment, wantTotal)
 	}
 
-	// 表面利回り: (120,000 * 12) / 16,050,000 ≈ 0.0897
+	// 総投資利回り: (120,000 * 12) / 16,050,000 ≈ 0.0897
 	wantGross := (120_000.0 * 12) / wantTotal
 	if !approxEqual(result.GrossYield, wantGross, 0.0001) {
 		t.Errorf("GrossYield = %.4f, want %.4f", result.GrossYield, wantGross)
+	}
+
+	// 表面利回り（市場慣行・物件価格ベース）: (120,000 * 12) / 15,000,000 = 0.096
+	wantMarketGross := (120_000.0 * 12) / (5_000_000.0 + 10_000_000.0)
+	if !approxEqual(result.MarketGrossYield, wantMarketGross, 0.0001) {
+		t.Errorf("MarketGrossYield = %.4f, want %.4f", result.MarketGrossYield, wantMarketGross)
+	}
+	// 諸費用を分母に含まない分、表面利回りは総投資利回りより高い（#773）
+	if result.MarketGrossYield <= result.GrossYield {
+		t.Errorf("MarketGrossYield(%.4f) should be greater than GrossYield(%.4f)",
+			result.MarketGrossYield, result.GrossYield)
+	}
+}
+
+// TestAnalyze_MarketGrossYield_8PercentBoundary は #773 の回帰テスト。
+// 総投資利回りでは 8% 未満だが物件価格ベースの表面利回りでは 8% 以上になる物件で、
+// 8%境界線判定（IsAboveYieldTarget）が市場慣行（物件価格ベース）で行われることを検証する。
+func TestAnalyze_MarketGrossYield_8PercentBoundary(t *testing.T) {
+	// 物件価格 15,000,000、諸経費率 7% → 総投資額 16,050,000。
+	// 賃料 105,000/月 → 年収 1,260,000。
+	//   表面利回り（物件価格ベース）= 1,260,000 / 15,000,000 = 8.40% → 目標 8% 達成
+	//   総投資利回り（総投資額ベース）= 1,260,000 / 16,050,000 = 7.85% → 8% 未満
+	input := InvestmentInput{
+		LandPrice:    5_000_000,
+		BuildingCost: 10_000_000,
+		MonthlyRent:  105_000,
+	}
+	input.Defaults() // YieldTarget=0.08, MiscExpenseRate=0.07
+
+	result := Analyze(context.Background(), input)
+
+	if result.GrossYield >= input.YieldTarget {
+		t.Fatalf("前提が崩れています: GrossYield(%.4f) は目標(%.2f)未満であるべき",
+			result.GrossYield, input.YieldTarget)
+	}
+	if result.MarketGrossYield < input.YieldTarget {
+		t.Fatalf("前提が崩れています: MarketGrossYield(%.4f) は目標(%.2f)以上であるべき",
+			result.MarketGrossYield, input.YieldTarget)
+	}
+	if !result.IsAboveYieldTarget {
+		t.Errorf("IsAboveYieldTarget = false, want true: 表面利回り%.2f%%が目標%.0f%%を満たすため",
+			result.MarketGrossYield*100, input.YieldTarget*100)
 	}
 }
 

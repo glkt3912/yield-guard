@@ -210,6 +210,7 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
         ? {
             metrics: {
               grossYield: currentResult.grossYield,
+              marketGrossYield: currentResult.marketGrossYield,
               netYield: currentResult.netYield,
               dscr: currentResult.dscr,
               irr: currentResult.irr ?? null,
@@ -453,7 +454,11 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
                         {item.metrics && (
                           <div className="flex flex-wrap gap-2 pt-0.5">
                             <span className="text-xs text-blue-600">
-                              表面利回り: {(item.metrics.grossYield * 100).toFixed(1)}%
+                              表面利回り:{" "}
+                              {(
+                                (item.metrics.marketGrossYield ?? item.metrics.grossYield) * 100
+                              ).toFixed(1)}
+                              %
                             </span>
                             <span
                               className={`inline-flex items-center gap-1 text-xs ${getDscrColor(item.metrics.dscr)}`}

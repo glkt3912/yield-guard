@@ -145,7 +145,7 @@ export async function downloadReportPDF(
   } as const;
 
   // ── KpiStrip values (mirrors KpiStrip.tsx logic) ──
-  const grossYieldPct = result.grossYield * 100;
+  const grossYieldPct = result.marketGrossYield * 100;
   const yieldTarget = input.yieldTarget ?? 0.08;
   const yieldDiff = grossYieldPct - yieldTarget * 100;
   const yieldDiffStr = (yieldDiff >= 0 ? "+" : "") + yieldDiff.toFixed(2) + "pp vs 目標";
@@ -260,7 +260,8 @@ export async function downloadReportPDF(
       { text: "分析情報", fontSize: 9, bold: true, color: C.muted, marginBottom: 8, marginTop: 16 },
       infoRow("分析実施日", date),
       infoRow("総投資額", fmtYen(result.totalInvestment)),
-      infoRow("表面利回り", fmtPct(result.grossYield)),
+      infoRow("表面利回り", fmtPct(result.marketGrossYield)),
+      infoRow("総投資利回り（諸費用込み）", fmtPct(result.grossYield)),
 
       // ── 投資判定サマリー (StatusSummary + KpiStrip) ─────────────────
       {
@@ -286,7 +287,7 @@ export async function downloadReportPDF(
             text:
               result.criticalErrors.length > 0
                 ? result.criticalErrors.map((e) => sanitize(e.message)).join("　")
-                : `利回り ${fmtPct(result.grossYield)} / DSCR ${result.dscr.toFixed(2)} / デッドクロス ${dcYear}`,
+                : `利回り ${fmtPct(result.marketGrossYield)} / DSCR ${result.dscr.toFixed(2)} / デッドクロス ${dcYear}`,
             fontSize: 8,
             color: C.text,
             margin: [8, 2, 0, 0],
@@ -414,7 +415,7 @@ export async function downloadReportPDF(
       // KPI 2行×3列
       {
         columns: [
-          kpiBlock("表面利回り", fmtPct(result.grossYield)),
+          kpiBlock("表面利回り", fmtPct(result.marketGrossYield)),
           kpiBlock("実質利回り", fmtPct(result.netYield)),
           kpiBlock("DSCR 基本", dscr.toFixed(2), dscr >= 1.0 ? C.safe : C.danger),
         ],

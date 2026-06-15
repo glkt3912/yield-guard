@@ -21,7 +21,7 @@ function buildAutoComment(
 
   if (level === "PASS") {
     parts.push(
-      `表面利回り${fmtPct(result.grossYield)}・DSCR${dscr.toFixed(2)}ともに基準を上回り、投資適格と判定されました。`
+      `表面利回り${fmtPct(result.marketGrossYield)}・DSCR${dscr.toFixed(2)}ともに基準を上回り、投資適格と判定されました。`
     );
   } else if (level === "CAUTION") {
     parts.push(`DSCR${dscr.toFixed(2)}は最低水準を満たしていますが、余裕が少なく要注意です。`);
@@ -52,7 +52,7 @@ export function calcVerdict(
   const isPass =
     !hasREJECT &&
     dscr >= 1.2 &&
-    result.grossYield >= result.yieldTarget &&
+    result.marketGrossYield >= result.yieldTarget &&
     result.exitTotalEquity >= 0;
 
   const isCaution = !isPass && !hasREJECT && dscr >= 1.0;
@@ -75,10 +75,14 @@ export function calcVerdict(
     reasons.push(`DSCR ${dscr.toFixed(2)}（基準1.00未達）`);
   }
 
-  if (result.grossYield >= result.yieldTarget) {
-    reasons.push(`表面利回り${fmtPct(result.grossYield)}（目標${fmtPct(result.yieldTarget)}達成）`);
+  if (result.marketGrossYield >= result.yieldTarget) {
+    reasons.push(
+      `表面利回り${fmtPct(result.marketGrossYield)}（目標${fmtPct(result.yieldTarget)}達成）`
+    );
   } else {
-    reasons.push(`表面利回り${fmtPct(result.grossYield)}（目標${fmtPct(result.yieldTarget)}未達）`);
+    reasons.push(
+      `表面利回り${fmtPct(result.marketGrossYield)}（目標${fmtPct(result.yieldTarget)}未達）`
+    );
   }
 
   if (result.exitTotalEquity >= 0) {

@@ -14,7 +14,7 @@ test.describe("Full mode ハッピーパス", () => {
       loanAmount: "1600",
     });
 
-    await expect(sim.grossYield()).toHaveText("9.89");
+    await expect(sim.grossYield()).toHaveText("10.58");
     await expect(sim.yieldBadge()).toBeVisible({ timeout: 5_000 });
 
     await expect(sim.cashflowChartHeading()).toBeVisible({ timeout: 5_000 });
@@ -44,7 +44,7 @@ test.describe("Full mode リクエストボディ検証", () => {
       monthlyRent: "15",
     });
 
-    await expect(sim.grossYield()).toHaveText("9.89");
+    await expect(sim.grossYield()).toHaveText("10.58");
 
     expect(capturedBody).not.toBeNull();
     expect(capturedBody!["landPrice"]).toBe(12000000);

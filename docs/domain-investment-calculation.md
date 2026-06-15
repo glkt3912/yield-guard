@@ -109,13 +109,25 @@ return rate + rateDelta  // rateDelta は常に加算
 
 ---
 
-## 表面利回り（GrossYield）
+## 表面利回り（MarketGrossYield）と総投資利回り（GrossYield）
+
+本アプリは利回りを 2 つの分母で算出する（#773）。「表面利回り」ラベルで UI 表示し 8% 境界線判定に用いるのは **物件価格ベースの MarketGrossYield** である。
 
 ```
-表面利回り = (MonthlyRent × 12) / 総投資額
+表面利回り（MarketGrossYield）= (MonthlyRent × 12) / 物件価格（LandPrice + BuildingCost）  ← 市場慣行・UI表示・8%判定
+総投資利回り（GrossYield）      = (MonthlyRent × 12) / 総投資額（物件価格 + 諸経費）          ← 諸経費込みの保守的指標
 ```
 
-**空室率を含まない**満室想定年収で計算する。
+いずれも**空室率を含まない**満室想定年収で計算する。
+
+- **MarketGrossYield**: 物件広告・REINS・業者資料で一般に「表面利回り」と呼ばれる指標と一致する（分母に諸経費を含まない）。
+- **GrossYield**: 諸経費まで含めた投下資本に対する利回り。MarketGrossYield より 0.5〜1% 低く出る保守的な参考値で、UI では「総投資利回り（諸費用込み）」として併記する。
+
+### 8% 境界線（IsAboveYieldTarget）の判定基準
+
+`IsAboveYieldTarget = MarketGrossYield ≥ YieldTarget`（YieldTarget デフォルト 0.08）。
+
+業者が「利回り8%」と謳う物件は物件価格ベースで算出されているため、判定も物件価格ベースの MarketGrossYield で行うことで、広告値とアプリ表示の乖離をなくす。目標達成に必要な賃料・コスト削減額（`calcRequiredForTarget`）も物件価格を基準に逆算する。
 
 > **根拠・出典**: 全国宅地建物取引業協会連合会（全宅連）および不動産情報サービス各社（SUUMO・HOME'S 等）が物件掲載時に使用する慣習的指標。物件間の横断比較に用いる。実際の収入は空室や経費分だけ下振れするため、実質利回りと併用して判断する。
 
@@ -129,12 +141,12 @@ return rate + rateDelta  // rateDelta は常に加算
 悲観シナリオ: effectiveVacancy = min(VacancyRate × 1.5, 0.99)
 
 AnnualRent = MonthlyRent × 12 × (1 - effectiveVacancy)
-GrossYield = (MonthlyRent × 12) / 総投資額  ← 全シナリオ共通（満室想定）
+GrossYield = (MonthlyRent × 12) / 総投資額  ← 全シナリオ共通（満室想定・総投資利回り）
 ```
 
 **0.99 キャップの意図**: 悲観×1.5 で空室率が 100% を超える場合（例: 入力 80% × 1.5 = 120%）、年間賃料がゼロ以下になることを防ぐ。`math.Min(..., 0.99)` で最大99%に制限する。
 
-**GrossYield の一定性**: 表面利回りは「満室想定年収 / 総投資額」で定義され、シナリオ間で変化しない。シナリオで変化するのは `AnnualRent`（実効賃料）のみ。
+**GrossYield の一定性**: `YieldScenario.GrossYield` は総投資利回り（満室想定年収 / 総投資額）でシナリオ間で変化しない。シナリオで変化するのは `AnnualRent`（実効賃料）のみ。
 
 ---
 
@@ -219,21 +231,24 @@ NOI          = 1,041,600 − 276,240 = 765,360円
 
 `input.YieldTarget`（デフォルト 0.08 = 8%）を基準に2つの逆算値を返す（`backend/internal/domain/sensitivity.go`）。
 
+8% 境界線は物件価格ベースの表面利回り（MarketGrossYield）で判定するため、逆算も**物件価格（LandPrice + BuildingCost）**を基準に行う（#773。諸経費を含む総投資額ではない）。
+
 ```go
 target := input.YieldTarget          // 目標表面利回り（例: 0.08）
+propertyPrice := LandPrice + BuildingCost
 
-// 目標年収 = 総投資額 × 目標利回り
-requiredMonthlyRent = (totalInvestment × target) / 12
+// 目標年収 = 物件価格 × 目標利回り
+requiredMonthlyRent = (propertyPrice × target) / 12
 
-// 現賃料で目標利回り達成に必要な総投資額
-requiredTotalInvestment = (MonthlyRent × 12) / target
+// 現賃料で目標利回り達成に必要な物件価格
+requiredPropertyPrice = (MonthlyRent × 12) / target
 
-// 過剰投資額（削減が必要な額）
-costReduction = max(totalInvestment - requiredTotalInvestment, 0)
+// 過剰額（削減が必要な額）
+costReduction = max(propertyPrice - requiredPropertyPrice, 0)
 ```
 
-- `RequiredMonthlyRent`: 現在の投資額で目標利回りを達成するために必要な月額賃料
-- `RequiredCostReduction`: 現在の賃料で目標利回りを達成するために土地 **または** 建築費いずれか一方を削減すべき額
+- `RequiredMonthlyRent`: 現在の物件価格で目標表面利回りを達成するために必要な月額賃料
+- `RequiredCostReduction`: 現在の賃料で目標表面利回りを達成するために土地 **または** 建築費いずれか一方を削減すべき額
 
 ---
 
@@ -447,9 +462,10 @@ yearAnnualRent = baseAnnualRent × (1 - RentDeclineRate)^y
 |-----------|------|
 | `TotalInvestment` | 総投資額（土地 + 建物 + 諸経費） |
 | `MiscExpenses` | 諸経費額 |
-| `GrossYield` | 表面利回り |
+| `MarketGrossYield` | 表面利回り（満室想定年収 / 物件価格。市場慣行・UI表示・8%判定基準） |
+| `GrossYield` | 総投資利回り（満室想定年収 / 総投資額。諸経費込みの保守的指標） |
 | `NetYield` | 実質利回り |
-| `IsAboveYieldTarget` | 表面利回り ≥ 目標利回り（`yieldTarget`）かどうか |
+| `IsAboveYieldTarget` | `MarketGrossYield` ≥ 目標利回り（`yieldTarget`）かどうか（物件価格ベース） |
 | `YieldTarget` | 判定に使用した目標利回り（例: 0.08 = 8%） |
 | `RequiredCostReduction` | 目標利回り達成に必要なコスト削減額（いずれか一方） |
 | `RequiredMonthlyRent` | 目標利回り達成に必要な月額賃料 |

@@ -15,7 +15,7 @@ const (
 	// SqmPerTsubo は 1坪あたりの平方メートル数（mlit パッケージからも参照）
 	SqmPerTsubo = 3.30578
 
-	LoanMethodEqualPayment   = "equal-payment"  // 元利均等返済
+	LoanMethodEqualPayment   = "equal-payment"   // 元利均等返済
 	LoanMethodEqualPrincipal = "equal-principal" // 元金均等返済
 
 	DepreciationMethodStraightLine     = "straight-line"     // 定額法
@@ -35,7 +35,9 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 	input.Defaults()
 
 	yp := initYieldParams(input)
-	requiredRent, landDrop := calcRequiredForTarget(input, yp.totalInvestment)
+	// 8%境界線は物件価格ベースの表面利回り（MarketGrossYield）で判定するため、
+	// 目標達成に必要な賃料・コスト削減額も物件価格（土地+建物）を基準に逆算する。
+	requiredRent, landDrop := calcRequiredForTarget(input, yp.propertyPrice)
 	lp := initLoanParams(input)
 	dp := initDepreciationParams(input)
 
@@ -91,8 +93,9 @@ func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
 		TotalInvestment:       yp.totalInvestment,
 		MiscExpenses:          yp.miscExpenses,
 		GrossYield:            yp.grossYield,
+		MarketGrossYield:      yp.marketGrossYield,
 		NetYield:              yp.netYield,
-		IsAboveYieldTarget:    yp.grossYield >= input.YieldTarget,
+		IsAboveYieldTarget:    yp.marketGrossYield >= input.YieldTarget,
 		YieldTarget:           input.YieldTarget,
 		RequiredCostReduction: landDrop,
 		RequiredMonthlyRent:   requiredRent,

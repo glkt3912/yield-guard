@@ -90,12 +90,13 @@ describe("WatchlistPanel", () => {
     expect(screen.getByText("物件Enter")).toBeInTheDocument();
   });
 
-  it("currentResultがある場合は指標が追加される（追加した物件にgrossYieldが保存される）", async () => {
-    const result = makeResult({ grossYield: 0.09 });
+  it("currentResultがある場合は指標が追加される（追加した物件に表面利回りが保存される）", async () => {
+    // 表面利回り表示は物件価格ベースの marketGrossYield を使う（#773）
+    const result = makeResult({ marketGrossYield: 0.09 });
     render(<WatchlistPanel currentResult={result} />);
     await userEvent.type(screen.getByLabelText("物件名"), "指標付き物件");
     await userEvent.click(screen.getByRole("button", { name: "追加" }));
-    // grossYield 9.0% が表示される（小数1桁）
+    // marketGrossYield 9.0% が表示される（小数1桁）
     await waitFor(() => {
       expect(screen.getByText(/9\.0%/)).toBeInTheDocument();
     });

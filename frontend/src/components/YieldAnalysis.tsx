@@ -69,7 +69,10 @@ export function YieldAnalysis({
   landPriceStats,
   isAnalyzing = false,
 }: Props) {
-  const yieldPct = result.grossYield * 100;
+  // 表面利回り（市場慣行・物件価格ベース）。8%境界線判定もこの値で行う（#773）
+  const yieldPct = result.marketGrossYield * 100;
+  // 総投資利回り（諸費用込み・総投資額ベース）。市場慣行より低く出る保守的指標
+  const totalInvestmentYieldPct = result.grossYield * 100;
   const netYieldPct = result.netYield * 100;
   const isGood = result.isAboveYieldTarget;
   const targetPct = result.yieldTarget * 100;
@@ -127,6 +130,7 @@ export function YieldAnalysis({
 
       <YieldGauge
         yieldPct={yieldPct}
+        totalInvestmentYieldPct={totalInvestmentYieldPct}
         netYieldPct={netYieldPct}
         isGood={isGood}
         targetPct={targetPct}
@@ -170,6 +174,10 @@ export function YieldAnalysis({
             {[
               { label: "総投資額", value: formatMan(result.totalInvestment), highlight: true },
               { label: "　うち諸経費", value: formatYen(result.miscExpenses) },
+              {
+                label: "総投資利回り（諸費用込み）",
+                value: `${totalInvestmentYieldPct.toFixed(2)}%`,
+              },
               {
                 label: "年間実効賃料収入（空室控除後）",
                 value: formatYen(result.yearlyResults[0]?.annualRent ?? 0),
@@ -235,13 +243,14 @@ export function YieldAnalysis({
             <p className="text-sm text-success-fg">
               目標の{targetPct}%に対して{" "}
               <span className="font-bold">
-                +{formatPct(result.grossYield - result.yieldTarget)}
+                +{formatPct(result.marketGrossYield - result.yieldTarget)}
               </span>{" "}
               の余裕があります。
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
               ※満室想定賃料が
-              {formatPct((result.grossYield - result.yieldTarget) / result.grossYield)}下落すると
+              {formatPct((result.marketGrossYield - result.yieldTarget) / result.marketGrossYield)}
+              下落すると
               {targetPct}%を下回ります （空室変動の影響は別途考慮してください）
             </p>
           </CardContent>

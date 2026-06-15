@@ -13,11 +13,13 @@ const dscrSafeThreshold = 1.2
 
 // yieldParams は yield / vacancy の初期計算結果をまとめた内部 struct。
 type yieldParams struct {
-	miscExpenses    float64
-	totalInvestment float64
-	annualRent      float64
-	grossYield      float64
-	netYield        float64
+	miscExpenses     float64
+	propertyPrice    float64 // 物件価格（土地+建物、諸費用を含まない）
+	totalInvestment  float64
+	annualRent       float64
+	grossYield       float64 // 総投資利回り（満室想定年収/総投資額。諸費用込み）
+	marketGrossYield float64 // 表面利回り（満室想定年収/物件価格[土地+建物]。市場慣行ベース）
+	netYield         float64
 }
 
 // loanParams はローン初期値をまとめた内部 struct。
@@ -49,12 +51,19 @@ type simulationResult struct {
 func initYieldParams(input InvestmentInput) yieldParams {
 	effectiveVacancy := math.Min(input.VacancyRate+input.VacancyRateDelta, 0.99)
 	loanFee := input.LoanAmount * input.LoanFeeRate
-	miscExpenses := (input.LandPrice+input.BuildingCost)*input.MiscExpenseRate + loanFee
-	totalInvestment := input.LandPrice + input.BuildingCost + miscExpenses
+	propertyPrice := input.LandPrice + input.BuildingCost
+	miscExpenses := propertyPrice*input.MiscExpenseRate + loanFee
+	totalInvestment := propertyPrice + miscExpenses
 	annualRent := input.MonthlyRent * 12 * (1 - effectiveVacancy)
 	grossYield := 0.0
 	if totalInvestment > 0 {
 		grossYield = (input.MonthlyRent * 12) / totalInvestment
+	}
+	// 表面利回り（市場慣行）は物件価格（土地+建物、諸費用を含まない）が分母。
+	// 物件広告・REINS の「表面利回り」と直接比較できる値であり、8%境界線判定にも用いる。
+	marketGrossYield := 0.0
+	if propertyPrice > 0 {
+		marketGrossYield = (input.MonthlyRent * 12) / propertyPrice
 	}
 	// initYieldParams は初年度の利回り指標を計算する。
 	// 経費インフレ率は年次シミュレーション（simulateYears）で複利適用するため、
@@ -65,11 +74,13 @@ func initYieldParams(input InvestmentInput) yieldParams {
 		netYield = (annualRent - annualExpenses) / totalInvestment
 	}
 	return yieldParams{
-		miscExpenses:    miscExpenses,
-		totalInvestment: totalInvestment,
-		annualRent:      annualRent,
-		grossYield:      grossYield,
-		netYield:        netYield,
+		miscExpenses:     miscExpenses,
+		propertyPrice:    propertyPrice,
+		totalInvestment:  totalInvestment,
+		annualRent:       annualRent,
+		grossYield:       grossYield,
+		marketGrossYield: marketGrossYield,
+		netYield:         netYield,
 	}
 }
 

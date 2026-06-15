@@ -34,7 +34,7 @@ const METRIC_ROWS: MetricRow[] = [
   },
   {
     label: "表面利回り",
-    key: "grossYield",
+    key: "marketGrossYield",
     format: (v) => (v != null ? `${(Number(v) * 100).toFixed(1)}%` : "-"),
     best: "max",
     termKey: "grossYield",
@@ -103,7 +103,9 @@ const METRIC_ROWS: MetricRow[] = [
 
 function getValue(metrics: WatchlistMetrics | undefined, key: MetricKey): number | null {
   if (!metrics) return null;
-  const v = metrics[key];
+  // 旧データには marketGrossYield が無いため総投資利回り(grossYield)へフォールバック（#773）
+  const v =
+    key === "marketGrossYield" ? (metrics.marketGrossYield ?? metrics.grossYield) : metrics[key];
   if (v == null) return null;
   // deadCrossYear: -1 or 0 means "no dead cross" which is the best possible value
   if (key === "deadCrossYear" && Number(v) <= 0) return Infinity;
@@ -191,7 +193,11 @@ export default function WatchlistCompareTable({ items }: WatchlistCompareTablePr
                       // raw: comparison value (Infinity for deadCrossYear=-1)
                       const raw = getValue(item.metrics, row.key);
                       // displayValue: original metric value, used for formatting only
-                      const metricVal = item.metrics?.[row.key];
+                      // marketGrossYield は旧データで欠落しうるため grossYield へフォールバック（#773）
+                      const metricVal =
+                        row.key === "marketGrossYield"
+                          ? (item.metrics?.marketGrossYield ?? item.metrics?.grossYield)
+                          : item.metrics?.[row.key];
                       const displayValue = metricVal != null ? Number(metricVal) : null;
                       const isBest = bestIdx !== -1 && colIdx === bestIdx;
                       const isUnavailable = raw === null;

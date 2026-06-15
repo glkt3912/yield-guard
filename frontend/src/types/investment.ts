@@ -156,7 +156,7 @@ export interface StressScenarioResult {
 
 export interface YieldScenario {
   annualRent: number; // 年間実効賃料収入（空室控除後）
-  grossYield: number; // 表面利回り（満室想定年収/総投資額）
+  grossYield: number; // 総投資利回り（満室想定年収/総投資額）
 }
 
 export interface YieldScenarios {
@@ -177,7 +177,8 @@ export interface LTVSensitivityRow {
 export interface InvestmentResult {
   totalInvestment: number;
   miscExpenses: number;
-  grossYield: number;
+  grossYield: number; // 総投資利回り（満室想定年収/総投資額。諸費用込み）
+  marketGrossYield: number; // 表面利回り（満室想定年収/物件価格[土地+建物]。市場慣行ベース・8%判定基準）
   netYield: number;
   isAboveYieldTarget: boolean;
   yieldTarget: number;
@@ -501,7 +502,8 @@ export interface HeatmapResponse {
 export type WatchlistStatus = "検討中" | "見送り" | "購入済み";
 
 export interface WatchlistMetrics {
-  grossYield: number;
+  grossYield: number; // 総投資利回り（満室想定年収/総投資額）
+  marketGrossYield?: number; // 表面利回り（物件価格ベース）。旧データには存在しないため optional
   netYield: number;
   dscr: number;
   irr: number | null;

@@ -1701,7 +1701,7 @@
                     "type": "number"
                 },
                 "grossYield": {
-                    "description": "表面利回り（満室想定年収/総投資額）",
+                    "description": "GrossYield は総投資利回り（満室想定年収/総投資額。諸費用込み）。\n市場慣行の「表面利回り」とは分母が異なる（諸費用を含む分だけ低く出る）保守的指標。",
                     "type": "number"
                 },
                 "irr": {
@@ -1717,6 +1717,10 @@
                     "items": {
                         "$ref": "#/definitions/domain.LTVSensitivityRow"
                     }
+                },
+                "marketGrossYield": {
+                    "description": "MarketGrossYield は表面利回り（満室想定年収/物件価格[土地+建物]。市場慣行ベース）。\n物件広告・REINS の「表面利回り」と直接比較でき、8%境界線（IsAboveYieldTarget）判定にも用いる。",
+                    "type": "number"
                 },
                 "miscExpenses": {
                     "type": "number"
@@ -1776,7 +1780,7 @@
                     "$ref": "#/definitions/domain.YieldScenarios"
                 },
                 "yieldTarget": {
-                    "description": "目標表面利回り（例: 0.08）",
+                    "description": "目標表面利回り（例: 0.08。物件価格ベースの MarketGrossYield と比較）",
                     "type": "number"
                 }
             }
@@ -2648,7 +2652,7 @@
                     "type": "number"
                 },
                 "grossYield": {
-                    "description": "表面利回り（満室想定年収/総投資額）",
+                    "description": "総投資利回り（満室想定年収/総投資額。諸費用込み）",
                     "type": "number"
                 }
             }

@@ -52,7 +52,11 @@ describe("Dashboard", () => {
   });
 
   it("analyzeAPIの応答後にYieldAnalysisが表示される（クイックモード）", async () => {
-    const mockResult = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
+    const mockResult = makeResult({
+      grossYield: 0.09,
+      marketGrossYield: 0.09,
+      isAboveYieldTarget: true,
+    });
     vi.mocked(api.analyze).mockResolvedValue(mockResult);
 
     render(<Dashboard />);
@@ -78,7 +82,11 @@ describe("Dashboard", () => {
   });
 
   it("詳細モードでanalyzeAPIの応答後にCashFlowChartが表示される", async () => {
-    const mockResult = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
+    const mockResult = makeResult({
+      grossYield: 0.09,
+      marketGrossYield: 0.09,
+      isAboveYieldTarget: true,
+    });
     vi.mocked(api.analyze).mockResolvedValue(mockResult);
 
     render(<Dashboard />);
@@ -151,7 +159,11 @@ describe("Dashboard", () => {
   });
 
   it("シミュレーション実行後にrouter.replaceでURLが更新される", async () => {
-    const mockResult = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
+    const mockResult = makeResult({
+      grossYield: 0.09,
+      marketGrossYield: 0.09,
+      isAboveYieldTarget: true,
+    });
     vi.mocked(api.analyze).mockResolvedValue(mockResult);
 
     render(<Dashboard />);
@@ -193,7 +205,11 @@ describe("Dashboard", () => {
   });
 
   it("シミュレーション結果表示後にURL共有ボタンが表示される", async () => {
-    const mockResult = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
+    const mockResult = makeResult({
+      grossYield: 0.09,
+      marketGrossYield: 0.09,
+      isAboveYieldTarget: true,
+    });
     vi.mocked(api.analyze).mockResolvedValue(mockResult);
 
     render(<Dashboard />);
@@ -209,7 +225,11 @@ describe("Dashboard", () => {
   });
 
   it("URL共有ボタンを押すとクリップボードにURLがコピーされる", async () => {
-    const mockResult = makeResult({ grossYield: 0.09, isAboveYieldTarget: true });
+    const mockResult = makeResult({
+      grossYield: 0.09,
+      marketGrossYield: 0.09,
+      isAboveYieldTarget: true,
+    });
     vi.mocked(api.analyze).mockResolvedValue(mockResult);
 
     const writeText = vi.fn().mockResolvedValue(undefined);

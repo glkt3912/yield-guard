@@ -8,7 +8,7 @@ test.describe("Quick mode ハッピーパス", () => {
     await sim.setup();
     await sim.runQuickSimulation("1700", "15");
 
-    await expect(sim.grossYield()).toHaveText("9.89");
+    await expect(sim.grossYield()).toHaveText("10.58");
     await expect(sim.yieldBadge()).toBeVisible({ timeout: 5_000 });
     await expect(sim.dscrValue().first()).toBeVisible();
   });
@@ -31,7 +31,7 @@ test.describe("Quick mode リクエストボディ検証", () => {
 
     await sim.runQuickSimulation("1700", "150000");
 
-    await expect(sim.grossYield()).toHaveText("9.89");
+    await expect(sim.grossYield()).toHaveText("10.58");
 
     expect(capturedBody).not.toBeNull();
     expect(capturedBody!["monthlyRent"]).toBe(150000);

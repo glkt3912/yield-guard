@@ -9,6 +9,7 @@ import type { InvestmentInput, LandPriceStats } from "@/types/investment";
 
 interface YieldGaugeProps {
   yieldPct: number;
+  totalInvestmentYieldPct?: number;
   netYieldPct: number;
   isGood: boolean;
   targetPct: number;
@@ -18,6 +19,7 @@ interface YieldGaugeProps {
 
 export function YieldGauge({
   yieldPct,
+  totalInvestmentYieldPct,
   netYieldPct,
   isGood,
   targetPct,
@@ -52,7 +54,7 @@ export function YieldGauge({
         <div className="flex items-center justify-between">
           <div className="min-w-0 flex-1">
             <p className="text-xs text-muted-foreground sm:text-sm">
-              <TermTooltip term="grossYield">表面利回り</TermTooltip>（満室想定年収 / 総投資額）
+              <TermTooltip term="grossYield">表面利回り</TermTooltip>（満室想定年収 / 物件価格）
             </p>
             <div className="flex items-end gap-2">
               <span
@@ -65,6 +67,12 @@ export function YieldGauge({
                 %
               </span>
             </div>
+            {totalInvestmentYieldPct != null && (
+              <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+                <TermTooltip term="totalInvestmentYield">総投資利回り</TermTooltip>
+                （諸費用込み）：{totalInvestmentYieldPct.toFixed(2)}%
+              </p>
+            )}
             <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
               <TermTooltip term="netYield">実質利回り</TermTooltip>（空室・経費控除後）：
               {netYieldPct.toFixed(2)}%
