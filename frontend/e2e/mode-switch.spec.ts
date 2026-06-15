@@ -11,7 +11,7 @@ test("@p2 モード切替：Quick分析後に詳細へ切り替えると結果�
 }) => {
   const sim = new SimulationPage(page);
   await sim.runQuickSimulation("1700", "15");
-  await expect(sim.grossYield()).toHaveText("9.89");
+  await expect(sim.grossYield()).toHaveText("10.58");
 
   // 詳細モードに切り替え
   await page.getByRole("radio", { name: "くわしく分析" }).click();

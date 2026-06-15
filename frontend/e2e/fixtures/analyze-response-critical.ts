@@ -15,6 +15,7 @@ export const analyzeCriticalFixture = {
   totalInvestment: 18190000,
   miscExpenses: 1190000,
   grossYield: 0.033,
+  marketGrossYield: 0.0353, // 物件価格(17,000,000)ベースの表面利回り（#773）
   netYield: 0.012,
   isAboveYieldTarget: false,
   yieldTarget: 0.08,

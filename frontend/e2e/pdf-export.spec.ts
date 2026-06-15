@@ -11,7 +11,7 @@ test.describe("PDF出力 — デフォルト fixture (OK判定 / multiExitCompar
     const sim = new SimulationPage(page);
     await sim.setup();
     await sim.runQuickSimulation("1700", "15");
-    await expect(sim.grossYield()).toHaveText("9.89");
+    await expect(sim.grossYield()).toHaveText("10.58");
 
     const downloadPromise = page.waitForEvent("download", { timeout: 30_000 });
     await page.getByText("PDFレポート出力").click();

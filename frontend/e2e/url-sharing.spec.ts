@@ -8,7 +8,7 @@ test("@p2 URL共有：分析後のURLを開くとフォームが復元され結�
   const sim = new SimulationPage(page);
   await sim.setup();
   await sim.runQuickSimulation("1700", "15");
-  await expect(sim.grossYield()).toHaveText("9.89");
+  await expect(sim.grossYield()).toHaveText("10.58");
 
   // Clipboard 権限を付与してシェアボタンをクリック
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -31,5 +31,5 @@ test("@p2 URL共有：分析後のURLを開くとフォームが復元され結�
   });
   // 再度シミュレーション実行して結果を表示
   await newPage.getByText("シミュレーション実行").click();
-  await expect(newSim.grossYield()).toHaveText("9.89", { timeout: 10_000 });
+  await expect(newSim.grossYield()).toHaveText("10.58", { timeout: 10_000 });
 });
