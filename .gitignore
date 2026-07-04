@@ -1,5 +1,10 @@
-frontend/node_modules
+# 依存パッケージ（場所を問わず）
+node_modules/
+
 frontend/.next
+
+# PDF エクスポートの動作確認生成物（リポジトリ直下のみ）
+/*.pdf
 
 # PWA ビルド生成物（Workbox自動生成ファイル）
 frontend/public/workbox-*.js
