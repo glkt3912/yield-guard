@@ -24,6 +24,9 @@ frontend/tsconfig.tsbuildinfo
 docs/openapi/openapi.json
 frontend/src/types/api.generated.ts
 
+# Vitest カバレッジレポート
+frontend/coverage/
+
 # Playwright
 frontend/playwright-report/
 frontend/test-results/
