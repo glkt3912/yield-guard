@@ -143,7 +143,7 @@ mlit-land-prices:
 	@test -n "$(quarter)"   || (echo "ERROR: quarter は必須です (例: quarter=1)"; exit 1)
 	@test -n "$(to_year)"   || (echo "ERROR: to_year は必須です (例: to_year=2024)"; exit 1)
 	@test -n "$(to_quarter)"|| (echo "ERROR: to_quarter は必須です (例: to_quarter=4)"; exit 1)
-	@source .env 2>/dev/null; \
+	@. ./.env 2>/dev/null; \
 	 curl -s \
 	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
 	   --compressed \
@@ -154,7 +154,7 @@ mlit-land-prices:
 ##   使い方: make mlit-municipalities area=13
 mlit-municipalities:
 	@test -n "$(area)" || (echo "ERROR: area は必須です (例: area=13)"; exit 1)
-	@source .env 2>/dev/null; \
+	@. ./.env 2>/dev/null; \
 	 curl -s \
 	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
 	   --compressed \
@@ -168,7 +168,7 @@ mlit-station-ridership:
 	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
 	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
 	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
-	@source .env 2>/dev/null; \
+	@. ./.env 2>/dev/null; \
 	 curl -s \
 	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
 	   --compressed \
@@ -181,7 +181,7 @@ mlit-station-ridership:
 mlit-land-appraisals:
 	@test -n "$(area)" || (echo "ERROR: area は必須です (例: area=13)"; exit 1)
 	@test -n "$(year)" || (echo "ERROR: year は必須です (例: year=2024)"; exit 1)
-	@source .env 2>/dev/null; \
+	@. ./.env 2>/dev/null; \
 	 curl -s \
 	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
 	   --compressed \
@@ -195,7 +195,7 @@ mlit-population-forecast:
 	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
 	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
 	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
-	@source .env 2>/dev/null; \
+	@. ./.env 2>/dev/null; \
 	 curl -s \
 	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
 	   --compressed \
@@ -213,7 +213,7 @@ mlit-urban-zoning:
 	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
 	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
 	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
-	@source .env 2>/dev/null; \
+	@. ./.env 2>/dev/null; \
 	 curl -s \
 	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
 	   --compressed \
@@ -226,7 +226,7 @@ mlit-liquefaction:
 	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
 	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
 	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
-	@source .env 2>/dev/null; \
+	@. ./.env 2>/dev/null; \
 	 curl -s \
 	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
 	   --compressed \
@@ -239,7 +239,7 @@ mlit-flood-hazard:
 	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
 	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
 	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
-	@source .env 2>/dev/null; \
+	@. ./.env 2>/dev/null; \
 	 curl -s \
 	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
 	   --compressed \
@@ -252,7 +252,7 @@ mlit-storm-hazard:
 	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
 	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
 	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
-	@source .env 2>/dev/null; \
+	@. ./.env 2>/dev/null; \
 	 curl -s \
 	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
 	   --compressed \
@@ -265,7 +265,7 @@ mlit-tsunami-hazard:
 	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
 	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
 	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
-	@source .env 2>/dev/null; \
+	@. ./.env 2>/dev/null; \
 	 curl -s \
 	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
 	   --compressed \
@@ -278,7 +278,7 @@ mlit-landslide-hazard:
 	@test -n "$(z)" || (echo "ERROR: z は必須です (例: z=14)"; exit 1)
 	@test -n "$(x)" || (echo "ERROR: x は必須です (例: x=14547)"; exit 1)
 	@test -n "$(y)" || (echo "ERROR: y は必須です (例: y=6451)"; exit 1)
-	@source .env 2>/dev/null; \
+	@. ./.env 2>/dev/null; \
 	 curl -s \
 	   -H "Ocp-Apim-Subscription-Key: $$MLIT_API_KEY" \
 	   --compressed \
