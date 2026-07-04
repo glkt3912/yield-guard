@@ -19,12 +19,7 @@ export interface AcquisitionCostBreakdown {
 }
 
 export type BuildingType =
-  | "木造"
-  | "軽量鉄骨(4mm以下)"
-  | "軽量鉄骨(3mm以下)"
-  | "重量鉄骨"
-  | "RC造"
-  | "SRC造";
+  "木造" | "軽量鉄骨(4mm以下)" | "軽量鉄骨(3mm以下)" | "重量鉄骨" | "RC造" | "SRC造";
 
 export type RidershipDemandScore = "A" | "B" | "C" | "D" | "E";
 
