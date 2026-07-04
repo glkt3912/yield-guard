@@ -49,6 +49,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # ランタイム依存 (dependencies) の high 以上の既知脆弱性でゲートする (#801)
+      # devDependencies はビルド時のみ使用のため対象外。
+      # 修正版未リリースの advisory でブロックされた場合は package.json の
+      # overrides で一時回避するか、修正版リリースまで本ステップを一時 skip する
+      - name: npm audit (runtime dependencies)
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Generate TypeScript types
         run: npm run generate:types
 
