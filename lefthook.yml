@@ -16,9 +16,29 @@ pre-commit:
       glob: "frontend/src/**/*.{ts,tsx}"
       run: cd frontend && npm run type-check
 
+# pre-push は push 対象の diff に応じてテストを条件実行する (#795)
+# - 比較基準: @{push}（upstream 未設定の新規ブランチは origin/main との merge-base）
+# - 基準が解決できない場合は安全側に倒して全テストを実行する
+# - lefthook.yml 自体の変更時は両方実行する
 pre-push:
   commands:
     go-test:
-      run: cd backend && go test -race ./... -timeout 120s
+      run: |
+        base=$(git rev-parse -q --verify '@{push}' 2>/dev/null) \
+          || base=$(git rev-parse -q --verify origin/main 2>/dev/null) \
+          || base=""
+        if [ -z "$base" ] || git diff --name-only "$base...HEAD" | grep -qE '^(backend/|lefthook\.yml$)'; then
+          cd backend && go test -race ./... -timeout 120s
+        else
+          echo "backend: push 対象に変更がないためスキップ"
+        fi
     frontend-test:
-      run: cd frontend && npm test
+      run: |
+        base=$(git rev-parse -q --verify '@{push}' 2>/dev/null) \
+          || base=$(git rev-parse -q --verify origin/main 2>/dev/null) \
+          || base=""
+        if [ -z "$base" ] || git diff --name-only "$base...HEAD" | grep -qE '^(frontend/|docs/openapi/|lefthook\.yml$)'; then
+          cd frontend && npm test
+        else
+          echo "frontend: push 対象に変更がないためスキップ"
+        fi
