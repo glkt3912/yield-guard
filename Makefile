@@ -60,11 +60,15 @@ swagger-check: swagger
 install:
 	cd frontend && npm install
 
-## install-hooks: lefthook git フックをインストール
+## install-hooks: lefthook git フックと gitleaks をインストール
 install-hooks:
 	@if ! command -v lefthook >/dev/null 2>&1; then \
 	  echo "==> Installing lefthook via brew..."; \
 	  brew install lefthook; \
+	fi
+	@if ! command -v gitleaks >/dev/null 2>&1; then \
+	  echo "==> Installing gitleaks via brew..."; \
+	  brew install gitleaks; \
 	fi
 	lefthook install
 
