@@ -1,6 +1,15 @@
 pre-commit:
   parallel: true
   commands:
+    # シークレットの誤コミット防止 (#800)。未インストール時は警告のみで通す
+    # （CI の secret-scan.yml が最終ゲート）。導入: make install-hooks
+    gitleaks:
+      run: |
+        if command -v gitleaks >/dev/null 2>&1; then
+          gitleaks protect --staged --redact
+        else
+          echo "WARN: gitleaks が未インストールのためシークレットスキャンをスキップしました (make install-hooks で導入)"
+        fi
     go-lint:
       glob: "backend/**/*.go"
       run: cd backend && golangci-lint run ./...
