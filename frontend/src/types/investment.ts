@@ -60,7 +60,7 @@ export interface MultiExitRow {
   remainingLoan: number;
   cumulativeCf: number;
   exitEquity: number;
-  irr?: number | null;
+  irr?: number; // 収束しない場合は省略（Go側 omitempty）
   isShortTermWarn: boolean;
 }
 
@@ -69,7 +69,7 @@ export interface InvestmentInput {
   landArea: number; // 土地面積 (m²)
   buildingCost: number;
   buildingAge: number; // 築年数 (0=新築)
-  stationMinutes: number; // 最寄り駅徒歩分 (0=未入力)
+  stationMinutes: number; // 最寄り駅徒歩分 (0=未入力)。フロント固有: 理論価格推定APIに渡す入力で、simulate契約には含まれない（api-contract.ts で除外）
   miscExpenseRate: number;
   monthlyRent: number;
   vacancyRate: number; // 想定空室率（長期シミュレーション用）
@@ -112,6 +112,9 @@ export interface InvestmentInput {
 
   // 税務シミュレーション用（任意）。0 の場合は損益通算・法人比較を計算しない。
   salaryIncome?: number; // 給与年収（円）
+
+  // 所有権保存登記（新築直売）か移転登記（中古・転売）か。省略時はバックエンドが buildingAge==0 から自動判定。
+  isFirstRegistration?: boolean;
 }
 
 export interface CapexEvent {
