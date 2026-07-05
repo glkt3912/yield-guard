@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/yield-guard/backend/internal/concurrent"
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
 )
@@ -39,21 +40,6 @@ func NewInvestmentScoreService(client MLITClient) LocationService {
 	return &InvestmentScoreService{client: client}
 }
 
-type apiResult[T any] struct {
-	data T
-	err  error
-}
-
-// fanOut は api/helpers.go の同名関数のコピー。循環インポート回避のため複製している。
-func fanOut[T any](fetch func() (T, error)) <-chan apiResult[T] {
-	ch := make(chan apiResult[T], 1)
-	go func() {
-		d, e := fetch()
-		ch <- apiResult[T]{d, e}
-	}()
-	return ch
-}
-
 // CalcScoreForTile は指定タイル座標に対して複数 API を並列取得し投資適地スコアを返す。
 // 個別 API の失敗は警告ログのみでスキップする。コンテキストキャンセル時はエラーを返す。
 func (s *InvestmentScoreService) CalcScoreForTile(ctx context.Context, z, x, y int) (domain.InvestmentScoreResult, error) {
@@ -61,17 +47,17 @@ func (s *InvestmentScoreService) CalcScoreForTile(ctx context.Context, z, x, y i
 		return domain.InvestmentScoreResult{}, err
 	}
 
-	popCh := fanOut(func() ([]domain.PopulationForecastItem, error) { return s.client.FetchPopulationForecast(ctx, z, x, y) })
-	ridCh := fanOut(func() ([]mlit.StationRidership, error) { return s.client.FetchStationRidership(ctx, z, x, y) })
-	locCh := fanOut(func() ([]domain.LocationOptimizationItem, error) { return s.client.FetchLocationOptimization(ctx, z, x, y) })
-	embCh := fanOut(func() ([]domain.EmbankmentItem, error) { return s.client.FetchEmbankment(ctx, z, x, y) })
-	disCh := fanOut(func() ([]domain.DisasterHistoryItem, error) { return s.client.FetchDisasterHistory(ctx, z, x, y) })
-	zonCh := fanOut(func() ([]domain.UrbanZoningItem, error) { return s.client.FetchUrbanZoning(ctx, z, x, y) })
-	liqCh := fanOut(func() ([]domain.LiquefactionRiskItem, error) { return s.client.FetchLiquefaction(ctx, z, x, y) })
-	floCh := fanOut(func() ([]domain.FloodHazardItem, error) { return s.client.FetchFloodHazard(ctx, z, x, y) })
-	stoCh := fanOut(func() ([]domain.StormHazardItem, error) { return s.client.FetchStormHazard(ctx, z, x, y) })
-	tsuCh := fanOut(func() ([]domain.TsunamiHazardItem, error) { return s.client.FetchTsunamiHazard(ctx, z, x, y) })
-	lanCh := fanOut(func() ([]domain.LandslideHazardItem, error) { return s.client.FetchLandslideHazard(ctx, z, x, y) })
+	popCh := concurrent.FanOut(func() ([]domain.PopulationForecastItem, error) { return s.client.FetchPopulationForecast(ctx, z, x, y) })
+	ridCh := concurrent.FanOut(func() ([]mlit.StationRidership, error) { return s.client.FetchStationRidership(ctx, z, x, y) })
+	locCh := concurrent.FanOut(func() ([]domain.LocationOptimizationItem, error) { return s.client.FetchLocationOptimization(ctx, z, x, y) })
+	embCh := concurrent.FanOut(func() ([]domain.EmbankmentItem, error) { return s.client.FetchEmbankment(ctx, z, x, y) })
+	disCh := concurrent.FanOut(func() ([]domain.DisasterHistoryItem, error) { return s.client.FetchDisasterHistory(ctx, z, x, y) })
+	zonCh := concurrent.FanOut(func() ([]domain.UrbanZoningItem, error) { return s.client.FetchUrbanZoning(ctx, z, x, y) })
+	liqCh := concurrent.FanOut(func() ([]domain.LiquefactionRiskItem, error) { return s.client.FetchLiquefaction(ctx, z, x, y) })
+	floCh := concurrent.FanOut(func() ([]domain.FloodHazardItem, error) { return s.client.FetchFloodHazard(ctx, z, x, y) })
+	stoCh := concurrent.FanOut(func() ([]domain.StormHazardItem, error) { return s.client.FetchStormHazard(ctx, z, x, y) })
+	tsuCh := concurrent.FanOut(func() ([]domain.TsunamiHazardItem, error) { return s.client.FetchTsunamiHazard(ctx, z, x, y) })
+	lanCh := concurrent.FanOut(func() ([]domain.LandslideHazardItem, error) { return s.client.FetchLandslideHazard(ctx, z, x, y) })
 
 	// 地価トレンド: タイル中心座標→都道府県コードを逆引きし、新旧2期間を並列取得する
 	// 直近2年 vs その2年前の期間を動的に算出する
@@ -100,16 +86,16 @@ func (s *InvestmentScoreService) CalcScoreForTile(ctx context.Context, z, x, y i
 
 	input := domain.InvestmentScoreInput{}
 
-	if r := <-popCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchPopulationForecast failed", "error", r.err)
+	if r := <-popCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchPopulationForecast failed", "error", r.Err)
 	} else {
-		input.PopulationItems = r.data
+		input.PopulationItems = r.Data
 	}
-	if r := <-ridCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchStationRidership failed", "error", r.err)
+	if r := <-ridCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchStationRidership failed", "error", r.Err)
 	} else {
-		input.StationRiderships = make([]domain.StationRidershipResult, 0, len(r.data))
-		for _, st := range r.data {
+		input.StationRiderships = make([]domain.StationRidershipResult, 0, len(r.Data))
+		for _, st := range r.Data {
 			score := domain.CalcRidershipDemandScore(st.Passengers)
 			input.StationRiderships = append(input.StationRiderships, domain.StationRidershipResult{
 				StationName: st.StationName,
@@ -120,50 +106,50 @@ func (s *InvestmentScoreService) CalcScoreForTile(ctx context.Context, z, x, y i
 			})
 		}
 	}
-	if r := <-locCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchLocationOptimization failed", "error", r.err)
+	if r := <-locCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchLocationOptimization failed", "error", r.Err)
 	} else {
-		input.LocationItems = r.data
+		input.LocationItems = r.Data
 	}
-	if r := <-embCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchEmbankment failed", "error", r.err)
+	if r := <-embCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchEmbankment failed", "error", r.Err)
 	} else {
-		input.EmbankmentItems = r.data
+		input.EmbankmentItems = r.Data
 	}
-	if r := <-disCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchDisasterHistory failed", "error", r.err)
+	if r := <-disCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchDisasterHistory failed", "error", r.Err)
 	} else {
-		input.DisasterItems = r.data
+		input.DisasterItems = r.Data
 	}
-	if r := <-zonCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchUrbanZoning failed", "error", r.err)
+	if r := <-zonCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchUrbanZoning failed", "error", r.Err)
 	} else {
-		input.UrbanZoningItems = r.data
+		input.UrbanZoningItems = r.Data
 	}
-	if r := <-liqCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchLiquefaction failed", "error", r.err)
+	if r := <-liqCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchLiquefaction failed", "error", r.Err)
 	} else {
-		input.LiquefactionItems = r.data
+		input.LiquefactionItems = r.Data
 	}
-	if r := <-floCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchFloodHazard failed", "error", r.err)
+	if r := <-floCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchFloodHazard failed", "error", r.Err)
 	} else {
-		input.FloodItems = r.data
+		input.FloodItems = r.Data
 	}
-	if r := <-stoCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchStormHazard failed", "error", r.err)
+	if r := <-stoCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchStormHazard failed", "error", r.Err)
 	} else {
-		input.StormItems = r.data
+		input.StormItems = r.Data
 	}
-	if r := <-tsuCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchTsunamiHazard failed", "error", r.err)
+	if r := <-tsuCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchTsunamiHazard failed", "error", r.Err)
 	} else {
-		input.TsunamiItems = r.data
+		input.TsunamiItems = r.Data
 	}
-	if r := <-lanCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchLandslideHazard failed", "error", r.err)
+	if r := <-lanCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchLandslideHazard failed", "error", r.Err)
 	} else {
-		input.LandslideItems = r.data
+		input.LandslideItems = r.Data
 	}
 
 	recentLand := <-recentLandCh

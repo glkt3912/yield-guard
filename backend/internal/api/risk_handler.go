@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yield-guard/backend/internal/concurrent"
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
 )
@@ -37,30 +38,30 @@ func (h *Handler) GetUrbanRisks(c *gin.Context) {
 	var res result
 
 	// 4 API を並列取得。いずれか失敗してもログのみで他の結果は返す
-	locCh := fanOut(func() ([]domain.LocationOptimizationItem, error) { return h.mlitClient.FetchLocationOptimization(ctx, z, x, y) })
-	embCh := fanOut(func() ([]domain.EmbankmentItem, error) { return h.mlitClient.FetchEmbankment(ctx, z, x, y) })
-	rdCh := fanOut(func() ([]domain.UrbanRoadItem, error) { return h.mlitClient.FetchUrbanRoad(ctx, z, x, y) })
-	disCh := fanOut(func() ([]domain.DisasterHistoryItem, error) { return h.mlitClient.FetchDisasterHistory(ctx, z, x, y) })
+	locCh := concurrent.FanOut(func() ([]domain.LocationOptimizationItem, error) { return h.mlitClient.FetchLocationOptimization(ctx, z, x, y) })
+	embCh := concurrent.FanOut(func() ([]domain.EmbankmentItem, error) { return h.mlitClient.FetchEmbankment(ctx, z, x, y) })
+	rdCh := concurrent.FanOut(func() ([]domain.UrbanRoadItem, error) { return h.mlitClient.FetchUrbanRoad(ctx, z, x, y) })
+	disCh := concurrent.FanOut(func() ([]domain.DisasterHistoryItem, error) { return h.mlitClient.FetchDisasterHistory(ctx, z, x, y) })
 
-	if r := <-locCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchLocationOptimization failed", "z", z, "x", x, "y", y, "error", r.err)
+	if r := <-locCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchLocationOptimization failed", "z", z, "x", x, "y", y, "error", r.Err)
 	} else {
-		res.location = r.data
+		res.location = r.Data
 	}
-	if r := <-embCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchEmbankment failed", "z", z, "x", x, "y", y, "error", r.err)
+	if r := <-embCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchEmbankment failed", "z", z, "x", x, "y", y, "error", r.Err)
 	} else {
-		res.embank = r.data
+		res.embank = r.Data
 	}
-	if r := <-rdCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchUrbanRoad failed", "z", z, "x", x, "y", y, "error", r.err)
+	if r := <-rdCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchUrbanRoad failed", "z", z, "x", x, "y", y, "error", r.Err)
 	} else {
-		res.road = r.data
+		res.road = r.Data
 	}
-	if r := <-disCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchDisasterHistory failed", "z", z, "x", x, "y", y, "error", r.err)
+	if r := <-disCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchDisasterHistory failed", "z", z, "x", x, "y", y, "error", r.Err)
 	} else {
-		res.disaster = r.data
+		res.disaster = r.Data
 	}
 
 	risks := domain.BuildUrbanRisksFromAPIs(res.location, res.embank, res.road, res.disaster)
@@ -89,35 +90,35 @@ func (h *Handler) GetHazardInfo(c *gin.Context) {
 	z := 14
 	x, y := mlit.LatLngToTile(lat, lng, z)
 
-	floCh := fanOut(func() ([]domain.FloodHazardItem, error) { return h.mlitClient.FetchFloodHazard(ctx, z, x, y) })
-	stmCh := fanOut(func() ([]domain.StormHazardItem, error) { return h.mlitClient.FetchStormHazard(ctx, z, x, y) })
-	tsuCh := fanOut(func() ([]domain.TsunamiHazardItem, error) { return h.mlitClient.FetchTsunamiHazard(ctx, z, x, y) })
-	lsCh := fanOut(func() ([]domain.LandslideHazardItem, error) { return h.mlitClient.FetchLandslideHazard(ctx, z, x, y) })
+	floCh := concurrent.FanOut(func() ([]domain.FloodHazardItem, error) { return h.mlitClient.FetchFloodHazard(ctx, z, x, y) })
+	stmCh := concurrent.FanOut(func() ([]domain.StormHazardItem, error) { return h.mlitClient.FetchStormHazard(ctx, z, x, y) })
+	tsuCh := concurrent.FanOut(func() ([]domain.TsunamiHazardItem, error) { return h.mlitClient.FetchTsunamiHazard(ctx, z, x, y) })
+	lsCh := concurrent.FanOut(func() ([]domain.LandslideHazardItem, error) { return h.mlitClient.FetchLandslideHazard(ctx, z, x, y) })
 
 	var floods []domain.FloodHazardItem
 	var storms []domain.StormHazardItem
 	var tsunamis []domain.TsunamiHazardItem
 	var landslides []domain.LandslideHazardItem
 
-	if r := <-floCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchFloodHazard failed", "z", z, "x", x, "y", y, "error", r.err)
+	if r := <-floCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchFloodHazard failed", "z", z, "x", x, "y", y, "error", r.Err)
 	} else {
-		floods = r.data
+		floods = r.Data
 	}
-	if r := <-stmCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchStormHazard failed", "z", z, "x", x, "y", y, "error", r.err)
+	if r := <-stmCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchStormHazard failed", "z", z, "x", x, "y", y, "error", r.Err)
 	} else {
-		storms = r.data
+		storms = r.Data
 	}
-	if r := <-tsuCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchTsunamiHazard failed", "z", z, "x", x, "y", y, "error", r.err)
+	if r := <-tsuCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchTsunamiHazard failed", "z", z, "x", x, "y", y, "error", r.Err)
 	} else {
-		tsunamis = r.data
+		tsunamis = r.Data
 	}
-	if r := <-lsCh; r.err != nil {
-		slog.WarnContext(ctx, "FetchLandslideHazard failed", "z", z, "x", x, "y", y, "error", r.err)
+	if r := <-lsCh; r.Err != nil {
+		slog.WarnContext(ctx, "FetchLandslideHazard failed", "z", z, "x", x, "y", y, "error", r.Err)
 	} else {
-		landslides = r.data
+		landslides = r.Data
 	}
 
 	risks := domain.BuildHazardRisks(floods, storms, tsunamis, landslides)
