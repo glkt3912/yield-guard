@@ -25,7 +25,7 @@ Gin は標準 `net/http` との互換性が高く、ミドルウェア合成が�
 
 React Server Components（RSC）によるサーバーサイドレンダリングで初期表示を高速化しつつ、インタラクティブ部分は Client Components として分離できる。
 Vercel との統合により、プレビュー URL・エッジキャッシュ・環境変数管理が統一されている。
-型安全な API Routes と `fetch` ラッパーにより、バックエンドとのインターフェース不整合をビルド時に検出できる。
+バックエンドとのインターフェース不整合は、swagger.json 由来の生成型（`api.generated.ts`）を主要型として直接使用し、フロント固有の手書き型も契約テスト（`types/__tests__/api-contract.ts`）で生成型と照合するため、`tsc --noEmit` でビルド時に検出できる。
 
 ### Cloud Run
 
