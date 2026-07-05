@@ -1706,7 +1706,8 @@
                 },
                 "irr": {
                     "description": "内部収益率（収束しない場合は null）",
-                    "type": "number"
+                    "type": "number",
+                    "x-nullable": true
                 },
                 "isAboveYieldTarget": {
                     "type": "boolean"

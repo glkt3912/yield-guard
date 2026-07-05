@@ -383,7 +383,7 @@ type InvestmentResult struct {
 	ExitNetProceeds float64 `json:"exitNetProceeds"` // 売却手取り（税・残債控除後）
 	ExitTotalEquity float64 `json:"exitTotalEquity"` // 最終手残り（売却手取り+累積CF）
 
-	IRR *float64 `json:"irr"` // 内部収益率（収束しない場合は null）
+	IRR *float64 `json:"irr" extensions:"x-nullable"` // 内部収益率（収束しない場合は null）
 	NPV float64  `json:"npv"` // 正味現在価値
 
 	StressScenarios []StressScenarioResult `json:"stressScenarios"`
