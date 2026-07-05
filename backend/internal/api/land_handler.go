@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
+	"github.com/yield-guard/backend/internal/service"
 )
 
 // GetLandPrices は国交省APIから土地取引価格を取得して統計を返す
@@ -32,14 +33,11 @@ func (h *Handler) GetLandPrices(c *gin.Context) {
 		return
 	}
 
-	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
+	stats, err := h.landSvc.Stats(c.Request.Context(), q)
 	if err != nil {
-		slog.ErrorContext(c.Request.Context(), "FetchLandPrices failed", "err", err)
 		badGateway(c, "国交省APIからのデータ取得に失敗しました")
 		return
 	}
-
-	stats := domain.CalcLandPriceStats(c.Request.Context(), transactions)
 	c.JSON(http.StatusOK, stats)
 }
 
@@ -89,15 +87,11 @@ func (h *Handler) CompareLandPrice(c *gin.Context) {
 		}
 	}
 
-	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
+	comparison, err := h.landSvc.Compare(c.Request.Context(), q, landPrice, areaSqm)
 	if err != nil {
-		slog.ErrorContext(c.Request.Context(), "FetchLandPrices failed", "err", err)
 		badGateway(c, "国交省APIからのデータ取得に失敗しました")
 		return
 	}
-
-	stats := domain.CalcLandPriceStats(c.Request.Context(), transactions)
-	comparison := domain.CompareLandPrice(stats, landPrice, areaSqm)
 	c.JSON(http.StatusOK, comparison)
 }
 
@@ -183,23 +177,19 @@ func (h *Handler) EstimateLandPrice(c *gin.Context) {
 		ridershipScore = score
 	}
 
-	transactions, err := h.mlitClient.FetchLandPrices(c.Request.Context(), q)
-	if err != nil {
-		slog.ErrorContext(c.Request.Context(), "FetchLandPrices failed", "err", err)
-		badGateway(c, "国交省APIからのデータ取得に失敗しました")
-		return
-	}
-
-	stats := domain.CalcLandPriceStats(c.Request.Context(), transactions)
-	result, ok := domain.EstimateTheoreticalPrice(c.Request.Context(), stats, domain.TheoreticalPriceInput{
+	result, err := h.landSvc.Estimate(c.Request.Context(), q, domain.TheoreticalPriceInput{
 		ListingPrice:   listingPrice,
 		LandArea:       areaSqm,
 		BuildingAge:    buildingAge,
 		StationMinutes: stationMinutes,
 		RidershipScore: ridershipScore,
 	})
-	if !ok {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "理論価格の推定に必要なデータが不足しています（取引事例に建築年データがありません）"})
+	if err != nil {
+		if errors.Is(err, service.ErrEstimateDataInsufficient) {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "理論価格の推定に必要なデータが不足しています（取引事例に建築年データがありません）"})
+			return
+		}
+		badGateway(c, "国交省APIからのデータ取得に失敗しました")
 		return
 	}
 
@@ -267,19 +257,16 @@ func (h *Handler) GetLandAppraisals(c *gin.Context) {
 		return
 	}
 
-	items, err := h.mlitClient.FetchLandAppraisals(c.Request.Context(), area, city, year, division)
+	result, err := h.landSvc.Appraisals(c.Request.Context(), area, city, year, division)
 	if err != nil {
-		slog.ErrorContext(c.Request.Context(), "FetchLandAppraisals failed", "err", err)
+		if errors.Is(err, service.ErrNoAppraisalData) {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "指定エリアの地価公示データが見つかりませんでした"})
+			return
+		}
 		badGateway(c, "地価公示APIからのデータ取得に失敗しました")
 		return
 	}
 
-	if len(items) == 0 {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "指定エリアの地価公示データが見つかりませんでした"})
-		return
-	}
-
-	result := domain.CalcAppraisalComparison(items)
 	c.JSON(http.StatusOK, result)
 }
 
