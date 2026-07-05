@@ -40,6 +40,7 @@ type Handler struct {
 	summarizer    ai.Summarizer
 	locationSvc   service.LocationService
 	areaSvc       service.AreaService
+	riskSvc       service.RiskService
 }
 
 func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient, locationSvc service.LocationService, fsClient ...*firestore.Client) *Handler {
@@ -54,6 +55,7 @@ func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient, locationSvc 
 		summarizer:    summarizer,
 		locationSvc:   locationSvc,
 		areaSvc:       service.NewAreaDiscoveryService(mlitClient, summarizer),
+		riskSvc:       service.NewRiskAssessmentService(mlitClient),
 	}
 }
 
