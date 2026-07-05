@@ -22,8 +22,8 @@ type MonteCarloResult struct {
 	IRRPercentiles    Percentiles    `json:"irrPercentiles"`
 	EquityPercentiles Percentiles    `json:"equityPercentiles"`
 	DeadCrossRate     float64        `json:"deadCrossRate"` // デッドクロス発生率 (0〜1)
-	IRRHistogram      []HistogramBin `json:"irrHistogram"`
-	EquityHistogram   []HistogramBin `json:"equityHistogram"`
+	IRRHistogram      []HistogramBin `json:"irrHistogram" extensions:"x-nullable"`   // サンプル0件時は null
+	EquityHistogram   []HistogramBin `json:"equityHistogram" extensions:"x-nullable"` // サンプル0件時は null
 	SuccessRate       float64        `json:"successRate"` // IRR > 0 の割合
 }
 
