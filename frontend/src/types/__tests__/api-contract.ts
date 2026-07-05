@@ -174,3 +174,27 @@ export type UnionChecks = AssertAll<{
   ridershipDemandScore: Equals<RidershipDemandScore, Schemas["domain.RidershipDemandScore"]>;
   urbanRiskLevel: Equals<UrbanRiskLevel, Schemas["domain.UrbanRiskLevel"]>;
 }>;
+
+/** UnionChecks で検証済みのユニオン型スキーマ（HandwrittenBySchema の対象外） */
+type CoveredUnionSchemas =
+  | "domain.BuildingType"
+  | "domain.CriticalErrorStatus"
+  | "domain.PopulationTrend"
+  | "domain.RidershipDemandScore"
+  | "domain.UrbanRiskLevel";
+
+/**
+ * 新スキーマの登録漏れガード。バックエンドに新しい型が追加されると
+ * uncoveredSchemas にスキーマ名が現れてエラーになる。
+ * 対応する手書き型を作って HandwrittenBySchema（オブジェクト型）または
+ * UnionChecks + CoveredUnionSchemas（ユニオン型）に登録すること。
+ */
+export type CoverageCheck = AssertAll<{
+  allSchemasCovered: [
+    Exclude<keyof Schemas, keyof HandwrittenBySchema | CoveredUnionSchemas>,
+  ] extends [never]
+    ? true
+    : {
+        uncoveredSchemas: Exclude<keyof Schemas, keyof HandwrittenBySchema | CoveredUnionSchemas>;
+      };
+}>;
