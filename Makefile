@@ -49,7 +49,7 @@ frontend:
 ## swagger: OpenAPI スキーマを生成 (docs/openapi/swagger.json)
 ##   型ファイルも更新するには別途 cd frontend && npm run generate:types を実行すること
 swagger:
-	cd backend && swag init -g cmd/server/main.go -o ../docs/openapi --outputTypes json
+	cd backend && swag init -g cmd/server/main.go -o ../docs/openapi --outputTypes json --requiredByDefault
 	@echo "==> Generated docs/openapi/swagger.json"
 
 ## swagger-check: swagger.json のドリフトをローカルで確認 (PR 前チェック用)

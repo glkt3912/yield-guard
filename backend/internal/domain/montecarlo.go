@@ -11,9 +11,9 @@ import (
 // MonteCarloInput はモンテカルロシミュレーションの入力値
 type MonteCarloInput struct {
 	Base             InvestmentInput `json:"base"`
-	Simulations      int             `json:"simulations"`      // 試行回数 (デフォルト 1000、最大 10000)
-	VacancyRateSigma float64         `json:"vacancyRateSigma"` // 空室率の標準偏差 (デフォルト 0.05)
-	LoanRateSigma    float64         `json:"loanRateSigma"`    // 金利の標準偏差 (デフォルト 0.005)
+	Simulations      int             `json:"simulations,omitempty"`      // 試行回数 (デフォルト 1000、最大 10000)
+	VacancyRateSigma float64         `json:"vacancyRateSigma,omitempty"` // 空室率の標準偏差 (デフォルト 0.05)
+	LoanRateSigma    float64         `json:"loanRateSigma,omitempty"`    // 金利の標準偏差 (デフォルト 0.005)
 }
 
 // MonteCarloResult はモンテカルロシミュレーションの結果

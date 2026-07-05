@@ -106,19 +106,19 @@ type InvestmentInput struct {
 	// 賃料下落率: 毎年この割合だけ実効賃料が低下する（例: 0.01 = 年1%下落）
 	RentDeclineRate float64 `json:"rentDeclineRate"`
 
-	// 割引率: NPV/IRR計算用 (例: 0.05 = 5%)
-	DiscountRate float64 `json:"discountRate"`
+	// 割引率: NPV/IRR計算用 (例: 0.05 = 5%)。省略時は Defaults() で 0.05
+	DiscountRate float64 `json:"discountRate,omitempty"`
 	// 物件価格下落率: 売却価格に毎年この割合の累乗で下落を反映 (例: 0.02 = 年2%下落)
-	PriceDeclineRate float64 `json:"priceDeclineRate"`
+	PriceDeclineRate float64 `json:"priceDeclineRate,omitempty"`
 	// 減価償却方式: "straight-line"（定額法）| "declining-balance"（定率法）
-	DepreciationMethod string `json:"depreciationMethod"`
+	DepreciationMethod string `json:"depreciationMethod,omitempty"`
 
 	// 目標表面利回り（例: 0.08 = 8%）。0 の場合は Defaults() で 0.08 にセットされる。
 	YieldTarget float64 `json:"yieldTarget"`
 
 	// 返済方式: "equal-payment"（元利均等）| "equal-principal"（元金均等）
 	// 省略時は Defaults() で "equal-payment" にセットされる。
-	LoanMethod string `json:"loanMethod"`
+	LoanMethod string `json:"loanMethod,omitempty"`
 
 	// 変動金利スケジュール: 指定年以降に適用する金利ステップ（空=固定金利）
 	// LoanRateDelta はスケジュール後の金利にも加算される。
