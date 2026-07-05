@@ -65,22 +65,6 @@ const (
 	coordsJapanOnly = true
 )
 
-// apiResult wraps a fetched value and error for channel-based fan-out patterns.
-type apiResult[T any] struct {
-	data T
-	err  error
-}
-
-// fanOut launches a goroutine calling fetch and sends the result to a buffered channel.
-func fanOut[T any](fetch func() (T, error)) <-chan apiResult[T] {
-	ch := make(chan apiResult[T], 1)
-	go func() {
-		d, e := fetch()
-		ch <- apiResult[T]{d, e}
-	}()
-	return ch
-}
-
 func badRequest(c *gin.Context, msg string) {
 	c.JSON(http.StatusBadRequest, gin.H{"error": msg})
 }
