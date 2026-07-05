@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -2209,6 +2210,92 @@ func TestGetInvestmentScoreHeatmap_PartialFailure(t *testing.T) {
 	}
 	if len(resp.Tiles) != 0 {
 		t.Errorf("expected empty tiles on full failure, got %d", len(resp.Tiles))
+	}
+}
+
+// heatmapTileTotal はハンドラと同じ計算でバウンディングボックス内の総タイル数を返す
+func heatmapTileTotal(minLat, maxLat, minLng, maxLng float64, z int) int {
+	xMin, yMin := mlit.LatLngToTile(maxLat, minLng, z)
+	xMax, yMax := mlit.LatLngToTile(minLat, maxLng, z)
+	return (xMax - xMin + 1) * (yMax - yMin + 1)
+}
+
+// 1タイルだけ失敗しても全体は 200 を返し、成功タイルは欠けず FailedTiles に集計される
+func TestGetInvestmentScoreHeatmap_SingleTileFailure(t *testing.T) {
+	total := heatmapTileTotal(35.60, 35.70, 139.50, 139.80, 11)
+	if total < 2 {
+		t.Fatalf("test bbox must span at least 2 tiles, got %d", total)
+	}
+
+	var calls atomic.Int32
+	locSvc := &mockLocationService{
+		calcScoreFunc: func(_ context.Context, _, _, _ int) (domain.InvestmentScoreResult, error) {
+			if calls.Add(1) == 1 {
+				return domain.InvestmentScoreResult{}, errors.New("MLIT API error")
+			}
+			return domain.InvestmentScoreResult{TotalScore: 80, Grade: "A"}, nil
+		},
+	}
+	r := newTestRouter(&mockMLITClient{}, nil, locSvc)
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/investment-score-heatmap?minLat=35.60&maxLat=35.70&minLng=139.50&maxLng=139.80&z=11",
+		nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 on single tile failure, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.HeatmapResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.FailedTiles != 1 {
+		t.Errorf("expected FailedTiles=1, got %d", resp.FailedTiles)
+	}
+	if resp.TileCount != total-1 {
+		t.Errorf("expected TileCount=%d, got %d", total-1, resp.TileCount)
+	}
+	if len(resp.Tiles) != total-1 {
+		t.Errorf("expected %d tiles, got %d", total-1, len(resp.Tiles))
+	}
+}
+
+// タイル計算が panic してもリクエスト全体は落ちず、該当タイルのみ FailedTiles に集計される
+func TestGetInvestmentScoreHeatmap_PanicRecovery(t *testing.T) {
+	total := heatmapTileTotal(35.60, 35.70, 139.50, 139.80, 11)
+	if total < 2 {
+		t.Fatalf("test bbox must span at least 2 tiles, got %d", total)
+	}
+
+	var calls atomic.Int32
+	locSvc := &mockLocationService{
+		calcScoreFunc: func(_ context.Context, _, _, _ int) (domain.InvestmentScoreResult, error) {
+			if calls.Add(1) == 1 {
+				panic("unexpected nil in score calculation")
+			}
+			return domain.InvestmentScoreResult{TotalScore: 80, Grade: "A"}, nil
+		},
+	}
+	r := newTestRouter(&mockMLITClient{}, nil, locSvc)
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/investment-score-heatmap?minLat=35.60&maxLat=35.70&minLng=139.50&maxLng=139.80&z=11",
+		nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 when a tile panics, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.HeatmapResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.FailedTiles != 1 {
+		t.Errorf("expected FailedTiles=1, got %d", resp.FailedTiles)
+	}
+	if resp.TileCount != total-1 {
+		t.Errorf("expected TileCount=%d, got %d", total-1, resp.TileCount)
 	}
 }
 

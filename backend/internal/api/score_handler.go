@@ -5,10 +5,13 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yield-guard/backend/internal/concurrent"
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
+	"golang.org/x/sync/errgroup"
 )
 
 const maxHeatmapTiles = 50
@@ -131,60 +134,47 @@ func (h *Handler) GetInvestmentScoreHeatmap(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	sem := make(chan struct{}, 5)
-	type tileResult struct {
-		tile domain.HeatmapTile
-		err  error
-	}
-	results := make(chan tileResult, tileCount)
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(5)
+
+	var mu sync.Mutex
+	tiles := make([]domain.HeatmapTile, 0, tileCount)
+	failedTiles := 0
 
 	for tx := xMin; tx <= xMax; tx++ {
 		for ty := yMin; ty <= yMax; ty++ {
-			go func(tx, ty int) {
-				select {
-				case <-ctx.Done():
-					results <- tileResult{err: ctx.Err()}
-					return
-				case sem <- struct{}{}:
-				}
-				// sem-release は先に登録（LIFO で後から実行）、recover は後に登録（先に実行）
-				// → パニック時もセマフォが必ず解放される
-				defer func() { <-sem }()
-				defer func() {
-					if r := recover(); r != nil {
-						results <- tileResult{err: fmt.Errorf("panic in CalcScoreForTile: %v", r)}
+			g.Go(func() error {
+				err := concurrent.SafeCall(func() error {
+					score, err := h.locationSvc.CalcScoreForTile(gctx, z, tx, ty)
+					if err != nil {
+						return err
 					}
-				}()
-				score, err := h.locationSvc.CalcScoreForTile(ctx, z, tx, ty)
+					lat, lng := mlit.TileToLatLng(tx, ty, z)
+					mu.Lock()
+					tiles = append(tiles, domain.HeatmapTile{
+						X:          tx,
+						Y:          ty,
+						Z:          z,
+						CenterLat:  lat,
+						CenterLng:  lng,
+						TotalScore: score.TotalScore,
+						Grade:      score.Grade,
+					})
+					mu.Unlock()
+					return nil
+				})
 				if err != nil {
-					results <- tileResult{err: err}
-					return
+					slog.WarnContext(gctx, "CalcScoreForTile failed", "error", err)
+					mu.Lock()
+					failedTiles++
+					mu.Unlock()
 				}
-				lat, lng := mlit.TileToLatLng(tx, ty, z)
-				results <- tileResult{tile: domain.HeatmapTile{
-					X:          tx,
-					Y:          ty,
-					Z:          z,
-					CenterLat:  lat,
-					CenterLng:  lng,
-					TotalScore: score.TotalScore,
-					Grade:      score.Grade,
-				}}
-			}(tx, ty)
+				// タイル単位の部分失敗は FailedTiles に集計し、リクエスト全体は失敗させない
+				return nil
+			})
 		}
 	}
-
-	tiles := make([]domain.HeatmapTile, 0, tileCount)
-	failedTiles := 0
-	for i := 0; i < tileCount; i++ {
-		r := <-results
-		if r.err != nil {
-			slog.WarnContext(ctx, "CalcScoreForTile failed", "error", r.err)
-			failedTiles++
-			continue
-		}
-		tiles = append(tiles, r.tile)
-	}
+	_ = g.Wait() // 各 goroutine は常に nil を返す（部分失敗は failedTiles に集計済み）
 
 	c.JSON(http.StatusOK, domain.HeatmapResponse{
 		Tiles:       tiles,
