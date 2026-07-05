@@ -13,6 +13,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"*.mjs\"",
     "lint": "eslint src/",
     "type-check": "tsc --noEmit",
+    "pretype-check": "test -f src/types/api.generated.ts || test ! -f ../docs/openapi/swagger.json || npm run generate:types",
     "generate:types": "swagger2openapi ../docs/openapi/swagger.json --outfile ../docs/openapi/openapi.json && openapi-typescript ../docs/openapi/openapi.json -o src/types/api.generated.ts",
     "pretest": "test -f src/types/api.generated.ts || test ! -f ../docs/openapi/swagger.json || npm run generate:types",
     "prebuild": "test -f src/types/api.generated.ts || test ! -f ../docs/openapi/swagger.json || npm run generate:types",
