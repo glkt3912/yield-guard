@@ -1,3 +1,15 @@
+/**
+ * バックエンド API 契約に対応する手書き型定義。
+ *
+ * バックエンド由来の型は types/__tests__/api-contract.ts で生成型
+ * (api.generated.ts) との一致が `tsc --noEmit` により検証される。
+ *
+ * 以下はフロント固有型（バックエンド契約に対応スキーマがなく、契約検証の対象外）:
+ * - SimulationMode: 入力フォームの表示モード
+ * - LoanMethod: バックエンドでは string（値はバリデーションのみ）のためフロントで絞り込み
+ * - WatchlistStatus / WatchlistMetrics / WatchlistItem: localStorage 保存のクライアント専用データ
+ * - InvestmentInput.stationMinutes: 理論価格推定 API のクエリ用フィールド（simulate 契約外）
+ */
 export interface Municipality {
   id: string;
   name: string;
@@ -247,6 +259,8 @@ export interface LandTransaction {
   cityPlanning: string;
   buildingCoverage: string;
   floorAreaRatio: string;
+  buildingYear?: number; // 建築年（西暦）。データがない場合は省略
+  stationMinutes?: number; // 最寄り駅徒歩分。データがない場合は省略
 }
 
 export interface LandPriceStats {

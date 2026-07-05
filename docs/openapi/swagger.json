@@ -1973,19 +1973,23 @@
                     "type": "number"
                 },
                 "equityHistogram": {
+                    "description": "サンプル0件時は null",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.HistogramBin"
-                    }
+                    },
+                    "x-nullable": true
                 },
                 "equityPercentiles": {
                     "$ref": "#/definitions/domain.Percentiles"
                 },
                 "irrHistogram": {
+                    "description": "サンプル0件時は null",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.HistogramBin"
-                    }
+                    },
+                    "x-nullable": true
                 },
                 "irrPercentiles": {
                     "$ref": "#/definitions/domain.Percentiles"
