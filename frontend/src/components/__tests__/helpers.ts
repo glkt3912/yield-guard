@@ -131,6 +131,7 @@ export function makeResult(overrides: Partial<InvestmentResult> = {}): Investmen
     irr: 0.07,
     npv: 1_200_000,
     totalInterest: 3_500_000,
+    aiSummary: "",
     ...overrides,
   };
 }

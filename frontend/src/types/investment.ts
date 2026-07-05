@@ -1,80 +1,70 @@
 /**
- * バックエンド API 契約に対応する手書き型定義。
+ * バックエンド API 契約に対応する型定義。
  *
- * バックエンド由来の型は types/__tests__/api-contract.ts で生成型
- * (api.generated.ts) との一致が `tsc --noEmit` により検証される。
+ * バックエンドと厳密に一致する型は生成型 (api.generated.ts) の再エクスポート。
+ * フィールドコメントは Go 側のコメントが JSDoc として生成型に引き継がれている。
+ * 生成型との整合は types/__tests__/api-contract.ts で `tsc --noEmit` により検証される。
  *
- * 以下はフロント固有型（バックエンド契約に対応スキーマがなく、契約検証の対象外）:
- * - SimulationMode: 入力フォームの表示モード
- * - LoanMethod: バックエンドでは string（値はバリデーションのみ）のためフロントで絞り込み
- * - WatchlistStatus / WatchlistMetrics / WatchlistItem: localStorage 保存のクライアント専用データ
- * - InvestmentInput.stationMinutes: 理論価格推定 API のクエリ用フィールド（simulate 契約外）
+ * 手書きのまま残している型:
+ * - バックエンドより厳しい絞り込みを持つ型（生成型は string のためユニオンで補強）:
+ *   LoanMethod / GeocodeResult.locationType / RentDeclineHint.basis /
+ *   AppraisalComparisonResult.trendLabel / LandPriceComparison.assessment
+ * - InvestmentInput: フロント固有フィールド stationMinutes（理論価格推定 API の
+ *   クエリ用、simulate 契約外）を含むため
+ * - フロント固有型（バックエンド契約に対応スキーマがなく、契約検証の対象外）:
+ *   SimulationMode / WatchlistStatus / WatchlistMetrics / WatchlistItem
  */
-export interface Municipality {
-  id: string;
-  name: string;
-}
+import type { components } from "@/types/api.generated";
 
-export interface CriticalError {
-  code: string;
-  status: "REJECT" | "WARNING";
-  message: string;
-}
+type Schemas = components["schemas"];
 
-export interface AcquisitionCostBreakdown {
-  brokerageFee: number;
-  stampDuty: number;
-  registrationTax: number;
-  realEstateAcquisitionTax: number;
-  propertyTaxProration: number;
-  total: number;
-}
+// ==== バックエンド生成型の再エクスポート ====
 
-export type BuildingType =
-  "木造" | "軽量鉄骨(4mm以下)" | "軽量鉄骨(3mm以下)" | "重量鉄骨" | "RC造" | "SRC造";
+export type Municipality = Schemas["mlit.Municipality"];
+export type CriticalError = Schemas["domain.CriticalError"];
+export type AcquisitionCostBreakdown = Schemas["domain.AcquisitionCostBreakdown"];
+export type BuildingType = Schemas["domain.BuildingType"];
+export type RidershipDemandScore = Schemas["domain.RidershipDemandScore"];
+export type TheoreticalPriceResult = Schemas["domain.TheoreticalPriceResult"];
+export type StationRidershipResult = Schemas["domain.StationRidershipResult"];
+export type RateAdjustment = Schemas["domain.RateAdjustment"];
+export type MultiExitRow = Schemas["domain.MultiExitRow"];
+export type CapexEvent = Schemas["domain.CapexEvent"];
+export type YearlyResult = Schemas["domain.YearlyResult"];
+export type StressScenarioResult = Schemas["domain.StressScenarioResult"];
+export type YieldScenario = Schemas["domain.YieldScenario"];
+export type YieldScenarios = Schemas["domain.YieldScenarios"];
+export type LTVSensitivityRow = Schemas["domain.LTVSensitivityRow"];
+export type InvestmentResult = Schemas["domain.InvestmentResult"];
+export type TaxSimRow = Schemas["domain.TaxSimRow"];
+export type SalaryLossCarryoverResult = Schemas["domain.SalaryLossCarryoverResult"];
+export type OwnershipScenario = Schemas["domain.OwnershipScenario"];
+export type OwnershipComparisonResult = Schemas["domain.OwnershipComparisonResult"];
+export type TaxSimulationResult = Schemas["domain.TaxSimulationResult"];
+export type LandTransaction = Schemas["domain.LandTransaction"];
+export type LandPriceStats = Schemas["domain.LandPriceStats"];
+export type ZoningSummary = Schemas["domain.ZoningSummary"];
+export type UrbanRiskLevel = Schemas["domain.UrbanRiskLevel"];
+export type UrbanRisk = Schemas["domain.UrbanRisk"];
+export type PopulationSnapshot = Schemas["domain.PopulationSnapshot"];
+export type PopulationForecastResult = Schemas["domain.PopulationForecastResult"];
+export type Percentiles = Schemas["domain.Percentiles"];
+export type HistogramBin = Schemas["domain.HistogramBin"];
+export type MonteCarloResult = Schemas["domain.MonteCarloResult"];
+export type RenovationItem = Schemas["domain.RenovationItem"];
+export type ClassifiedRenovationItem = Schemas["domain.ClassifiedRenovationItem"];
+export type RenovationInput = Schemas["domain.RenovationInput"];
+export type RenovationResult = Schemas["domain.RenovationResult"];
+export type ScoreItem = Schemas["domain.ScoreItem"];
+export type RadarPoint = Schemas["domain.RadarPoint"];
+export type ScoreBreakdown = Schemas["domain.ScoreBreakdown"];
+export type InvestmentScoreResult = Schemas["domain.InvestmentScoreResult"];
+export type HeatmapTile = Schemas["domain.HeatmapTile"];
+export type HeatmapResponse = Schemas["domain.HeatmapResponse"];
 
-export type RidershipDemandScore = "A" | "B" | "C" | "D" | "E";
-
-export interface TheoreticalPriceResult {
-  theoreticalPriceJPY: number;
-  deviationPct: number;
-  ageCorrection: number;
-  stationCorrection: number;
-  ridershipCorrection: number;
-  medianBuildingAge: number;
-  medianStationMinutes: number;
-  isLowDataWarning: boolean;
-  hasStationData: boolean;
-  ridershipScore?: RidershipDemandScore;
-  hasRidershipData: boolean;
-}
-
-export interface StationRidershipResult {
-  stationName: string;
-  lineName: string;
-  passengers: number;
-  demandScore: RidershipDemandScore;
-  correction: number;
-}
+// ==== 手書き型（フロント側でユニオンに絞り込み） ====
 
 export type LoanMethod = "equal-payment" | "equal-principal";
-
-export interface RateAdjustment {
-  afterYear: number; // この年（1始まり）以降に適用（例: 6 = 6年目から）
-  rate: number; // 絶対値の年利（例: 0.02 = 2%）
-}
-
-export interface MultiExitRow {
-  year: number;
-  salePrice: number;
-  transferTaxRate: number;
-  transferTax: number;
-  remainingLoan: number;
-  cumulativeCf: number;
-  exitEquity: number;
-  irr?: number; // 収束しない場合は省略（Go側 omitempty）
-  isShortTermWarn: boolean;
-}
 
 export interface InvestmentInput {
   landPrice: number;
@@ -129,166 +119,11 @@ export interface InvestmentInput {
   isFirstRegistration?: boolean;
 }
 
-export interface CapexEvent {
-  year: number; // 何年目に発生（1〜保有年数）
-  amount: number; // 金額（円）
-}
-
-export interface YearlyResult {
-  year: number;
-  annualRent: number; // 実効賃料収入（空室控除後）
-  annualLoanPayment: number;
-  annualInterest: number;
-  annualPrincipal: number;
-  annualDepreciation: number;
-  annualExpenses: number;
-  taxableIncome: number;
-  incomeTax: number;
-  capexAmount: number; // 大規模修繕費（当年発生額）
-  cashFlow: number;
-  afterTaxCashFlow: number;
-  remainingLoanBalance: number;
-  cumulativeCashFlow: number;
-  isDeadCrossYear: boolean;
-  isInDeadCrossZone: boolean; // デッドクロス継続ゾーン
-  effectiveRate: number; // その年の適用金利（年利）
-}
-
-export interface StressScenarioResult {
-  label: string;
-  interestRateDelta: number;
-  vacancyRateDelta: number;
-  totalCashFlow: number;
-  dscr: number;
-  breakEvenYear: number; // 累積CFが正転する年（-1=なし）
-  isSafe: boolean; // DSCR >= 1.0 && breakEvenYear <= holdingYears
-}
-
-export interface YieldScenario {
-  annualRent: number; // 年間実効賃料収入（空室控除後）
-  grossYield: number; // 総投資利回り（満室想定年収/総投資額）
-}
-
-export interface YieldScenarios {
-  optimistic: YieldScenario; // 楽観: 空室率 × 0.5
-  standard: YieldScenario; // 標準: 空室率 × 1.0
-  pessimistic: YieldScenario; // 悲観: 空室率 × 1.5
-}
-
-export interface LTVSensitivityRow {
-  ltv: number; // 借入比率（例: 0.70）
-  equity: number; // 自己資金（円）
-  loanAmount: number; // 借入額（円）
-  dscr: number; // 借入金償還余裕率
-  annualCF: number; // 年間キャッシュフロー（円）
-  cfYield: number; // CF利回り（annualCF / 総投資額）
-}
-
-export interface InvestmentResult {
-  totalInvestment: number;
-  miscExpenses: number;
-  grossYield: number; // 総投資利回り（満室想定年収/総投資額。諸費用込み）
-  marketGrossYield: number; // 表面利回り（満室想定年収/物件価格[土地+建物]。市場慣行ベース・8%判定基準）
-  netYield: number;
-  isAboveYieldTarget: boolean;
-  yieldTarget: number;
-  requiredCostReduction: number;
-  requiredMonthlyRent: number;
-  deadCrossYear: number;
-  yearlyResults: YearlyResult[];
-  criticalErrors: CriticalError[];
-  acquisitionCosts: AcquisitionCostBreakdown;
-  exitSalePrice: number;
-  exitCapitalGain: number;
-  exitTransferTax: number;
-  exitNetProceeds: number;
-  exitTotalEquity: number;
-  stressScenarios: StressScenarioResult[];
-  yieldScenarios: YieldScenarios;
-  dscr: number; // 1年目 DSCR（NOI / 年間返済額）
-  ltvSensitivity: LTVSensitivityRow[]; // LTV 感度分析（50%〜90%）
-  irr: number | null; // 内部収益率（収束しない場合は null）
-  npv: number; // 正味現在価値
-  totalInterest: number; // 保有期間の総支払利息
-  aiSummary?: string;
-  multiExitComparison?: MultiExitRow[]; // 複数保有年数の出口比較
-  taxSimulation?: TaxSimulationResult; // 損益通算・個人/法人比較（salaryIncome>0時のみ）
-}
-
-export interface TaxSimRow {
-  year: number;
-  reTaxableIncome: number;
-  combinedIncome: number;
-  combinedTax: number;
-  taxDifference: number; // 正=節税 / 負=増税
-}
-
-export interface SalaryLossCarryoverResult {
-  salaryIncomeYen: number;
-  baselineSalaryTax: number;
-  yearlyRows: TaxSimRow[];
-  totalTaxSaving: number;
-}
-
-export interface OwnershipScenario {
-  label: string;
-  annualTax: number[];
-  transferTax: number;
-  totalTaxBurden: number;
-  cumulativeBurden: number[];
-}
-
-export interface OwnershipComparisonResult {
-  individual: OwnershipScenario;
-  corporate: OwnershipScenario;
-  breakevenYear: number; // -1 = 保有期間内に法人有利年なし
-}
-
-export interface TaxSimulationResult {
-  salaryLossCarryover: SalaryLossCarryoverResult;
-  ownershipComparison: OwnershipComparisonResult;
-}
-
-export interface LandTransaction {
-  period: string;
-  district: string;
-  tradePrice: number;
-  area: number;
-  pricePerSqm: number;
-  pricePerTsubo: number;
-  cityPlanning: string;
-  buildingCoverage: string;
-  floorAreaRatio: string;
-  buildingYear?: number; // 建築年（西暦）。データがない場合は省略
-  stationMinutes?: number; // 最寄り駅徒歩分。データがない場合は省略
-}
-
-export interface LandPriceStats {
-  count: number;
-  averageTsubo: number;
-  medianTsubo: number;
-  minTsubo: number;
-  maxTsubo: number;
-  transactions: LandTransaction[];
-  lowDataWarning: boolean;
-  warningMessage?: string;
-  zoning?: ZoningSummary;
-  urbanRisks?: UrbanRisk[];
-}
-
-export interface ZoningSummary {
-  cityPlanning: string;
-  buildingCoverage: string;
-  floorAreaRatio: string;
-}
-
-export type UrbanRiskLevel = "ERROR" | "WARNING" | "INFO";
-
-export interface UrbanRisk {
-  code: string;
-  level: UrbanRiskLevel;
-  title: string;
-  description: string;
+export interface MonteCarloInput {
+  base: InvestmentInput;
+  simulations?: number;
+  vacancyRateSigma?: number;
+  loanRateSigma?: number;
 }
 
 export interface LandPriceComparison {
@@ -301,24 +136,28 @@ export interface LandPriceComparison {
   assessment: "割安" | "相場" | "割高";
 }
 
-export interface PopulationSnapshot {
-  year: number;
-  pop: number;
-}
-
-export interface PopulationForecastResult {
-  snapshots: PopulationSnapshot[];
-  changeRate30yr: number;
-  vacancyRateDelta: number;
-  trend: "増加" | "現状維持" | "緩やかな減少" | "急激な減少";
-}
-
 export interface AppraisalComparisonResult {
   appraisalMedianPerSqm: number; // 公示価格中央値（円/m²）
   appraisalCount: number; // 標準地点数
   appraisalTrend: number; // 平均変動率（小数: 0.05 = +5%）
   trendLabel: "上昇" | "安定" | "下落";
 }
+
+export interface RentDeclineHint {
+  hintRate: number;
+  basis: "land_appraisal" | "fallback";
+  dataPointCount: number;
+  fallbackUsed: boolean;
+  note: string;
+}
+
+export interface GeocodeResult {
+  lat: number;
+  lng: number;
+  locationType: "ROOFTOP" | "RANGE_INTERPOLATED" | "GEOMETRIC_CENTER" | "APPROXIMATE";
+}
+
+// ==== フロント固有型・定数 ====
 
 export const DEFAULT_INPUT: InvestmentInput = {
   landPrice: 5_000_000,
@@ -361,37 +200,6 @@ export const BUILDING_USEFUL_LIFE: Record<BuildingType, number> = {
 
 export type SimulationMode = "quick" | "full";
 
-export interface Percentiles {
-  p10: number;
-  p25: number;
-  p50: number;
-  p75: number;
-  p90: number;
-}
-
-export interface HistogramBin {
-  min: number;
-  max: number;
-  count: number;
-}
-
-export interface MonteCarloResult {
-  simulationCount: number;
-  irrPercentiles: Percentiles;
-  equityPercentiles: Percentiles;
-  deadCrossRate: number;
-  irrHistogram: HistogramBin[] | null;
-  equityHistogram: HistogramBin[] | null;
-  successRate: number;
-}
-
-export interface MonteCarloInput {
-  base: InvestmentInput;
-  simulations?: number;
-  vacancyRateSigma?: number;
-  loanRateSigma?: number;
-}
-
 export const QUICK_MODE_DEFAULTS: Partial<InvestmentInput> = {
   landArea: 100,
   buildingAge: 0,
@@ -413,79 +221,6 @@ export const QUICK_MODE_DEFAULTS: Partial<InvestmentInput> = {
   rateAdjustmentSchedule: [],
 };
 
-export interface RenovationItem {
-  name: string;
-  cost: number;
-  expectedMonthlyRentIncrease: number;
-  isSelfWork: boolean;
-  selfLaborHours: number;
-}
-
-export interface ClassifiedRenovationItem extends RenovationItem {
-  isCapitalExpenditure: boolean;
-  virtualLaborCost: number;
-}
-
-export interface RenovationInput {
-  propertyPrice: number;
-  annualBaseRent: number;
-  annualExpenses: number;
-  effectiveTaxRate: number;
-  selfLaborRatePerHour: number;
-  items: RenovationItem[];
-}
-
-export interface RenovationResult {
-  recoveryYears: number;
-  isRecoverable: boolean;
-  taxSavings: number;
-  virtualLaborCost: number;
-  capitalExpenditures: number;
-  repairExpenses: number;
-  actualYield: number;
-  totalRenovationCost: number;
-  annualRentIncrease: number;
-  classifiedItems: ClassifiedRenovationItem[];
-}
-
-export interface ScoreItem {
-  score: number;
-  label: string;
-  description: string;
-}
-
-export interface RadarPoint {
-  category: string;
-  score: number;
-}
-
-export interface ScoreBreakdown {
-  population: ScoreItem;
-  ridership: ScoreItem;
-  urbanArea: ScoreItem;
-  locationOptimization: ScoreItem;
-  hazardRisk: ScoreItem;
-  liquefactionRisk: ScoreItem;
-  embankment: ScoreItem;
-  disasterHistory: ScoreItem;
-  landPriceTrend: ScoreItem;
-  radarData: RadarPoint[];
-}
-
-export interface InvestmentScoreResult {
-  totalScore: number;
-  grade: string;
-  breakdown: ScoreBreakdown;
-}
-
-export interface RentDeclineHint {
-  hintRate: number;
-  basis: "land_appraisal" | "fallback";
-  dataPointCount: number;
-  fallbackUsed: boolean;
-  note: string;
-}
-
 export const DEFAULT_RENOVATION_INPUT: RenovationInput = {
   propertyPrice: 10_000_000,
   annualBaseRent: 1_200_000,
@@ -494,22 +229,6 @@ export const DEFAULT_RENOVATION_INPUT: RenovationInput = {
   selfLaborRatePerHour: 0,
   items: [],
 };
-
-export interface HeatmapTile {
-  x: number;
-  y: number;
-  z: number;
-  centerLat: number;
-  centerLng: number;
-  totalScore: number;
-  grade: string;
-}
-
-export interface HeatmapResponse {
-  tiles: HeatmapTile[];
-  tileCount: number;
-  failedTiles?: number;
-}
 
 export type WatchlistStatus = "検討中" | "見送り" | "購入済み";
 
@@ -533,10 +252,4 @@ export interface WatchlistItem {
   status: WatchlistStatus;
   addedAt: string; // ISO 8601
   metrics?: WatchlistMetrics;
-}
-
-export interface GeocodeResult {
-  lat: number;
-  lng: number;
-  locationType: "ROOFTOP" | "RANGE_INTERPOLATED" | "GEOMETRIC_CENTER" | "APPROXIMATE";
 }
