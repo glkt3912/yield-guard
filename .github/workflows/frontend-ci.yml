@@ -203,7 +203,7 @@ jobs:
           script: |
             const marker = '<!-- vercel-preview -->';
             const url = process.env.PREVIEW_URL;
-            const body = `${marker}\n## Vercel プレビュー\n\n${url}\n\n> ⚠️ このプレビューは本番 API (\`NEXT_PUBLIC_API_URL\`) を使用しています。`;
+            const body = `${marker}\n## Vercel プレビュー\n\n${url}\n\n> このプレビューはステージング API (\`BACKEND_URL\` の Preview 環境変数) を使用しています。API 変更を含む PR は stg バックエンドの再デプロイ (deploy-backend-stg.yml) が必要です。`;
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
