@@ -37,12 +37,12 @@ type MLITClient interface {
 type Handler struct {
 	mlitClient    MLITClient
 	geocodeClient GeocodeClient
-	summarizer    ai.Summarizer
 	locationSvc   service.LocationService
 	areaSvc       service.AreaService
 	riskSvc       service.RiskService
 	landSvc       service.LandPriceService
 	rentSvc       service.RentService
+	investmentSvc service.InvestmentService
 }
 
 func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient, locationSvc service.LocationService, fsClient ...*firestore.Client) *Handler {
@@ -54,12 +54,12 @@ func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient, locationSvc 
 	return &Handler{
 		mlitClient:    mlitClient,
 		geocodeClient: geocodeClient,
-		summarizer:    summarizer,
 		locationSvc:   locationSvc,
 		areaSvc:       service.NewAreaDiscoveryService(mlitClient, summarizer),
 		riskSvc:       service.NewRiskAssessmentService(mlitClient),
 		landSvc:       service.NewLandPriceAnalysisService(mlitClient),
 		rentSvc:       service.NewRentStatsService(mlitClient),
+		investmentSvc: service.NewInvestmentAnalysisService(mlitClient, summarizer),
 	}
 }
 

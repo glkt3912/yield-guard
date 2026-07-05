@@ -1,11 +1,8 @@
 package api
 
 import (
-	"context"
 	"errors"
-	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/domain"
@@ -39,18 +36,7 @@ func (h *Handler) Analyze(c *gin.Context) {
 		return
 	}
 
-	result := domain.Analyze(c.Request.Context(), input)
-
-	// run Gemini in background; collect result within remaining context budget
-	aiCh := make(chan string, 1)
-	go func() {
-		aiCh <- h.summarizer.GenerateSummary(c.Request.Context(), input, result)
-	}()
-	select {
-	case result.AISummary = <-aiCh:
-	case <-c.Request.Context().Done():
-		// request cancelled or timed out upstream
-	}
+	result := h.investmentSvc.Analyze(c.Request.Context(), input)
 
 	telemetry.AnalyzeRequestsTotal.Add(c.Request.Context(), 1)
 	c.JSON(http.StatusOK, result)
@@ -101,47 +87,11 @@ func (h *Handler) GetRentDeclineHint(c *gin.Context) {
 		return
 	}
 
-	municipality := c.Query("municipality")
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
-	defer cancel()
-
-	// XCT001 の対応年（2022〜2026）を並列取得
-	years := []int{2022, 2023, 2024, 2025, 2026}
-	type yearResult struct {
-		year  int
-		items []domain.LandAppraisalItem
-		err   error
-	}
-	ch := make(chan yearResult, len(years))
-	for _, y := range years {
-		go func() {
-			items, err := h.mlitClient.FetchLandAppraisals(ctx, area, municipality, y, "00")
-			ch <- yearResult{year: y, items: items, err: err}
-		}()
-	}
-
-	itemsByYear := make(map[int][]domain.LandAppraisalItem, len(years))
-	var fetchErr error
-	for range years {
-		r := <-ch
-		if r.err != nil {
-			slog.WarnContext(ctx, "FetchLandAppraisals failed", "year", r.year, "area", area, "error", r.err)
-			fetchErr = r.err
-			continue
-		}
-		if len(r.items) > 0 {
-			itemsByYear[r.year] = r.items
-		}
-	}
-
-	// 全年エラーの場合のみ502を返す
-	if len(itemsByYear) == 0 && fetchErr != nil {
-		slog.ErrorContext(c.Request.Context(), "FetchLandAppraisals failed for all years", "err", fetchErr)
+	hint, err := h.investmentSvc.RentDeclineHint(c.Request.Context(), area, c.Query("municipality"))
+	if err != nil {
 		badGateway(c, "地価公示APIからのデータ取得に失敗しました")
 		return
 	}
-
-	hint := domain.CalcRentDeclineHint(itemsByYear)
 	c.JSON(http.StatusOK, hint)
 }
 
