@@ -338,7 +338,7 @@ export async function simulate(input: MonteCarloInput): Promise<MonteCarloResult
   return postJson<MonteCarloResult>("/investment/simulate", input);
 }
 
-/** 住所文字列から緯度・経度を取得（バックエンド経由でGoogle Maps Geocoding API を呼び出す） */
+/** 住所文字列から緯度・経度を取得（バックエンド経由で Nominatim (OpenStreetMap) を呼び出す） */
 export function fetchGeocode(address: string): Promise<GeocodeResult> {
   return cachedFetch(`geocode:${address}`, TTL_MARKET, async () => {
     const q = new URLSearchParams({ address });
