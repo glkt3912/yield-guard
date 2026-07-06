@@ -30,14 +30,15 @@ func (m *mockAreaClient) FetchLandPrices(ctx context.Context, q mlit.LandPriceQu
 }
 
 // stubSummarizer は ai.Summarizer のテスト用スタブ。
-// areaSummary を返し、GenerateAreaSummary に渡された item を記録する。
+// summary / areaSummary を返し、GenerateAreaSummary に渡された item を記録する。
 type stubSummarizer struct {
+	summary     string
 	areaSummary string
 	gotItem     domain.AreaDiscoveryItem
 }
 
 func (s *stubSummarizer) GenerateSummary(_ context.Context, _ domain.InvestmentInput, _ domain.InvestmentResult) string {
-	return ""
+	return s.summary
 }
 
 func (s *stubSummarizer) GenerateAreaSummary(_ context.Context, item domain.AreaDiscoveryItem) string {
