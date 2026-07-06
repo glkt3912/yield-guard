@@ -1,12 +1,12 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-05-16T22:00:00",
+  "lastUpdated": "2026-07-06T09:00:00",
   "documents": [
     {
       "id": "overview",
       "path": "docs/overview.md",
       "title": "プロジェクト概要とアーキテクチャ",
-      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック（OpenTelemetry SDK / opentelemetry-operations-go 含む）・ディレクトリ構成・起動手順・計算の制約と免責事項。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY/GOOGLE_CLOUD_PROJECT）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。GOOGLE_CLOUD_PROJECT 設定時は Cloud Trace / Cloud Monitoring へ OTel データを送信、未設定時は stdout。PWA対応（@ducanh2912/next-pwa・manifest.ts）を含む。フロントエンド（Vercel）・バックエンド（Cloud Run）のデプロイフローも記載。Makefile 便利ターゲット: make backend（バックエンドのみ起動）・make frontend（フロントエンドのみ起動）・make install（npm install）・make logs（Docker ログ表示、未起動時は案内メッセージ）・make swagger（OpenAPI スキーマ生成）を追加済み。OpenAPI 型自動生成パイプライン: swaggo/swag アノテーション → make swagger で docs/openapi/swagger.json（Swagger 2.0）生成 → swagger2openapi で docs/openapi/openapi.json（OpenAPI 3.0）変換 → npm run generate:types で frontend/src/types/api.generated.ts 自動生成。api.generated.ts・swagger.json・openapi.json は編集禁止・CI がドリフトを検出する。e2e fixtures は api.generated.ts の components[\"schemas\"] を satisfies で参照。@title 等のメタアノテーションは cmd/server/main.go の func main() 直前に記述すること（doc.go 単独では swag に読み取られない）。",
+      "description": "Yield-Guard の目的・解決する3大リスク（相場判定・デッドクロス・出口戦略）・技術スタック（OpenTelemetry SDK / opentelemetry-operations-go 含む）・ディレクトリ構成（パッケージ単位+責務1行: backend は api / service / domain / mlit / ai / concurrent / logger / telemetry、frontend は app / components / hooks / lib / types / e2e）・起動手順・計算の制約と免責事項。テスト構成もディレクトリ粒度（domain 計算・service ユースケース・api HTTPバインディング・mlit クライアント・フロント UI・API 型契約・E2E）で記載。バックエンド環境変数（PORT/ALLOW_ORIGINS/MLIT_API_KEY/APP_INTERNAL_API_KEY/GOOGLE_CLOUD_PROJECT）・フロントエンド環境変数（APP_INTERNAL_API_KEY）の一覧を含む。GOOGLE_CLOUD_PROJECT 設定時は Cloud Trace / Cloud Monitoring へ OTel データを送信、未設定時は stdout。PWA対応（@ducanh2912/next-pwa・manifest.ts）を含む。フロントエンド（Vercel）・バックエンド（Cloud Run）のデプロイフローも記載。Makefile 便利ターゲット: make backend（バックエンドのみ起動）・make frontend（フロントエンドのみ起動）・make install（npm install）・make logs（Docker ログ表示、未起動時は案内メッセージ）・make swagger（OpenAPI スキーマ生成）を追加済み。OpenAPI 型自動生成パイプライン: swaggo/swag アノテーション → make swagger で docs/openapi/swagger.json（Swagger 2.0）生成 → swagger2openapi で docs/openapi/openapi.json（OpenAPI 3.0）変換 → npm run generate:types で frontend/src/types/api.generated.ts 自動生成。api.generated.ts・swagger.json・openapi.json は編集禁止・CI がドリフトを検出する。e2e fixtures は api.generated.ts の components[\"schemas\"] を satisfies で参照。@title 等のメタアノテーションは cmd/server/main.go の func main() 直前に記述すること（doc.go 単独では swag に読み取られない）。",
       "tags": [
         "概要",
         "アーキテクチャ",

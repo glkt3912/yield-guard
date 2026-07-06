@@ -65,53 +65,34 @@ Yield-Guard は不動産投資判断を支援するシミュレーションツ�
 
 ## ディレクトリ構成
 
+パッケージ（ディレクトリ）単位で責務を示す。ファイル一覧は列挙しない（各パッケージ内は実コードを参照）。
+
 ```
 yield-guard/
 ├── backend/
 │   ├── Dockerfile                 # マルチステージビルド（BuildKitキャッシュ最適化）
-│   ├── cmd/server/main.go         # エントリポイント・グレースフルシャットダウン
+│   ├── cmd/server/                # エントリポイント・swag メタアノテーション・グレースフルシャットダウン
 │   └── internal/
-│       ├── domain/
-│       │   ├── types.go                    # ドメインモデル・BuildingType・耐用年数
-│       │   ├── investment.go               # 計算ロジック・Analyze・calcExit
-│       │   ├── investment_test.go          # ユニットテスト
-│       │   ├── theoretical_price.go        # 理論価格推定・補正計算
-│       │   └── theoretical_price_test.go   # ユニットテスト
-│       ├── mlit/
-│       │   ├── client.go          # 国交省APIクライアント・リトライ
-│       │   ├── cache.go           # TTL付きインメモリキャッシュ（24時間）
-│       │   ├── client_test.go     # ユニットテスト（httptest モック）
-│       │   ├── integration_test.go # 統合テスト（実API疎通・要APIキー）
-│       │   └── types.go           # APIレスポンス型・都道府県マップ
-│       └── api/
-│           ├── handler.go         # HTTPハンドラー・バリデーション
-│           └── router.go          # Ginルーター・CORS設定
+│       ├── api/                   # HTTPハンドラ（パース→service委譲→ステータス変換）・ルーター・CORS・認証・レートリミット・ジオコーダー
+│       ├── service/               # アプリケーションサービス層（投資スコア・エリア探索・都市リスク・土地価格・賃料などのユースケース）
+│       ├── domain/                # ドメインモデルと計算ロジック（利回り・デッドクロス・出口・税・理論価格・投資スコア等）
+│       ├── mlit/                  # 国交省APIクライアント（リトライ・インメモリキャッシュ・Firestore L2キャッシュ）
+│       ├── ai/                    # Gemini による投資サマリー生成（GEMINI_API_KEY 未設定時は no-op）
+│       ├── concurrent/            # 並行処理ヘルパー（FanOut / SafeCall）
+│       ├── logger/                # slog 構造化ログ設定
+│       └── telemetry/             # OpenTelemetry セットアップ・カスタムメトリクス
 ├── frontend/
 │   ├── Dockerfile                 # マルチステージビルド
+│   ├── e2e/                       # Playwright E2E（spec・fixtures・ページオブジェクト）
 │   └── src/
-│       ├── app/
-│       │   ├── layout.tsx
-│       │   ├── manifest.ts        # Web App Manifest（PWA）
-│       │   └── page.tsx           # Dashboard をレンダリング
-│       ├── components/
-│       │   ├── Dashboard.tsx      # メインUI・状態管理
-│       │   ├── InvestmentForm.tsx # 投資条件入力フォーム
-│       │   ├── YieldAnalysis.tsx  # 利回り分析・8%ゲージ
-│       │   ├── CashFlowChart.tsx  # CF推移グラフ・出口サマリー
-│       │   ├── DeadCrossChart.tsx # デッドクロス予測グラフ
-│       │   ├── LandPriceAnalysis.tsx # 土地相場分析
-│       │   └── ui/                # Shadcn/UIコンポーネント
-│       ├── lib/
-│       │   ├── api.ts             # fetchLandPrices / analyze / etc.
-│       │   └── utils.ts           # formatMan / formatPct / formatYen
-│       └── types/
-│           └── investment.ts      # TypeScript型定義・DEFAULT_INPUT
+│       ├── app/                   # App Router エントリ（layout / page / manifest）
+│       ├── components/            # UI コンポーネント（Dashboard 起点。sections/・ui/=Shadcn を含む）
+│       ├── hooks/                 # API 呼び出し・シミュレーション・ネットワーク状態等のカスタムフック
+│       ├── lib/                   # API クライアント・キャッシュ・PDF 生成・ユーティリティ
+│       └── types/                 # 手書き型（investment.ts）+ 生成型（api.generated.ts、git管理外・CI で毎回生成）
+├── docs/                          # ドキュメント（docs-mcp-server 用）・openapi/swagger.json（コミット対象）
 ├── docker-compose.yml             # backend + frontend 一括起動
 ├── .env.example                   # 環境変数テンプレート
-├── docs/                          # ドキュメント（docs-mcp-server用）
-│   ├── metadata.json
-│   ├── overview.md
-│   └── ...
 └── .mcp.json                      # docs-mcp-server 設定
 ```
 
@@ -251,15 +232,17 @@ CI（GitHub Actions）では `go test -race -coverprofile=coverage.out` を実�
 
 ### テスト構成
 
-| レイヤー | ファイル | ツール | テスト数 |
-|---|---|---|---|
-| ドメイン計算 | `backend/internal/domain/investment_test.go` | go test | 複数（境界値テスト含む） |
-| 理論価格推定 | `backend/internal/domain/theoretical_price_test.go` | go test | 9 |
-| MLIT クライアント | `backend/internal/mlit/client_test.go` | go test / httptest | 複数 |
-| フロントエンド UI | `frontend/src/components/__tests__/*.test.tsx` | Vitest + RTL | 複数 |
-| E2E（ユーザーフロー） | `frontend/e2e/**/*.spec.ts` | Playwright + page.route() | 10 |
+ディレクトリ単位で示す（個別ファイル・テスト数は列挙しない）。
 
-境界値テストは `acquisition_costs`・`investment`・`property_tax` の各計算に追加されている。
+| レイヤー | 場所 | ツール・方針 |
+|---|---|---|
+| ドメイン計算 | `backend/internal/domain/*_test.go` | go test（境界値テスト含む） |
+| サービス層（ユースケース） | `backend/internal/service/*_test.go` | go test（MLIT クライアント・Summarizer をモック注入） |
+| HTTP バインディング | `backend/internal/api/*_test.go` | go test / httptest（パラメータ検証・ステータス変換のみ） |
+| MLIT クライアント | `backend/internal/mlit/*_test.go` | go test / httptest（`integration_test.go` のみ実API・要APIキー） |
+| フロントエンド UI | `frontend/src/**/__tests__/` | Vitest + React Testing Library |
+| API 型契約 | `frontend/src/types/__tests__/api-contract.ts` | tsc --noEmit（生成型と手書き型の整合を型レベルで検証） |
+| E2E（ユーザーフロー） | `frontend/e2e/**/*.spec.ts` | Playwright + page.route() |
 
 #### フロントエンドテストの方針
 
