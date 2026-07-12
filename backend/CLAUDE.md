@@ -14,7 +14,9 @@ Go 1.25 / Gin / Clean Architecture → Cloud Run。ルートの `CLAUDE.md` の�
 
 ## 検証
 
+`make` はリポジトリルート専用（`backend/` に Makefile は無い）。単体テストだけ `backend/` で回す。
+
 ```bash
-cd backend && go test -race ./... -timeout 120s   # 単体
-make test && make lint                            # 全体（swagger 変更時は make swagger-check も）
+(cd backend && go test -race ./... -timeout 120s)   # 単体（サブシェルで cwd を戻す）
+make test && make lint                              # 全体・ルートで（swagger 変更時は make swagger-check も）
 ```

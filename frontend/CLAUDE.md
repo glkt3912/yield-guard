@@ -15,7 +15,9 @@ Next.js 16（App Router）/ TypeScript / Tailwind CSS v4 / Shadcn/UI → Vercel�
 
 ## 検証
 
+`make` はリポジトリルート専用（`frontend/` に Makefile は無い）。vitest だけ `frontend/` で回す。
+
 ```bash
-cd frontend && npm test       # vitest
-make lint                     # eslint + tsc --noEmit（契約テストのズレもここで出る）
+(cd frontend && npm test)     # vitest（サブシェルで cwd を戻す）
+make lint                     # ルートで — eslint + tsc --noEmit（契約テストのズレもここで出る）
 ```
