@@ -54,9 +54,10 @@ frontend/src/types/api.generated.ts  (git 管理外 — CI で毎回生成)
 - `api.generated.ts` は git 管理外。ローカルで使う場合は `npm run generate:types` を実行
 
 > `backend/**/*.go`（非テスト）をコミットすると pre-commit フック（lefthook）が swagger.json の
-> ドリフトを検出する（#840）。不整合ならコミットを止めるので、`make swagger` を実行して
-> `docs/openapi/swagger.json` を stage し直す。フックは `git add` せずコミット内容を書き換えない。
-> `swag` 未導入 / CI（v1.16.6）と別バージョンなら誤検出を避けて警告のみで通し、CI の drift チェックが最終ゲートになる。
+> ドリフトを検出する（#840）。不整合ならコミットを止めるので、再生成された
+> `docs/openapi/swagger.json` を stage し直して再コミットする。フックは `git add` せずコミット内容を書き換えない。
+> `swag` 未導入なら警告のみで通し、CI の drift チェックが最終ゲートになる。
+> swag は CI と同じ `v1.16.6` を使うこと（別バージョンだと整形差でローカルは通っても CI で落ちうる）。
 
 ## struct タグ = TypeScript 契約（Issue #811 以降）
 
