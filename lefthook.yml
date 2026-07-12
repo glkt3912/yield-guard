@@ -13,25 +13,33 @@ pre-commit:
     go-lint:
       glob: "backend/**/*.go"
       run: cd backend && golangci-lint run ./...
-    # Go 型・swag アノテーション変更時に swagger.json を再生成して同一コミットに含める (#840)
-    # 未インストール時は警告のみで通す（CI backend-ci.yml の drift チェックが最終ゲート）
+    # Go 型・swag アノテーション変更時に swagger.json のドリフトを検出しコミットを止める (#840)
+    # ここでは git add せず「make swagger して stage せよ」と促すだけ（コミット内容は書き換えない）。
+    # swag 未導入 / CI と別バージョンなら誤検出を避けて WARN のみで通す（CI backend-ci.yml が最終ゲート）。
     # 導入: go install github.com/swaggo/swag/cmd/swag@v1.16.6
     swagger:
       glob: "backend/**/*.go"
       run: |
         set -e
-        # 非テストの backend Go が staged のときだけ再生成（テストのみの変更はスキップ）
+        # 非テストの backend Go が staged のときだけチェック（テストのみの変更はスキップ）
         if ! git diff --cached --name-only | grep -E '^backend/.*\.go$' | grep -qv '_test\.go$'; then
           exit 0
         fi
-        if command -v swag >/dev/null 2>&1; then
-          make swagger >/dev/null
-          if ! git diff --quiet docs/openapi/swagger.json; then
-            git add docs/openapi/swagger.json
-            echo "==> swagger.json を再生成してステージしました (#840)"
-          fi
-        else
-          echo "WARN: swag 未インストールのため swagger 再生成をスキップ（go install github.com/swaggo/swag/cmd/swag@v1.16.6 で導入 / CI が最終ゲート）"
+        if ! command -v swag >/dev/null 2>&1; then
+          echo "WARN: swag 未インストールのため swagger drift チェックをスキップ（go install github.com/swaggo/swag/cmd/swag@v1.16.6 で導入 / CI が最終ゲート）"
+          exit 0
+        fi
+        # CI と同じ swag バージョンでのみ判定する（版ずれの誤ブロックを避ける）。backend-ci.yml と同期
+        if ! swag --version 2>/dev/null | grep -q '1\.16\.6'; then
+          echo "WARN: swag が v1.16.6 以外のため swagger drift チェックをスキップ（CI が最終ゲート）"
+          exit 0
+        fi
+        make swagger >/dev/null
+        if ! git diff --quiet docs/openapi/swagger.json; then
+          echo "ERROR: swagger.json が Go 型と不整合です (#840)"
+          echo "  → 'make swagger' を実行し docs/openapi/swagger.json を stage してから再コミットしてください"
+          echo "  （未ステージの型変更があるとその差分も検出されます。必要なら stage するか退避してください）"
+          exit 1
         fi
     frontend-format:
       glob: "frontend/src/**/*.{ts,tsx,css}"
