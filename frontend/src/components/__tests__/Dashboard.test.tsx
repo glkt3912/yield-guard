@@ -254,4 +254,18 @@ describe("Dashboard", () => {
     expect(writeText).toHaveBeenCalledTimes(1);
     expect(writeText).toHaveBeenCalledWith(expect.any(String));
   });
+
+  it("オフライン時にバナーで実行不可であることを案内する", () => {
+    // useNetworkStatus は navigator.onLine を参照する
+    const onLineSpy = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+
+    render(<Dashboard />);
+
+    // シミュレーション・相場取得の両方が要ネットワークであることを案内する
+    expect(screen.getByText(/接続が回復してから再実行してください/)).toBeInTheDocument();
+    // 実装と乖離した旧文言（デバイス内で計算）が復活していないこと
+    expect(screen.queryByText(/デバイス内で計算/)).not.toBeInTheDocument();
+
+    onLineSpy.mockRestore();
+  });
 });

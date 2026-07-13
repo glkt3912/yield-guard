@@ -232,8 +232,8 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
           <div className="mb-4 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             <WifiOff className="h-4 w-4 shrink-0" />
             <span>
-              <strong>オフラインモード：</strong>
-              シミュレーションはデバイス内で計算されます。「相場を取得」はネットワーク接続が回復するまで使用できません。
+              <strong>オフライン中：</strong>
+              シミュレーションの実行と「相場を取得」はネットワーク接続が必要です。接続が回復してから再実行してください。
             </span>
           </div>
         )}
