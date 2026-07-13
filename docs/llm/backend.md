@@ -2,7 +2,7 @@
 purpose: バックエンド開発（Go / API / swagger）の出発点
 triggers: [go, handler, router, swagger, api endpoint, mlit client, domain type]
 reads_next: [docs/api-reference.md, docs/mlit-api-integration.md]
-last_updated: 2026-07-05
+last_updated: 2026-07-12
 ---
 
 ## 重要ファイル
@@ -52,6 +52,12 @@ frontend/src/types/api.generated.ts  (git 管理外 — CI で毎回生成)
 
 - `swagger.json` は git 管理対象。変更したら必ずコミットに含める
 - `api.generated.ts` は git 管理外。ローカルで使う場合は `npm run generate:types` を実行
+
+> `backend/**/*.go`（非テスト）をコミットすると pre-commit フック（lefthook）が swagger.json の
+> ドリフトを検出する（#840）。不整合ならコミットを止めるので、再生成された
+> `docs/openapi/swagger.json` を stage し直して再コミットする。フックは `git add` せずコミット内容を書き換えない。
+> `swag` 未導入なら警告のみで通し、CI の drift チェックが最終ゲートになる。
+> swag は CI と同じ `v1.16.6` を使うこと（別バージョンだと整形差でローカルは通っても CI で落ちうる）。
 
 ## struct タグ = TypeScript 契約（Issue #811 以降）
 

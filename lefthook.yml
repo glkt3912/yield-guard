@@ -13,6 +13,31 @@ pre-commit:
     go-lint:
       glob: "backend/**/*.go"
       run: cd backend && golangci-lint run ./...
+    # Go 型・swag アノテーション変更時に swagger.json のドリフトを検出しコミットを止める (#840)
+    # ここでは git add せず、再生成した差分を stage せよと促すだけ（コミット内容＝index は書き換えない）。
+    # swag 未導入なら誤検出を避けて WARN のみで通す（CI backend-ci.yml の drift チェックが最終ゲート）。
+    # swag は CI と同じ v1.16.6 を使うこと（別バージョンだと整形差でローカルは通っても CI で落ちうる）。
+    #   導入: go install github.com/swaggo/swag/cmd/swag@v1.16.6
+    #   ※ v1.16.6 でも `swag --version` は "v1.16.4" と出る（swag 側の定数上げ忘れ）ため版判定はしない
+    swagger:
+      glob: "backend/**/*.go"
+      run: |
+        set -e
+        # 非テストの backend Go が staged のときだけチェック（テストのみの変更はスキップ）
+        if ! git diff --cached --name-only | grep -E '^backend/.*\.go$' | grep -qv '_test\.go$'; then
+          exit 0
+        fi
+        if ! command -v swag >/dev/null 2>&1; then
+          echo "WARN: swag 未インストールのため swagger drift チェックをスキップ（go install github.com/swaggo/swag/cmd/swag@v1.16.6 で導入 / CI が最終ゲート）"
+          exit 0
+        fi
+        make swagger >/dev/null
+        if ! git diff --quiet docs/openapi/swagger.json; then
+          echo "ERROR: swagger.json が Go 型と不整合です (#840)"
+          echo "  docs/openapi/swagger.json を再生成しました。差分を確認して stage し、再コミットしてください"
+          echo "  （未ステージの型変更が原因の場合は、それを stage/退避してから make swagger し直す）"
+          exit 1
+        fi
     frontend-format:
       glob: "frontend/src/**/*.{ts,tsx,css}"
       run: npx --prefix frontend prettier --write {staged_files} && git add {staged_files}
