@@ -44,6 +44,7 @@ Before starting work, read the relevant entry doc in `docs/llm/`:
 | Frontend / UI / TSX | `docs/llm/frontend.md` |
 | Investment calc / domain logic | `docs/llm/domain.md` |
 | Branch / worktree / PR | `docs/llm/worktree.md` |
+| Model choice / effort / subagents | `docs/llm/models.md` |
 
 ## Claude Code operating rules
 
