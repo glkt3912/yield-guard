@@ -14,28 +14,28 @@ import (
 	"github.com/yield-guard/backend/internal/service"
 )
 
-// MLITClient は国交省APIクライアントのインターフェース（テスト時にモック注入可能）
-type MLITClient interface {
-	FetchLandPrices(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
-	FetchMunicipalities(ctx context.Context, area string) ([]mlit.Municipality, error)
+// mlitFetcher は Handler が直接呼ぶ MLIT メソッドのサブセット（consumer = Handler）。
+// station-ridership / population-forecast / municipalities の各エンドポイントで使う。
+type mlitFetcher interface {
 	FetchStationRidership(ctx context.Context, z, x, y int) ([]mlit.StationRidership, error)
 	FetchPopulationForecast(ctx context.Context, z, x, y int) ([]domain.PopulationForecastItem, error)
-	FetchLandAppraisals(ctx context.Context, area, city string, year int, division string) ([]domain.LandAppraisalItem, error)
-	FetchLocationOptimization(ctx context.Context, z, x, y int) ([]domain.LocationOptimizationItem, error)
-	FetchEmbankment(ctx context.Context, z, x, y int) ([]domain.EmbankmentItem, error)
-	FetchUrbanRoad(ctx context.Context, z, x, y int) ([]domain.UrbanRoadItem, error)
-	FetchDisasterHistory(ctx context.Context, z, x, y int) ([]domain.DisasterHistoryItem, error)
-	FetchUrbanZoning(ctx context.Context, z, x, y int) ([]domain.UrbanZoningItem, error)
-	FetchLiquefaction(ctx context.Context, z, x, y int) ([]domain.LiquefactionRiskItem, error)
-	FetchFloodHazard(ctx context.Context, z, x, y int) ([]domain.FloodHazardItem, error)
-	FetchStormHazard(ctx context.Context, z, x, y int) ([]domain.StormHazardItem, error)
-	FetchTsunamiHazard(ctx context.Context, z, x, y int) ([]domain.TsunamiHazardItem, error)
-	FetchLandslideHazard(ctx context.Context, z, x, y int) ([]domain.LandslideHazardItem, error)
-	FetchRentStats(ctx context.Context, q mlit.LandPriceQuery, areaSqm float64) (domain.RentStatsResult, error)
+	FetchMunicipalities(ctx context.Context, area string) ([]mlit.Municipality, error)
+}
+
+// mlitProvider は NewHandler が全 service を組み立てるのに必要な合成インターフェース。
+// 各要素は利用側（service / handler）が所有する小インターフェースで、fat interface を
+// 再宣言せず埋め込みで束ねる。*mlit.Client（本番）とテストモックの両方が満たす。
+type mlitProvider interface {
+	mlitFetcher
+	service.AreaMLITClient
+	service.RiskMLITClient
+	service.LandMLITClient
+	service.RentMLITClient
+	service.InvestmentMLITClient
 }
 
 type Handler struct {
-	mlitClient    MLITClient
+	mlitClient    mlitFetcher
 	geocodeClient GeocodeClient
 	locationSvc   service.LocationService
 	areaSvc       service.AreaService
@@ -45,7 +45,7 @@ type Handler struct {
 	investmentSvc service.InvestmentService
 }
 
-func NewHandler(mlitClient MLITClient, geocodeClient GeocodeClient, locationSvc service.LocationService, fsClient ...*firestore.Client) *Handler {
+func NewHandler(mlitClient mlitProvider, geocodeClient GeocodeClient, locationSvc service.LocationService, fsClient ...*firestore.Client) *Handler {
 	var fs *firestore.Client
 	if len(fsClient) > 0 {
 		fs = fsClient[0]

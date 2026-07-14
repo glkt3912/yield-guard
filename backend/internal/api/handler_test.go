@@ -153,7 +153,9 @@ func TestParseZoom(t *testing.T) {
 	}
 }
 
-// mockMLITClient は MLITClient インターフェースのテスト用モック
+// mockMLITClient は MLIT クライアントのテスト用モック。
+// NewHandler(mlitProvider) と service.NewInvestmentScoreService(service.MLITClient) の
+// 両方を満たすため、国交省 API の全メソッドを実装する。
 type mockMLITClient struct {
 	fetchFunc            func(ctx context.Context, q mlit.LandPriceQuery) ([]domain.LandTransaction, error)
 	muniFunc             func(ctx context.Context, area string) ([]mlit.Municipality, error)
@@ -293,7 +295,7 @@ func (m *mockLocationService) CalcScoreForTile(ctx context.Context, z, x, y int)
 
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す。
 // locationSvc が nil の場合は mlitClient を使った InvestmentScoreService を生成する。
-func newTestRouter(client MLITClient, geocodeClient GeocodeClient, locationSvc ...service.LocationService) *gin.Engine {
+func newTestRouter(client *mockMLITClient, geocodeClient GeocodeClient, locationSvc ...service.LocationService) *gin.Engine {
 	var svc service.LocationService
 	if len(locationSvc) > 0 && locationSvc[0] != nil {
 		svc = locationSvc[0]
