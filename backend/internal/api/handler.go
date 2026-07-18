@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"cloud.google.com/go/firestore"
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/ai"
 	"github.com/yield-guard/backend/internal/domain"
@@ -46,21 +45,25 @@ type Handler struct {
 	investmentSvc service.InvestmentService
 }
 
-func NewHandler(mlitClient mlitProvider, geocodeClient GeocodeClient, locationSvc service.LocationService, fsClient ...*firestore.Client) *Handler {
-	var fs *firestore.Client
-	if len(fsClient) > 0 {
-		fs = fsClient[0]
-	}
-	summarizer := ai.NewSummarizer(fs)
+// HandlerDeps は Handler が必要とする依存の明示的な集合。
+// 呼び出し側（main.go / テスト）が各依存を生成して注入する。
+type HandlerDeps struct {
+	MLIT       mlitProvider // #817 の合成インターフェース
+	Geocode    GeocodeClient
+	Summarizer ai.Summarizer
+	Location   service.LocationService
+}
+
+func NewHandler(deps HandlerDeps) *Handler {
 	return &Handler{
-		mlitClient:    mlitClient,
-		geocodeClient: geocodeClient,
-		locationSvc:   locationSvc,
-		areaSvc:       service.NewAreaDiscoveryService(mlitClient, summarizer),
-		riskSvc:       service.NewRiskAssessmentService(mlitClient),
-		landSvc:       service.NewLandPriceAnalysisService(mlitClient),
-		rentSvc:       service.NewRentStatsService(mlitClient),
-		investmentSvc: service.NewInvestmentAnalysisService(mlitClient, summarizer),
+		mlitClient:    deps.MLIT,
+		geocodeClient: deps.Geocode,
+		locationSvc:   deps.Location,
+		areaSvc:       service.NewAreaDiscoveryService(deps.MLIT, deps.Summarizer),
+		riskSvc:       service.NewRiskAssessmentService(deps.MLIT),
+		landSvc:       service.NewLandPriceAnalysisService(deps.MLIT),
+		rentSvc:       service.NewRentStatsService(deps.MLIT),
+		investmentSvc: service.NewInvestmentAnalysisService(deps.MLIT, deps.Summarizer),
 	}
 }
 
