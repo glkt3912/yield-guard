@@ -1,4 +1,4 @@
-package api
+package geocode
 
 import (
 	"context"
@@ -7,38 +7,38 @@ import (
 	"time"
 )
 
-// fakeGeocodeDocStore はテスト用のインメモリ geocodeDocStore 実装。
-type fakeGeocodeDocStore struct {
+// fakeDocStore はテスト用のインメモリ docStore 実装。
+type fakeDocStore struct {
 	mu   sync.RWMutex
 	docs map[string]map[string]any
 }
 
-func newFakeGeocodeDocStore() *fakeGeocodeDocStore {
-	return &fakeGeocodeDocStore{docs: make(map[string]map[string]any)}
+func newFakeDocStore() *fakeDocStore {
+	return &fakeDocStore{docs: make(map[string]map[string]any)}
 }
 
-func (f *fakeGeocodeDocStore) get(_ context.Context, docID string) (map[string]any, bool) {
+func (f *fakeDocStore) get(_ context.Context, docID string) (map[string]any, bool) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	d, ok := f.docs[docID]
 	return d, ok
 }
 
-func (f *fakeGeocodeDocStore) set(_ context.Context, docID string, data map[string]any) error {
+func (f *fakeDocStore) set(_ context.Context, docID string, data map[string]any) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.docs[docID] = data
 	return nil
 }
 
-func newTestGeocodeCache(store geocodeDocStore) *firestoreGeocodeCache {
-	return &firestoreGeocodeCache{store: store}
+func newTestCache(store docStore) *FirestoreCache {
+	return &FirestoreCache{store: store}
 }
 
 func TestGeocodeCache_SetDoesNotStoreAddress(t *testing.T) {
-	store := newFakeGeocodeDocStore()
-	c := newTestGeocodeCache(store)
-	result := &GeocodeResult{Lat: 35.6895, Lng: 139.6917}
+	store := newFakeDocStore()
+	c := newTestCache(store)
+	result := &Result{Lat: 35.6895, Lng: 139.6917}
 
 	c.Set(context.Background(), "東京都千代田区丸の内1-1-1", result)
 
@@ -53,9 +53,9 @@ func TestGeocodeCache_SetDoesNotStoreAddress(t *testing.T) {
 }
 
 func TestGeocodeCache_SetThenGet(t *testing.T) {
-	store := newFakeGeocodeDocStore()
-	c := newTestGeocodeCache(store)
-	want := &GeocodeResult{Lat: 35.6895, Lng: 139.6917}
+	store := newFakeDocStore()
+	c := newTestCache(store)
+	want := &Result{Lat: 35.6895, Lng: 139.6917}
 
 	c.Set(context.Background(), "東京都千代田区", want)
 	got, ok := c.Get(context.Background(), "東京都千代田区")
@@ -69,7 +69,7 @@ func TestGeocodeCache_SetThenGet(t *testing.T) {
 }
 
 func TestGeocodeCache_GetMissOnEmpty(t *testing.T) {
-	c := newTestGeocodeCache(newFakeGeocodeDocStore())
+	c := newTestCache(newFakeDocStore())
 	_, ok := c.Get(context.Background(), "存在しない住所")
 	if ok {
 		t.Fatal("expected miss on empty store")
@@ -77,9 +77,9 @@ func TestGeocodeCache_GetMissOnEmpty(t *testing.T) {
 }
 
 func TestGeocodeCache_GetMissOnExpiredTTL(t *testing.T) {
-	store := newFakeGeocodeDocStore()
-	c := newTestGeocodeCache(store)
-	result := &GeocodeResult{Lat: 35.0, Lng: 135.0}
+	store := newFakeDocStore()
+	c := newTestCache(store)
+	result := &Result{Lat: 35.0, Lng: 135.0}
 
 	c.Set(context.Background(), "address", result)
 
@@ -95,11 +95,11 @@ func TestGeocodeCache_GetMissOnExpiredTTL(t *testing.T) {
 }
 
 func TestGeocodeCache_TTLIs30Days(t *testing.T) {
-	store := newFakeGeocodeDocStore()
-	c := newTestGeocodeCache(store)
+	store := newFakeDocStore()
+	c := newTestCache(store)
 
 	before := time.Now()
-	c.Set(context.Background(), "address", &GeocodeResult{Lat: 35.0, Lng: 135.0})
+	c.Set(context.Background(), "address", &Result{Lat: 35.0, Lng: 135.0})
 	after := time.Now()
 
 	key := c.cacheKey("address")
@@ -116,9 +116,9 @@ func TestGeocodeCache_TTLIs30Days(t *testing.T) {
 	}
 }
 
-func TestNewFirestoreGeocodeCache_NilClientReturnsNoop(t *testing.T) {
-	cache := NewFirestoreGeocodeCache(nil)
-	if _, isNoop := cache.(*noopGeocodeCache); !isNoop {
-		t.Errorf("expected *noopGeocodeCache, got %T", cache)
+func TestNewFirestoreCache_NilClientReturnsNoop(t *testing.T) {
+	cache := NewFirestoreCache(nil)
+	if _, isNoop := cache.(*noopCache); !isNoop {
+		t.Errorf("expected *noopCache, got %T", cache)
 	}
 }
