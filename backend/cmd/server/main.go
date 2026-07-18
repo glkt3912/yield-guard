@@ -12,6 +12,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/yield-guard/backend/internal/api"
+	"github.com/yield-guard/backend/internal/geocode"
 	"github.com/yield-guard/backend/internal/logger"
 	"github.com/yield-guard/backend/internal/mlit"
 	"github.com/yield-guard/backend/internal/service"
@@ -78,7 +79,7 @@ func main() {
 	}
 
 	mlitClient := mlit.NewClientWithFirestore(mlitAPIKey, fsClient)
-	geocodeClient := api.NewNominatimGeocodeClient(api.NewFirestoreGeocodeCache(fsClient))
+	geocodeClient := geocode.NewNominatimClient(geocode.NewFirestoreCache(fsClient))
 	scoreSvc := service.NewInvestmentScoreService(mlitClient)
 	handler := api.NewHandler(mlitClient, geocodeClient, scoreSvc)
 	router := api.NewRouter(handler, appInternalAPIKey)

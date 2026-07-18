@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yield-guard/backend/internal/ai"
 	"github.com/yield-guard/backend/internal/domain"
+	"github.com/yield-guard/backend/internal/geocode"
 	"github.com/yield-guard/backend/internal/mlit"
 	"github.com/yield-guard/backend/internal/service"
 )
@@ -105,9 +106,9 @@ func (h *Handler) GetGeocode(c *gin.Context) {
 	result, err := h.geocodeClient.Geocode(c.Request.Context(), address)
 	if err != nil {
 		switch {
-		case errors.Is(err, errGeocodeNotConfigured):
+		case errors.Is(err, geocode.ErrNotConfigured):
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "ジオコーディングが設定されていません"})
-		case errors.Is(err, errGeocodeNotFound):
+		case errors.Is(err, geocode.ErrNotFound):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "住所が見つかりませんでした。丁目・番地まで入力してください"})
 		default:
 			slog.WarnContext(c.Request.Context(), "geocode upstream error", "error", err)
@@ -116,5 +117,9 @@ func (h *Handler) GetGeocode(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, GeocodeResult{
+		Lat:          result.Lat,
+		Lng:          result.Lng,
+		LocationType: result.LocationType,
+	})
 }
