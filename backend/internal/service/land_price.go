@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
 )
@@ -71,7 +74,10 @@ func (s *LandPriceAnalysisService) Estimate(ctx context.Context, q mlit.LandPric
 	if err != nil {
 		return domain.TheoreticalPriceResult{}, err
 	}
-	result, ok := domain.EstimateTheoreticalPrice(ctx, stats, in)
+	spanCtx, span := otel.Tracer(domainTracerName).Start(ctx, "domain.EstimateTheoreticalPrice")
+	defer span.End() // 純粋計算だが panic 時も確実に span を閉じる
+	span.SetAttributes(attribute.Int("domain.transaction_count", stats.Count))
+	result, ok := domain.EstimateTheoreticalPrice(spanCtx, stats, in)
 	if !ok {
 		return domain.TheoreticalPriceResult{}, ErrEstimateDataInsufficient
 	}

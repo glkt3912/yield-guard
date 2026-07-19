@@ -4,9 +4,6 @@ import (
 	"context"
 	"math"
 	"sync"
-
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 const dscrSafeThreshold = 1.2
@@ -345,13 +342,6 @@ func calcAllStressScenarios(ctx context.Context, input InvestmentInput) []Stress
 // 上乗せされる（resolveRateForYear の仕様による）。
 // この挙動はフロントエンドの注釈で明示されている。
 func calcStressScenario(ctx context.Context, base InvestmentInput, label string, rateDelta, vacDelta float64) StressScenarioResult {
-	_, span := otel.Tracer(domainTracerName).Start(ctx, "domain.calcStressScenario")
-	defer span.End()
-	span.SetAttributes(
-		attribute.String("domain.stress.label", label),
-		attribute.Float64("domain.stress.rate_delta", rateDelta),
-		attribute.Float64("domain.stress.vac_delta", vacDelta),
-	)
 	in := base
 
 	effectiveVacancy := in.VacancyRate + vacDelta

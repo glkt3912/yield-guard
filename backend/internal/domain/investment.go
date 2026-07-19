@@ -4,14 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sort"
-
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
-	domainTracerName = "domain"
-
 	// SqmPerTsubo は 1坪あたりの平方メートル数（mlit パッケージからも参照）
 	SqmPerTsubo = 3.30578
 
@@ -24,14 +19,6 @@ const (
 
 // Analyze は投資入力値から収支シミュレーション結果を算出する
 func Analyze(ctx context.Context, input InvestmentInput) InvestmentResult {
-	ctx, span := otel.Tracer(domainTracerName).Start(ctx, "domain.Analyze")
-	defer span.End()
-	span.SetAttributes(
-		attribute.Float64("domain.land_price", input.LandPrice),
-		attribute.Float64("domain.building_cost", input.BuildingCost),
-		attribute.Float64("domain.loan_amount", input.LoanAmount),
-	)
-
 	input.Defaults()
 
 	yp := initYieldParams(input)
@@ -184,10 +171,6 @@ func CalcDSCR(noi, annualDebtService float64) float64 {
 
 // CalcLandPriceStats は取引データから統計を算出する
 func CalcLandPriceStats(ctx context.Context, transactions []LandTransaction) LandPriceStats {
-	_, span := otel.Tracer(domainTracerName).Start(ctx, "domain.CalcLandPriceStats")
-	defer span.End()
-	span.SetAttributes(attribute.Int("domain.transaction_count", len(transactions)))
-
 	if len(transactions) == 0 {
 		return LandPriceStats{}
 	}

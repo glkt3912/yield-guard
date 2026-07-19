@@ -5,9 +5,6 @@ import (
 	"math"
 	"sort"
 	"time"
-
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -35,10 +32,6 @@ type TheoreticalPriceInput struct {
 //   RidershipCorrection  = RidershipCorrectionFactor(score) if score != ""
 //   TheoreticalPrice     = medianTsubo × (1+AgeCorr) × (1+StationCorr) × (1+RidershipCorr) × (area/SqmPerTsubo)
 func EstimateTheoreticalPrice(ctx context.Context, stats LandPriceStats, input TheoreticalPriceInput) (TheoreticalPriceResult, bool) {
-	_, span := otel.Tracer(domainTracerName).Start(ctx, "domain.EstimateTheoreticalPrice")
-	defer span.End()
-	span.SetAttributes(attribute.Int("domain.transaction_count", stats.Count))
-
 	if stats.MedianTsubo == 0 || input.LandArea <= 0 || input.ListingPrice <= 0 {
 		return TheoreticalPriceResult{}, false
 	}
