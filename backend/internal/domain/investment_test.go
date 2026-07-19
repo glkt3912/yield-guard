@@ -3285,7 +3285,6 @@ func TestCalcYieldDifficulty(t *testing.T) {
 		budget      float64
 		targetYield float64
 		wantDiff    string
-		wantLabel   string
 	}{
 		{
 			name:        "medianTsubo=0 returns empty",
@@ -3293,7 +3292,6 @@ func TestCalcYieldDifficulty(t *testing.T) {
 			budget:      0,
 			targetYield: 0.08,
 			wantDiff:    "",
-			wantLabel:   "",
 		},
 		{
 			name:        "no budget, low tsubo price -> achievable",
@@ -3301,8 +3299,7 @@ func TestCalcYieldDifficulty(t *testing.T) {
 			budget:      0,
 			targetYield: 0.08,
 			// totalCostEst=100000*30+10000000=13000000, rentPerTsubo=13000000*0.08/12/30≈288
-			wantDiff:  "achievable",
-			wantLabel: "達成可能",
+			wantDiff: "achievable",
 		},
 		{
 			name:        "no budget, high tsubo price -> difficult",
@@ -3310,8 +3307,7 @@ func TestCalcYieldDifficulty(t *testing.T) {
 			budget:      0,
 			targetYield: 0.08,
 			// totalCostEst=2000000*30+10000000=70000000, rentPerTsubo=70000000*0.08/12/30≈15556
-			wantDiff:  "difficult",
-			wantLabel: "困難",
+			wantDiff: "difficult",
 		},
 		{
 			name:        "budget mode: cheap area should be achievable",
@@ -3319,8 +3315,7 @@ func TestCalcYieldDifficulty(t *testing.T) {
 			budget:      50_000_000,
 			targetYield: 0.08,
 			// tsuboCount=50000000/100000=500, rentPerTsubo=100000*0.08/12≈667
-			wantDiff:  "achievable",
-			wantLabel: "達成可能",
+			wantDiff: "achievable",
 		},
 		{
 			name:        "budget mode: expensive area should be difficult",
@@ -3328,8 +3323,7 @@ func TestCalcYieldDifficulty(t *testing.T) {
 			budget:      50_000_000,
 			targetYield: 0.08,
 			// rentPerTsubo=3000000*0.08/12=20000
-			wantDiff:  "difficult",
-			wantLabel: "困難",
+			wantDiff: "difficult",
 		},
 		{
 			name:        "budget mode: different areas give different results (not all same)",
@@ -3337,18 +3331,14 @@ func TestCalcYieldDifficulty(t *testing.T) {
 			budget:      50_000_000,
 			targetYield: 0.08,
 			// rentPerTsubo=500000*0.08/12≈3333
-			wantDiff:  "achievable",
-			wantLabel: "達成可能",
+			wantDiff: "achievable",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDiff, gotLabel := CalcYieldDifficulty(tt.medianTsubo, tt.budget, tt.targetYield)
+			gotDiff := CalcYieldDifficulty(tt.medianTsubo, tt.budget, tt.targetYield)
 			if gotDiff != tt.wantDiff {
 				t.Errorf("difficulty: got %q, want %q", gotDiff, tt.wantDiff)
-			}
-			if gotLabel != tt.wantLabel {
-				t.Errorf("label: got %q, want %q", gotLabel, tt.wantLabel)
 			}
 		})
 	}
@@ -3357,8 +3347,8 @@ func TestCalcYieldDifficulty(t *testing.T) {
 	t.Run("budget mode produces area-dependent results", func(t *testing.T) {
 		budget := 50_000_000.0
 		yield := 0.08
-		cheapDiff, _ := CalcYieldDifficulty(100_000, budget, yield)
-		expensiveDiff, _ := CalcYieldDifficulty(3_000_000, budget, yield)
+		cheapDiff := CalcYieldDifficulty(100_000, budget, yield)
+		expensiveDiff := CalcYieldDifficulty(3_000_000, budget, yield)
 		if cheapDiff == expensiveDiff {
 			t.Errorf("budget mode should give different difficulty for cheap (%s) vs expensive (%s) areas",
 				cheapDiff, expensiveDiff)
