@@ -50,13 +50,16 @@ func NewInvestmentAnalysisService(client InvestmentMLITClient, summarizer ai.Sum
 }
 
 func (s *InvestmentAnalysisService) Analyze(ctx context.Context, input domain.InvestmentInput) domain.InvestmentResult {
-	ctx, span := otel.Tracer(domainTracerName).Start(ctx, "domain.Analyze")
+	// span は domain.Analyze の計算のみを計測する。ctx を上書きすると span 終了後に走る
+	// AI 要約 goroutine が「終了済み span」を親とする ctx を受け取ってしまうため、
+	// 計算用には別の spanCtx を渡し、元の ctx は汚さない。
+	spanCtx, span := otel.Tracer(domainTracerName).Start(ctx, "domain.Analyze")
 	span.SetAttributes(
 		attribute.Float64("domain.land_price", input.LandPrice),
 		attribute.Float64("domain.building_cost", input.BuildingCost),
 		attribute.Float64("domain.loan_amount", input.LoanAmount),
 	)
-	result := domain.Analyze(ctx, input)
+	result := domain.Analyze(spanCtx, input)
 	span.End()
 
 	// run Gemini in background; collect result within remaining context budget
