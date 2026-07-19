@@ -222,12 +222,13 @@ func CalcLandPriceStats(ctx context.Context, transactions []LandTransaction) Lan
 	}
 }
 
-// CalcYieldDifficulty は坪単価中央値・予算・目標利回りから利回り達成難易度を返す。
-// difficulty は "achievable" | "slightly-difficult" | "difficult"。
-// medianTsubo が 0 の場合は ("", "") を返す。
-func CalcYieldDifficulty(medianTsubo, budget, targetYield float64) (difficulty, label string) {
+// CalcYieldDifficulty は坪単価中央値・予算・目標利回りから利回り達成難易度コードを返す。
+// 戻り値は "achievable" | "slightly-difficult" | "difficult"。
+// medianTsubo が 0 の場合は "" を返す。
+// 日本語表示ラベルへの変換は呼び出し側（service 層）が担う。
+func CalcYieldDifficulty(medianTsubo, budget, targetYield float64) (difficulty string) {
 	if medianTsubo <= 0 {
-		return "", ""
+		return ""
 	}
 	var rentPerTsubo float64
 	if budget > 0 {
@@ -244,11 +245,11 @@ func CalcYieldDifficulty(medianTsubo, budget, targetYield float64) (difficulty, 
 	}
 	switch {
 	case rentPerTsubo <= 8000:
-		return "achievable", "達成可能"
+		return "achievable"
 	case rentPerTsubo <= 15000:
-		return "slightly-difficult", "やや困難"
+		return "slightly-difficult"
 	default:
-		return "difficult", "困難"
+		return "difficult"
 	}
 }
 

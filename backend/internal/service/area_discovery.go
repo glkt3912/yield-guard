@@ -19,6 +19,22 @@ import (
 // 全市区町村を対象にするとタイムアウトリスクがあるため制限する（東京都は62市区町村）。
 const areaDiscoveryLimit = 30
 
+// yieldDifficultyLabelFor は domain.CalcYieldDifficulty のコード値を日本語表示ラベルへ変換する。
+// 表示文言は domain（純粋計算層）から分離し service 層で管理する。
+// 未知コード・空コード（データ不足）は "" を返し、呼び出し側のフォールバックに委ねる。
+func yieldDifficultyLabelFor(code string) string {
+	switch code {
+	case "achievable":
+		return "達成可能"
+	case "slightly-difficult":
+		return "やや困難"
+	case "difficult":
+		return "困難"
+	default:
+		return ""
+	}
+}
+
 // AreaMLITClient はエリア探索に必要な国交省APIのサブセット
 type AreaMLITClient interface {
 	FetchMunicipalities(ctx context.Context, area string) ([]mlit.Municipality, error)
@@ -108,7 +124,8 @@ func (s *AreaDiscoveryService) Discover(ctx context.Context, prefecture string, 
 			item.MedianTsubo = stats.MedianTsubo
 			item.TransactionCount = stats.Count
 			item.DataSufficient = stats.Count >= 3
-			item.YieldDifficulty, item.YieldDifficultyLabel = domain.CalcYieldDifficulty(stats.MedianTsubo, budget, targetYield)
+			item.YieldDifficulty = domain.CalcYieldDifficulty(stats.MedianTsubo, budget, targetYield)
+			item.YieldDifficultyLabel = yieldDifficultyLabelFor(item.YieldDifficulty)
 
 			item.LandPriceTrend = domain.CalcLandPriceTrend(transactions)
 			results[idx] = item
@@ -172,7 +189,8 @@ func (s *AreaDiscoveryService) Summarize(ctx context.Context, area, municipality
 		item.MedianTsubo = stats.MedianTsubo
 		item.TransactionCount = stats.Count
 		item.DataSufficient = stats.Count >= 3
-		item.YieldDifficulty, item.YieldDifficultyLabel = domain.CalcYieldDifficulty(stats.MedianTsubo, budget, targetYield)
+		item.YieldDifficulty = domain.CalcYieldDifficulty(stats.MedianTsubo, budget, targetYield)
+		item.YieldDifficultyLabel = yieldDifficultyLabelFor(item.YieldDifficulty)
 		if item.YieldDifficultyLabel == "" {
 			item.YieldDifficulty = "unknown"
 			item.YieldDifficultyLabel = "データ不足"
