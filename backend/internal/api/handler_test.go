@@ -292,7 +292,30 @@ func (m *mockLocationService) CalcScoreForTile(ctx context.Context, z, x, y int)
 	if m.calcScoreFunc != nil {
 		return m.calcScoreFunc(ctx, z, x, y)
 	}
-	return domain.CalcInvestmentScore(domain.InvestmentScoreInput{}), nil
+	// 実 service.InvestmentScoreService と同様、domain が返すコード値 grade を日本語ラベルへ
+	// 変換してから返す（本番 LocationService の出力契約に合わせ、grade が code のまま漏れるのを防ぐ）。
+	result := domain.CalcInvestmentScore(domain.InvestmentScoreInput{})
+	result.Grade = testGradeLabel(result.Grade)
+	return result, nil
+}
+
+// testGradeLabel は service.gradeLabelFor と同じ変換。
+// テストからは service パッケージの unexported 関数を参照できないため複製している。
+func testGradeLabel(code string) string {
+	switch code {
+	case "excellent":
+		return "優良"
+	case "good":
+		return "良好"
+	case "average":
+		return "普通"
+	case "caution":
+		return "注意"
+	case "warning":
+		return "要注意"
+	default:
+		return code
+	}
 }
 
 // stubSummarizer は ai.Summarizer のテスト用スタブ。

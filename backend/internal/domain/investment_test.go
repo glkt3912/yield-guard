@@ -2539,8 +2539,8 @@ func TestCalcInvestmentScore_EmptyInput(t *testing.T) {
 	if result.TotalScore != 50 {
 		t.Errorf("empty input should yield base score 50, got %d", result.TotalScore)
 	}
-	if result.Grade != "普通" {
-		t.Errorf("empty input grade = %q, want 普通", result.Grade)
+	if result.Grade != "average" {
+		t.Errorf("empty input grade = %q, want average", result.Grade)
 	}
 	if len(result.Breakdown.RadarData) != 5 {
 		t.Errorf("expected 5 radar categories, got %d", len(result.Breakdown.RadarData))
