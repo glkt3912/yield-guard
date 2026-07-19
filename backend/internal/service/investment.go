@@ -6,10 +6,17 @@ import (
 	"log/slog"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/yield-guard/backend/internal/ai"
 	"github.com/yield-guard/backend/internal/concurrent"
 	"github.com/yield-guard/backend/internal/domain"
 )
+
+// domainTracerName は domain 計算をラップする span のトレーサ名。
+// 従来 domain パッケージ内で生成していた span を service 層から発行するために使う。
+const domainTracerName = "domain"
 
 // InvestmentMLITClient は投資分析に必要な国交省APIのサブセット
 type InvestmentMLITClient interface {
@@ -43,7 +50,14 @@ func NewInvestmentAnalysisService(client InvestmentMLITClient, summarizer ai.Sum
 }
 
 func (s *InvestmentAnalysisService) Analyze(ctx context.Context, input domain.InvestmentInput) domain.InvestmentResult {
+	ctx, span := otel.Tracer(domainTracerName).Start(ctx, "domain.Analyze")
+	span.SetAttributes(
+		attribute.Float64("domain.land_price", input.LandPrice),
+		attribute.Float64("domain.building_cost", input.BuildingCost),
+		attribute.Float64("domain.loan_amount", input.LoanAmount),
+	)
 	result := domain.Analyze(ctx, input)
+	span.End()
 
 	// run Gemini in background; collect result within remaining context budget
 	aiCh := make(chan string, 1)

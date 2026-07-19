@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/mlit"
 )
@@ -71,7 +74,10 @@ func (s *LandPriceAnalysisService) Estimate(ctx context.Context, q mlit.LandPric
 	if err != nil {
 		return domain.TheoreticalPriceResult{}, err
 	}
+	ctx, span := otel.Tracer(domainTracerName).Start(ctx, "domain.EstimateTheoreticalPrice")
+	span.SetAttributes(attribute.Int("domain.transaction_count", stats.Count))
 	result, ok := domain.EstimateTheoreticalPrice(ctx, stats, in)
+	span.End()
 	if !ok {
 		return domain.TheoreticalPriceResult{}, ErrEstimateDataInsufficient
 	}
