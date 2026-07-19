@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yield-guard/backend/internal/ai"
 	"github.com/yield-guard/backend/internal/domain"
 	"github.com/yield-guard/backend/internal/geocode"
 	"github.com/yield-guard/backend/internal/mlit"
@@ -294,16 +295,38 @@ func (m *mockLocationService) CalcScoreForTile(ctx context.Context, z, x, y int)
 	return domain.CalcInvestmentScore(domain.InvestmentScoreInput{}), nil
 }
 
+// stubSummarizer は ai.Summarizer のテスト用スタブ。
+// area は GenerateAreaSummary の戻り値（空文字ならハンドラ側の fallback が働く）。
+type stubSummarizer struct{ area string }
+
+func (s stubSummarizer) GenerateSummary(_ context.Context, _ domain.InvestmentInput, _ domain.InvestmentResult) string {
+	return ""
+}
+func (s stubSummarizer) GenerateAreaSummary(_ context.Context, _ domain.AreaDiscoveryItem) string {
+	return s.area
+}
+
 // newTestRouter はモッククライアントを使ったテスト用ルーターを返す。
-// locationSvc が nil の場合は mlitClient を使った InvestmentScoreService を生成する。
+// Summarizer は noop 相当（空文字）を注入する。
 func newTestRouter(client *mockMLITClient, geocodeClient GeocodeClient, locationSvc ...service.LocationService) *gin.Engine {
+	return newTestRouterWithSummarizer(client, geocodeClient, stubSummarizer{}, locationSvc...)
+}
+
+// newTestRouterWithSummarizer は Summarizer を明示注入できるテスト用ルーターを返す。
+// locationSvc が nil の場合は mlitClient を使った InvestmentScoreService を生成する。
+func newTestRouterWithSummarizer(client *mockMLITClient, geocodeClient GeocodeClient, summarizer ai.Summarizer, locationSvc ...service.LocationService) *gin.Engine {
 	var svc service.LocationService
 	if len(locationSvc) > 0 && locationSvc[0] != nil {
 		svc = locationSvc[0]
 	} else {
 		svc = service.NewInvestmentScoreService(client)
 	}
-	h := NewHandler(client, geocodeClient, svc)
+	h := NewHandler(HandlerDeps{
+		MLIT:       client,
+		Geocode:    geocodeClient,
+		Summarizer: summarizer,
+		Location:   svc,
+	})
 	return NewRouter(h, os.Getenv("APP_INTERNAL_API_KEY"))
 }
 
