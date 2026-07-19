@@ -12,16 +12,16 @@ func TestGradeFromScore_Boundaries(t *testing.T) {
 		score int
 		want  string
 	}{
-		{100, "優良"},
-		{80, "優良"},
-		{79, "良好"},
-		{65, "良好"},
-		{64, "普通"},
-		{50, "普通"},
-		{49, "注意"},
-		{35, "注意"},
-		{34, "要注意"},
-		{0, "要注意"},
+		{100, "excellent"},
+		{80, "excellent"},
+		{79, "good"},
+		{65, "good"},
+		{64, "average"},
+		{50, "average"},
+		{49, "caution"},
+		{35, "caution"},
+		{34, "warning"},
+		{0, "warning"},
 	}
 	for _, tc := range tests {
 		got := gradeFromScore(tc.score)

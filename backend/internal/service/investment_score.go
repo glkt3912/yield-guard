@@ -166,5 +166,27 @@ func (s *InvestmentScoreService) CalcScoreForTile(ctx context.Context, z, x, y i
 		input.HasLandPriceTrend = true
 	}
 
-	return domain.CalcInvestmentScore(input), nil
+	result := domain.CalcInvestmentScore(input)
+	// domain はコード値を返す。API 契約（grade は日本語）を維持するため service で変換する。
+	result.Grade = gradeLabelFor(result.Grade)
+	return result, nil
+}
+
+// gradeLabelFor は domain.CalcInvestmentScore が返す評価コードを日本語表示ラベルへ変換する。
+// 表示文言は domain（純粋計算層）から分離し service 層で管理する。
+func gradeLabelFor(code string) string {
+	switch code {
+	case "excellent":
+		return "優良"
+	case "good":
+		return "良好"
+	case "average":
+		return "普通"
+	case "caution":
+		return "注意"
+	case "warning":
+		return "要注意"
+	default:
+		return code
+	}
 }

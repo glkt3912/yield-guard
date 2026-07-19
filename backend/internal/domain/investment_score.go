@@ -64,18 +64,21 @@ func CalcInvestmentScore(input InvestmentScoreInput) InvestmentScoreResult {
 	}
 }
 
+// gradeFromScore は総合スコアから評価コードを返す。
+// 戻り値は "excellent" | "good" | "average" | "caution" | "warning"。
+// 日本語表示ラベルへの変換は呼び出し側（service 層）が担う。
 func gradeFromScore(score int) string {
 	switch {
 	case score >= 80:
-		return "優良"
+		return "excellent"
 	case score >= 65:
-		return "良好"
+		return "good"
 	case score >= 50:
-		return "普通"
+		return "average"
 	case score >= 35:
-		return "注意"
+		return "caution"
 	default:
-		return "要注意"
+		return "warning"
 	}
 }
 
