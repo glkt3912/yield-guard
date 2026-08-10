@@ -47,3 +47,9 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-dom"
         update-types: ["version-update:semver-major"]
+      # openapi-typescript の peer が typescript@^5.x のため TS7 は npm ci が通らない
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # eslint-config-next が依存する eslint-plugin-react が ESLint 10 未対応
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
