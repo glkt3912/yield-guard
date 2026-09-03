@@ -4,7 +4,7 @@
 
 Yield-Guard: Japan real estate investment tool. Fetches MLIT land transaction data; visualizes gross yield, dead-cross, exit equity.
 
-- **Backend**: Go 1.25 / Gin / Clean Architecture → Cloud Run (`backend/`)
+- **Backend**: Go 1.27 / Gin / Clean Architecture → Cloud Run (`backend/`)
 - **Frontend**: Next.js 16 (App Router) / TypeScript / Tailwind CSS v4 / Shadcn/UI → Vercel (`frontend/`)
 - **Data**: 国土交通省 不動産情報ライブラリ API (`reinfolib.mlit.go.jp`) — requires `MLIT_API_KEY`
 
