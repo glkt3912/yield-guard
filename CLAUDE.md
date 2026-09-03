@@ -29,6 +29,14 @@ Copy `.env.example` → `.env`. Key vars: `MLIT_API_KEY`, `APP_INTERNAL_API_KEY`
 - **Commits**: English, small logical units
 - **PR title/body**: Japanese; follow `.github/pull_request_template.md`
 - **No `Co-Authored-By`** in commits
+- **ADR**: 次のいずれかに該当する変更は `docs/adr/` に ADR を追加してから実装する
+  - 既存機能と目的が重複する機能の追加
+  - ユーザーに見せる指標・入口・既定値の変更
+  - 「両方用意する」という結論に至った判断
+
+  「検討した案」を「決定」より先に書き、「却下した案」は空欄にしない。
+  両方残す場合は既定・降格・降格側の復活条件を「決定」欄に書く。
+  テンプレートと運用は `docs/adr/README.md`
 
 ## MCP servers
 
