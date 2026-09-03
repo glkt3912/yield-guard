@@ -1,6 +1,6 @@
 # backend/
 
-Go 1.25 / Gin / Clean Architecture → Cloud Run。ルートの `CLAUDE.md` の運用規則がここでも適用される。
+Go 1.27 / Gin / Clean Architecture → Cloud Run。ルートの `CLAUDE.md` の運用規則がここでも適用される。
 
 作業を始める前に `docs/llm/backend.md`（重要ファイル・エンドポイント追加手順・swag 記法）を読む。
 
