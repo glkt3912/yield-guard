@@ -132,8 +132,11 @@ SA（Service Account）を用途ごとに分離し、最小権限を実現して
 |---|---|---|---|
 | deployer | `sa-yield-guard-prod-deployer@...` | GitHub Actions / Terraform 専用 | `projectIamAdmin`, `serviceAccountAdmin`, `artifactregistry.repoAdmin`, `run.developer`, `storage.admin`（tfstate のみ） |
 | runtime | `sa-yield-guard-prod@...` | Cloud Run アプリ実行専用 | `secretmanager.secretAccessor`, `cloudtrace.agent`, `monitoring.metricWriter` |
+| scheduler | `sa-yield-guard-prod-scheduler@...` | Cloud Scheduler が `/warm` を呼ぶときの OIDC トークン発行元（身元の証明にだけ使う） | なし（deployer が actAs できるのみ） |
 
 **分離の背景**: 以前は CI/CD とランタイムが同一 SA を共有していた。`terraform apply` に必要な `projectIamAdmin` がランタイム SA にも付与されており、アプリ脆弱性経由で GCP プロジェクト全体を掌握できる権限昇格リスクがあった（Issue #188 対応）。
+
+**scheduler SA の背景**: `/warm` は以前、共有キー（`X-Internal-Key`）で認証していた。そのためキーを Scheduler のジョブ定義に書く必要があり、tfstate に平文で残っていた。現在は、キーの代わりにこの SA 名義の Google 署名付きトークンで認証している（Issue #886、詳細は [security.md](security.md) の「/warm の OIDC 認証」）。
 
 ### Workload Identity Federation（WIF）
 
