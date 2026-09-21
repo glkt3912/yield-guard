@@ -66,7 +66,7 @@ resource "google_cloud_run_v2_service" "backend" {
       }
 
       dynamic "env" {
-        for_each = var.gemini_api_key != "" ? [1] : []
+        for_each = var.enable_gemini_summary ? [1] : []
         content {
           name = "GEMINI_API_KEY"
           value_source {

@@ -14,28 +14,15 @@ variable "env" {
   type        = string
 }
 
-variable "mlit_api_key" {
-  description = "MLIT Reinfolib API subscription key"
-  type        = string
-  sensitive   = true
-}
-
-variable "app_internal_api_key" {
-  description = "Shared secret for Vercel-to-Cloud-Run internal auth"
-  type        = string
-  sensitive   = true
-}
-
 variable "vercel_frontend_url" {
   description = "Vercel frontend URL set as ALLOW_ORIGINS on the backend"
   type        = string
 }
 
-variable "gemini_api_key" {
-  description = "Google AI Studio API key for Gemini AI investment summary"
-  type        = string
-  sensitive   = true
-  default     = ""
+variable "enable_gemini_summary" {
+  description = "Inject GEMINI_API_KEY into Cloud Run. Add a version to gemini-api-key-<env> via gcloud before enabling."
+  type        = bool
+  default     = false
 }
 
 variable "billing_account_id" {
