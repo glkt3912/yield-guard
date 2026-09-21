@@ -78,7 +78,7 @@ func recoveryMiddleware() gin.HandlerFunc {
 }
 
 // NewRouter は Gin ルーターを初期化して返す
-func NewRouter(h *Handler, appInternalAPIKey string) *gin.Engine {
+func NewRouter(h *Handler, appInternalAPIKey string, warmup WarmupAuth) *gin.Engine {
 	r := gin.New()
 
 	r.Use(otelgin.Middleware("yield-guard-backend"))
@@ -122,7 +122,7 @@ func NewRouter(h *Handler, appInternalAPIKey string) *gin.Engine {
 	analyzeRL := newRateLimiter(rate.Every(6*time.Second), 5)
 
 	r.GET("/health", h.HealthCheck)
-	r.POST("/warm", internalKeyMiddleware(appInternalAPIKey), h.WarmCache)
+	r.POST("/warm", schedulerOIDCMiddleware(warmup), h.WarmCache)
 
 	api := r.Group("/api")
 	api.Use(internalKeyMiddleware(appInternalAPIKey))

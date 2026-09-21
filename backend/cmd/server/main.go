@@ -89,7 +89,15 @@ func main() {
 		Summarizer: summarizer,
 		Location:   scoreSvc,
 	})
-	router := api.NewRouter(handler, appInternalAPIKey)
+	warmupAuth := api.WarmupAuth{
+		Audience:     os.Getenv("WARMUP_AUDIENCE"),
+		InvokerEmail: os.Getenv("WARMUP_INVOKER_EMAIL"),
+	}
+	if os.Getenv("GIN_MODE") == "release" && (warmupAuth.Audience == "" || warmupAuth.InvokerEmail == "") {
+		// 起動は止めない（/warm が 401 になるだけでサービス本体には影響しない）
+		slog.Error("WARMUP_AUDIENCE / WARMUP_INVOKER_EMAIL are not set; /warm will reject all requests")
+	}
+	router := api.NewRouter(handler, appInternalAPIKey, warmupAuth)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

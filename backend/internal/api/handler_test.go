@@ -350,7 +350,7 @@ func newTestRouterWithSummarizer(client *mockMLITClient, geocodeClient GeocodeCl
 		Summarizer: summarizer,
 		Location:   svc,
 	})
-	return NewRouter(h, os.Getenv("APP_INTERNAL_API_KEY"))
+	return NewRouter(h, os.Getenv("APP_INTERNAL_API_KEY"), WarmupAuth{})
 }
 
 var validBase = domain.InvestmentInput{

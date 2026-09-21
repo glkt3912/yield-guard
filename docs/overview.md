@@ -135,6 +135,7 @@ go run cmd/server/main.go
 | `MLIT_API_KEY` | 不動産情報ライブラリ APIキー（必須） | — |
 | `APP_INTERNAL_API_KEY` | Vercel-Cloud Run 間の内部通信認証キー。設定時は `/api/*` に `X-Internal-Key` ヘッダーが必要 | 未設定（ローカル開発時はスキップ） |
 | `GOOGLE_CLOUD_PROJECT` | GCP プロジェクト ID。設定時は Cloud Trace / Cloud Monitoring へ OTel データを送信。未設定時は stdout 出力 | 未設定（ローカル開発時は stdout） |
+| `WARMUP_AUDIENCE` / `WARMUP_INVOKER_EMAIL` | `/warm` を呼ぶ Cloud Scheduler の OIDC トークンで期待する audience と SA email。本番では Terraform が設定する | 未設定（ローカル開発時は `/warm` の認証をスキップ） |
 
 **フロントエンド**
 
