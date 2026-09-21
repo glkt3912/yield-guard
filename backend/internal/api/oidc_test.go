@@ -17,6 +17,7 @@ const (
 )
 
 type fakeValidator struct {
+	issuer string // 空なら https://accounts.google.com
 	claims map[string]any
 	err    error
 	// 検証時に渡された値
@@ -30,7 +31,11 @@ func (f *fakeValidator) Validate(_ context.Context, token, audience string) (*id
 	if f.err != nil {
 		return nil, f.err
 	}
-	return &idtoken.Payload{Audience: audience, Claims: f.claims}, nil
+	iss := f.issuer
+	if iss == "" {
+		iss = "https://accounts.google.com"
+	}
+	return &idtoken.Payload{Issuer: iss, Audience: audience, Claims: f.claims}, nil
 }
 
 func serveWarm(t *testing.T, auth WarmupAuth, authHeader string) int {
@@ -60,7 +65,9 @@ func TestSchedulerOIDCMiddleware(t *testing.T) {
 		{"トークン検証失敗", &fakeValidator{err: errors.New("invalid")}, "Bearer tok", http.StatusUnauthorized},
 		{"email 不一致", &fakeValidator{claims: map[string]any{"email": "other@example.com", "email_verified": true}}, "Bearer tok", http.StatusUnauthorized},
 		{"email_verified=false", &fakeValidator{claims: map[string]any{"email": testInvoker, "email_verified": false}}, "Bearer tok", http.StatusUnauthorized},
+		{"Google 以外の発行元", &fakeValidator{issuer: "https://evil.example.com", claims: validClaims}, "Bearer tok", http.StatusUnauthorized},
 		{"正常", &fakeValidator{claims: validClaims}, "Bearer tok", http.StatusOK},
+		{"正常（スキームなし iss）", &fakeValidator{issuer: "accounts.google.com", claims: validClaims}, "Bearer tok", http.StatusOK},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

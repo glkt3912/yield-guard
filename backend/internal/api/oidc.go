@@ -15,6 +15,12 @@ type TokenValidator interface {
 	Validate(ctx context.Context, token, audience string) (*idtoken.Payload, error)
 }
 
+// Google ID トークンの iss。idtoken.Validate は iss を検証しないため自前で確認する
+var googleIssuers = map[string]bool{
+	"https://accounts.google.com": true,
+	"accounts.google.com":         true,
+}
+
 type idtokenValidator struct{}
 
 func (idtokenValidator) Validate(ctx context.Context, token, audience string) (*idtoken.Payload, error) {
@@ -58,6 +64,11 @@ func schedulerOIDCMiddleware(auth WarmupAuth) gin.HandlerFunc {
 		payload, err := v.Validate(c.Request.Context(), token, auth.Audience)
 		if err != nil {
 			slog.Warn("warmup OIDC token rejected", "err", err)
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+		if !googleIssuers[payload.Issuer] {
+			slog.Warn("warmup OIDC token from unexpected issuer", "iss", payload.Issuer)
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
