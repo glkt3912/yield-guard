@@ -31,6 +31,16 @@ Cloud Run バックエンドの URL を知っている者が Vercel を経由せ
 |---|---|
 | `/api/*` | `APP_INTERNAL_API_KEY` 設定時に必須 |
 | `/health` | スキップ（ヘルスチェックは認証不要） |
+| `/warm` | `X-Internal-Key` ではなく Cloud Scheduler の OIDC トークンで認証（下記「/warm の OIDC 認証」） |
+
+### /warm の OIDC 認証
+
+Cloud Scheduler（`warmup-cache-{env}`）は `oidc_token` 付きで `/warm` を呼ぶ。backend の `schedulerOIDCMiddleware`（`backend/internal/api/oidc.go`）が `Authorization: Bearer` の ID トークンを `idtoken.Validate` で検証し、`iss` が Google（`https://accounts.google.com`）、`aud` が `WARMUP_AUDIENCE`、`email` が `WARMUP_INVOKER_EMAIL`（`sa-yield-guard-{env}-scheduler`）と一致し、`email_verified` が true の場合だけ通す。
+
+- Cloud Run は `allUsers` に公開しているため、Cloud Run IAM ではなくアプリ側で検証する
+- 共有キーを Scheduler のヘッダーに書くと、ジョブ定義経由で tfstate に平文で残るため OIDC を使う
+- audience は Cloud Run の自己参照を避けるため、URL ではなく固定文字列 `yield-guard-warmup-{env}` を使う
+- 2 つの環境変数が未設定の場合、ローカル開発では素通し、`GIN_MODE=release` では全リクエストを 401 にする
 
 ### ローカル開発
 
@@ -46,9 +56,8 @@ openssl rand -hex 32
 ```
 
 - Vercel: 環境変数 `APP_INTERNAL_API_KEY` に設定
-- Cloud Run: Secret Manager 経由で注入（`terraform apply` 時に `app_internal_api_key` 変数として設定）
+- Cloud Run: Secret Manager 経由で注入。値は Terraform では扱わず、gcloud で登録する（下記「Secret Manager」）
 
-Secret Manager への手動登録が必要な場合:
 ```bash
 echo -n "your-key-value" | gcloud secrets versions add app-internal-api-key-prod --data-file=-
 ```
@@ -153,11 +162,28 @@ yield-guard はインシデント発生時点で Trivy を未使用だったた�
 | `gemini-api-key-{env}` | `GEMINI_API_KEY` | AI 投資サマリー（Google AI Studio） | — |
 
 - Cloud Run のサービスアカウントには、プロジェクト全体ではなく **対象シークレットのみ** に `roles/secretmanager.secretAccessor` を付与（最小権限）
-- Secret の値は `terraform apply` 時に変数として渡す、または `gcloud` CLI で手動登録する
+- Terraform が管理するのは **シークレットの入れ物（`google_secret_manager_secret`）だけ**。値（secret version）は `gcloud` CLI で手動登録する
+  - Terraform 変数で値を渡すと、GCS 上の tfstate に平文で保存され、state バケットの読み取り権限がシークレットの読み取り権限と等価になるため（#886）
+  - Gemini を有効にする場合は、`gemini-api-key-{env}` にバージョンを登録してから `enable_gemini_summary = true`（CI では GitHub Variable `ENABLE_GEMINI_SUMMARY`、stg は `ENABLE_GEMINI_SUMMARY_STG`）にする。バージョンが 1 つも有効でない状態で `true` にすると Cloud Run の revision が起動しない
 
 ```bash
 echo -n "your-mlit-key" | gcloud secrets versions add mlit-api-key-prod --data-file=-
 ```
+
+### キーのローテーション
+
+backend は **すべてのシークレットを起動時に 1 回だけ読む**（`backend/cmd/server/main.go`）。そのため、どのキーも「新しいバージョンを追加 → Cloud Run の新 revision を作成」しないと反映されない。
+
+1. 新しい値を登録する: `echo -n "<new>" | gcloud secrets versions add <secret>-{env} --data-file=-`
+2. Cloud Run の新しい revision を作成する
+   ```bash
+   gcloud run services update yield-guard-{env}-backend --region asia-northeast1 --update-labels=rotated-at=$(date +%Y%m%d)
+   ```
+3. （app-internal キーのみ）**直後に** Vercel の `APP_INTERNAL_API_KEY` を同じ値に更新し、再デプロイする（Vercel の環境変数は再デプロイしないと反映されない）
+   - backend は新旧どちらか一方のキーしか受け付けないため、2 から 3 の反映が終わるまでの間（数分）は `/api/*` が 401 になる。利用の少ない時間帯に行う
+4. 動作確認後、旧バージョンを無効化する: `gcloud secrets versions disable <旧バージョン番号> --secret=<secret>-{env}`
+   - 外部サービス側のキー（MLIT / Gemini）は、2 の後に旧キーを失効させる。先に失効させると、新 revision ができるまでその機能が止まる
+   - MLIT キーを stg と prod で共有している場合は、両環境で 1〜2 を行ってから旧キーを失効させる
 
 `GEMINI_API_KEY` は [Google AI Studio](https://aistudio.google.com/app/apikey) で取得する。未設定時は AI サマリー機能が無効になるだけで他機能に影響しない。月 ~45,000 リクエストまで無料枠あり（`roles/aiplatform.user` 等の IAM ロール不要）。
 
@@ -185,12 +211,14 @@ Artifact Registry の無料枠（0.5 GB/月）を超えないよう、最新 5 �
 | 名前 | 種別 | 用途 |
 |------|------|------|
 | `GCP_PROJECT_ID` | Secret | `TF_VAR_project_id`（GCP プロジェクト ID） |
-| `MLIT_API_KEY` | Secret | `TF_VAR_mlit_api_key` |
-| `APP_INTERNAL_API_KEY` | Secret | `TF_VAR_app_internal_api_key` |
 | `WIF_PROVIDER` | Secret | OIDC 認証用 WIF プロバイダー |
 | `SA_EMAIL` | Secret | OIDC 認証用 deployer SA |
 | `VERCEL_FRONTEND_URL` | Variable | `TF_VAR_vercel_frontend_url`（CORS 許可オリジン） |
 | `NOTIFICATION_EMAIL` | Variable | `TF_VAR_notification_email`（Cloud Monitoring アラート通知先） |
+| `ENABLE_GEMINI_SUMMARY` | Variable | `TF_VAR_enable_gemini_summary`（`true` で Cloud Run に `GEMINI_API_KEY` を注入。未設定時は `false`） |
+| `ENABLE_GEMINI_SUMMARY_STG` | Variable | stg 実行時の `TF_VAR_enable_gemini_summary`（未設定時は `false`） |
+
+> API キーの値は Terraform CI に渡さない（tfstate に平文で残るため）。値は Secret Manager に gcloud で登録する。
 
 > `TF_VAR_env`（`"prod"`）・`TF_VAR_region`（`"asia-northeast1"`）はワークフロー内にハードコードされており、Secrets / Variables の設定は不要。
 

@@ -38,4 +38,8 @@ locals {
   service_name     = "yield-guard-${var.env}-backend"
   sa_name          = "sa-yield-guard-${var.env}"
   deployer_sa_name = "sa-yield-guard-${var.env}-deployer"
+  # SA and audience for the OIDC token Cloud Scheduler attaches to /warm.
+  # The audience is a fixed string: using the Cloud Run uri would make cloud_run.tf self-referential.
+  scheduler_sa_name = "sa-yield-guard-${var.env}-scheduler"
+  warmup_audience   = "yield-guard-warmup-${var.env}"
 }

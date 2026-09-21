@@ -45,6 +45,16 @@ resource "google_cloud_run_v2_service" "backend" {
         value = "release"
       }
 
+      env {
+        name  = "WARMUP_AUDIENCE"
+        value = local.warmup_audience
+      }
+
+      env {
+        name  = "WARMUP_INVOKER_EMAIL"
+        value = google_service_account.scheduler.email
+      }
+
       volume_mounts {
         name       = "mlit-api-key"
         mount_path = "/secrets/mlit-api-key"
@@ -56,7 +66,7 @@ resource "google_cloud_run_v2_service" "backend" {
       }
 
       dynamic "env" {
-        for_each = var.gemini_api_key != "" ? [1] : []
+        for_each = var.enable_gemini_summary ? [1] : []
         content {
           name = "GEMINI_API_KEY"
           value_source {

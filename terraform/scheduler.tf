@@ -22,9 +22,15 @@ resource "google_cloud_scheduler_job" "warmup_cache" {
     uri         = "${google_cloud_run_v2_service.backend.uri}/warm"
     http_method = "POST"
     headers = {
-      "Content-Type"   = "application/json"
-      "X-Internal-Key" = var.app_internal_api_key
+      "Content-Type" = "application/json"
     }
     body = base64encode("{}")
+
+    oidc_token {
+      service_account_email = google_service_account.scheduler.email
+      audience              = local.warmup_audience
+    }
   }
+
+  depends_on = [google_service_account_iam_member.deployer_act_as_scheduler]
 }
