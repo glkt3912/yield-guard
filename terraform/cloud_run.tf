@@ -45,6 +45,16 @@ resource "google_cloud_run_v2_service" "backend" {
         value = "release"
       }
 
+      env {
+        name  = "WARMUP_AUDIENCE"
+        value = local.warmup_audience
+      }
+
+      env {
+        name  = "WARMUP_INVOKER_EMAIL"
+        value = google_service_account.scheduler.email
+      }
+
       volume_mounts {
         name       = "mlit-api-key"
         mount_path = "/secrets/mlit-api-key"

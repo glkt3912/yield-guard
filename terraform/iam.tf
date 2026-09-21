@@ -10,6 +10,13 @@ resource "google_service_account" "deployer" {
   display_name = "yield-guard ${var.env} deployer (CI/CD)"
 }
 
+# Identity for Cloud Scheduler OIDC tokens (/warm). Holds no roles; the backend
+# verifies the token's email claim against this SA.
+resource "google_service_account" "scheduler" {
+  account_id   = local.scheduler_sa_name
+  display_name = "yield-guard ${var.env} scheduler (OIDC invoker)"
+}
+
 # --- Workload Identity Federation ---
 
 resource "google_iam_workload_identity_pool" "github" {
@@ -93,6 +100,13 @@ resource "google_artifact_registry_repository_iam_member" "deployer_push" {
   location   = var.region
   role       = "roles/artifactregistry.writer"
   member     = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+resource "google_service_account_iam_member" "deployer_act_as_scheduler" {
+  # deployer SA must actAs the scheduler SA to attach it to oidc_token.
+  service_account_id = google_service_account.scheduler.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.deployer.email}"
 }
 
 resource "google_service_account_iam_member" "deployer_act_as_backend" {
