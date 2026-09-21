@@ -1,10 +1,27 @@
-.PHONY: dev backend frontend install install-hooks logs test lint build clean help \
+.PHONY: dev backend frontend install install-hooks install-tools logs test lint build clean help \
         swagger swagger-check \
         mlit-land-prices mlit-municipalities mlit-station-ridership mlit-population-forecast mlit-land-appraisals \
         mlit-urban-zoning mlit-liquefaction mlit-flood-hazard mlit-storm-hazard mlit-tsunami-hazard mlit-landslide-hazard \
         api-station-ridership api-estimate-ridership api-population-forecast api-land-appraisals api-investment-score \
         integration integration-population integration-land-appraisals \
         e2e e2e-ui e2e-report
+
+# Go ツールのバージョン定義（CI と共有する唯一の場所）
+#   .github/workflows/backend-ci.yml がこのファイルから読み取るため、
+#   バージョンを上げるときはここだけを変更する。
+GOLANGCI_VERSION := v2.13.2
+SWAG_VERSION := v1.16.6
+GOLANGCI_EXPECTED := $(GOLANGCI_VERSION:v%=%)
+# backend/go.mod の Go バージョンでツールをビルドする。
+#   golangci-lint は「自身のビルドに使われた Go」が対象モジュールの go ディレクティブより
+#   古いと起動を拒否するため、ローカルの go が古くても go.mod と同じ toolchain を使う。
+GO_VERSION := $(shell sed -n 's/^go \([0-9.]*\)$$/\1/p' backend/go.mod)
+
+# make install-tools の導入先を優先する（PATH に $(go env GOPATH)/bin が無い場合や、
+# brew 版など別バージョンが PATH 上で優先される場合でも CI と同じ版を使うため）。
+GO_BIN_DIR := $(shell go env GOPATH)/bin
+GOLANGCI := $(if $(wildcard $(GO_BIN_DIR)/golangci-lint),$(GO_BIN_DIR)/golangci-lint,golangci-lint)
+SWAG := $(if $(wildcard $(GO_BIN_DIR)/swag),$(GO_BIN_DIR)/swag,swag)
 
 ## dev: バックエンド・フロントエンドの開発サーバーを起動
 dev:
@@ -49,7 +66,11 @@ frontend:
 ## swagger: OpenAPI スキーマを生成 (docs/openapi/swagger.json)
 ##   型ファイルも更新するには別途 cd frontend && npm run generate:types を実行すること
 swagger:
-	cd backend && swag init -g cmd/server/main.go -o ../docs/openapi --outputTypes json --requiredByDefault
+	@command -v $(SWAG) >/dev/null 2>&1 || { \
+	  echo "ERROR: swag が未インストールです。make install-tools を実行してください"; \
+	  exit 1; \
+	}
+	cd backend && $(SWAG) init -g cmd/server/main.go -o ../docs/openapi --outputTypes json --requiredByDefault
 	@echo "==> Generated docs/openapi/swagger.json"
 
 ## swagger-check: swagger.json のドリフトをローカルで確認 (PR 前チェック用)
@@ -71,6 +92,16 @@ install-hooks:
 	  brew install gitleaks; \
 	fi
 	lefthook install
+
+## install-tools: CI と同じバージョンの Go ツール (golangci-lint / swag) を導入
+install-tools:
+	@echo "==> Installing golangci-lint $(GOLANGCI_VERSION) (built with go$(GO_VERSION))"
+	GOTOOLCHAIN=go$(GO_VERSION) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)
+	@echo "==> Installing swag $(SWAG_VERSION)"
+	GOTOOLCHAIN=go$(GO_VERSION) go install github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION)
+	@echo "==> Installed into $(GO_BIN_DIR)"
+	@echo "    make lint / make swagger はこのディレクトリのバイナリを優先して使います"
+	@echo "    直接 golangci-lint / swag を叩く場合は PATH に $(GO_BIN_DIR) を追加してください"
 
 ## logs: Dockerコンテナのログを表示（未起動の場合は案内）
 logs:
@@ -102,7 +133,13 @@ e2e-report:
 ## lint: 全lintを実行
 lint:
 	@echo "==> Backend lint"
-	cd backend && golangci-lint run ./...
+	@command -v $(GOLANGCI) >/dev/null 2>&1 || { \
+	  echo "ERROR: golangci-lint が未インストールです。make install-tools を実行してください"; \
+	  exit 1; \
+	}
+	@$(GOLANGCI) version 2>&1 | grep -q "version $(GOLANGCI_EXPECTED)" || \
+	  echo "WARN: golangci-lint が CI の $(GOLANGCI_VERSION) と異なります。make install-tools で揃います"
+	cd backend && $(GOLANGCI) run ./...
 	@echo "==> Frontend lint"
 	cd frontend && npm run format:check
 	cd frontend && npm run lint

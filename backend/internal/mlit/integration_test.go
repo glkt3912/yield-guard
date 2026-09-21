@@ -4,16 +4,28 @@ package mlit
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 )
+
+// newIntegrationClient は MLIT_API_KEY から実 API 用クライアントを生成する。
+// キーが未設定の場合はテストをスキップする（-tags=integration 付きでのみビルドされる）。
+func newIntegrationClient(t *testing.T) *Client {
+	t.Helper()
+	apiKey := os.Getenv("MLIT_API_KEY")
+	if apiKey == "" {
+		t.Skip("MLIT_API_KEY が未設定のためスキップします")
+	}
+	return NewClient(apiKey)
+}
 
 // TestFetchLandPrices_RealAPI は実際の国交省APIへの疎通を確認する統合テスト。
 // 通常の go test ./... では実行されない。実行するには:
 //
 //	go test -tags=integration ./internal/mlit/... -v -timeout 60s
 func TestFetchLandPrices_RealAPI(t *testing.T) {
-	client := NewClient()
+	client := newIntegrationClient(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -53,7 +65,7 @@ func TestFetchLandPrices_RealAPI(t *testing.T) {
 // TestFetchPopulationForecast_RealAPI は XKT013 将来推計人口APIへの疎通を確認する。
 // 渋谷付近 (z=14, x=14547, y=6451) でテスト。
 func TestFetchPopulationForecast_RealAPI(t *testing.T) {
-	client := NewClient()
+	client := newIntegrationClient(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -94,7 +106,7 @@ func TestFetchPopulationForecast_RealAPI(t *testing.T) {
 // TestFetchPopulationForecast_RealAPI_Rural は地方都市（前橋市付近）での疎通テスト。
 // 都市部より人口減少が大きいエリアの確認用。
 func TestFetchPopulationForecast_RealAPI_Rural(t *testing.T) {
-	client := NewClient()
+	client := newIntegrationClient(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -134,7 +146,7 @@ func TestFetchPopulationForecast_RealAPI_Rural(t *testing.T) {
 // TestFetchLandAppraisals は XCT001 地価公示APIへの疎通を確認する統合テスト。
 // 東京都(area=13)・住宅地(division=00)・2024年のデータを取得してフィールドを検証する。
 func TestFetchLandAppraisals(t *testing.T) {
-	client := NewClient()
+	client := newIntegrationClient(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -161,7 +173,7 @@ func TestFetchLandAppraisals(t *testing.T) {
 
 // TestFetchLandAppraisals_CityFilter は市区町村コードによるフィルタリングの疎通テスト。
 func TestFetchLandAppraisals_CityFilter(t *testing.T) {
-	client := NewClient()
+	client := newIntegrationClient(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -179,7 +191,7 @@ func TestFetchLandAppraisals_CityFilter(t *testing.T) {
 
 // TestFetchLandPrices_RealAPI_WithCity は市区町村コード絞り込みの疎通テスト。
 func TestFetchLandPrices_RealAPI_WithCity(t *testing.T) {
-	client := NewClient()
+	client := newIntegrationClient(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
