@@ -46,7 +46,7 @@ jobs:
       TF_VAR_notification_email: ${{ vars.NOTIFICATION_EMAIL }}
       TF_VAR_billing_account_id: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
       # API key values are not passed to Terraform (they would land in tfstate); see docs/security.md.
-      TF_VAR_enable_gemini_summary: ${{ vars.ENABLE_GEMINI_SUMMARY || 'false' }}
+      TF_VAR_enable_gemini_summary: ${{ inputs.environment == 'stg' && (vars.ENABLE_GEMINI_SUMMARY_STG || 'false') || (vars.ENABLE_GEMINI_SUMMARY || 'false') }}
 
     steps:
       - name: Checkout

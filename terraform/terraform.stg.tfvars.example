@@ -21,7 +21,7 @@
 project_id            = "your-gcp-project-id"
 region                = "asia-northeast1"
 env                   = "stg"
-enable_gemini_summary = false  # true にする前に gemini-api-key-stg へ値を投入すること
+enable_gemini_summary = false  # true にする前に gemini-api-key-stg へ値を投入すること（CI では GitHub Variable ENABLE_GEMINI_SUMMARY_STG）
 vercel_frontend_url   = "https://your-stg-preview.vercel.app"
 notification_email    = "your@email.com"
 billing_account_id    = "XXXXXX-XXXXXX-XXXXXX"  # gcloud billing accounts list で確認
