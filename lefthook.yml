@@ -12,7 +12,19 @@ pre-commit:
         fi
     go-lint:
       glob: "backend/**/*.go"
-      run: cd backend && golangci-lint run ./...
+      run: |
+        # make install-tools の導入先を優先する（PATH 上の別バージョンに引きずられないため）
+        GOLANGCI="$(go env GOPATH)/bin/golangci-lint"
+        command -v "$GOLANGCI" >/dev/null 2>&1 || GOLANGCI=golangci-lint
+        if ! command -v "$GOLANGCI" >/dev/null 2>&1; then
+          echo "ERROR: golangci-lint が未インストールです。make install-tools を実行してください"
+          exit 1
+        fi
+        cd backend && "$GOLANGCI" run ./... || {
+          echo "HINT: 「go language version ... is lower than」で落ちる場合は golangci-lint が古い。"
+          echo "      make install-tools で CI と同じバージョンに揃えてください"
+          exit 1
+        }
     # Go 型・swag アノテーション変更時に swagger.json のドリフトを検出しコミットを止める (#840)
     # ここでは git add せず、再生成した差分を stage せよと促すだけ（コミット内容＝index は書き換えない）。
     # swag 未導入なら誤検出を避けて WARN のみで通す（CI backend-ci.yml の drift チェックが最終ゲート）。

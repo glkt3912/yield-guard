@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - "backend/**"
+      - "Makefile"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "backend/**"
+      - "Makefile"
       - ".github/workflows/backend-ci.yml"
   schedule:
     - cron: "0 1 * * 1"  # 毎週月曜 01:00 UTC
@@ -39,14 +41,21 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      - name: Read tool versions from Makefile
+        id: tools
+        working-directory: .
+        run: |
+          echo "golangci=$(sed -n 's/^GOLANGCI_VERSION *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+          echo "swag=$(sed -n 's/^SWAG_VERSION *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+
       - name: Cache swag binary
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/go/bin/swag
-          key: swag-v1.16.6
+          key: swag-${{ steps.tools.outputs.swag }}
 
       - name: Install swag
-        run: which swag || go install github.com/swaggo/swag/cmd/swag@v1.16.6
+        run: which swag || go install github.com/swaggo/swag/cmd/swag@${{ steps.tools.outputs.swag }}
 
       - name: Check schema drift (swagger.json)
         working-directory: .
@@ -58,7 +67,7 @@ jobs:
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a  # v9.3.0
         with:
           working-directory: backend
-          version: v2.13.2
+          version: ${{ steps.tools.outputs.golangci }}
           cache-invalidation-interval: 1
 
       - name: go test
