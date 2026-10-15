@@ -33,6 +33,7 @@ jobs:
   terraform:
     name: ${{ github.event_name == 'workflow_dispatch' && (inputs.apply && 'Plan & Apply' || 'Plan only') || 'Format, Validate, Lint & Plan' }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
 
     env:
       # Dependabot and fork PRs do not receive secrets, so WIF authentication

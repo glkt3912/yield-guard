@@ -26,6 +26,7 @@ jobs:
   test:
     name: Test & Build
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
 
     defaults:
       run:
@@ -93,6 +94,7 @@ jobs:
   integration-test:
     name: Integration Test (MLIT API)
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
 
     defaults:
