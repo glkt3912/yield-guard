@@ -67,5 +67,8 @@
     "tailwindcss": "^4.2.2",
     "typescript": "^5",
     "vitest": "4.1.11"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6"
   }
 }
