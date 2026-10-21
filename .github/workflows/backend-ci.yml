@@ -72,6 +72,9 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           grep total coverage.txt | awk '{gsub(/%/,"",$3); if ($3+0 < 80) { print "Coverage " $3 "% is below 80% threshold"; exit 1 }}'
 
+      - name: go vet (integration build tag)
+        run: go vet -tags=integration ./...
+
       - name: Cache govulncheck binary
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
