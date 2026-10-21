@@ -1,6 +1,6 @@
 module github.com/yield-guard/backend
 
-go 1.27.2
+go 1.27.3
 
 require (
 	cloud.google.com/go/firestore v1.24.0
