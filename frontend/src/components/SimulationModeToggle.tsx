@@ -1,4 +1,3 @@
-"use client";
 import { Zap, SlidersHorizontal } from "lucide-react";
 import type { SimulationMode } from "@/types/investment";
 

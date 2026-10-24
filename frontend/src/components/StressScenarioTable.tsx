@@ -1,4 +1,3 @@
-"use client";
 import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Users } from "lucide-react";

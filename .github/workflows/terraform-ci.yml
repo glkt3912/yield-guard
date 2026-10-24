@@ -43,7 +43,7 @@ jobs:
       TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
       TF_VAR_env: ${{ inputs.environment || 'prod' }}
       TF_VAR_region: "asia-northeast1"
-      TF_VAR_vercel_frontend_url: ${{ inputs.environment == 'stg' && vars.VERCEL_FRONTEND_URL_STG || vars.VERCEL_FRONTEND_URL }}
+      TF_VAR_frontend_url: ${{ inputs.environment == 'stg' && vars.FRONTEND_URL_STG || vars.FRONTEND_URL }}
       TF_VAR_notification_email: ${{ vars.NOTIFICATION_EMAIL }}
       TF_VAR_billing_account_id: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
       # API key values are not passed to Terraform (they would land in tfstate); see docs/security.md.

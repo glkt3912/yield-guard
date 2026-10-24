@@ -1,4 +1,3 @@
-"use client";
 import React from "react";
 import { ShieldAlert, AlertTriangle } from "lucide-react";
 import type { UrbanRisk } from "@/types/investment";

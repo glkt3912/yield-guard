@@ -1,4 +1,3 @@
-"use client";
 import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";

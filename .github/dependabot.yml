@@ -41,8 +41,6 @@ updates:
           - "patch"
     ignore:
       # メジャーアップは破壊的変更リスクが高いため個別で判断する
-      - dependency-name: "next"
-        update-types: ["version-update:semver-major"]
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-dom"
@@ -50,6 +48,6 @@ updates:
       # openapi-typescript の peer が typescript@^5.x のため TS7 は npm ci が通らない
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
-      # eslint-config-next が依存する eslint-plugin-react が ESLint 10 未対応
+      # ESLint 10 はプラグイン（jsx-a11y / react-hooks / typescript-eslint）の対応を確認してから上げる
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]

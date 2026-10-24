@@ -1,4 +1,3 @@
-"use client";
 import React, { useCallback, useState } from "react";
 import { YieldAnalysis } from "@/components/YieldAnalysis";
 import { StatusSummary } from "@/components/StatusSummary";
@@ -20,7 +19,7 @@ import { AreaDiscovery } from "@/components/AreaDiscovery";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import dynamic from "next/dynamic";
+import dynamic from "@/lib/dynamic";
 import {
   AlertTriangle,
   BarChart3,
@@ -46,7 +45,7 @@ import type {
   InvestmentScoreResult,
 } from "@/types/investment";
 
-const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"), { ssr: false });
+const InvestmentScoreHeatmap = dynamic(() => import("./InvestmentScoreHeatmap"));
 const MonteCarloChart = dynamic(
   () => import("@/components/MonteCarloChart").then((m) => ({ default: m.MonteCarloChart })),
   {

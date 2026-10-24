@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from "react";
 import { UserRound, Mail, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";

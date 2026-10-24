@@ -67,7 +67,7 @@ jobs:
         run: npm run lint
 
       - name: Type check
-        run: npx tsc --noEmit
+        run: npm run type-check
 
       - name: Test
         run: npm test -- --coverage
@@ -112,10 +112,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Next.js
+      - name: Build
         run: npm run build
-        env:
-          BACKEND_URL: "http://127.0.0.1:1"
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
@@ -141,7 +139,7 @@ jobs:
           retention-days: 7
 
   deploy:
-    name: Deploy to Vercel
+    name: Deploy to Cloudflare Workers
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [ci, e2e]
@@ -155,6 +153,22 @@ jobs:
       contents: read
       pull-requests: write
 
+    defaults:
+      run:
+        working-directory: frontend
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Firebase の Web 設定は公開値なので Repository variables で管理（ビルド時に埋め込まれる）
+      VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      NO_COLOR: "1"
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -166,59 +180,44 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install Vercel CLI
-        run: npm install -g vercel@51.8.0
-
-      # Vercel には frontend/ のみアップロードされ swagger.json が存在しないため、
-      # api.generated.ts を runner 側で生成してデプロイに含める（investment.ts が import する）
       - name: Install dependencies
         run: npm ci
-        working-directory: frontend
 
       - name: Generate API types
         run: npm run generate:types
-        working-directory: frontend
 
-      - name: Deploy to Vercel (production)
+      - name: Build
+        run: npm run build
+
+      - name: Deploy (production)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: vercel deploy --prod --yes
-        working-directory: frontend
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          NO_COLOR: "1"
+        run: npx wrangler deploy --var "BACKEND_URL:${{ vars.BACKEND_URL_PROD }}"
 
-      - name: Deploy to Vercel (preview)
+      # PR ごとに stg Worker (yield-guard-stg) へ未公開バージョンを上げ、エイリアス付きプレビュー URL を得る。
+      # バージョンは Cloudflare 側で保持されるだけなので PR クローズ時の削除は不要
+      - name: Deploy (preview)
         if: github.event_name == 'pull_request'
         id: preview
         run: |
-          # || true prevents set -e from exiting before we can inspect the output
-          OUTPUT=$(vercel deploy --yes 2>&1) || true
+          OUTPUT=$(npx wrangler versions upload --env stg \
+            --preview-alias "pr-${{ github.event.pull_request.number }}" \
+            --var "BACKEND_URL:${{ vars.BACKEND_URL_STG }}" 2>&1) || { echo "$OUTPUT"; exit 1; }
           echo "$OUTPUT"
-          # Vercel CLI v51 outputs "✅  Preview: https://xxx.vercel.app [3s]"
-          # tail -1 picks the Preview URL; the Inspect URL (vercel.com) is excluded by the pattern
-          URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9._-]+\.vercel\.app' | tail -1)
+          URL=$(echo "$OUTPUT" | grep -oE 'https://pr-[a-zA-Z0-9._-]+\.workers\.dev' | tail -1)
           if [ -z "$URL" ]; then
-            echo "::error::Vercel deploy failed or preview URL not found in output"
+            echo "::error::Preview alias URL not found in wrangler output"
             exit 1
           fi
           echo "url=$URL" >> $GITHUB_OUTPUT
-        working-directory: frontend
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          NO_COLOR: "1"
 
       - name: Comment preview URL on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
           script: |
-            const marker = '<!-- vercel-preview -->';
+            const marker = '<!-- cf-preview -->';
             const url = process.env.PREVIEW_URL;
-            const body = `${marker}\n## Vercel プレビュー\n\n${url}\n\n> このプレビューはステージング API (\`BACKEND_URL\` の Preview 環境変数) を使用しています。API 変更を含む PR は stg バックエンドの再デプロイ (deploy-backend-stg.yml) が必要です。`;
+            const body = `${marker}\n## Cloudflare プレビュー\n\n${url}\n\n> このプレビューはステージング API (\`BACKEND_URL_STG\`) を使用しています。API 変更を含む PR は stg バックエンドの再デプロイ (deploy-backend-stg.yml) が必要です。`;
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -242,4 +241,3 @@ jobs:
             }
         env:
           PREVIEW_URL: ${{ steps.preview.outputs.url }}
-

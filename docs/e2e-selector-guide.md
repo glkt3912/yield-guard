@@ -145,7 +145,7 @@ SW が有効な状態でのリクエストフロー（問題のある状態）:
          ↓
          SW が先に横取り
          ↓
-         SW が自前で fetch() → Next.js サーバー → ECONNREFUSED
+         SW が自前で fetch() → vite preview の /api プロキシ → ECONNREFUSED
          （page.route() は見ていない）
 ```
 

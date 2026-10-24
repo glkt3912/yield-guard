@@ -15,13 +15,13 @@
 # Secret Manager へ gcloud で投入する値（app-internal は prod とは別の値を生成すること）:
 #   mlit-api-key-stg / app-internal-api-key-stg / gemini-api-key-stg（任意）
 #
-# Vercel プロジェクト設定（Preview 環境のみ）:
-#   BACKEND_URL               = terraform output -raw cloud_run_url
+# GitHub Variable（PR プレビュー Worker 用）:
+#   BACKEND_URL_STG           = terraform output -raw cloud_run_url
 
 project_id            = "your-gcp-project-id"
 region                = "asia-northeast1"
 env                   = "stg"
 enable_gemini_summary = false  # true にする前に gemini-api-key-stg へ値を投入すること（CI では GitHub Variable ENABLE_GEMINI_SUMMARY_STG）
-vercel_frontend_url   = "https://your-stg-preview.vercel.app"
+frontend_url          = "*.your-subdomain.workers.dev"  # PR プレビュー (pr-N-yield-guard-stg.<subdomain>.workers.dev) を suffix 一致で許可
 notification_email    = "your@email.com"
 billing_account_id    = "XXXXXX-XXXXXX-XXXXXX"  # gcloud billing accounts list で確認

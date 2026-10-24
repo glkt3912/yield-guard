@@ -8,7 +8,7 @@
 #
 # After stg terraform apply, register in GitHub:
 #   Secrets: WIF_PROVIDER_STG, SA_EMAIL_STG
-#   Vercel project → Environment Variables → Preview: BACKEND_URL = <stg Cloud Run URL>
+#   GitHub Variable BACKEND_URL_STG = <stg Cloud Run URL>
 #
 # --- After terraform apply, register the following in GitHub (prod):
 #
@@ -19,7 +19,7 @@
 #   MLIT_API_KEY              = MLIT API キー（backend-ci の integration テスト用）
 #
 # GitHub Variables（Settings → Secrets and variables → Actions → Variables）:
-#   VERCEL_FRONTEND_URL       = var.vercel_frontend_url
+#   FRONTEND_URL              = var.frontend_url
 #   ENABLE_GEMINI_SUMMARY     = true（gemini-api-key-prod にバージョンを投入済みの場合のみ）
 #
 # --- Secret values ---
@@ -43,6 +43,6 @@ project_id            = "your-gcp-project-id"
 region                = "asia-northeast1"
 env                   = "prod"
 enable_gemini_summary = false  # true にする前に gemini-api-key-prod へ値を投入すること（未投入だと Cloud Run が起動しない）
-vercel_frontend_url   = "https://your-app.vercel.app"
+frontend_url          = "https://yield-guard.your-subdomain.workers.dev"
 notification_email    = "your@email.com"
 billing_account_id    = "XXXXXX-XXXXXX-XXXXXX"  # gcloud billing accounts list で確認

@@ -1,4 +1,3 @@
-"use client";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { SimulationModeToggle } from "@/components/SimulationModeToggle";
 import type { InvestmentInput, SimulationMode, RateAdjustment } from "@/types/investment";

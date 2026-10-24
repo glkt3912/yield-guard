@@ -1,5 +1,5 @@
 output "cloud_run_url" {
-  description = "Public URL of the Cloud Run service. For stg: set as BACKEND_URL in Vercel project settings → Environment Variables → Preview."
+  description = "Public URL of the Cloud Run service. Register as GitHub Variable BACKEND_URL_PROD (prod) or BACKEND_URL_STG (stg)."
   value       = google_cloud_run_v2_service.backend.uri
 }
 

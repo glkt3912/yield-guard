@@ -1,6 +1,6 @@
 # frontend/
 
-Next.js 16（App Router）/ TypeScript / Tailwind CSS v4 / Shadcn/UI → Vercel。ルートの `CLAUDE.md` の運用規則がここでも適用される。
+React 19 + Vite（SPA）/ TypeScript / Tailwind CSS v4 / Shadcn/UI → Cloudflare Workers。`/api/*` のプロキシと共有 URL の OG 書き換えは `worker/index.ts`、設定は `wrangler.jsonc`。ルートの `CLAUDE.md` の運用規則がここでも適用される。
 
 作業を始める前に `docs/llm/frontend.md`（重要ファイル・型の追加ルール・UI デザインルール）を読む。
 

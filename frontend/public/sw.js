@@ -1,5 +1,5 @@
 const API_CACHE = 'api-cache';
-const STATIC_CACHE = 'static-cache-v1'; // new deploy → bump to v2, v3, ... to purge old entries
+const STATIC_CACHE = 'static-cache-v4'; // new deploy → bump to v2, v3, ... to purge old entries
 const MAX_ENTRIES = 64;
 const MAX_AGE_SECONDS = 300;
 
@@ -27,13 +27,14 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (request.method !== 'GET') return;
   if (
-    url.pathname.startsWith('/_next/static/') ||
+    url.pathname.startsWith('/assets/') ||
     url.pathname.startsWith('/icons/') ||
     url.pathname.startsWith('/fonts/')
   ) {
     event.respondWith(cacheFirst(request));
   } else if (url.pathname === '/') {
-    event.respondWith(networkFirst(request, { cacheName: STATIC_CACHE }));
+    // 共有 URL はクエリごとに HTML が変わる（OG 書き換え）ため、アプリシェルとして '/' 1 件だけ保持する
+    event.respondWith(networkFirst(request, { cacheName: STATIC_CACHE, key: '/' }));
   } else if (/\/api\/.*/i.test(url.pathname)) {
     event.respondWith(networkFirst(request, { cacheName: API_CACHE, trim: true, checkAge: true }));
   }
@@ -45,24 +46,26 @@ async function cacheFirst(request) {
   if (cached) return cached;
   try {
     const response = await fetch(request);
-    if (response.ok) await cache.put(request, response.clone());
+    // 存在しないアセットには SPA フォールバックの index.html が 200 で返るため、HTML はキャッシュしない
+    const isHtml = (response.headers.get('content-type') || '').includes('text/html');
+    if (response.ok && !isHtml) await cache.put(request, response.clone());
     return response;
   } catch {
     return new Response('Network error', { status: 503 });
   }
 }
 
-async function networkFirst(request, { cacheName, trim = false, checkAge = false }) {
+async function networkFirst(request, { cacheName, trim = false, checkAge = false, key = request }) {
   const cache = await caches.open(cacheName);
   try {
     const response = await fetch(request);
     if (response.ok) {
       if (trim) await trimCache(cache, MAX_ENTRIES - 1);
-      await cache.put(request, response.clone());
+      await cache.put(key, response.clone());
     }
     return response;
   } catch {
-    const cached = await cache.match(request);
+    const cached = await cache.match(key);
     if (cached) {
       if (checkAge) {
         const date = cached.headers.get('date');

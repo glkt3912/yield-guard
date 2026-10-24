@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useEffect, useRef, useState } from "react";
 import {
   collection,
@@ -30,7 +28,7 @@ import {
   Home,
 } from "lucide-react";
 import type { WatchlistItem, WatchlistStatus, InvestmentResult } from "@/types/investment";
-import dynamic from "next/dynamic";
+import dynamic from "@/lib/dynamic";
 import AuthStatusBadge from "@/components/AuthStatusBadge";
 import { useAuthContext } from "@/components/RootLayoutClient";
 import { getFirebaseDb } from "@/lib/firebase";

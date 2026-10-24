@@ -1,4 +1,3 @@
-"use client";
 import React, { useState } from "react";
 import { LineChart, Line, ReferenceLine, ResponsiveContainer, YAxis, Tooltip } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";

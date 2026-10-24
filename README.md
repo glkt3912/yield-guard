@@ -19,7 +19,7 @@
 ```mermaid
 flowchart TD
     Browser["ブラウザ\n(Browser)"]
-    Next["Next.js\n(Vercel)"]
+    Next["React SPA\n(Cloudflare Workers)"]
     Go["Go / Gin API\n(Cloud Run)"]
     Cache["インメモリキャッシュ\n(TTL = 24h)"]
     MLIT["国交省 不動産情報ライブラリ\n(MLIT API)"]
@@ -35,7 +35,7 @@ flowchart TD
 **技術スタック**
 
 - Backend: Go 1.25 / Gin / Clean Architecture → Cloud Run
-- Frontend: Next.js 16 (App Router) / TypeScript / Tailwind CSS v4 / Shadcn/UI / Recharts → Vercel
+- Frontend: React 19 + Vite (SPA) / TypeScript / Tailwind CSS v4 / Shadcn/UI / Recharts → Cloudflare Workers
 - Data: 国土交通省 不動産情報ライブラリ API（APIキー必須・要申請）
 
 ## セットアップ
@@ -49,7 +49,7 @@ cd yield-guard
 cp .env.example .env
 # .env を編集して MLIT_API_KEY を設定する
 # APIキー申請: https://www.reinfolib.mlit.go.jp/api/request/（審査5営業日）
-# APP_INTERNAL_API_KEY は本番環境（Vercel→Cloud Run 間認証）用。ローカルでは未設定でよい
+# APP_INTERNAL_API_KEY は本番環境（Cloudflare Worker→Cloud Run 間認証）用。ローカルでは未設定でよい
 
 # 依存関係のインストールとフックの設定（初回のみ）
 make install          # frontend の npm install
@@ -147,7 +147,7 @@ make docker-up   # Dockerコンテナをビルドして起動
 make docker-down # Dockerコンテナを停止・削除
 make test        # バックエンド・フロントエンドの全テスト実行
 make lint        # golangci-lint + eslint + tsc --noEmit
-make build       # go build + next build
+make build       # go build + vite build
 make integration # 統合テスト（実 MLIT API 疎通・MLIT_API_KEY 必須）
 ```
 
@@ -163,7 +163,7 @@ make mlit-land-prices area=13 year=2024 quarter=1 to_year=2024 to_quarter=4 # �
 | ワークフロー | トリガーパス | チェック内容 |
 |---|---|---|
 | Backend CI | `backend/**` | `golangci-lint` / `go test -race` / `go build` |
-| Frontend CI | `frontend/**` | `lint` / `tsc --noEmit` / `vitest run` / `next build` |
+| Frontend CI | `frontend/**` | `lint` / `tsc --noEmit` / `vitest run` / `vite build` |
 
 ## ライセンス
 

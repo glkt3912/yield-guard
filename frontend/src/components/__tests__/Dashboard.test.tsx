@@ -22,7 +22,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 // PDFDownloadLink is a browser-only API; stub it out in jsdom
-vi.mock("next/dynamic", () => ({
+vi.mock("@/lib/dynamic", () => ({
   default: () => () => null,
 }));
 
@@ -30,18 +30,11 @@ vi.mock("next/dynamic", () => ({
 vi.mock("@/components/WatchlistPanel", () => ({ default: () => null }));
 vi.mock("@/components/AreaDiscovery", () => ({ AreaDiscovery: () => null }));
 
-// Mock next/navigation for useRouter
-const mockReplace = vi.fn();
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: mockReplace }),
-}));
-
 import * as api from "@/lib/api";
 
 describe("Dashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockReplace.mockClear();
   });
 
   it("初期状態でプレースホルダーが表示される", () => {
@@ -158,7 +151,8 @@ describe("Dashboard", () => {
     });
   });
 
-  it("シミュレーション実行後にrouter.replaceでURLが更新される", async () => {
+  it("シミュレーション実行後にhistory.replaceStateでURLが更新される", async () => {
+    const replaceSpy = vi.spyOn(history, "replaceState");
     const mockResult = makeResult({
       grossYield: 0.09,
       marketGrossYield: 0.09,
@@ -172,10 +166,11 @@ describe("Dashboard", () => {
     await userEvent.click(screen.getByRole("button", { name: /シミュレーション実行/ }));
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalled();
+      expect(replaceSpy).toHaveBeenCalled();
     });
 
-    const calledWith = mockReplace.mock.calls[0][0] as string;
+    const calledWith = replaceSpy.mock.calls[0][2] as string;
+    replaceSpy.mockRestore();
     // URLにmodeパラメータが含まれること
     expect(calledWith).toContain("mode=quick");
     // クイックモードのtotalPriceが含まれること
