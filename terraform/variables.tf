@@ -14,8 +14,8 @@ variable "env" {
   type        = string
 }
 
-variable "vercel_frontend_url" {
-  description = "Vercel frontend URL set as ALLOW_ORIGINS on the backend"
+variable "frontend_url" {
+  description = "Frontend (Cloudflare Workers) URL(s) set as ALLOW_ORIGINS on the backend"
   type        = string
 }
 

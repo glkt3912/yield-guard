@@ -32,7 +32,7 @@ resource "google_cloud_run_v2_service" "backend" {
 
       env {
         name  = "ALLOW_ORIGINS"
-        value = var.vercel_frontend_url
+        value = var.frontend_url
       }
 
       env {
