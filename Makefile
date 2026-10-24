@@ -118,8 +118,7 @@ build:
 ## clean: ビルド成果物を削除
 clean:
 	rm -f backend/yield-guard-server
-	rm -rf frontend/.next
-	rm -rf frontend/out
+	rm -rf frontend/dist frontend/.wrangler
 
 ## docker-up: Dockerコンテナをビルドして起動
 docker-up:

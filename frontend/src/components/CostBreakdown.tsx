@@ -1,5 +1,3 @@
-"use client";
-
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { AcquisitionCostBreakdown, InvestmentInput, YearlyResult } from "@/types/investment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

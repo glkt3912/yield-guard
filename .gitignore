@@ -1,7 +1,8 @@
 # 依存パッケージ（場所を問わず）
 node_modules/
 
-frontend/.next
+frontend/dist
+frontend/.wrangler
 
 # PDF エクスポートの動作確認生成物（リポジトリ直下のみ）
 /*.pdf

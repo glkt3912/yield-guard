@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useState } from "react";
 import { MapContainer, TileLayer, Rectangle, Tooltip, useMapEvents } from "react-leaflet";
 import { AlertTriangle } from "lucide-react";

@@ -1,4 +1,3 @@
-"use client";
 import { useState, useCallback } from "react";
 import type { RefObject, MutableRefObject } from "react";
 import { analyze as analyzeOnline } from "@/lib/api";

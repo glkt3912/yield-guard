@@ -1,4 +1,3 @@
-"use client";
 import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { InvestmentInput, InvestmentResult } from "@/types/investment";

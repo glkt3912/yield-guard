@@ -1,6 +1,4 @@
-"use client";
 import React, { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { decodeUrlParams } from "@/lib/urlParams";
 import { InvestmentForm } from "@/components/InvestmentForm";
 import type { SimulationMode } from "@/types/investment";
@@ -28,7 +26,6 @@ interface DashboardProps {
 }
 
 export function Dashboard({ initialParams }: DashboardProps = {}) {
-  const router = useRouter();
   const decoded = initialParams ? decodeUrlParams(initialParams) : null;
 
   const isOnline = useNetworkStatus();
@@ -54,7 +51,7 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
 
   const simulation = useInvestmentSimulation({
     simulationMode,
-    onUrlUpdate: (qs) => router.replace(qs ? `?${qs}` : "?", { scroll: false }),
+    onUrlUpdate: (qs) => history.replaceState(null, "", qs ? `?${qs}` : "?"),
   });
 
   const {
@@ -181,7 +178,9 @@ export function Dashboard({ initialParams }: DashboardProps = {}) {
                   try {
                     await downloadReportPDF(lastInput, result);
                   } catch {
-                    setPdfError("PDF の生成に失敗しました。しばらく後で再試行してください。");
+                    setPdfError(
+                      "PDF の生成に失敗しました。直らない場合はページを再読み込みしてください（アプリ更新直後に起こることがあります）。"
+                    );
                   } finally {
                     setPdfGenerating(false);
                   }

@@ -1,4 +1,3 @@
-"use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { fetchMunicipalities, type Municipality } from "@/lib/api";
 

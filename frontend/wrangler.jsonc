@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yield-guard",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // /api のプロキシと共有 URL の OG 書き換えだけ Worker を通す（他は静的配信）
+    "run_worker_first": ["/api/*", "/"]
+  },
+  // BACKEND_URL は CI が `--var BACKEND_URL:...` で上書きする（既定値は wrangler dev 用）
+  // APP_INTERNAL_API_KEY は `wrangler secret put APP_INTERNAL_API_KEY [--env stg]` で設定
+  "vars": { "BACKEND_URL": "http://localhost:8080" },
+  "env": {
+    // PR プレビュー用（stg バックエンドに向ける別 Worker: yield-guard-stg）
+    "stg": { "vars": { "BACKEND_URL": "http://localhost:8080" } }
+  }
+}
