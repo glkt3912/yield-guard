@@ -27,7 +27,7 @@ Yield-Guard は不動産投資判断を支援するシミュレーションツ�
 ```
 [ブラウザ]
     ↓ http://localhost:3000
-[フロントエンド] Next.js 16 (App Router)
+[フロントエンド] React 19 + Vite (SPA) on Cloudflare Workers
     ↓ fetch to http://localhost:8080
 [バックエンド] Go + Gin
     ↓ HTTPS + Ocp-Apim-Subscription-Key ヘッダー
@@ -52,7 +52,7 @@ Yield-Guard は不動産投資判断を支援するシミュレーションツ�
 
 | 技術 | 用途 |
 |------|------|
-| Next.js 16 (App Router) | フレームワーク |
+| React 19 + Vite | フレームワーク（SPA） |
 | React 19 | UI |
 | TypeScript | 言語 |
 | Tailwind CSS 4.2 | スタイリング |
@@ -85,7 +85,7 @@ yield-guard/
 │   ├── Dockerfile                 # マルチステージビルド
 │   ├── e2e/                       # Playwright E2E（spec・fixtures・ページオブジェクト）
 │   └── src/
-│       ├── app/                   # App Router エントリ（layout / page / manifest）
+│       ├── main.tsx               # SPA エントリ（Provider 構成）
 │       ├── components/            # UI コンポーネント（Dashboard 起点。sections/・ui/=Shadcn を含む）
 │       ├── hooks/                 # API 呼び出し・シミュレーション・ネットワーク状態等のカスタムフック
 │       ├── lib/                   # API クライアント・キャッシュ・PDF 生成・ユーティリティ
@@ -133,7 +133,7 @@ go run cmd/server/main.go
 | `PORT` | リッスンポート | `8080` |
 | `ALLOW_ORIGINS` | CORS許可オリジン | `http://localhost:3000` |
 | `MLIT_API_KEY` | 不動産情報ライブラリ APIキー（必須） | — |
-| `APP_INTERNAL_API_KEY` | Vercel-Cloud Run 間の内部通信認証キー。設定時は `/api/*` に `X-Internal-Key` ヘッダーが必要 | 未設定（ローカル開発時はスキップ） |
+| `APP_INTERNAL_API_KEY` | Cloudflare Worker-Cloud Run 間の内部通信認証キー。設定時は `/api/*` に `X-Internal-Key` ヘッダーが必要 | 未設定（ローカル開発時はスキップ） |
 | `GOOGLE_CLOUD_PROJECT` | GCP プロジェクト ID。設定時は Cloud Trace / Cloud Monitoring へ OTel データを送信。未設定時は stdout 出力 | 未設定（ローカル開発時は stdout） |
 | `WARMUP_AUDIENCE` / `WARMUP_INVOKER_EMAIL` | `/warm` を呼ぶ Cloud Scheduler の OIDC トークンで期待する audience と SA email。本番では Terraform が設定する | 未設定（ローカル開発時は `/warm` の認証をスキップ） |
 
@@ -155,23 +155,41 @@ npm run dev   # http://localhost:3000
 
 ## デプロイフロー
 
-### フロントエンド（Vercel）
+### フロントエンド（Cloudflare Workers）
 
 ```
 main ブランチへの push
     ↓
 [GitHub Actions: frontend-ci.yml]
-    ci ジョブ: Lint → 型チェック → テスト → ビルド（next build --webpack）
+    ci ジョブ: Lint → 型チェック → テスト → ビルド（vite build）
     ↓ 成功時のみ
-    deploy ジョブ: vercel deploy --prod
-    ↓
-https://yield-guard-alpha.vercel.app
+    deploy ジョブ: wrangler deploy（Worker `yield-guard`）
 ```
 
-- CI が失敗した場合はデプロイしない（`needs: ci`）
-- PR 時はデプロイしない（main push 時のみ）
-- Vercel 環境変数: `BACKEND_URL`・`APP_INTERNAL_API_KEY`（Vercel ダッシュボードで設定済み）
-- GitHub Secrets: `VERCEL_TOKEN`・`VERCEL_ORG_ID`・`VERCEL_PROJECT_ID`
+- CI / E2E が失敗した場合はデプロイしない（`needs: [ci, e2e]`）
+- PR 時は stg Worker（`yield-guard-stg`）に `wrangler versions upload --preview-alias pr-N` し、プレビュー URL を PR コメントに投稿
+- Worker secret: `APP_INTERNAL_API_KEY`（`wrangler secret put` で設定、prod / `--env stg` それぞれ）
+- GitHub Secrets: `CLOUDFLARE_API_TOKEN`・`CLOUDFLARE_ACCOUNT_ID`
+- GitHub Variables: `BACKEND_URL_PROD`・`BACKEND_URL_STG`・`VITE_FIREBASE_*`
+
+#### 初回セットアップ（Worker 新規作成時のみ）
+
+順序を守らないと `/api/*` が 401（キー未設定）・403（CORS 未許可）になり、PR プレビュー URL も出ない。
+
+1. Worker を作る（`wrangler secret put` は既存 Worker にしか使えないため先に deploy する）
+   ```bash
+   cd frontend && npm run build
+   npx wrangler deploy --env stg --var "BACKEND_URL:<stg Cloud Run URL>"
+   npx wrangler deploy --var "BACKEND_URL:<prod Cloud Run URL>"
+   ```
+2. 内部キーを登録する（Cloud Run の `app-internal-api-key-{env}` と同じ値）
+   ```bash
+   npx wrangler secret put APP_INTERNAL_API_KEY --env stg
+   npx wrangler secret put APP_INTERNAL_API_KEY
+   ```
+3. GitHub Variables `FRONTEND_URL` / `FRONTEND_URL_STG` に workers.dev の URL を入れ、Terraform CI を stg → prod の順に apply（`ALLOW_ORIGINS` 更新）
+4. Firebase Console → Authentication → 承認済みドメインに workers.dev のドメインを追加
+5. 動作確認後、旧オリジン（Vercel）を `FRONTEND_URL*` から外して再 apply
 
 ### バックエンド（Cloud Run）
 

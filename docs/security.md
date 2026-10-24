@@ -11,17 +11,17 @@ token_weight: medium
 
 ### 背景
 
-Cloud Run バックエンドの URL を知っている者が Vercel を経由せずに `/api/*` を直接呼び出せる状態を防ぐため、Vercel-Cloud Run 間に共有シークレットによる内部認証を設けている。
+Cloud Run バックエンドの URL を知っている者が フロントエンドの Worker を経由せずに `/api/*` を直接呼び出せる状態を防ぐため、Worker-Cloud Run 間に共有シークレットによる内部認証を設けている。
 
 ### 仕組み
 
 ```
-ブラウザ → Vercel (Next.js) → Cloud Run (Go/Gin)
-                ↓ middleware.ts が付与
+ブラウザ → Cloudflare Worker → Cloud Run (Go/Gin)
+                ↓ worker/index.ts が付与
           X-Internal-Key: <APP_INTERNAL_API_KEY>
 ```
 
-1. Vercel の `frontend/src/middleware.ts` が `/api/:path*` へのリクエストに `X-Internal-Key` ヘッダーを自動付与する
+1. Cloudflare Worker（`frontend/worker/index.ts`）が `/api/:path*` へのリクエストに `X-Internal-Key` ヘッダーを自動付与する
 2. Cloud Run の `internalKeyMiddleware`（`backend/internal/api/router.go`）が `/api/*` グループでヘッダーを検証する
 3. キーが不一致または未送信の場合は `401 Unauthorized` を返す
 
@@ -48,14 +48,14 @@ Cloud Scheduler（`warmup-cache-{env}`）は `oidc_token` 付きで `/warm` を�
 
 ### 本番環境でのキー設定
 
-Vercel と Cloud Run の双方に **同一の値** を設定する。
+Cloudflare Worker と Cloud Run の双方に **同一の値** を設定する。
 
 ```bash
 # キー生成例
 openssl rand -hex 32
 ```
 
-- Vercel: 環境変数 `APP_INTERNAL_API_KEY` に設定
+- Cloudflare: `cd frontend && npx wrangler secret put APP_INTERNAL_API_KEY`（stg は初回のみ `--env stg`、PR プレビュー運用開始後は `npx wrangler versions secret put APP_INTERNAL_API_KEY --env stg`）
 - Cloud Run: Secret Manager 経由で注入。値は Terraform では扱わず、gcloud で登録する（下記「Secret Manager」）
 
 ```bash
@@ -157,7 +157,7 @@ yield-guard はインシデント発生時点で Trivy を未使用だったた�
 | シークレット名 | 環境変数 | 用途 | 必須 |
 |--------------|---------|------|------|
 | `mlit-api-key-{env}` | `MLIT_API_KEY` | 国交省 API 認証 | ✅ |
-| `app-internal-api-key-{env}` | `APP_INTERNAL_API_KEY` | Vercel-Cloud Run 間認証 | ✅ |
+| `app-internal-api-key-{env}` | `APP_INTERNAL_API_KEY` | Worker-Cloud Run 間認証 | ✅ |
 | `google-maps-api-key-{env}` | `GOOGLE_MAPS_API_KEY` | 住所→座標変換 | — |
 | `gemini-api-key-{env}` | `GEMINI_API_KEY` | AI 投資サマリー（Google AI Studio） | — |
 
@@ -179,7 +179,9 @@ backend は **すべてのシークレットを起動時に 1 回だけ読む**�
    ```bash
    gcloud run services update yield-guard-{env}-backend --region asia-northeast1 --update-labels=rotated-at=$(date +%Y%m%d)
    ```
-3. （app-internal キーのみ）**直後に** Vercel の `APP_INTERNAL_API_KEY` を同じ値に更新し、再デプロイする（Vercel の環境変数は再デプロイしないと反映されない）
+3. （app-internal キーのみ）**直後に** Worker の `APP_INTERNAL_API_KEY` を同じ値に更新する（`frontend/` で実行）
+   - prod: `npx wrangler secret put APP_INTERNAL_API_KEY`（即時に新バージョンとしてデプロイされる）
+   - stg: `npx wrangler versions secret put APP_INTERNAL_API_KEY --env stg`（PR プレビューで最新版が未デプロイのため `secret put` は失敗する）。既存の PR プレビューは古い値のままなので再 push する
    - backend は新旧どちらか一方のキーしか受け付けないため、2 から 3 の反映が終わるまでの間（数分）は `/api/*` が 401 になる。利用の少ない時間帯に行う
 4. 動作確認後、旧バージョンを無効化する: `gcloud secrets versions disable <旧バージョン番号> --secret=<secret>-{env}`
    - 外部サービス側のキー（MLIT / Gemini）は、2 の後に旧キーを失効させる。先に失効させると、新 revision ができるまでその機能が止まる
@@ -213,7 +215,7 @@ Artifact Registry の無料枠（0.5 GB/月）を超えないよう、最新 5 �
 | `GCP_PROJECT_ID` | Secret | `TF_VAR_project_id`（GCP プロジェクト ID） |
 | `WIF_PROVIDER` | Secret | OIDC 認証用 WIF プロバイダー |
 | `SA_EMAIL` | Secret | OIDC 認証用 deployer SA |
-| `VERCEL_FRONTEND_URL` | Variable | `TF_VAR_vercel_frontend_url`（CORS 許可オリジン） |
+| `FRONTEND_URL` / `FRONTEND_URL_STG` | Variable | `TF_VAR_frontend_url`（CORS 許可オリジン。stg は `*.<subdomain>.workers.dev` でプレビューを許可） |
 | `NOTIFICATION_EMAIL` | Variable | `TF_VAR_notification_email`（Cloud Monitoring アラート通知先） |
 | `ENABLE_GEMINI_SUMMARY` | Variable | `TF_VAR_enable_gemini_summary`（`true` で Cloud Run に `GEMINI_API_KEY` を注入。未設定時は `false`） |
 | `ENABLE_GEMINI_SUMMARY_STG` | Variable | stg 実行時の `TF_VAR_enable_gemini_summary`（未設定時は `false`） |
@@ -227,7 +229,7 @@ Variable（非機密）は `gh variable set`、Secret（機密）は `gh secret 
 ```bash
 # Variable の設定例
 gh variable set NOTIFICATION_EMAIL --body "your@email.com"
-gh variable set VERCEL_FRONTEND_URL --body "https://your-app.vercel.app"
+gh variable set FRONTEND_URL --body "https://yield-guard.your-subdomain.workers.dev"
 
 # Secret の設定例
 gh secret set GCP_PROJECT_ID --body "your-gcp-project-id"
@@ -242,19 +244,18 @@ gh secret set MLIT_API_KEY --body "your-mlit-api-key"
 
 | 項目 | 設計 |
 |---|---|
-| トークン渡し方 | `VERCEL_TOKEN` を `env:` 経由で渡す（`--token=` 引数は使用しない。プロセス一覧への露出を防ぐため） |
-| Vercel CLI バージョン | `vercel@51.8.0` に固定（`latest` 不使用） |
-| 実行条件 | `needs: ci` により CI 全通過後のみ実行 |
-| 実行タイミング | `github.ref == 'refs/heads/main' && github.event_name == 'push'` により main マージ時のみ |
-| 権限 | `permissions: contents: read`（最小権限） |
+| トークン渡し方 | `CLOUDFLARE_API_TOKEN` を `env:` 経由で渡す（引数で渡さない。プロセス一覧への露出を防ぐため） |
+| Wrangler バージョン | `package-lock.json` で固定（`npx wrangler` はローカル依存を使う） |
+| 実行条件 | `needs: [ci, e2e]` により CI・E2E 全通過後のみ実行 |
+| 実行タイミング | main push で本番 `wrangler deploy`、同一リポジトリの PR で stg Worker へプレビュー版をアップロード |
+| 権限 | `permissions: contents: read` + PR コメント用 `pull-requests: write` |
 
 ### GitHub Secrets
 
 | Secret 名 | 用途 |
 |---|---|
-| `VERCEL_TOKEN` | Vercel API 認証トークン（Vercel ダッシュボードで発行） |
-| `VERCEL_ORG_ID` | Vercel 組織 ID（`.vercel/project.json` の `orgId`） |
-| `VERCEL_PROJECT_ID` | Vercel プロジェクト ID（`.vercel/project.json` の `projectId`） |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API トークン（テンプレート「Edit Cloudflare Workers」で発行） |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare アカウント ID（ダッシュボード右側に表示） |
 
 ---
 
@@ -310,8 +311,7 @@ MLIT API クライアント（`backend/internal/mlit/client.go`）は以下の�
 - `terraform/secret_manager.tf` — Secret Manager リソース
 - `terraform/cloud_run.tf` — Cloud Run v2 サービス定義
 - `.github/workflows/deploy-backend.yml` — バックエンドデプロイワークフロー（SHA 固定・Trivy スキャン）
-- `.github/workflows/frontend-ci.yml` — フロントエンド CI + Vercel デプロイワークフロー
-- `.github/workflows/vercel-preview-cleanup.yml` — PR クローズ時の Vercel プレビュー削除ワークフロー（`frontend-ci.yml` から分離）
+- `.github/workflows/frontend-ci.yml` — フロントエンド CI + Cloudflare Workers デプロイワークフロー
 - `.github/dependabot.yml` — Dependabot 自動更新設定（gomod / npm / github-actions）
 - `backend/internal/telemetry/setup.go` — OTel TracerProvider / MeterProvider 初期化
 - `backend/internal/logger/logger.go` — Cloud Logging 準拠 slog ハンドラー

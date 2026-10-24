@@ -29,7 +29,7 @@ reads_next: [docs/llm/backend.md]
 
 - `/health` エンドポイントはこの認証をスキップする
 - `APP_INTERNAL_API_KEY` が未設定（ローカル開発）の場合はヘッダー検証をスキップし、従来通り動作する
-- Vercel フロントエンドは `frontend/src/middleware.ts` で自動的にヘッダーを付与するため、ブラウザからの通常利用では意識不要
+- フロントエンドの Cloudflare Worker（`frontend/worker/index.ts`）が自動的にヘッダーを付与するため、ブラウザからの通常利用では意識不要
 
 ### エラーレスポンス形式
 

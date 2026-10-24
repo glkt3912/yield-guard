@@ -1,6 +1,6 @@
 ---
 purpose: 技術選定の背景・設計原則の説明
-triggers: [architecture, design, why, clean architecture, gin, next.js]
+triggers: [architecture, design, why, clean architecture, gin, vite, cloudflare]
 audience: all
 token_weight: medium
 ---
@@ -21,10 +21,11 @@ Gin は標準 `net/http` との互換性が高く、ミドルウェア合成が�
 `domain/` パッケージのユニットテストが HTTP クライアントや外部通信なしに実行できるため、CI でのフィードバックが速い。
 将来的に別の不動産データソースへ切り替える際も、`mlit/client.go` の実装を差し替えるだけでドメインロジックへの影響がない。
 
-### Next.js App Router
+### React + Vite（SPA）on Cloudflare Workers
 
-React Server Components（RSC）によるサーバーサイドレンダリングで初期表示を高速化しつつ、インタラクティブ部分は Client Components として分離できる。
-Vercel との統合により、プレビュー URL・エッジキャッシュ・環境変数管理が統一されている。
+画面は単一ページで全てクライアント描画のため、SSR フレームワーク（旧 Next.js）は不要と判断し Vite の静的 SPA に移行した。
+静的アセットは Cloudflare Workers Static Assets で配信し、サーバー処理が要る 2 点だけを小さな Worker（`frontend/worker/index.ts`）で担う:
+`/api/*` を Cloud Run へプロキシして `X-Internal-Key` を付与すること、共有 URL（`/?totalPrice=...`）の OG メタを HTMLRewriter で書き換えること。
 バックエンドとのインターフェース不整合は、swagger.json 由来の生成型（`api.generated.ts`）を主要型として直接使用し、フロント固有の手書き型も契約テスト（`types/__tests__/api-contract.ts`）で生成型と照合するため、`tsc --noEmit` でビルド時に検出できる。
 
 ### Cloud Run
@@ -89,7 +90,7 @@ graph TD
     CI_E2E["GitHub Actions\nE2E\n(Playwright / Chromium)"]
     Docker["Docker Build\n(マルチステージビルド)"]
     Compose["docker-compose up\n(backend :8080 + frontend :3000)"]
-    Vercel["Vercel Deploy\n(Next.js フロントエンド)"]
+    Cloudflare["Cloudflare Workers Deploy\n(React SPA + API プロキシ)"]
     CloudRun["Cloud Run Deploy\n(Go/Gin バックエンド)"]
     Terraform["Terraform CI\n(Cloud Run provisioning)"]
     Dependabot["Dependabot\n(毎週月曜 JST)"]
@@ -102,7 +103,7 @@ graph TD
     CI_FE --> Docker
     CI_FE --> CI_E2E
     Docker --> Compose
-    CI_FE --> Vercel
+    CI_FE --> Cloudflare
     Docker --> CloudRun
     Dependabot --> DepPR
     DepPR --> CI_BE
@@ -114,9 +115,8 @@ graph TD
 | ワークフロー | トリガーパス | チェック内容 |
 |---|---|---|
 | Backend CI | `backend/**`, `backend-ci.yml` | `golangci-lint` / `go test -race` / `go build` |
-| Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `vitest run` / `build` / Vercel デプロイ（main push: 本番 / PR: プレビュー URL を PR コメントに自動投稿） |
+| Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `vitest run` / `build` / Cloudflare Workers デプロイ（main push: 本番 / PR: stg Worker のプレビュー URL を PR コメントに自動投稿） |
 | E2E（Frontend CI内） | `frontend/**`, `frontend-ci.yml` | `playwright test`（PR: `@p1`+`@p2` のみ / main push: 全10件） |
-| Vercel プレビュー削除 | `frontend/**`, `vercel-preview-cleanup.yml` | PR クローズ時にプレビューデプロイを削除（`frontend-ci.yml` の `cancel-in-progress` による競合キャンセルを防ぐため独立ワークフロー化） |
 
 Dependabot により Go modules・npm の依存パッケージが毎週月曜（JST）に自動更新される（エコシステムごとに1PR）。
 

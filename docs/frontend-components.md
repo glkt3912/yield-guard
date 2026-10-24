@@ -8,7 +8,7 @@ reads_next: [docs/llm/frontend.md]
 
 # フロントエンドコンポーネント仕様
 
-`frontend/src/components/` 配下。フレームワーク: Next.js 16 (App Router)
+`frontend/src/components/` 配下。フレームワーク: React 19 + Vite (SPA)
 
 ---
 
@@ -759,7 +759,7 @@ const InvestmentScoreHeatmap = dynamic(
 
 **Leaflet CSS**:
 
-`import "leaflet/dist/leaflet.css"` は `src/app/globals.css` に一元管理（`@import "leaflet/dist/leaflet.css"`）。コンポーネント内でのインポートは不要。
+`import "leaflet/dist/leaflet.css"` は `src/globals.css` に一元管理（`@import "leaflet/dist/leaflet.css"`）。コンポーネント内でのインポートは不要。
 
 ---
 

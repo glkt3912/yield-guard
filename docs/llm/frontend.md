@@ -1,7 +1,7 @@
 ---
-purpose: フロントエンド開発（Next.js / TSX / UI）の出発点
+purpose: フロントエンド開発（React + Vite / TSX / UI）の出発点
 triggers: [tsx, react, component, tailwind, shadcn, recharts, frontend, ui]
-reads_next: [docs/frontend-components.md, docs/usecases.md]
+reads_next: [docs/frontend-components.md, docs/usecases.md, docs/cloudflare-workers.md]
 last_updated: 2026-07-05
 ---
 
@@ -9,7 +9,8 @@ last_updated: 2026-07-05
 
 | ファイル | 役割 |
 |---------|-----|
-| `frontend/src/app/` | Next.js App Router ページ |
+| `frontend/src/main.tsx` / `index.html` | SPA エントリ（Provider 構成・テーマ初期化スクリプト） |
+| `frontend/worker/index.ts` | Cloudflare Worker（`/api/*` を Cloud Run へプロキシし `X-Internal-Key` 付与、共有 URL の OG メタ書き換え） |
 | `frontend/src/components/Dashboard.tsx` | トップレベルレイアウト |
 | `frontend/src/components/InvestmentForm.tsx` | 入力フォーム |
 | `frontend/src/components/YieldAnalysis.tsx` | 粗利回り + 8%閾値（免責事項 Alert の参照実装） |

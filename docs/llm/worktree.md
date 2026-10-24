@@ -26,15 +26,15 @@ cd ../<worktree-dir>/frontend && npm ci
 - `npm install` は**実行しない**（`package-lock.json` を書き換える可能性がある）
 - `make install-hooks` も不要（メインリポジトリの `.git/hooks/` を自動共有）
 
-> **symlink を使わない理由**: Next.js 16 の Turbopack はプロジェクトルート外を指す symlink を拒否するため、
-> `ln -s` で `node_modules` を共有すると `next dev` が起動できない。`npm ci` で実ディレクトリとして持つ。
+> **symlink を使わない理由**: 依存解決がプロジェクトルート外の実体パスを指すと開発サーバーやビルドツールが壊れやすいため、
+> `npm ci` で実ディレクトリとして持つ。
 
 ## ブラウザ動作確認（E2E）をする場合
 
 worktree のフロントエンドを起動するときは**メインリポジトリと別ポート**を使う。
 
 ```bash
-cd ../<worktree-dir>/frontend && npx next dev -p 3003
+cd ../<worktree-dir>/frontend && npx vite --port 3003
 ```
 
 バックエンドの `ALLOW_ORIGINS` はポートごとに許可が必要なため、`.env` に worktree のポートを追加する。
