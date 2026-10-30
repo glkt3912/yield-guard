@@ -115,7 +115,7 @@ graph TD
 | ワークフロー | トリガーパス | チェック内容 |
 |---|---|---|
 | Backend CI | `backend/**`, `backend-ci.yml` | `golangci-lint` / `go test -race` / `go build` |
-| Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `vitest run` / `build` / Cloudflare Workers デプロイ（main push: 本番 / PR: stg Worker のプレビュー URL を PR コメントに自動投稿） |
+| Frontend CI | `frontend/**`, `frontend-ci.yml` | `lint` / `tsc --noEmit` / `vitest run` / `build` / Cloudflare Workers デプロイ（main push のみ本番。PR プレビューは廃止） |
 | E2E（Frontend CI内） | `frontend/**`, `frontend-ci.yml` | `playwright test`（PR: `@p1`+`@p2` のみ / main push: 全10件） |
 
 Dependabot により Go modules・npm の依存パッケージが毎週月曜（JST）に自動更新される（エコシステムごとに1PR）。
@@ -151,7 +151,7 @@ GitHub Actions (OIDC token)
 
 - `SA_EMAIL` GitHub Secret: deployer SA のメールアドレスを設定
 - `WIF_PROVIDER` GitHub Secret: WIF プロバイダーのリソース名を設定
-- トークン交換は `glkt3912/yield-guard` リポジトリのみに制限（`attribute_condition`）
+- トークン交換は GitHub Environment（`production` / `staging`、どちらも main ブランチ限定）に紐づくジョブだけに制限（`attribute_condition` で OIDC の `sub` を照合）。PR や main 以外のブランチからは GCP に入れない
 
 ### Terraform 状態管理
 

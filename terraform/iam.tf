@@ -40,7 +40,9 @@ resource "google_iam_workload_identity_pool_provider" "github" {
     "attribute.repository" = "assertion.repository"
   }
 
-  attribute_condition = "attribute.repository == 'glkt3912/yield-guard'"
+  # Only jobs bound to the GitHub Environment can exchange tokens. The environment's
+  # deployment branch policy limits it to main, so pushed branches / PRs never get GCP access.
+  attribute_condition = "assertion.sub == 'repo:glkt3912/yield-guard:environment:${var.env == "prod" ? "production" : "staging"}'"
 }
 
 resource "google_service_account_iam_binding" "wif_impersonation" {

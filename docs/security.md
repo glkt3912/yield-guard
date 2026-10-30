@@ -80,7 +80,8 @@ GitHub Actions
 
 - `WIF_PROVIDER`・`SA_EMAIL` の 2 つの Secrets のみ GitHub に登録すれば良い
 - 静的なサービスアカウントキー（JSON）は一切不要
-- `attribute_condition` により、トークン交換は `glkt3912/yield-guard` リポジトリのみに制限
+- `attribute_condition` により、トークン交換は GitHub Environment（`production` / `staging`、どちらも main ブランチ限定）に紐づくジョブだけに制限（`attribute_condition` で OIDC の `sub` を照合）。PR や main 以外のブランチからは GCP に入れない
+- Terraform CI の PR 実行は GCP 認証しない（fmt / validate / tflint のみ）。plan / apply は main から workflow_dispatch で実行
 
 ### GitHub Secrets
 
