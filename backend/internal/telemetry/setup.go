@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	monitoring "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric"
+	monitoring "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric" //nolint:staticcheck // ponytail: deprecated, archived after 2027-01-01; migrate to otlpmetrichttp like traces
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -15,8 +15,8 @@ import (
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"golang.org/x/oauth2"
@@ -134,7 +134,7 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (func(contex
 	if gcpProject == "" {
 		metricExporter, err = stdoutmetric.New()
 	} else {
-		metricExporter, err = monitoring.New()
+		metricExporter, err = monitoring.New() //nolint:staticcheck
 	}
 	if err != nil {
 		_ = tp.Shutdown(ctx)
