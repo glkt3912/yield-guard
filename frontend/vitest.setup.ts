@@ -1,5 +1,5 @@
 /// <reference types="vitest/globals" />
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 
 // Recharts uses ResizeObserver which is not available in jsdom
 class ResizeObserverMock {
