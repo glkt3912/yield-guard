@@ -47,14 +47,13 @@ Cloudflare の世界 300 拠点以上のエッジで JS/TS を実行するサー
 | `not_found_handling: "single-page-application"` | 存在しないパスには `index.html` を 200 で返す |
 | `run_worker_first: ["/api/*", "/"]` | この 2 パスだけ Worker コードを先に通す。それ以外は Worker を起動せず配信（課金対象外） |
 | `vars.BACKEND_URL` | 既定値は `wrangler dev` 用。CI は `--var BACKEND_URL:...` で上書き |
-| `env.stg` | PR プレビュー用の別 Worker `yield-guard-stg` |
+| `env.stg` | 旧 PR プレビュー用の別 Worker `yield-guard-stg`（CI からは使っていない） |
 
 ### 環境と URL
 
 | 環境 | Worker | URL |
 |---|---|---|
 | 本番 | `yield-guard` | `https://yield-guard.glkt3912.workers.dev` |
-| PR プレビュー | `yield-guard-stg` | `https://pr-<番号>-yield-guard-stg.glkt3912.workers.dev` |
 
 ## 設定値の置き場所
 
@@ -63,10 +62,9 @@ Cloudflare の世界 300 拠点以上のエッジで JS/TS を実行するサー
 | `APP_INTERNAL_API_KEY` | Worker secret（暗号化） | 本番: `npx wrangler secret put APP_INTERNAL_API_KEY` / stg: `npx wrangler versions secret put APP_INTERNAL_API_KEY --env stg` |
 | `BACKEND_URL` | Worker var（CI がデプロイ時に指定） | GitHub Variables `BACKEND_URL_PROD` / `BACKEND_URL_STG` |
 | `VITE_FIREBASE_*` | ビルド時にバンドルへ埋め込み（公開値） | GitHub Variables |
-| `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` | CI 用 | GitHub Secrets（トークンは「Edit Cloudflare Workers」テンプレートで発行） |
+| `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` | CI 用 | GitHub Environment `production` の Secrets（main 限定。トークンは「Edit Cloudflare Workers」テンプレートで発行） |
 
 - 本番の secret は `wrangler secret put` した瞬間に新バージョンとしてデプロイされる（再デプロイ不要）
-- stg は PR ごとの `versions upload` で「最新バージョン＝未デプロイ」になっているため `wrangler secret put --env stg` は失敗する（`latest version of your Worker isn't currently deployed`）。`wrangler versions secret put --env stg` を使う。以降の PR プレビューは新しい secret を引き継ぐが、既存のプレビューは古い値のままなので再 push が必要
 - `VITE_` で始まる変数はブラウザに配られる。秘密の値を `VITE_` にしてはいけない
 
 ## デプロイ
@@ -76,9 +74,8 @@ Cloudflare の世界 300 拠点以上のエッジで JS/TS を実行するサー
 | トリガー | コマンド | 結果 |
 |---|---|---|
 | main push | `wrangler deploy --var BACKEND_URL:$BACKEND_URL_PROD` | 本番に即時反映 |
-| PR | `wrangler versions upload --env stg --preview-alias pr-N --var BACKEND_URL:$BACKEND_URL_STG` | 未公開バージョンを上げ、固定のプレビュー URL を PR にコメント |
 
-- プレビューは「バージョン」として Cloudflare に残るだけなので、PR クローズ時の削除は不要（旧 `vercel-preview-cleanup.yml` は廃止）
+- PR プレビューは廃止（`CLOUDFLARE_API_TOKEN` を main 以外のブランチに渡さないため）。動作確認はローカルの `make dev` で行う
 - ロールバック: ダッシュボードの Deployments から、または `npx wrangler rollback`
 
 ## ローカル開発

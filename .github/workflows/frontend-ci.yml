@@ -143,15 +143,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [ci, e2e]
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' &&
-       github.event.action != 'closed' &&
-       github.event.pull_request.head.repo.full_name == github.repository &&
-       github.actor != 'dependabot[bot]')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
     permissions:
       contents: read
-      pull-requests: write
 
     defaults:
       run:
@@ -190,54 +185,4 @@ jobs:
         run: npm run build
 
       - name: Deploy (production)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: npx wrangler deploy --var "BACKEND_URL:${{ vars.BACKEND_URL_PROD }}"
-
-      # PR ごとに stg Worker (yield-guard-stg) へ未公開バージョンを上げ、エイリアス付きプレビュー URL を得る。
-      # バージョンは Cloudflare 側で保持されるだけなので PR クローズ時の削除は不要
-      - name: Deploy (preview)
-        if: github.event_name == 'pull_request'
-        id: preview
-        run: |
-          OUTPUT=$(npx wrangler versions upload --env stg \
-            --preview-alias "pr-${{ github.event.pull_request.number }}" \
-            --var "BACKEND_URL:${{ vars.BACKEND_URL_STG }}" 2>&1) || { echo "$OUTPUT"; exit 1; }
-          echo "$OUTPUT"
-          URL=$(echo "$OUTPUT" | grep -oE 'https://pr-[a-zA-Z0-9._-]+\.workers\.dev' | tail -1)
-          if [ -z "$URL" ]; then
-            echo "::error::Preview alias URL not found in wrangler output"
-            exit 1
-          fi
-          echo "url=$URL" >> $GITHUB_OUTPUT
-
-      - name: Comment preview URL on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
-        with:
-          script: |
-            const marker = '<!-- cf-preview -->';
-            const url = process.env.PREVIEW_URL;
-            const body = `${marker}\n## Cloudflare プレビュー\n\n${url}\n\n> このプレビューはステージング API (\`BACKEND_URL_STG\`) を使用しています。API 変更を含む PR は stg バックエンドの再デプロイ (deploy-backend-stg.yml) が必要です。`;
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const existing = comments.find(c => c.body.includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
-        env:
-          PREVIEW_URL: ${{ steps.preview.outputs.url }}
