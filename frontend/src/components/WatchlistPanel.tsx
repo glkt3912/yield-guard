@@ -253,10 +253,23 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
     }
   }
 
+  // Firebase 未設定（user なし）時は localStorage が唯一の保存先なので、追加と同じくそこへ書き戻す
+  function updateItems(fn: (prev: WatchlistItem[]) => WatchlistItem[]) {
+    setItems((prev) => {
+      const updated = fn(prev);
+      if (!user) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
+  }
+
   async function handleStatusChange(id: string, status: WatchlistStatus) {
-    if (!user) return;
     // Optimistic update
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+    updateItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+    if (!user) return;
     try {
       const d = itemDoc(user.uid, id);
       if (d) await updateDoc(d, { status });
@@ -266,17 +279,18 @@ export default function WatchlistPanel({ currentResult }: WatchlistPanelProps) {
   }
 
   async function handleDeleteConfirm() {
-    if (!pendingDeleteId || !user) return;
+    if (!pendingDeleteId) return;
     const target = items.find((item) => item.id === pendingDeleteId);
     const deletedId = pendingDeleteId;
     // Optimistic update
-    setItems((prev) => prev.filter((item) => item.id !== deletedId));
+    updateItems((prev) => prev.filter((item) => item.id !== deletedId));
     setSelectedIds((prev) => prev.filter((id) => id !== deletedId));
     setPendingDeleteId(null);
     toast({
       message: target ? `「${target.name}」を削除しました` : "削除しました",
       variant: "warning",
     });
+    if (!user) return;
     try {
       const d = itemDoc(user.uid, deletedId);
       if (d) await deleteDoc(d);
