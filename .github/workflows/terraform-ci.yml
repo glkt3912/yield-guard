@@ -90,6 +90,9 @@ jobs:
       - name: tflint Init
         run: tflint --init
         working-directory: terraform
+        env:
+          # Unauthenticated release lookups share the runner IP's 60 req/h limit and fail with 403
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: tflint
         run: tflint --format compact
