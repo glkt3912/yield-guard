@@ -8,6 +8,7 @@ import (
 	"os"
 
 	monitoring "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric" //nolint:staticcheck // ponytail: deprecated, archived after 2027-01-01; migrate to otlpmetrichttp like traces
+	"go.opentelemetry.io/contrib/detectors/gcp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -88,7 +89,11 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (func(contex
 		resAttrs = append(resAttrs, attribute.String("gcp.project_id", gcpProject))
 	}
 
+	// The GCP detector adds the Cloud Run service and instance ID so each instance (and stg vs prod)
+	// writes its own time series; without it they collide ("Points must be written in order").
+	// Outside GCP it detects nothing and is a no-op.
 	res, err := resource.New(ctx,
+		resource.WithDetectors(gcp.NewDetector()),
 		resource.WithAttributes(resAttrs...),
 	)
 	if err != nil {
