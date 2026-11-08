@@ -31,7 +31,7 @@
     "@radix-ui/react-tooltip": "^1.4.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
-    "firebase": "^12.19.0",
+    "firebase": "^13.2.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.64.0",
     "pdfmake": "^0.3.13",
