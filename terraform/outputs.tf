@@ -1,5 +1,5 @@
 output "cloud_run_url" {
-  description = "Public URL of the Cloud Run service. Register as GitHub Variable BACKEND_URL_PROD (prod) or BACKEND_URL_STG (stg)."
+  description = "Public URL of the Cloud Run service. Register as GitHub Variable BACKEND_URL_PROD."
   value       = google_cloud_run_v2_service.backend.uri
 }
 

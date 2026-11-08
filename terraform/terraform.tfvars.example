@@ -1,15 +1,6 @@
 # Copy this file to terraform.tfvars and fill in real values.
 # terraform.tfvars is excluded from git (see .gitignore).
 #
-# --- Staging environment ---
-# For stg, use a separate backend config:
-#   terraform init -backend-config=backend-stg.hcl -reconfigure
-#   terraform apply -var-file=terraform.stg.tfvars
-#
-# After stg terraform apply, register in GitHub:
-#   Secrets: WIF_PROVIDER_STG, SA_EMAIL_STG
-#   GitHub Variable BACKEND_URL_STG = <stg Cloud Run URL>
-#
 # --- After terraform apply, register the following in GitHub (prod):
 #
 # GitHub Secrets（Settings → Secrets and variables → Actions → Secrets）:
