@@ -167,27 +167,24 @@ main ブランチへの push
 ```
 
 - CI / E2E が失敗した場合はデプロイしない（`needs: [ci, e2e]`）
-- PR 時は stg Worker（`yield-guard-stg`）に `wrangler versions upload --preview-alias pr-N` し、プレビュー URL を PR コメントに投稿
-- Worker secret: `APP_INTERNAL_API_KEY`（`wrangler secret put` で設定、prod / `--env stg` それぞれ）
+- Worker secret: `APP_INTERNAL_API_KEY`（`wrangler secret put` で設定）
 - GitHub Secrets: `CLOUDFLARE_API_TOKEN`・`CLOUDFLARE_ACCOUNT_ID`
-- GitHub Variables: `BACKEND_URL_PROD`・`BACKEND_URL_STG`・`VITE_FIREBASE_*`
+- GitHub Variables: `BACKEND_URL_PROD`・`VITE_FIREBASE_*`
 
 #### 初回セットアップ（Worker 新規作成時のみ）
 
-順序を守らないと `/api/*` が 401（キー未設定）・403（CORS 未許可）になり、PR プレビュー URL も出ない。
+順序を守らないと `/api/*` が 401（キー未設定）・403（CORS 未許可）になる。
 
 1. Worker を作る（`wrangler secret put` は既存 Worker にしか使えないため先に deploy する）
    ```bash
    cd frontend && npm run build
-   npx wrangler deploy --env stg --var "BACKEND_URL:<stg Cloud Run URL>"
    npx wrangler deploy --var "BACKEND_URL:<prod Cloud Run URL>"
    ```
-2. 内部キーを登録する（Cloud Run の `app-internal-api-key-{env}` と同じ値）
+2. 内部キーを登録する（Cloud Run の `app-internal-api-key-prod` と同じ値）
    ```bash
-   npx wrangler secret put APP_INTERNAL_API_KEY --env stg
    npx wrangler secret put APP_INTERNAL_API_KEY
    ```
-3. GitHub Variables `FRONTEND_URL` / `FRONTEND_URL_STG` に workers.dev の URL を入れ、Terraform CI を stg → prod の順に apply（`ALLOW_ORIGINS` 更新）
+3. GitHub Variables `FRONTEND_URL` に workers.dev の URL を入れ、Terraform CI を apply（`ALLOW_ORIGINS` 更新）
 4. Firebase Console → Authentication → 承認済みドメインに workers.dev のドメインを追加
 5. 動作確認後、旧オリジン（Vercel）を `FRONTEND_URL*` から外して再 apply
 

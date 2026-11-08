@@ -104,7 +104,6 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@2028e2d7d30a78c6910e0632e48dd561b064884d  # v3.0.1
         with:
           # このワークフローは main ブランチ → prod 環境専用。
-          # stg 環境用には deploy-backend-stg.yml を別途作成し service 名を変更する。
           service: yield-guard-prod-backend
           region: asia-northeast1
           image: ${{ env.IMAGE }}:${{ env.DEPLOY_SHA }}
