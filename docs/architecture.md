@@ -151,7 +151,7 @@ GitHub Actions (OIDC token)
 
 - `SA_EMAIL` GitHub Secret: deployer SA のメールアドレスを設定
 - `WIF_PROVIDER` GitHub Secret: WIF プロバイダーのリソース名を設定
-- トークン交換は GitHub Environment（`production` / `staging`、どちらも main ブランチ限定）に紐づくジョブだけに制限（`attribute_condition` で OIDC の `sub` を照合）。PR や main 以外のブランチからは GCP に入れない
+- トークン交換は GitHub Environment（`production`、main ブランチ限定）に紐づくジョブだけに制限（`attribute_condition` で OIDC の `sub` を照合）。PR や main 以外のブランチからは GCP に入れない
 
 ### Terraform 状態管理
 

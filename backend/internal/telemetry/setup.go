@@ -89,7 +89,7 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (func(contex
 		resAttrs = append(resAttrs, attribute.String("gcp.project_id", gcpProject))
 	}
 
-	// The GCP detector adds the Cloud Run service and instance ID so each instance (and stg vs prod)
+	// The GCP detector adds the Cloud Run service and instance ID so each instance
 	// writes its own time series; without it they collide ("Points must be written in order").
 	// Outside GCP it detects nothing and is a no-op.
 	res, err := resource.New(ctx,

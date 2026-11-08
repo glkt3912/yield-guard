@@ -1475,7 +1475,7 @@
       "id": "cloudflare-workers",
       "path": "docs/cloudflare-workers.md",
       "title": "Cloudflare Workers（フロントエンド配信基盤）",
-      "description": "フロントエンド（Vite SPA）を配信する Cloudflare Workers の仕組みと運用知見。Vercel/Cloud Run との比較、構成（静的アセット直配信 + worker/index.ts による /api プロキシと X-Internal-Key 付与・HTMLRewriter による共有 URL の OG 書き換え）、wrangler.jsonc の要点（not_found_handling SPA・run_worker_first・env stg）、環境と URL、secret/var/GitHub Variables の置き場所、CI デプロイ（wrangler deploy / versions upload --preview-alias）、ローカル開発（vite dev / wrangler dev）、無料プランの上限（10万req/日・CPU 10ms・Error 1027）、移行時のハマりどころ（SPA フォールバックと SW キャッシュ・secret put は既存 Worker のみ・workers.dev サブドメイン・HTMLRewriter・CORS・Host ヘッダー・プレビュー公開・レート制限 IP）とトラブルシューティング。",
+      "description": "フロントエンド（Vite SPA）を配信する Cloudflare Workers の仕組みと運用知見。Vercel/Cloud Run との比較、構成（静的アセット直配信 + worker/index.ts による /api プロキシと X-Internal-Key 付与・HTMLRewriter による共有 URL の OG 書き換え）、wrangler.jsonc の要点（not_found_handling SPA・run_worker_first）、環境と URL、secret/var/GitHub Variables の置き場所、CI デプロイ（wrangler deploy）、ローカル開発（vite dev / wrangler dev）、無料プランの上限（10万req/日・CPU 10ms・Error 1027）、移行時のハマりどころ（SPA フォールバックと SW キャッシュ・secret put は既存 Worker のみ・workers.dev サブドメイン・HTMLRewriter・CORS・Host ヘッダー・プレビュー公開・レート制限 IP）とトラブルシューティング。",
       "tags": [
         "Cloudflare Workers",
         "wrangler",
@@ -1497,8 +1497,6 @@
         "run_worker_first",
         "not_found_handling",
         "wrangler deploy",
-        "wrangler versions upload",
-        "preview-alias",
         "wrangler secret put",
         "workers.dev",
         "Error 1027",

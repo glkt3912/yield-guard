@@ -40,7 +40,6 @@ frontend/test-results/
 # Terraform
 terraform/.terraform/
 terraform/terraform.tfvars
-terraform/terraform.stg.tfvars
 terraform/*.tfstate
 terraform/*.tfstate.backup
 terraform/tfplan
